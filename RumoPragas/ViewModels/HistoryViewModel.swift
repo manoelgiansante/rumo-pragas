@@ -7,6 +7,7 @@ class HistoryViewModel {
     var isLoading = false
     var searchText = ""
     var selectedCropFilter: CropType?
+    var deleteError: String?
 
     var filteredDiagnoses: [DiagnosisResult] {
         var results = diagnoses
@@ -34,8 +35,14 @@ class HistoryViewModel {
         isLoading = false
     }
 
-    func deleteDiagnosis(at offsets: IndexSet) {
-        let idsToRemove = offsets.map { filteredDiagnoses[$0].id }
-        diagnoses.removeAll { idsToRemove.contains($0.id) }
+    func deleteDiagnosis(_ diagnosis: DiagnosisResult, token: String?) async {
+        guard let token else { return }
+        let id = diagnosis.id
+        diagnoses.removeAll { $0.id == id }
+        do {
+            try await SupabaseService.shared.deleteDiagnosis(token: token, id: id)
+        } catch {
+            deleteError = "Não foi possível excluir o diagnóstico."
+        }
     }
 }

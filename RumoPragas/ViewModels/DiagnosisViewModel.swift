@@ -14,7 +14,7 @@ class DiagnosisViewModel {
     var selectedCrop: CropType = .soja
     var imageData: Data?
 
-    private func compressImage(_ data: Data, maxSizeKB: Int = 800) -> Data? {
+    private nonisolated func compressImage(_ data: Data, maxSizeKB: Int = 800) -> Data? {
         guard let uiImage = UIImage(data: data) else { return data }
         let maxDimension: CGFloat = 1280
         let size = uiImage.size
@@ -55,7 +55,10 @@ class DiagnosisViewModel {
         }
 
         do {
-            let compressed = compressImage(imageData) ?? imageData
+            let capturedData = imageData
+            let compressed = await Task.detached { [weak self] in
+                self?.compressImage(capturedData) ?? capturedData
+            }.value
             let base64Image = compressed.base64EncodedString()
 
             statusMessage = "Enviando para análise..."

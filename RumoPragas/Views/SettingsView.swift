@@ -16,7 +16,7 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Configurações")
             .sheet(isPresented: $viewModel.showEditProfile) {
-                EditProfileSheet(viewModel: viewModel)
+                EditProfileSheet(viewModel: viewModel, token: authVM.accessToken, userId: authVM.currentUser?.id)
             }
             .sheet(isPresented: $viewModel.showPaywall) {
                 PaywallView()
@@ -157,7 +157,7 @@ struct SettingsView: View {
             HStack {
                 Label("Versão", systemImage: "info.circle.fill")
                 Spacer()
-                Text("1.0.0")
+                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
             }

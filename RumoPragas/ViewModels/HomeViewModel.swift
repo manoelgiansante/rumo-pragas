@@ -6,6 +6,7 @@ import CoreLocation
 @MainActor
 class HomeViewModel {
     var recentDiagnosis: DiagnosisResult?
+    var diagnosisCount: Int = 0
     var weather: WeatherData?
     var isLoadingWeather = false
     var selectedCrop: CropType?
@@ -62,6 +63,26 @@ class HomeViewModel {
         isLoadingWeather = false
     }
 
+    func loadRecentDiagnosis(token: String?, userId: String?) async {
+        guard let token, let userId else { return }
+        do {
+            let results = try await SupabaseService.shared.fetchDiagnoses(token: token, userId: userId, limit: 1)
+            recentDiagnosis = results.first
+        } catch {
+            recentDiagnosis = nil
+        }
+    }
+
+    func loadDiagnosisCount(token: String?, userId: String?) async {
+        guard let token, let userId else { return }
+        do {
+            let results = try await SupabaseService.shared.fetchDiagnoses(token: token, userId: userId, limit: 50)
+            diagnosisCount = results.count
+        } catch {
+            diagnosisCount = 0
+        }
+    }
+
     var userLatitude: Double {
         locationService.location?.coordinate.latitude ?? defaultLat
     }
@@ -72,36 +93,35 @@ class HomeViewModel {
 }
 
 nonisolated struct QuickTip: Identifiable, Sendable {
-    let id = UUID()
+    let id: UUID
     let icon: String
     let title: String
-    let description: String
-    let color: Color
+    let descriptionText: String
 
     static let defaultTips: [QuickTip] = [
         QuickTip(
+            id: UUID(),
             icon: "camera.viewfinder",
             title: "Foto Nítida",
-            description: "Tire fotos de perto, com boa iluminação, focando nos sintomas da planta.",
-            color: .blue
+            descriptionText: "Tire fotos de perto, com boa iluminação, focando nos sintomas da planta."
         ),
         QuickTip(
+            id: UUID(),
             icon: "leaf.arrow.triangle.circlepath",
             title: "MIP Primeiro",
-            description: "Priorize controle biológico e cultural antes de tratamentos químicos.",
-            color: Color(red: 0.18, green: 0.55, blue: 0.24)
+            descriptionText: "Priorize controle biológico e cultural antes de tratamentos químicos."
         ),
         QuickTip(
+            id: UUID(),
             icon: "clock.arrow.circlepath",
             title: "Monitore Sempre",
-            description: "Amostragens semanais permitem detecção precoce e controle eficiente.",
-            color: .orange
+            descriptionText: "Amostragens semanais permitem detecção precoce e controle eficiente."
         ),
         QuickTip(
+            id: UUID(),
             icon: "thermometer.sun",
             title: "Clima e Pragas",
-            description: "Alta umidade e temperatura favorecem doenças fúngicas. Fique atento!",
-            color: .red
+            descriptionText: "Alta umidade e temperatura favorecem doenças fúngicas. Fique atento!"
         )
     ]
 }

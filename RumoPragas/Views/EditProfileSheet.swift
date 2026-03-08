@@ -2,6 +2,8 @@ import SwiftUI
 
 struct EditProfileSheet: View {
     @Bindable var viewModel: SettingsViewModel
+    var token: String?
+    var userId: String?
     @Environment(\.dismiss) private var dismiss
 
     let roles = ["produtor", "agronomo", "tecnico", "consultor", "estudante"]
@@ -46,6 +48,14 @@ struct EditProfileSheet: View {
                         .tint(AppTheme.accent)
                     }
                 }
+
+                if let error = viewModel.saveError {
+                    Section {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
             }
             .navigationTitle("Editar Perfil")
             .navigationBarTitleDisplayMode(.inline)
@@ -54,7 +64,21 @@ struct EditProfileSheet: View {
                     Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Salvar") { dismiss() }
+                    Button {
+                        Task {
+                            await viewModel.saveProfile(token: token, userId: userId)
+                            if viewModel.saveSuccess {
+                                dismiss()
+                            }
+                        }
+                    } label: {
+                        if viewModel.isSavingProfile {
+                            ProgressView()
+                        } else {
+                            Text("Salvar")
+                        }
+                    }
+                    .disabled(viewModel.isSavingProfile)
                 }
             }
         }

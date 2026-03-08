@@ -40,10 +40,19 @@ struct HomeView: View {
             }
         }
         .task {
-            await viewModel.loadWeather()
+            async let weatherTask: () = viewModel.loadWeather()
+            async let recentTask: () = viewModel.loadRecentDiagnosis(token: authVM.accessToken, userId: authVM.currentUser?.id)
+            async let countTask: () = viewModel.loadDiagnosisCount(token: authVM.accessToken, userId: authVM.currentUser?.id)
+            _ = await (weatherTask, recentTask, countTask)
             withAnimation(.easeOut(duration: 0.6)) {
                 appeared = true
             }
+        }
+        .refreshable {
+            async let weatherTask: () = viewModel.loadWeather()
+            async let recentTask: () = viewModel.loadRecentDiagnosis(token: authVM.accessToken, userId: authVM.currentUser?.id)
+            async let countTask: () = viewModel.loadDiagnosisCount(token: authVM.accessToken, userId: authVM.currentUser?.id)
+            _ = await (weatherTask, recentTask, countTask)
         }
     }
 
@@ -207,7 +216,7 @@ struct HomeView: View {
             } label: {
                 StatMiniCard(
                     icon: "doc.text.magnifyingglass",
-                    value: "—",
+                    value: viewModel.diagnosisCount > 0 ? "\(viewModel.diagnosisCount)" : "—",
                     label: "Diagnósticos",
                     color: AppTheme.accent
                 )
@@ -231,7 +240,7 @@ struct HomeView: View {
             } label: {
                 StatMiniCard(
                     icon: "chart.line.uptrend.xyaxis",
-                    value: "—",
+                    value: riskLevelText,
                     label: "Monitoramento",
                     color: AppTheme.warmAmber
                 )
@@ -269,21 +278,21 @@ struct HomeView: View {
                     .foregroundStyle(AppTheme.warmAmber)
             }
 
-            ForEach(Array(viewModel.tips.enumerated()), id: \.element.id) { _, tip in
+            ForEach(viewModel.tips) { tip in
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(tip.color.opacity(0.12))
+                            .fill(AppTheme.accent.opacity(0.12))
                             .frame(width: 42, height: 42)
                         Image(systemName: tip.icon)
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(tip.color)
+                            .foregroundStyle(AppTheme.accent)
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(tip.title)
                             .font(.subheadline.weight(.semibold))
-                        Text(tip.description)
+                        Text(tip.descriptionText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -301,6 +310,13 @@ struct HomeView: View {
         if hour < 12 { return "Bom dia" }
         if hour < 18 { return "Boa tarde" }
         return "Boa noite"
+    }
+
+    private var riskLevelText: String {
+        guard let w = viewModel.weather else { return "—" }
+        if w.humidity > 80 || w.temperature > 35 { return "Alto" }
+        if w.humidity > 60 || w.temperature > 30 { return "Médio" }
+        return "Baixo"
     }
 }
 

@@ -78,6 +78,23 @@ nonisolated final class SupabaseService: Sendable {
         let _ = try await URLSession.shared.data(for: request)
     }
 
+    func refreshToken(_ refreshToken: String) async throws -> AuthResponse {
+        let payload = ["refresh_token": refreshToken]
+        let body = try JSONEncoder().encode(payload)
+        guard let request = makeRequest(
+            path: "/auth/v1/token?grant_type=refresh_token",
+            method: "POST",
+            body: body
+        ) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw parseAuthError(data: data)
+        }
+        return try JSONDecoder().decode(AuthResponse.self, from: data)
+    }
+
     func getUser(token: String) async throws -> SupabaseUser {
         guard let request = makeRequest(path: "/auth/v1/user", token: token) else {
             throw APIError.invalidURL
@@ -98,9 +115,9 @@ nonisolated final class SupabaseService: Sendable {
         return .authFailed
     }
 
-    func fetchDiagnoses(token: String, userId: String) async throws -> [DiagnosisResult] {
+    func fetchDiagnoses(token: String, userId: String, limit: Int = 50) async throws -> [DiagnosisResult] {
         guard let request = makeRequest(
-            path: "/rest/v1/pragas_diagnoses?user_id=eq.\(userId)&order=created_at.desc&limit=50",
+            path: "/rest/v1/pragas_diagnoses?user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)",
             token: token,
             additionalHeaders: ["Prefer": "return=representation"]
         ) else {
@@ -111,6 +128,52 @@ nonisolated final class SupabaseService: Sendable {
             throw APIError.networkError
         }
         return try JSONDecoder().decode([DiagnosisResult].self, from: data)
+    }
+
+    func deleteDiagnosis(token: String, id: String) async throws {
+        guard let request = makeRequest(
+            path: "/rest/v1/pragas_diagnoses?id=eq.\(id)",
+            method: "DELETE",
+            token: token
+        ) else {
+            throw APIError.invalidURL
+        }
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.networkError
+        }
+    }
+
+    func updateProfile(token: String, userId: String, profile: [String: Any]) async throws {
+        let body = try JSONSerialization.data(withJSONObject: profile)
+        guard let request = makeRequest(
+            path: "/rest/v1/pragas_profiles?id=eq.\(userId)",
+            method: "PATCH",
+            body: body,
+            token: token,
+            additionalHeaders: ["Prefer": "return=representation"]
+        ) else {
+            throw APIError.invalidURL
+        }
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.networkError
+        }
+    }
+
+    func fetchProfile(token: String, userId: String) async throws -> UserProfile? {
+        guard let request = makeRequest(
+            path: "/rest/v1/pragas_profiles?id=eq.\(userId)&limit=1",
+            token: token
+        ) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.networkError
+        }
+        let profiles = try JSONDecoder().decode([UserProfile].self, from: data)
+        return profiles.first
     }
 
     func callEdgeFunction(
@@ -189,11 +252,13 @@ nonisolated struct EdgeFunctionError: Codable, Sendable {
 nonisolated struct AuthResponse: Codable, Sendable {
     let accessToken: String?
     let tokenType: String?
+    let refreshToken: String?
     let user: SupabaseUser?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case tokenType = "token_type"
+        case refreshToken = "refresh_token"
         case user
     }
 }

@@ -62,6 +62,12 @@ struct HistoryView: View {
                 userId: authVM.currentUser?.id
             )
         }
+        .refreshable {
+            await viewModel.loadHistory(
+                token: authVM.accessToken,
+                userId: authVM.currentUser?.id
+            )
+        }
     }
 
     private var loadingState: some View {
@@ -115,8 +121,8 @@ struct HistoryView: View {
                     .listRowBackground(Color(.secondarySystemGroupedBackground))
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
-                            if let index = viewModel.filteredDiagnoses.firstIndex(where: { $0.id == diagnosis.id }) {
-                                viewModel.deleteDiagnosis(at: IndexSet(integer: index))
+                            Task {
+                                await viewModel.deleteDiagnosis(diagnosis, token: authVM.accessToken)
                             }
                         } label: {
                             Label("Excluir", systemImage: "trash")
