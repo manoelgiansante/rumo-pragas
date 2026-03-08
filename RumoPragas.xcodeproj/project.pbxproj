@@ -403,6 +403,7 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Precisamos da c\U00e2mera para fotografar pragas e sintomas nas lavouras para diagn\U00f3stico por IA.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Usamos sua localiza\U00e7\U00e3o para mostrar condi\U00e7\U00f5es clim\U00e1ticas da sua regi\U00e3o e avaliar riscos de pragas.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Precisamos acessar suas fotos para selecionar imagens de pragas e sintomas para diagn\U00f3stico por IA.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -438,6 +439,7 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Precisamos da c\U00e2mera para fotografar pragas e sintomas nas lavouras para diagn\U00f3stico por IA.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Usamos sua localiza\U00e7\U00e3o para mostrar condi\U00e7\U00f5es clim\U00e1ticas da sua regi\U00e3o e avaliar riscos de pragas.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Precisamos acessar suas fotos para selecionar imagens de pragas e sintomas para diagn\U00f3stico por IA.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -12,7 +12,7 @@ class LocationService: NSObject, CLLocationManagerDelegate {
 
     private let manager = CLLocationManager()
     private let geocoder = CLGeocoder()
-    private var continuation: CheckedContinuation<CLLocation?, Never>?
+    private var continuations: [CheckedContinuation<CLLocation?, Never>] = []
 
     override init() {
         super.init()
@@ -35,19 +35,16 @@ class LocationService: NSObject, CLLocationManagerDelegate {
 
     func getLocationOnce() async -> CLLocation? {
         let status = manager.authorizationStatus
-        if status == .authorizedWhenInUse || status == .authorizedAlways {
-            if let location {
-                return location
-            }
-            return await withCheckedContinuation { cont in
-                if let existing = self.continuation {
-                    existing.resume(returning: self.location)
-                }
-                self.continuation = cont
-                manager.requestLocation()
-            }
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else {
+            return nil
         }
-        return nil
+        if let location {
+            return location
+        }
+        return await withCheckedContinuation { cont in
+            continuations.append(cont)
+            manager.requestLocation()
+        }
     }
 
     private func reverseGeocode(_ location: CLLocation) {
@@ -69,14 +66,21 @@ class LocationService: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    private func resumeAllContinuations(with location: CLLocation?) {
+        let pending = continuations
+        continuations.removeAll()
+        for cont in pending {
+            cont.resume(returning: location)
+        }
+    }
+
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
         Task { @MainActor in
             self.location = loc
             self.isLoading = false
             self.reverseGeocode(loc)
-            self.continuation?.resume(returning: loc)
-            self.continuation = nil
+            self.resumeAllContinuations(with: loc)
         }
     }
 
@@ -88,6 +92,7 @@ class LocationService: NSObject, CLLocationManagerDelegate {
                 manager.requestLocation()
             } else if status == .denied || status == .restricted {
                 self.isLoading = false
+                self.resumeAllContinuations(with: nil)
             }
         }
     }
@@ -95,8 +100,7 @@ class LocationService: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
             self.isLoading = false
-            self.continuation?.resume(returning: nil)
-            self.continuation = nil
+            self.resumeAllContinuations(with: nil)
         }
     }
 }

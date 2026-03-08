@@ -2,12 +2,12 @@ import Foundation
 import SwiftUI
 
 @Observable
-@MainActor
 class AIChatViewModel {
     var messages: [ChatMessage] = []
     var inputText = ""
     var isSending = false
     var errorMessage: String?
+    var suggestions: [String] = []
 
     private let suggestedQuestions = [
         "Como identificar ferrugem asiática na soja?",
@@ -18,8 +18,12 @@ class AIChatViewModel {
         "Como prevenir percevejos na soja?"
     ]
 
-    var suggestions: [String] {
-        Array(suggestedQuestions.shuffled().prefix(3))
+    init() {
+        refreshSuggestions()
+    }
+
+    func refreshSuggestions() {
+        suggestions = Array(suggestedQuestions.shuffled().prefix(3))
     }
 
     func sendMessage() async {
@@ -56,5 +60,6 @@ class AIChatViewModel {
     func clearChat() {
         messages.removeAll()
         errorMessage = nil
+        refreshSuggestions()
     }
 }

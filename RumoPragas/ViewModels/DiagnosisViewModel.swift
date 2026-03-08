@@ -4,7 +4,6 @@ import CoreLocation
 import UIKit
 
 @Observable
-@MainActor
 class DiagnosisViewModel {
     var isAnalyzing = false
     var progress: Double = 0
@@ -14,7 +13,7 @@ class DiagnosisViewModel {
     var selectedCrop: CropType = .soja
     var imageData: Data?
 
-    private nonisolated func compressImage(_ data: Data, maxSizeKB: Int = 800) -> Data? {
+    private static nonisolated func compressImage(_ data: Data, maxSizeKB: Int = 800) -> Data {
         guard let uiImage = UIImage(data: data) else { return data }
         let maxDimension: CGFloat = 1280
         let size = uiImage.size
@@ -33,7 +32,7 @@ class DiagnosisViewModel {
             compression -= 0.1
             compressed = resized.jpegData(compressionQuality: compression)
         }
-        return compressed
+        return compressed ?? data
     }
 
     func startDiagnosis(token: String?) async {
@@ -56,8 +55,8 @@ class DiagnosisViewModel {
 
         do {
             let capturedData = imageData
-            let compressed = await Task.detached { [weak self] in
-                self?.compressImage(capturedData) ?? capturedData
+            let compressed = await Task.detached {
+                DiagnosisViewModel.compressImage(capturedData)
             }.value
             let base64Image = compressed.base64EncodedString()
 
@@ -88,15 +87,10 @@ class DiagnosisViewModel {
             statusMessage = "Processando resultado..."
             progress = 0.85
 
-            let rawJSON = String(data: data, encoding: .utf8) ?? ""
-            print("[Diagnose] Raw response (\(data.count) bytes): \(rawJSON.prefix(2000))")
-
             let decoder = JSONDecoder()
             do {
                 result = try decoder.decode(DiagnosisResult.self, from: data)
-            } catch let decodeError {
-                print("[Diagnose] Decode error: \(decodeError)")
-
+            } catch {
                 if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     if let errMsg = dict["error"] as? String {
                         throw APIError.serverError(errMsg)
@@ -105,9 +99,9 @@ class DiagnosisViewModel {
                         throw APIError.serverError(msg)
                     }
 
-                    result = try parseFlatResponse(dict, rawJSON: rawJSON)
+                    result = try parseFlatResponse(dict)
                 } else if let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]], let first = arr.first {
-                    result = try parseFlatResponse(first, rawJSON: rawJSON)
+                    result = try parseFlatResponse(first)
                 } else {
                     throw APIError.serverError("Resposta inesperada do servidor. Tente novamente.")
                 }
@@ -125,7 +119,7 @@ class DiagnosisViewModel {
         }
     }
 
-    private func parseFlatResponse(_ dict: [String: Any], rawJSON: String) throws -> DiagnosisResult {
+    private func parseFlatResponse(_ dict: [String: Any]) throws -> DiagnosisResult {
         let id = dict["id"] as? String ?? UUID().uuidString
         let userId = dict["user_id"] as? String ?? ""
         let crop = dict["crop"] as? String ?? dict["crop_type"] as? String ?? selectedCrop.apiName
