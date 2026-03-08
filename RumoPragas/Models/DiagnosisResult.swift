@@ -39,7 +39,7 @@ nonisolated struct DiagnosisResult: Identifiable, Codable, Sendable, Hashable {
     }
 
     var displayName: String {
-        enrichment?.namePt ?? pestName ?? pestId ?? "Diagnóstico"
+        enrichment?.namePt ?? pestName ?? pestId ?? "Diagn\u{00f3}stico"
     }
 
     var scientificName: String? {
@@ -134,12 +134,12 @@ nonisolated struct DiagnosisResult: Identifiable, Codable, Sendable, Hashable {
         switch cropLower {
         case "soybean", "soja": return .soja
         case "corn", "milho": return .milho
-        case "coffee", "cafe", "café": return .cafe
-        case "cotton", "algodao", "algodão": return .algodao
-        case "sugarcane", "cana", "cana-de-açúcar": return .cana
+        case "coffee", "cafe", "caf\u{00e9}": return .cafe
+        case "cotton", "algodao", "algod\u{00e3}o": return .algodao
+        case "sugarcane", "cana", "cana-de-a\u{00e7}\u{00fa}car": return .cana
         case "wheat", "trigo": return .trigo
         case "rice", "arroz": return .arroz
-        case "bean", "feijao", "feijão": return .feijao
+        case "bean", "feijao", "feij\u{00e3}o": return .feijao
         case "potato", "batata": return .batata
         case "tomato", "tomate": return .tomate
         case "cassava", "mandioca": return .mandioca
@@ -177,6 +177,25 @@ nonisolated struct AgrioNotesData: Codable, Sendable {
     let predictions: [AgrioPrediction]?
     let enrichment: AgrioEnrichment?
 
+    nonisolated enum CodingKeys: String, CodingKey {
+        case message
+        case crop
+        case cropConfidence = "crop_confidence"
+        case idArray = "id_array"
+        case predictions
+        case enrichment
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+        crop = try container.decodeIfPresent(String.self, forKey: .crop)
+        cropConfidence = try container.decodeIfPresent(Double.self, forKey: .cropConfidence)
+        idArray = try container.decodeIfPresent([AgrioPrediction].self, forKey: .idArray)
+        predictions = try container.decodeIfPresent([AgrioPrediction].self, forKey: .predictions)
+        enrichment = try container.decodeIfPresent(AgrioEnrichment.self, forKey: .enrichment)
+    }
+
     var topPrediction: AgrioPrediction? {
         let preds = predictions ?? idArray ?? []
         return preds.first(where: { $0.id != "Healthy" }) ?? preds.first
@@ -190,6 +209,31 @@ nonisolated struct AgrioPrediction: Codable, Sendable, Identifiable {
     let scientificName: String?
     let category: String?
     let type: String?
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id
+        case confidence
+        case commonName = "common_name"
+        case scientificName = "scientific_name"
+        case category
+        case type
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        if let c = try? container.decode(Double.self, forKey: .confidence) {
+            confidence = c
+        } else if let c = try? container.decode(String.self, forKey: .confidence), let d = Double(c) {
+            confidence = d
+        } else {
+            confidence = 0
+        }
+        commonName = try container.decodeIfPresent(String.self, forKey: .commonName)
+        scientificName = try container.decodeIfPresent(String.self, forKey: .scientificName)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
+    }
 }
 
 nonisolated struct AgrioEnrichment: Codable, Sendable {
@@ -219,6 +263,35 @@ nonisolated struct AgrioEnrichment: Codable, Sendable {
     let relatedPests: [String]?
     let actionThreshold: String?
     let mipStrategy: String?
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case namePt = "name_pt"
+        case nameEs = "name_es"
+        case description
+        case descriptionEs = "description_es"
+        case causes
+        case causesEs = "causes_es"
+        case symptoms
+        case symptomsEs = "symptoms_es"
+        case chemicalTreatment = "chemical_treatment"
+        case chemicalTreatmentEs = "chemical_treatment_es"
+        case biologicalTreatment = "biological_treatment"
+        case biologicalTreatmentEs = "biological_treatment_es"
+        case culturalTreatment = "cultural_treatment"
+        case culturalTreatmentEs = "cultural_treatment_es"
+        case prevention
+        case preventionEs = "prevention_es"
+        case severity
+        case lifecycle
+        case economicImpact = "economic_impact"
+        case monitoring
+        case favorableConditions = "favorable_conditions"
+        case resistanceInfo = "resistance_info"
+        case recommendedProducts = "recommended_products"
+        case relatedPests = "related_pests"
+        case actionThreshold = "action_threshold"
+        case mipStrategy = "mip_strategy"
+    }
 }
 
 nonisolated struct AgrioProduct: Codable, Sendable, Identifiable {
@@ -229,4 +302,13 @@ nonisolated struct AgrioProduct: Codable, Sendable, Identifiable {
     let interval: String?
     let safetyPeriod: String?
     let toxicClass: String?
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case name
+        case activeIngredient = "active_ingredient"
+        case dosage
+        case interval
+        case safetyPeriod = "safety_period"
+        case toxicClass = "toxic_class"
+    }
 }

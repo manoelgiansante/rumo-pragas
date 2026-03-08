@@ -88,8 +88,8 @@ class DiagnosisViewModel {
             statusMessage = "Processando resultado..."
             progress = 0.85
 
-            let decoder = JSONDecoder()
             do {
+                let decoder = JSONDecoder()
                 result = try decoder.decode(DiagnosisResult.self, from: data)
             } catch {
                 if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
