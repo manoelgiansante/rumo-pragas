@@ -40,6 +40,9 @@ class LocationService: NSObject, CLLocationManagerDelegate {
                 return location
             }
             return await withCheckedContinuation { cont in
+                if let existing = self.continuation {
+                    existing.resume(returning: self.location)
+                }
                 self.continuation = cont
                 manager.requestLocation()
             }
