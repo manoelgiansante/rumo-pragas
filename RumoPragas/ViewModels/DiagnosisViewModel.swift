@@ -4,6 +4,7 @@ import CoreLocation
 import UIKit
 
 @Observable
+@MainActor
 class DiagnosisViewModel {
     var isAnalyzing = false
     var progress: Double = 0

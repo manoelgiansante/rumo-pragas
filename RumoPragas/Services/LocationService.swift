@@ -17,7 +17,7 @@ class LocationService: NSObject, CLLocationManagerDelegate {
     override init() {
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
         authorizationStatus = manager.authorizationStatus
     }
 

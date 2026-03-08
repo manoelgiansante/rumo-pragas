@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 @Observable
+@MainActor
 class AIChatViewModel {
     var messages: [ChatMessage] = []
     var inputText = ""
