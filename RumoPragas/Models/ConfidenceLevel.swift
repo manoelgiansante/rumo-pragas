@@ -1,6 +1,6 @@
 import SwiftUI
 
-nonisolated enum ConfidenceLevel: String, Codable, Sendable {
+enum ConfidenceLevel: String, Codable, Sendable {
     case high
     case medium
     case low

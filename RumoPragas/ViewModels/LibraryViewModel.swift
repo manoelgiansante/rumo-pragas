@@ -5,12 +5,13 @@ import SwiftUI
 class LibraryViewModel {
     var searchText = ""
     var selectedCrop: CropType?
-    var allPests: [Pest] = PestDataService.allPests
 
     var filteredPests: [Pest] {
-        var results = allPests
+        var results: [Pest]
         if let crop = selectedCrop {
             results = PestDataService.pests(for: crop)
+        } else {
+            results = PestDataService.allPests
         }
         if !searchText.isEmpty {
             results = results.filter {

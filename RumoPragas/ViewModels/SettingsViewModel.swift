@@ -9,8 +9,14 @@ class SettingsViewModel {
     var userCrops: [String] = []
     var userCity = ""
     var userState = ""
-    var isDarkMode: Bool = UserDefaults.standard.bool(forKey: "isDarkMode") {
-        didSet { UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode") }
+    @ObservationIgnored
+    private var _isDarkMode: Bool = UserDefaults.standard.bool(forKey: "isDarkMode")
+    var isDarkMode: Bool {
+        get { _isDarkMode }
+        set {
+            _isDarkMode = newValue
+            UserDefaults.standard.set(newValue, forKey: "isDarkMode")
+        }
     }
     var language = "pt"
     var pushEnabled = true

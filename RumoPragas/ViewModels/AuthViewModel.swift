@@ -20,17 +20,16 @@ class AuthViewModel {
 
     private let accessTokenKey = "auth_access_token"
     private let refreshTokenKey = "auth_refresh_token"
-    private let legacyTokenKey = "auth_access_token"
 
     init() {
         if let saved = KeychainService.load(key: accessTokenKey), !saved.isEmpty {
             accessToken = saved
             isAuthenticated = true
-        } else if let legacy = UserDefaults.standard.string(forKey: legacyTokenKey), !legacy.isEmpty {
+        } else if let legacy = UserDefaults.standard.string(forKey: accessTokenKey), !legacy.isEmpty {
             accessToken = legacy
             isAuthenticated = true
             KeychainService.save(key: accessTokenKey, value: legacy)
-            UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+            UserDefaults.standard.removeObject(forKey: accessTokenKey)
         }
     }
 
@@ -128,7 +127,7 @@ class AuthViewModel {
         currentUser = nil
         KeychainService.delete(key: accessTokenKey)
         KeychainService.delete(key: refreshTokenKey)
-        UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+        UserDefaults.standard.removeObject(forKey: accessTokenKey)
         isAuthenticated = false
         email = ""
         password = ""

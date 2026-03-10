@@ -222,12 +222,6 @@ struct DiagnosisRowView: View {
     }
 
     private func shortDate(_ dateString: String) -> String {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let date = isoFormatter.date(from: dateString) ?? ISO8601DateFormatter().date(from: dateString)
-        guard let date else { return "" }
-        let display = DateFormatter()
-        display.dateFormat = "dd/MM"
-        return display.string(from: date)
+        DateFormatUtility.shortDate(dateString)
     }
 }

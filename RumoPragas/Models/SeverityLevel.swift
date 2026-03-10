@@ -1,6 +1,6 @@
 import SwiftUI
 
-nonisolated enum SeverityLevel: String, Codable, Sendable, CaseIterable {
+enum SeverityLevel: String, Codable, Sendable, CaseIterable {
     case critical
     case high
     case medium

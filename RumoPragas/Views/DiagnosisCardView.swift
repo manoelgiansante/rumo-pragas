@@ -70,14 +70,6 @@ struct DiagnosisCardView: View {
     }
 
     private func formattedDate(_ dateString: String) -> String {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let date = isoFormatter.date(from: dateString) ?? ISO8601DateFormatter().date(from: dateString)
-        guard let date else { return dateString }
-        let display = DateFormatter()
-        display.dateStyle = .medium
-        display.timeStyle = .short
-        display.locale = Locale(identifier: "pt_BR")
-        return display.string(from: date)
+        DateFormatUtility.mediumDate(dateString)
     }
 }

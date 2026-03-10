@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct UserProfile: Codable, Sendable {
+nonisolated struct UserProfile: Codable, Sendable, Identifiable {
     var id: String
     var fullName: String?
     var email: String?

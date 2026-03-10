@@ -266,10 +266,6 @@ nonisolated struct PestDataService: Sendable {
         )
     ]
 
-    static func pestsForCrop(_ crop: String) -> [Pest] {
-        allPests.filter { $0.crop == crop }
-    }
-
     static let trigoPests: [Pest] = [
         Pest(
             id: "trigo-giberela",

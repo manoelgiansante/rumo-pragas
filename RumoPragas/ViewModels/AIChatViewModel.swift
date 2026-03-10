@@ -27,6 +27,8 @@ class AIChatViewModel {
         suggestions = Array(suggestedQuestions.shuffled().prefix(3))
     }
 
+    private let maxMessages = 100
+
     func sendMessage() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isSending else { return }
@@ -37,8 +39,13 @@ class AIChatViewModel {
         isSending = true
         errorMessage = nil
 
+        if messages.count > maxMessages {
+            messages.removeFirst(messages.count - maxMessages)
+        }
+
         do {
-            let apiMessages = messages.map { msg -> [String: String] in
+            let recentMessages = Array(messages.suffix(20))
+            let apiMessages = recentMessages.map { msg -> [String: String] in
                 ["role": msg.role.rawValue, "content": msg.content]
             }
 

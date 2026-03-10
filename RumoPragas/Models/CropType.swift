@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-nonisolated enum CropType: String, Codable, Sendable, CaseIterable, Identifiable {
+enum CropType: String, Codable, Sendable, CaseIterable, Identifiable {
     case soja = "soja"
     case milho = "milho"
     case cafe = "cafe"
