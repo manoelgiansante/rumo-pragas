@@ -1,22 +1,21 @@
-# React Native / Expo artifacts (should not exist in Swift projects)
-node_modules/
-.expo/
-.bundle/
-android/
-ios/
-babel.config.js
-metro.config.js
-package.json
-package-lock.json
-tsconfig.json
-app.json
-
 # Xcode
 build/
 DerivedData/
 *.xcuserstate
 *.xcuserdatad/
 xcuserdata/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
 
 # Swift Package Manager
 .build/
@@ -28,11 +27,14 @@ Package.resolved
 *.swp
 *~
 
-# Rork
-.rork/
+# Environment / Secrets
 .env
-rork-eslint.config.js
+.env.*
 
-core
-node_modules
-.expo
+# Legacy (React Native / Rork - não mais utilizado)
+node_modules/
+.expo/
+.bundle/
+.rork/
+bun.lock
+package-lock.json
