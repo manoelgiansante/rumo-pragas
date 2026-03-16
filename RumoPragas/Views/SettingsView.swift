@@ -135,23 +135,27 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            Link(destination: URL(string: "https://rumopragas.com.br/privacidade")!) {
-                HStack {
-                    Label("Política de Privacidade", systemImage: "hand.raised.fill")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            if let url = URL(string: "https://rumopragas.com.br/privacidade") {
+                Link(destination: url) {
+                    HStack {
+                        Label("Política de Privacidade", systemImage: "hand.raised.fill")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
 
-            Link(destination: URL(string: "https://rumopragas.com.br/termos")!) {
-                HStack {
-                    Label("Termos de Uso", systemImage: "doc.text.fill")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            if let url = URL(string: "https://rumopragas.com.br/termos") {
+                Link(destination: url) {
+                    HStack {
+                        Label("Termos de Uso", systemImage: "doc.text.fill")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
 

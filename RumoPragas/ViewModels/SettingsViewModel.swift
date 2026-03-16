@@ -35,13 +35,18 @@ class SettingsViewModel {
 
     func saveProfile(token: String?, userId: String?) async {
         guard let token, let userId else { return }
+        let trimmedName = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            saveError = "Nome é obrigatório."
+            return
+        }
         isSavingProfile = true
         saveError = nil
         saveSuccess = false
         let profile: [String: Any] = [
-            "full_name": userName,
+            "full_name": trimmedName,
             "role": userRole,
-            "city": userCity,
+            "city": userCity.trimmingCharacters(in: .whitespacesAndNewlines),
             "state": userState,
             "crops": userCrops,
             "language": language,

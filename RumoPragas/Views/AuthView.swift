@@ -174,13 +174,17 @@ struct AuthView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                 HStack(spacing: 4) {
-                    Link("Termos de Uso", destination: URL(string: "https://rumopragas.com.br/termos")!)
-                        .font(.caption2.weight(.medium))
+                    if let url = URL(string: "https://rumopragas.com.br/termos") {
+                        Link("Termos de Uso", destination: url)
+                            .font(.caption2.weight(.medium))
+                    }
                     Text("e")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    Link("Política de Privacidade", destination: URL(string: "https://rumopragas.com.br/privacidade")!)
-                        .font(.caption2.weight(.medium))
+                    if let url = URL(string: "https://rumopragas.com.br/privacidade") {
+                        Link("Política de Privacidade", destination: url)
+                            .font(.caption2.weight(.medium))
+                    }
                 }
             }
             .padding(.top, 8)
