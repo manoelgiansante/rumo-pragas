@@ -195,6 +195,21 @@ export const SupabaseService = {
     return 0;
   },
 
+  async saveDiagnosis(
+    token: string,
+    diagnosis: Record<string, any>,
+  ): Promise<DiagnosisResult> {
+    const res = await makeRequest('/rest/v1/pragas_diagnoses', {
+      method: 'POST',
+      body: diagnosis,
+      token,
+      additionalHeaders: { Prefer: 'return=representation' },
+    });
+    if (!res.ok) throw new APIError('Erro ao salvar diagnóstico.');
+    const rows = await res.json();
+    return (Array.isArray(rows) ? rows[0] : rows) as DiagnosisResult;
+  },
+
   async deleteDiagnosis(token: string, id: string): Promise<void> {
     const res = await makeRequest(`/rest/v1/pragas_diagnoses?id=eq.${id}`, {
       method: 'DELETE',

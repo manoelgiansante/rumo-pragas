@@ -49,7 +49,7 @@ const STATUS_MESSAGES = [
 
 export default function DiagnosisScreen() {
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, currentUser } = useAuth();
   const headerPadding = useHeaderPadding();
 
   const [flowStep, setFlowStep] = useState<FlowStep>('photoSelection');
@@ -146,7 +146,12 @@ export default function DiagnosisScreen() {
   // ─── Diagnosis ──────────────────────────────────────────────────────────
 
   const startDiagnosis = async () => {
-    if (!imageBase64 || !accessToken) return;
+    if (!accessToken) {
+      setErrorMessage('Sessão expirada. Faça login novamente.');
+      setFlowStep('error');
+      return;
+    }
+    if (!imageBase64) return;
 
     setFlowStep('analyzing');
     setProgress(0);
@@ -220,10 +225,40 @@ export default function DiagnosisScreen() {
 
       clearInterval(progressInterval);
       setProgress(1);
-      setStatusMessage('Processando resultado...');
+      setStatusMessage('Salvando resultado...');
 
-      // Parse response as DiagnosisResult
-      const result: DiagnosisResult = response;
+      // The edge function may return the full DiagnosisResult already saved,
+      // or we may need to persist it ourselves.
+      let result: DiagnosisResult = response;
+
+      // If the response doesn't have an id (not saved by edge function), persist it
+      if (!result.id && currentUser?.id && accessToken) {
+        try {
+          const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+          const topPrediction = parsed?.predictions?.[0] || parsed?.id_array?.[0];
+          result = await SupabaseService.saveDiagnosis(accessToken, {
+            user_id: currentUser.id,
+            crop: selectedCrop.apiName,
+            pest_id: topPrediction?.id || null,
+            pest_name: parsed?.enrichment?.name_pt || topPrediction?.common_name || null,
+            confidence: topPrediction?.confidence || null,
+            notes: JSON.stringify(parsed),
+            location_lat: latitude || null,
+            location_lng: longitude || null,
+          });
+        } catch {
+          // If save fails, still show the result - just won't appear in history
+          result = {
+            id: Date.now().toString(),
+            user_id: currentUser.id,
+            crop: selectedCrop.apiName,
+            notes: JSON.stringify(response),
+            created_at: new Date().toISOString(),
+            ...response,
+          };
+        }
+      }
+
       setDiagnosisResult(result);
 
       setTimeout(() => {
