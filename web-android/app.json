@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Rumo Pragas",
+    "slug": "rumo-pragas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "rumopragas",
+    "platforms": ["android", "web"],
+    "android": {
+      "package": "com.agrorumo.pragas",
+      "adaptiveIcon": {
+        "backgroundColor": "#1A966B"
+      },
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-location",
+      "expo-image-picker",
+      "expo-secure-store"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+export const AppTheme = {
+  accent: '#1A966B',
+  accentDark: '#0F6B4D',
+  accentLight: '#29B887',
+  techBlue: '#3882F2',
+  techIndigo: '#5957D6',
+  warmAmber: '#EBB026',
+  coral: '#F0664F',
+  surfaceCard: '#F2F2F7',
+  background: '#F2F2F7',
+  cardBackground: '#FFFFFF',
+  text: '#000000',
+  textSecondary: '#8E8E93',
+  textTertiary: '#C7C7CC',
+  border: '#E5E5EA',
+  heroGradient: ['#0F6B4D', '#1A966B', '#29B887'],
+  techGradient: ['#1A966B', '#3882F2'],
+};
