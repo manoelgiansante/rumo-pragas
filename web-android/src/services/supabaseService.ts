@@ -159,7 +159,7 @@ export const SupabaseService = {
   async fetchDiagnoses(
     token: string,
     userId: string,
-    limit: number = 50,
+    limit: number = 200,
   ): Promise<DiagnosisResult[]> {
     const res = await makeRequest(
       `/rest/v1/pragas_diagnoses?user_id=eq.${userId}&order=created_at.desc&limit=${limit}`,

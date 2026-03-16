@@ -146,6 +146,7 @@ export default function DiagnosisScreen() {
   // ─── Diagnosis ──────────────────────────────────────────────────────────
 
   const startDiagnosis = async () => {
+    if (flowStep === 'analyzing') return; // Prevent duplicate requests
     if (!accessToken) {
       setErrorMessage('Sessão expirada. Faça login novamente.');
       setFlowStep('error');
@@ -478,7 +479,11 @@ export default function DiagnosisScreen() {
         {/* Image Preview */}
         {imageUri && (
           <View style={styles.imagePreviewContainer}>
-            <Image source={{ uri: imageUri }} style={styles.imagePreviewThumb} />
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.imagePreviewThumb}
+              accessibilityLabel="Foto selecionada para diagnóstico"
+            />
             <View style={styles.imagePreviewText}>
               <Text style={styles.imagePreviewTitle}>Imagem selecionada</Text>
               <Text style={styles.imagePreviewSubtitle}>
