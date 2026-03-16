@@ -3,493 +3,480 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Dimensions,
+  Easing,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppTheme } from '../../src/utils/theme';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { AIChatService } from '../../src/services/aiChatService';
 import { ChatMessage } from '../../src/types';
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Suggested questions (same 6 from iOS)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
 const ALL_SUGGESTIONS = [
-  'Como identificar ferrugem-asiática na soja?',
-  'Quais são as pragas mais comuns do milho safrinha?',
-  'Como fazer o manejo integrado do bicudo do algodão?',
-  'Qual o tratamento biológico para a broca-da-cana?',
-  'Como prevenir a requeima na batata?',
-  'Quais sintomas indicam greening nos citros?',
+  'Como identificar ferrugem asiática na soja?',
+  'Quais pragas atacam milho no verão?',
+  'Manejo biológico da broca-do-café',
+  'Controle de cigarrinha na cana',
+  'Quando aplicar defensivo no algodão?',
+  'Como prevenir percevejos na soja?',
 ];
 
-function getRandomSuggestions(count: number): string[] {
-  const shuffled = [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+function pickRandom(arr: string[], n: number): string[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Typing indicator (animated dots)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+function TypingIndicator() {
+  const anims = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+
+  useEffect(() => {
+    const animate = (idx: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anims[idx], { toValue: -4, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(anims[idx], { toValue: 0, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ]),
+      ).start();
+    };
+    anims.forEach((_, i) => setTimeout(() => animate(i), i * 150));
+  }, []);
+
+  return (
+    <View style={s.typingRow}>
+      {/* avatar */}
+      <View style={s.assistantAvatar}>
+        <MaterialCommunityIcons name="creation" size={13} color="#fff" />
+      </View>
+      <View style={s.typingBubble}>
+        {anims.map((a, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              s.typingDot,
+              { transform: [{ translateY: a }] },
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Chat Screen
+ * ──────────────────────────────────────────────────────────────────────────── */
 
 export default function ChatScreen() {
   const { accessToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [suggestions] = useState(() => getRandomSuggestions(3));
-  const flatListRef = useRef<FlatList>(null);
+  const [suggestions, setSuggestions] = useState(() => pickRandom(ALL_SUGGESTIONS, 3));
+  const scrollRef = useRef<FlatList>(null);
 
-  // Typing dots animation
-  const dot1 = useRef(new Animated.Value(0)).current;
-  const dot2 = useRef(new Animated.Value(0)).current;
-  const dot3 = useRef(new Animated.Value(0)).current;
+  const refreshSuggestions = () => setSuggestions(pickRandom(ALL_SUGGESTIONS, 3));
 
-  useEffect(() => {
-    if (!isTyping) return;
-    const createDotAnimation = (dot: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ]),
-      );
-    const anim1 = createDotAnimation(dot1, 0);
-    const anim2 = createDotAnimation(dot2, 150);
-    const anim3 = createDotAnimation(dot3, 300);
-    anim1.start();
-    anim2.start();
-    anim3.start();
-    return () => {
-      anim1.stop();
-      anim2.stop();
-      anim3.stop();
-      dot1.setValue(0);
-      dot2.setValue(0);
-      dot3.setValue(0);
-    };
-  }, [isTyping]);
+  const canSend = inputText.trim().length > 0 && !isSending;
 
-  const sendMessage = useCallback(async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  const scrollToEnd = useCallback(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }, []);
 
-    setErrorMessage(null);
-    setInputText('');
+  const sendMessage = async (text?: string) => {
+    const content = (text || inputText).trim();
+    if (!content || isSending) return;
 
-    const userMessage: ChatMessage = {
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: trimmed,
+      content,
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setIsTyping(true);
-
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setMessages((prev) => [...prev, userMsg]);
+    setInputText('');
+    setIsSending(true);
+    setErrorMessage(null);
+    scrollToEnd();
 
     try {
-      const history = messages.map((m) => ({ role: m.role, content: m.content }));
-      history.push({ role: 'user', content: trimmed });
+      const allMsgs = [...messages, userMsg];
+      const recentMsgs = allMsgs.slice(-20).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
-      const response = await AIChatService.sendMessage(history, accessToken || undefined);
+      const response = await AIChatService.sendMessage(recentMsgs, accessToken || undefined);
 
-      const assistantMessage: ChatMessage = {
+      const assistantMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: response,
         timestamp: new Date(),
       };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Erro ao se comunicar com a IA.');
-    } finally {
-      setIsTyping(false);
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch {
+      setErrorMessage('Não foi possível obter resposta. Tente novamente.');
     }
-  }, [messages, accessToken]);
 
-  const handleClear = () => {
+    setIsSending(false);
+    scrollToEnd();
+  };
+
+  const clearChat = () => {
     setMessages([]);
     setErrorMessage(null);
+    refreshSuggestions();
   };
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isUser = item.role === 'user';
-    return (
-      <View style={[styles.messageBubbleRow, isUser ? styles.messageBubbleRowUser : styles.messageBubbleRowAssistant]}>
-        {!isUser && (
-          <View style={styles.avatarContainer}>
-            <MaterialCommunityIcons name="robot-outline" size={18} color={AppTheme.accent} />
+  const formatTime = (d: Date) => {
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
+  /* Empty state */
+  const renderEmptyState = () => (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+      <View style={s.emptyContainer}>
+        <View style={{ height: 40 }} />
+        {/* Gradient circle */}
+        <View style={s.emptyGlow}>
+          <View style={s.emptyCircle}>
+            <MaterialCommunityIcons name="creation" size={34} color="#fff" />
           </View>
-        )}
-        <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-          <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
-            {item.content}
-          </Text>
         </View>
-      </View>
-    );
-  };
 
-  const renderEmptyState = () => {
-    if (messages.length > 0) return null;
-    return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIconContainer}>
-          <MaterialCommunityIcons name="creation" size={56} color={AppTheme.accent} />
-        </View>
-        <Text style={styles.emptyTitle}>Agro IA</Text>
-        <Text style={styles.emptySubtitle}>
-          Seu assistente especializado em pragas agrícolas e manejo integrado de pragas (MIP).
+        <Text style={s.emptyTitle}>Agro IA</Text>
+        <Text style={s.emptySubtitle}>
+          {'Seu assistente especializado em pragas\ne manejo integrado de pragas (MIP)'}
         </Text>
-        <View style={styles.suggestionsContainer}>
-          {suggestions.map((suggestion, index) => (
+
+        <View style={s.suggestionsWrap}>
+          <Text style={s.suggestionsLabel}>PERGUNTE SOBRE:</Text>
+          {suggestions.map((sg) => (
             <TouchableOpacity
-              key={index}
-              style={styles.suggestionButton}
-              onPress={() => sendMessage(suggestion)}
+              key={sg}
+              style={s.suggestionCard}
+              onPress={() => sendMessage(sg)}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons name="lightbulb-outline" size={16} color={AppTheme.accent} />
-              <Text style={styles.suggestionText} numberOfLines={2}>{suggestion}</Text>
+              <MaterialCommunityIcons name="leaf" size={14} color={AppTheme.accent} />
+              <Text style={s.suggestionText} numberOfLines={2}>{sg}</Text>
+              <MaterialCommunityIcons name="arrow-top-right" size={10} color={AppTheme.textTertiary} />
             </TouchableOpacity>
           ))}
         </View>
       </View>
-    );
-  };
+    </ScrollView>
+  );
 
-  const renderTypingIndicator = () => {
-    if (!isTyping) return null;
-    return (
-      <View style={[styles.messageBubbleRow, styles.messageBubbleRowAssistant]}>
-        <View style={styles.avatarContainer}>
-          <MaterialCommunityIcons name="robot-outline" size={18} color={AppTheme.accent} />
-        </View>
-        <View style={[styles.messageBubble, styles.assistantBubble, styles.typingBubble]}>
-          {[dot1, dot2, dot3].map((dot, i) => (
-            <Animated.View
-              key={i}
-              style={[
-                styles.typingDot,
-                {
-                  transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) }],
-                  opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
-                },
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-    );
-  };
+  /* Messages list */
+  const renderMessagesList = () => (
+    <FlatList
+      ref={scrollRef}
+      data={messages}
+      keyExtractor={(m) => m.id}
+      contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12 }}
+      onContentSizeChange={scrollToEnd}
+      renderItem={({ item }) => {
+        const isUser = item.role === 'user';
+        return (
+          <View style={[s.msgRow, isUser && { justifyContent: 'flex-end' }]}>
+            {!isUser && (
+              <View style={[s.assistantAvatar, { marginTop: 4 }]}>
+                <MaterialCommunityIcons name="creation" size={13} color="#fff" />
+              </View>
+            )}
+            <View style={{ maxWidth: '75%' }}>
+              <View
+                style={[
+                  s.bubble,
+                  isUser ? s.userBubble : s.assistantBubble,
+                ]}
+              >
+                <Text
+                  style={[s.bubbleText, isUser && { color: '#fff' }]}
+                  selectable
+                >
+                  {item.content}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  s.timeText,
+                  { textAlign: isUser ? 'right' : 'left' },
+                ]}
+              >
+                {formatTime(item.timestamp)}
+              </Text>
+            </View>
+          </View>
+        );
+      }}
+      ListFooterComponent={
+        <>
+          {isSending && <TypingIndicator />}
+          {errorMessage && (
+            <View style={s.errorBubble}>
+              <MaterialCommunityIcons name="alert" size={14} color={AppTheme.warmAmber} />
+              <Text style={s.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+        </>
+      }
+    />
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <KeyboardAvoidingView
+      style={s.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerIconBg}>
-            <MaterialCommunityIcons name="creation" size={20} color="#FFFFFF" />
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <View style={s.headerIcon}>
+            <MaterialCommunityIcons name="creation" size={13} color="#fff" />
           </View>
-          <Text style={styles.headerTitle}>Agro IA</Text>
+          <Text style={s.headerTitle}>Agro IA</Text>
         </View>
         {messages.length > 0 && (
-          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-            <MaterialCommunityIcons name="broom" size={20} color={AppTheme.textSecondary} />
-            <Text style={styles.clearButtonText}>Limpar</Text>
+          <TouchableOpacity onPress={clearChat}>
+            <MaterialCommunityIcons name="restart" size={20} color={AppTheme.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Error bar */}
-      {errorMessage && (
-        <View style={styles.errorBar}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#FFFFFF" />
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <TouchableOpacity onPress={() => setErrorMessage(null)}>
-            <MaterialCommunityIcons name="close" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Content */}
+      {messages.length === 0 ? renderEmptyState() : renderMessagesList()}
 
-      <KeyboardAvoidingView
-        style={styles.chatArea}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
-      >
-        {/* Messages or Empty */}
-        {messages.length === 0 ? (
-          renderEmptyState()
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            renderItem={renderMessage}
-            contentContainerStyle={styles.messagesList}
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={renderTypingIndicator}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
-        )}
-
-        {/* Input bar */}
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.input}
-            placeholder="Pergunte sobre pragas..."
-            placeholderTextColor={AppTheme.textTertiary}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={2000}
-            editable={!isTyping}
-          />
+      {/* Input bar */}
+      <View style={s.inputBarOuter}>
+        <View style={s.inputDivider} />
+        <View style={s.inputBar}>
+          <View style={s.inputWrap}>
+            <TextInput
+              style={s.input}
+              placeholder="Pergunte sobre pragas..."
+              placeholderTextColor={AppTheme.textTertiary}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={2000}
+            />
+          </View>
           <TouchableOpacity
-            style={[styles.sendButton, (!inputText.trim() || isTyping) && styles.sendButtonDisabled]}
-            onPress={() => sendMessage(inputText)}
-            disabled={!inputText.trim() || isTyping}
-            activeOpacity={0.7}
+            onPress={() => sendMessage()}
+            disabled={!canSend}
+            style={[
+              s.sendBtn,
+              { backgroundColor: canSend ? AppTheme.accent : AppTheme.surfaceCard },
+            ]}
           >
-            {isTyping ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <MaterialCommunityIcons name="send" size={20} color="#FFFFFF" />
-            )}
+            <MaterialCommunityIcons
+              name="arrow-up"
+              size={18}
+              color={canSend ? '#fff' : AppTheme.textSecondary}
+            />
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppTheme.background,
-  },
+/* ────────────────────────────────────────────────────────────────────────────
+ * Styles
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: AppTheme.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 56,
+    paddingBottom: 10,
+    backgroundColor: AppTheme.cardBackground,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: AppTheme.border,
-    backgroundColor: AppTheme.cardBackground,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  headerIconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: AppTheme.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: AppTheme.text,
-  },
-  clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: AppTheme.background,
-  },
-  clearButtonText: {
-    fontSize: 13,
-    color: AppTheme.textSecondary,
-    fontWeight: '500',
-  },
-  errorBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: AppTheme.coral,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  chatArea: {
-    flex: 1,
-  },
-  messagesList: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 8,
-  },
-  messageBubbleRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    maxWidth: '85%',
-  },
-  messageBubbleRowUser: {
-    alignSelf: 'flex-end',
-  },
-  messageBubbleRowAssistant: {
-    alignSelf: 'flex-start',
-  },
-  avatarContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: AppTheme.accent + '18',
+  headerTitle: { fontSize: 17, fontWeight: 'bold', color: AppTheme.text },
+
+  // Empty state
+  emptyContainer: { alignItems: 'center', paddingHorizontal: 20 },
+  emptyGlow: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: AppTheme.accent + '1F',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
-    marginTop: 4,
+    marginBottom: 24,
   },
-  messageBubble: {
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    maxWidth: '100%',
-    flexShrink: 1,
-  },
-  userBubble: {
+  emptyCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: AppTheme.accent,
-    borderBottomRightRadius: 4,
-  },
-  assistantBubble: {
-    backgroundColor: AppTheme.cardBackground,
-    borderBottomLeftRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  userText: {
-    color: '#FFFFFF',
-  },
-  assistantText: {
-    color: AppTheme.text,
-  },
-  typingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-  },
-  typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: AppTheme.accent,
-  },
-  emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    shadowColor: AppTheme.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  emptyIconContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: AppTheme.accent + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: AppTheme.text,
-    marginBottom: 8,
-  },
+  emptyTitle: { fontSize: 24, fontWeight: 'bold', color: AppTheme.text },
   emptySubtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: AppTheme.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
+    marginTop: 8,
     marginBottom: 28,
   },
-  suggestionsContainer: {
-    width: '100%',
-    gap: 10,
+  suggestionsWrap: { width: '100%' },
+  suggestionsLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: AppTheme.textTertiary,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    textAlign: 'center',
   },
-  suggestionButton: {
+  suggestionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppTheme.cardBackground,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    marginBottom: 10,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
-  suggestionText: {
-    flex: 1,
-    fontSize: 14,
-    color: AppTheme.text,
-    lineHeight: 20,
-  },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingBottom: Platform.OS === 'ios' ? 10 : 10,
-    backgroundColor: AppTheme.cardBackground,
-    borderTopWidth: 1,
-    borderTopColor: AppTheme.border,
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: AppTheme.background,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: AppTheme.text,
-    maxHeight: 120,
-    minHeight: 40,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  suggestionText: { fontSize: 14, color: AppTheme.text, flex: 1 },
+
+  // Messages
+  msgRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4, gap: 8 },
+  assistantAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: AppTheme.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sendButtonDisabled: {
-    backgroundColor: AppTheme.textTertiary,
+  bubble: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: '100%',
+  },
+  userBubble: {
+    backgroundColor: AppTheme.accent,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 4,
+  },
+  assistantBubble: {
+    backgroundColor: AppTheme.cardBackground,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 18,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+  },
+  bubbleText: { fontSize: 14, color: AppTheme.text, lineHeight: 20 },
+  timeText: { fontSize: 10, color: AppTheme.textTertiary, marginTop: 2, paddingHorizontal: 4 },
+
+  // Typing
+  typingRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4, gap: 8 },
+  typingBubble: {
+    flexDirection: 'row',
+    backgroundColor: AppTheme.cardBackground,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 18,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 5,
+  },
+  typingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: AppTheme.accent + '99',
+  },
+
+  // Error
+  errorBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: AppTheme.warmAmber + '14',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    gap: 8,
+  },
+  errorText: { fontSize: 12, color: AppTheme.textSecondary, flex: 1 },
+
+  // Input bar
+  inputBarOuter: { backgroundColor: AppTheme.cardBackground },
+  inputDivider: { height: StyleSheet.hairlineWidth, backgroundColor: AppTheme.border },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  inputWrap: {
+    flex: 1,
+    backgroundColor: AppTheme.surfaceCard,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    maxHeight: 120,
+  },
+  input: { fontSize: 15, color: AppTheme.text, lineHeight: 20 },
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
