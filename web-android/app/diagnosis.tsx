@@ -28,6 +28,7 @@ import {
   AgrioProduct,
 } from '../src/types';
 import * as helpers from '../src/types/helpers';
+import { useHeaderPadding } from '../src/utils/useHeaderPadding';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ const STATUS_MESSAGES = [
 export default function DiagnosisScreen() {
   const router = useRouter();
   const { accessToken } = useAuth();
+  const headerPadding = useHeaderPadding();
 
   const [flowStep, setFlowStep] = useState<FlowStep>('photoSelection');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -287,7 +289,7 @@ export default function DiagnosisScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerPadding }]}>
         <TouchableOpacity
           style={styles.headerButton}
           onPress={flowStep === 'cropSelection' ? handleBack : handleClose}
@@ -1051,7 +1053,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingBottom: 12,
     backgroundColor: AppTheme.background,
   },

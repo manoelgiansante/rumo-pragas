@@ -17,6 +17,7 @@ import { AppTheme } from '../../src/utils/theme';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { AIChatService } from '../../src/services/aiChatService';
 import { ChatMessage } from '../../src/types';
+import { useHeaderPadding } from '../../src/utils/useHeaderPadding';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Suggested questions (same 6 from iOS)
@@ -86,6 +87,7 @@ function TypingIndicator() {
 
 export default function ChatScreen() {
   const { accessToken } = useAuth();
+  const headerPadding = useHeaderPadding();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -254,7 +256,7 @@ export default function ChatScreen() {
       keyboardVerticalOffset={0}
     >
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: headerPadding }]}>
         <View style={s.headerLeft}>
           <View style={s.headerIcon}>
             <MaterialCommunityIcons name="creation" size={13} color="#fff" />
@@ -317,7 +319,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 10,
     backgroundColor: AppTheme.cardBackground,
     borderBottomWidth: StyleSheet.hairlineWidth,

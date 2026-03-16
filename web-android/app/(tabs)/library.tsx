@@ -15,6 +15,7 @@ import { Pest, SeverityLevel } from '../../src/types';
 import { allPests } from '../../src/data/pestData';
 import { CROPS, getCropByKey, CropInfo } from '../../src/types/cropData';
 import { getSeverityDisplay } from '../../src/types/helpers';
+import { useHeaderPadding } from '../../src/utils/useHeaderPadding';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * PestDetailModal
@@ -220,6 +221,7 @@ function pestIcon(category: string): string {
 }
 
 export default function LibraryScreen() {
+  const headerPadding = useHeaderPadding();
   const [searchText, setSearchText] = useState('');
   const [selectedCrop, setSelectedCrop] = useState<string | null>(null);
   const [selectedPest, setSelectedPest] = useState<Pest | null>(null);
@@ -331,7 +333,7 @@ export default function LibraryScreen() {
   return (
     <View style={s.container}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: headerPadding }]}>
         <Text style={s.title}>Biblioteca</Text>
       </View>
 
@@ -411,7 +413,6 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: AppTheme.background },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 8,
     backgroundColor: AppTheme.cardBackground,
   },

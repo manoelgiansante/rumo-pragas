@@ -1,35 +1,12 @@
 import { Config } from '../utils/config';
+import {
+  AuthResponse,
+  SupabaseUser,
+  DiagnosisResult,
+  UserProfile,
+} from '../types';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface AuthResponse {
-  access_token?: string;
-  token_type?: string;
-  refresh_token?: string;
-  user?: SupabaseUser;
-}
-
-export interface SupabaseUser {
-  id: string;
-  email?: string;
-  user_metadata?: UserMetadata;
-}
-
-export interface UserMetadata {
-  full_name?: string;
-}
-
-export interface DiagnosisResult {
-  id: string;
-  user_id: string;
-  created_at: string;
-  [key: string]: any;
-}
-
-export interface UserProfile {
-  id: string;
-  [key: string]: any;
-}
+// ─── Error class ─────────────────────────────────────────────────────────────
 
 export class APIError extends Error {
   constructor(message: string) {

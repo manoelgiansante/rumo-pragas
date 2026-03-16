@@ -30,6 +30,7 @@ import {
 } from '../../src/types/helpers';
 import { CROPS, getCropByKey } from '../../src/types/cropData';
 import { shortDate } from '../../src/utils/dateFormat';
+import { useHeaderPadding } from '../../src/utils/useHeaderPadding';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * DiagnosisResult Detail Modal
@@ -424,6 +425,7 @@ const rs = StyleSheet.create({
 
 export default function HistoryScreen() {
   const { accessToken, currentUser } = useAuth();
+  const headerPadding = useHeaderPadding();
   const [diagnoses, setDiagnoses] = useState<DiagnosisResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -536,7 +538,7 @@ export default function HistoryScreen() {
   return (
     <View style={s.container}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: headerPadding }]}>
         <Text style={s.title}>Histórico</Text>
         <TouchableOpacity onPress={() => setShowFilterMenu(true)}>
           <MaterialCommunityIcons
@@ -661,7 +663,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 8,
     backgroundColor: AppTheme.cardBackground,
   },

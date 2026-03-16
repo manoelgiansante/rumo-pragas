@@ -8,15 +8,16 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { AppTheme } from '../../src/utils/theme';
 import { WeatherService, WeatherData } from '../../src/services/weatherService';
 import { SupabaseService } from '../../src/services/supabaseService';
 import { DiagnosisResult } from '../../src/types';
+import { useHeaderPadding } from '../../src/utils/useHeaderPadding';
 
 // ─── Quick Tips Data (same as iOS QuickTip.defaultTips) ──────────────────────
 
@@ -87,6 +88,7 @@ const DEFAULT_LON = -47.93;
 export default function HomeScreen() {
   const { accessToken, currentUser } = useAuth();
   const router = useRouter();
+  const headerPadding = useHeaderPadding();
 
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
@@ -103,8 +105,21 @@ export default function HomeScreen() {
   const loadWeather = useCallback(async () => {
     setIsLoadingWeather(true);
     try {
-      const data = await WeatherService.fetchWeather(DEFAULT_LAT, DEFAULT_LON);
-      setWeather({ ...data, location: data.location || 'Sua região' });
+      let lat = DEFAULT_LAT;
+      let lon = DEFAULT_LON;
+      let locationName = 'Sua região';
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          lat = loc.coords.latitude;
+          lon = loc.coords.longitude;
+          const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+          if (geo) locationName = [geo.city, geo.region].filter(Boolean).join(', ') || locationName;
+        }
+      } catch {}
+      const data = await WeatherService.fetchWeather(lat, lon);
+      setWeather({ ...data, location: locationName });
     } catch {
       setWeather(null);
     }
@@ -153,7 +168,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* Navigation Bar */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingTop: headerPadding }]}>
         <MaterialCommunityIcons name="leaf" size={20} color={AppTheme.accent} />
         <Text style={styles.navBarTitle}>Rumo Pragas</Text>
       </View>
@@ -367,7 +382,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingBottom: 10,
     backgroundColor: '#fff',
     borderBottomWidth: StyleSheet.hairlineWidth,

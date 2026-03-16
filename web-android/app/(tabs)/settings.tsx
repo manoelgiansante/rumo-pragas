@@ -20,6 +20,7 @@ import { UserProfile, SubscriptionPlanType } from '../../src/types';
 import { getSubscriptionPlan } from '../../src/types/helpers';
 import { CROPS } from '../../src/types/cropData';
 import { roleDisplayName } from '../../src/utils/roleDisplayName';
+import { useHeaderPadding } from '../../src/utils/useHeaderPadding';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Constants
@@ -491,6 +492,7 @@ const pw = StyleSheet.create({
 
 export default function SettingsScreen() {
   const { currentUser, accessToken, signOut } = useAuth();
+  const headerPadding = useHeaderPadding();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -555,7 +557,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: headerPadding }]}>
         <Text style={s.title}>Configurações</Text>
       </View>
 
@@ -702,7 +704,6 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: AppTheme.background },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 8,
     backgroundColor: AppTheme.cardBackground,
   },
