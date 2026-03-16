@@ -106,6 +106,11 @@ class AuthViewModel {
             resetMessage = "Digite seu e-mail"
             return
         }
+        let pattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        guard emailToReset.range(of: pattern, options: .regularExpression) != nil else {
+            resetMessage = "Digite um e-mail válido"
+            return
+        }
         isResetting = true
         resetMessage = nil
         do {

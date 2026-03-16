@@ -177,13 +177,16 @@ nonisolated final class SupabaseService: Sendable {
     }
 
     func updateProfile(token: String, userId: String, profile: [String: Any]) async throws {
-        let body = try JSONSerialization.data(withJSONObject: profile)
+        // Use upsert so new users get a profile row created automatically
+        var upsertBody = profile
+        upsertBody["id"] = userId
+        let body = try JSONSerialization.data(withJSONObject: upsertBody)
         guard let request = makeRequest(
-            path: "/rest/v1/pragas_profiles?id=eq.\(userId)",
-            method: "PATCH",
+            path: "/rest/v1/pragas_profiles",
+            method: "POST",
             body: body,
             token: token,
-            additionalHeaders: ["Prefer": "return=representation"]
+            additionalHeaders: ["Prefer": "return=representation,resolution=merge-duplicates"]
         ) else {
             throw APIError.invalidURL
         }
