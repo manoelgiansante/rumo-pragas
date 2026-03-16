@@ -13,889 +13,768 @@ import {
   Linking,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppTheme } from '../../src/utils/theme';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { SupabaseService } from '../../src/services/supabaseService';
 import { UserProfile, SubscriptionPlanType } from '../../src/types';
 import { getSubscriptionPlan } from '../../src/types/helpers';
-import { CROPS, CropInfo } from '../../src/types/cropData';
+import { CROPS } from '../../src/types/cropData';
+import { roleDisplayName } from '../../src/utils/roleDisplayName';
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Constants
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const ROLES = ['produtor', 'agronomo', 'tecnico', 'consultor', 'estudante'];
 const BR_STATES = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
-  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
-  'SP', 'SE', 'TO',
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
+  'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
 ];
 
-const ROLES = [
-  { value: 'producer', label: 'Produtor Rural' },
-  { value: 'agronomist', label: 'Agrônomo' },
-  { value: 'technician', label: 'Técnico Agrícola' },
-  { value: 'student', label: 'Estudante' },
-  { value: 'researcher', label: 'Pesquisador' },
-  { value: 'other', label: 'Outro' },
-];
+/* ────────────────────────────────────────────────────────────────────────────
+ * Edit Profile Modal
+ * ──────────────────────────────────────────────────────────────────────────── */
 
-const APP_VERSION = '1.0.0';
-
-export default function SettingsScreen() {
-  const { accessToken, currentUser, signOut } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [paywallVisible, setPaywallVisible] = useState(false);
-
-  // Edit profile state
-  const [editName, setEditName] = useState('');
-  const [editRole, setEditRole] = useState('producer');
-  const [editCity, setEditCity] = useState('');
-  const [editState, setEditState] = useState('SP');
-  const [editCrops, setEditCrops] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+function EditProfileModal({
+  visible,
+  onClose,
+  token,
+  userId,
+  initialName,
+  initialRole,
+  initialCity,
+  initialState,
+  initialCrops,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  token: string | null;
+  userId?: string;
+  initialName: string;
+  initialRole: string;
+  initialCity: string;
+  initialState: string;
+  initialCrops: string[];
+}) {
+  const [name, setName] = useState(initialName);
+  const [role, setRole] = useState(initialRole);
+  const [city, setCity] = useState(initialCity);
+  const [state, setState] = useState(initialState);
+  const [crops, setCrops] = useState<string[]>(initialCrops);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [showStatePicker, setShowStatePicker] = useState(false);
 
-  // Paywall state
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanType>('basico');
-
-  const loadProfile = useCallback(async () => {
-    if (!accessToken || !currentUser?.id) return;
-    try {
-      const p = await SupabaseService.fetchProfile(accessToken, currentUser.id);
-      if (p) {
-        setProfile(p as UserProfile);
-        setDarkMode(p.dark_mode ?? false);
-        setPushEnabled(p.push_enabled ?? true);
-      }
-    } catch {}
-    setLoading(false);
-  }, [accessToken, currentUser?.id]);
-
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
-
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sair da conta',
-      'Tem certeza que deseja sair?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sair', style: 'destructive', onPress: () => signOut() },
-      ],
-    );
-  };
-
-  const openEditProfile = () => {
-    setEditName(profile?.full_name || currentUser?.user_metadata?.full_name || '');
-    setEditRole(profile?.role || 'producer');
-    setEditCity(profile?.city || '');
-    setEditState(profile?.state || 'SP');
-    setEditCrops(profile?.crops || []);
-    setEditModalVisible(true);
-  };
-
-  const saveProfile = async () => {
-    if (!accessToken || !currentUser?.id) return;
-    setSaving(true);
-    try {
-      await SupabaseService.updateProfile(accessToken, currentUser.id, {
-        full_name: editName,
-        role: editRole,
-        city: editCity,
-        state: editState,
-        crops: editCrops,
-      });
-      setProfile((prev) =>
-        prev
-          ? { ...prev, full_name: editName, role: editRole, city: editCity, state: editState, crops: editCrops }
-          : prev,
-      );
-      setEditModalVisible(false);
-    } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Não foi possível salvar o perfil.');
+    if (visible) {
+      setName(initialName);
+      setRole(initialRole);
+      setCity(initialCity);
+      setState(initialState);
+      setCrops(initialCrops);
+      setError(null);
     }
-    setSaving(false);
-  };
+  }, [visible]);
 
   const toggleCrop = (key: string) => {
-    setEditCrops((prev) => (prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key]));
-  };
-
-  const toggleDarkMode = async (value: boolean) => {
-    setDarkMode(value);
-    if (accessToken && currentUser?.id) {
-      try {
-        await SupabaseService.updateProfile(accessToken, currentUser.id, { dark_mode: value });
-      } catch {}
-    }
-  };
-
-  const togglePush = async (value: boolean) => {
-    setPushEnabled(value);
-    if (accessToken && currentUser?.id) {
-      try {
-        await SupabaseService.updateProfile(accessToken, currentUser.id, { push_enabled: value });
-      } catch {}
-    }
-  };
-
-  const userName = profile?.full_name || currentUser?.user_metadata?.full_name || 'Usuário';
-  const userEmail = currentUser?.email || '';
-  const userInitial = userName.charAt(0).toUpperCase();
-  const roleLabel = ROLES.find((r) => r.value === (profile?.role || 'producer'))?.label || 'Produtor Rural';
-  const currentPlan = getSubscriptionPlan('free');
-
-  const renderSettingsRow = (icon: string, title: string, subtitle?: string, onPress?: () => void, rightComponent?: React.ReactNode) => (
-    <TouchableOpacity style={styles.settingsRow} onPress={onPress} disabled={!onPress && !rightComponent} activeOpacity={onPress ? 0.7 : 1}>
-      <View style={styles.settingsRowIcon}>
-        <MaterialCommunityIcons name={icon as any} size={20} color={AppTheme.accent} />
-      </View>
-      <View style={styles.settingsRowContent}>
-        <Text style={styles.settingsRowTitle}>{title}</Text>
-        {subtitle && <Text style={styles.settingsRowSubtitle}>{subtitle}</Text>}
-      </View>
-      {rightComponent || (onPress && <MaterialCommunityIcons name="chevron-right" size={20} color={AppTheme.textTertiary} />)}
-    </TouchableOpacity>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={AppTheme.accent} />
-        </View>
-      </SafeAreaView>
+    setCrops((prev) =>
+      prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key],
     );
-  }
+  };
+
+  const save = async () => {
+    if (!token || !userId) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await SupabaseService.updateProfile(token, userId, {
+        full_name: name,
+        role,
+        city,
+        state,
+        crops,
+      });
+      onClose();
+    } catch {
+      setError('Não foi possível salvar o perfil.');
+    }
+    setIsSaving(false);
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Configurações</Text>
-        </View>
-
-        {/* Profile Section */}
-        <View style={styles.section}>
-          <View style={styles.profileCard}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{userInitial}</Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userName}</Text>
-              <Text style={styles.profileEmail}>{userEmail}</Text>
-              <View style={styles.roleBadge}>
-                <MaterialCommunityIcons name="account-outline" size={12} color={AppTheme.accent} />
-                <Text style={styles.roleBadgeText}>{roleLabel}</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.editProfileBtn} onPress={openEditProfile} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="pencil-outline" size={16} color={AppTheme.accent} />
-            <Text style={styles.editProfileBtnText}>Editar Perfil</Text>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <View style={ep.root}>
+        <View style={ep.toolbar}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={ep.cancelBtn}>Cancelar</Text>
+          </TouchableOpacity>
+          <Text style={ep.toolTitle}>Editar Perfil</Text>
+          <TouchableOpacity onPress={save} disabled={isSaving}>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={AppTheme.accent} />
+            ) : (
+              <Text style={ep.saveBtn}>Salvar</Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Subscription Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Assinatura</Text>
-          <View style={styles.subscriptionCard}>
-            <View style={styles.subscriptionHeader}>
-              <MaterialCommunityIcons name="crown-outline" size={24} color={AppTheme.warmAmber} />
-              <View style={styles.subscriptionInfo}>
-                <Text style={styles.subscriptionPlan}>{currentPlan.displayName}</Text>
-                <Text style={styles.subscriptionPrice}>{currentPlan.price}</Text>
-              </View>
-            </View>
-            <View style={styles.subscriptionFeatures}>
-              {currentPlan.features.map((feat, i) => (
-                <View key={i} style={styles.featureRow}>
-                  <MaterialCommunityIcons name="check" size={14} color={AppTheme.accent} />
-                  <Text style={styles.featureText}>{feat}</Text>
-                </View>
-              ))}
-            </View>
-            <TouchableOpacity style={styles.upgradeBtn} onPress={() => setPaywallVisible(true)} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="rocket-launch-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.upgradeBtnText}>Fazer Upgrade</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Aparência</Text>
-          <View style={styles.card}>
-            {renderSettingsRow('theme-light-dark', 'Modo Escuro', undefined, undefined,
-              <Switch value={darkMode} onValueChange={toggleDarkMode} trackColor={{ false: AppTheme.border, true: AppTheme.accent }} thumbColor="#FFFFFF" />,
-            )}
-            {renderSettingsRow('translate', 'Idioma', 'Português (Brasil)')}
-            {renderSettingsRow('bell-outline', 'Notificações Push', undefined, undefined,
-              <Switch value={pushEnabled} onValueChange={togglePush} trackColor={{ false: AppTheme.border, true: AppTheme.accent }} thumbColor="#FFFFFF" />,
-            )}
-          </View>
-        </View>
-
-        {/* About Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sobre</Text>
-          <View style={styles.card}>
-            {renderSettingsRow('shield-lock-outline', 'Política de Privacidade', undefined, () => Linking.openURL('https://rumopragas.com/privacidade'))}
-            {renderSettingsRow('file-document-outline', 'Termos de Uso', undefined, () => Linking.openURL('https://rumopragas.com/termos'))}
-            {renderSettingsRow('information-outline', 'Versão', APP_VERSION)}
-          </View>
-        </View>
-
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="logout" size={20} color={AppTheme.coral} />
-          <Text style={styles.signOutBtnText}>Sair da Conta</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* Edit Profile Modal */}
-      <Modal visible={editModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditModalVisible(false)}>
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.modalCloseBtn}>
-              <Text style={styles.modalCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Editar Perfil</Text>
-            <TouchableOpacity onPress={saveProfile} disabled={saving} style={styles.modalSaveBtn}>
-              {saving ? (
-                <ActivityIndicator size="small" color={AppTheme.accent} />
-              ) : (
-                <Text style={styles.modalSaveText}>Salvar</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBodyContent}>
-            {/* Name */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Nome Completo</Text>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+          {/* Personal info */}
+          <Text style={ep.sectionTitle}>Informações Pessoais</Text>
+          <View style={ep.card}>
+            <View style={ep.field}>
+              <Text style={ep.label}>Nome</Text>
               <TextInput
-                style={styles.formInput}
-                value={editName}
-                onChangeText={setEditName}
+                style={ep.input}
+                value={name}
+                onChangeText={setName}
                 placeholder="Seu nome"
                 placeholderTextColor={AppTheme.textTertiary}
+                autoCapitalize="words"
               />
             </View>
+            <View style={ep.divider} />
+            <TouchableOpacity style={ep.field} onPress={() => setShowRolePicker(!showRolePicker)}>
+              <Text style={ep.label}>Função</Text>
+              <Text style={ep.pickerVal}>{roleDisplayName(role)}</Text>
+              <MaterialCommunityIcons name="chevron-down" size={16} color={AppTheme.textTertiary} />
+            </TouchableOpacity>
+            {showRolePicker && (
+              <View style={ep.pickerList}>
+                {ROLES.map((r) => (
+                  <TouchableOpacity
+                    key={r}
+                    style={ep.pickerItem}
+                    onPress={() => { setRole(r); setShowRolePicker(false); }}
+                  >
+                    <Text style={[ep.pickerText, role === r && { color: AppTheme.accent, fontWeight: '600' }]}>
+                      {roleDisplayName(r)}
+                    </Text>
+                    {role === r && <MaterialCommunityIcons name="check" size={16} color={AppTheme.accent} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
 
-            {/* Role */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Função</Text>
-              <TouchableOpacity style={styles.formPicker} onPress={() => setShowRolePicker(!showRolePicker)}>
-                <Text style={styles.formPickerText}>{ROLES.find((r) => r.value === editRole)?.label || 'Selecionar'}</Text>
-                <MaterialCommunityIcons name={showRolePicker ? 'chevron-up' : 'chevron-down'} size={20} color={AppTheme.textSecondary} />
-              </TouchableOpacity>
-              {showRolePicker && (
-                <View style={styles.pickerDropdown}>
-                  {ROLES.map((role) => (
-                    <TouchableOpacity
-                      key={role.value}
-                      style={[styles.pickerOption, editRole === role.value && styles.pickerOptionActive]}
-                      onPress={() => { setEditRole(role.value); setShowRolePicker(false); }}
-                    >
-                      <Text style={[styles.pickerOptionText, editRole === role.value && styles.pickerOptionTextActive]}>{role.label}</Text>
-                      {editRole === role.value && <MaterialCommunityIcons name="check" size={16} color={AppTheme.accent} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* City */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Cidade</Text>
+          {/* Location */}
+          <Text style={ep.sectionTitle}>Localização</Text>
+          <View style={ep.card}>
+            <View style={ep.field}>
+              <Text style={ep.label}>Cidade</Text>
               <TextInput
-                style={styles.formInput}
-                value={editCity}
-                onChangeText={setEditCity}
+                style={ep.input}
+                value={city}
+                onChangeText={setCity}
                 placeholder="Sua cidade"
                 placeholderTextColor={AppTheme.textTertiary}
               />
             </View>
-
-            {/* State */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Estado</Text>
-              <TouchableOpacity style={styles.formPicker} onPress={() => setShowStatePicker(!showStatePicker)}>
-                <Text style={styles.formPickerText}>{editState}</Text>
-                <MaterialCommunityIcons name={showStatePicker ? 'chevron-up' : 'chevron-down'} size={20} color={AppTheme.textSecondary} />
-              </TouchableOpacity>
-              {showStatePicker && (
-                <View style={styles.pickerDropdown}>
-                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-                    {BR_STATES.map((st) => (
-                      <TouchableOpacity
-                        key={st}
-                        style={[styles.pickerOption, editState === st && styles.pickerOptionActive]}
-                        onPress={() => { setEditState(st); setShowStatePicker(false); }}
-                      >
-                        <Text style={[styles.pickerOptionText, editState === st && styles.pickerOptionTextActive]}>{st}</Text>
-                        {editState === st && <MaterialCommunityIcons name="check" size={16} color={AppTheme.accent} />}
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-
-            {/* Crops */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Culturas</Text>
-              <View style={styles.cropsGrid}>
-                {CROPS.map((crop) => {
-                  const isSelected = editCrops.includes(crop.key);
-                  return (
-                    <TouchableOpacity
-                      key={crop.key}
-                      style={[styles.cropToggle, isSelected && { backgroundColor: crop.accentColor + '20', borderColor: crop.accentColor }]}
-                      onPress={() => toggleCrop(crop.key)}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialCommunityIcons name={crop.icon as any} size={16} color={isSelected ? crop.accentColor : AppTheme.textSecondary} />
-                      <Text style={[styles.cropToggleText, isSelected && { color: crop.accentColor }]}>{crop.displayName}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Paywall Modal */}
-      <Modal visible={paywallVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPaywallVisible(false)}>
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setPaywallVisible(false)} style={styles.modalCloseBtn}>
-              <Text style={styles.modalCancelText}>Fechar</Text>
+            <View style={ep.divider} />
+            <TouchableOpacity style={ep.field} onPress={() => setShowStatePicker(!showStatePicker)}>
+              <Text style={ep.label}>Estado</Text>
+              <Text style={ep.pickerVal}>{state || 'Selecionar'}</Text>
+              <MaterialCommunityIcons name="chevron-down" size={16} color={AppTheme.textTertiary} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Escolha seu Plano</Text>
-            <View style={{ width: 60 }} />
+            {showStatePicker && (
+              <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                <View style={ep.pickerList}>
+                  {BR_STATES.map((st) => (
+                    <TouchableOpacity
+                      key={st}
+                      style={ep.pickerItem}
+                      onPress={() => { setState(st); setShowStatePicker(false); }}
+                    >
+                      <Text style={[ep.pickerText, state === st && { color: AppTheme.accent, fontWeight: '600' }]}>
+                        {st}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
           </View>
 
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBodyContent}>
-            {/* Plan Cards */}
-            {(['free', 'basico', 'pro'] as SubscriptionPlanType[]).map((planKey) => {
-              const plan = getSubscriptionPlan(planKey);
-              const isSelected = selectedPlan === planKey;
-              const isPro = planKey === 'pro';
-              return (
-                <TouchableOpacity
-                  key={planKey}
-                  style={[styles.planCard, isSelected && styles.planCardActive, isPro && isSelected && styles.planCardPro]}
-                  onPress={() => setSelectedPlan(planKey)}
-                  activeOpacity={0.7}
-                >
-                  {isPro && (
-                    <View style={styles.planPopular}>
-                      <Text style={styles.planPopularText}>Mais Popular</Text>
-                    </View>
-                  )}
-                  <View style={styles.planCardHeader}>
-                    <MaterialCommunityIcons
-                      name={planKey === 'free' ? 'leaf' : planKey === 'basico' ? 'star-outline' : 'crown'}
-                      size={24}
-                      color={isSelected ? (isPro ? AppTheme.warmAmber : AppTheme.accent) : AppTheme.textSecondary}
-                    />
-                    <View style={styles.planCardInfo}>
-                      <Text style={[styles.planName, isSelected && styles.planNameActive]}>{plan.displayName}</Text>
-                      <Text style={[styles.planPrice, isSelected && styles.planPriceActive]}>{plan.price}</Text>
-                    </View>
-                    <View style={[styles.planRadio, isSelected && styles.planRadioActive]}>
-                      {isSelected && <View style={styles.planRadioDot} />}
-                    </View>
-                  </View>
-                  <View style={styles.planFeatures}>
-                    {plan.features.map((feat, i) => (
-                      <View key={i} style={styles.planFeatureRow}>
-                        <MaterialCommunityIcons name="check-circle" size={14} color={isSelected ? AppTheme.accent : AppTheme.textTertiary} />
-                        <Text style={[styles.planFeatureText, isSelected && styles.planFeatureTextActive]}>{feat}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Crops */}
+          <Text style={ep.sectionTitle}>Culturas</Text>
+          <View style={ep.card}>
+            {CROPS.map((c, i) => (
+              <React.Fragment key={c.key}>
+                {i > 0 && <View style={ep.divider} />}
+                <View style={ep.cropRow}>
+                  <MaterialCommunityIcons name={c.icon as any} size={18} color={c.accentColor} />
+                  <Text style={ep.cropLabel}>{c.displayName}</Text>
+                  <View style={{ flex: 1 }} />
+                  <Switch
+                    value={crops.includes(c.key)}
+                    onValueChange={() => toggleCrop(c.key)}
+                    trackColor={{ true: AppTheme.accent, false: AppTheme.border }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              </React.Fragment>
+            ))}
+          </View>
 
-            {/* Subscribe Button */}
-            {selectedPlan !== 'free' && (
-              <TouchableOpacity
-                style={styles.subscribeBtn}
-                onPress={() => { Alert.alert('Assinatura', 'Funcionalidade em breve!'); setPaywallVisible(false); }}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="rocket-launch-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.subscribeBtnText}>
-                  Assinar {getSubscriptionPlan(selectedPlan).displayName}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <Text style={styles.paywallFooter}>
-              Cancele a qualquer momento. Sem compromisso.
-            </Text>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+          {error && <Text style={ep.error}>{error}</Text>}
+        </ScrollView>
+      </View>
+    </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppTheme.background,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: AppTheme.text,
-  },
-  section: {
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppTheme.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-    marginLeft: 4,
-  },
-  // Profile
-  profileCard: {
+const ep = StyleSheet.create({
+  root: { flex: 1, backgroundColor: AppTheme.background },
+  toolbar: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
     backgroundColor: AppTheme.cardBackground,
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-  },
-  avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: AppTheme.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: AppTheme.text,
-  },
-  profileEmail: {
-    fontSize: 13,
-    color: AppTheme.textSecondary,
-    marginTop: 2,
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: AppTheme.accent + '15',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  roleBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: AppTheme.accent,
-  },
-  editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 10,
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: AppTheme.accent + '30',
-  },
-  editProfileBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppTheme.accent,
-  },
-  // Subscription
-  subscriptionCard: {
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 16,
-    padding: 16,
-  },
-  subscriptionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  subscriptionInfo: {
-    flex: 1,
-  },
-  subscriptionPlan: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: AppTheme.text,
-  },
-  subscriptionPrice: {
-    fontSize: 13,
-    color: AppTheme.textSecondary,
-    marginTop: 2,
-  },
-  subscriptionFeatures: {
-    gap: 6,
-    marginBottom: 14,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 13,
-    color: AppTheme.text,
-  },
-  upgradeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: AppTheme.accent,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  upgradeBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  // Settings Rows
-  card: {
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: AppTheme.border,
   },
-  settingsRowIcon: {
+  toolTitle: { fontSize: 17, fontWeight: '600', color: AppTheme.text },
+  cancelBtn: { fontSize: 16, color: AppTheme.textSecondary },
+  saveBtn: { fontSize: 16, fontWeight: '600', color: AppTheme.techBlue },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: AppTheme.textSecondary,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  card: {
+    backgroundColor: AppTheme.cardBackground,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  label: { fontSize: 15, color: AppTheme.text, width: 80 },
+  input: { flex: 1, fontSize: 15, color: AppTheme.text, textAlign: 'right' },
+  pickerVal: { flex: 1, fontSize: 15, color: AppTheme.textSecondary, textAlign: 'right' },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: AppTheme.border, marginLeft: 16 },
+  pickerList: { paddingBottom: 8 },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  pickerText: { fontSize: 15, color: AppTheme.text, flex: 1 },
+  cropRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  cropLabel: { fontSize: 15, color: AppTheme.text },
+  error: { fontSize: 13, color: AppTheme.coral, textAlign: 'center', marginTop: 16 },
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Paywall Modal
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+function PaywallModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanType>('pro');
+  const plans: SubscriptionPlanType[] = ['free', 'basico', 'pro'];
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <View style={pw.root}>
+        <View style={pw.toolbar}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={pw.closeBtn}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20, paddingBottom: 40 }}>
+          {/* Header */}
+          <View style={pw.headerWrap}>
+            <View style={pw.crownGlow}>
+              <View style={pw.crownCircle}>
+                <MaterialCommunityIcons name="crown" size={30} color="#fff" />
+              </View>
+            </View>
+            <Text style={pw.headerTitle}>Rumo Pragas Pro</Text>
+            <Text style={pw.headerSub}>
+              {'Desbloqueie todo o potencial da IA\npara proteger sua lavoura'}
+            </Text>
+          </View>
+
+          {/* Plan cards */}
+          <View style={pw.plansRow}>
+            {plans.map((key) => {
+              const plan = getSubscriptionPlan(key);
+              const selected = selectedPlan === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[pw.planCard, selected && pw.planCardSel]}
+                  onPress={() => setSelectedPlan(key)}
+                  activeOpacity={0.7}
+                >
+                  {key === 'pro' && (
+                    <View style={pw.popularBadge}>
+                      <MaterialCommunityIcons name="star" size={8} color="#fff" />
+                      <Text style={pw.popularText}>Popular</Text>
+                    </View>
+                  )}
+                  <Text style={[pw.planName, selected && { color: '#fff' }]}>{plan.displayName}</Text>
+                  <Text style={[pw.planPrice, selected && { color: 'rgba(255,255,255,0.9)' }]}>{plan.price}</Text>
+                  <Text style={[pw.planLimit, selected && { color: 'rgba(255,255,255,0.7)' }]}>
+                    {plan.diagnosisLimit} diag/mês
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Features */}
+          <View style={pw.featCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <MaterialCommunityIcons name="check-decagram" size={18} color={AppTheme.accent} />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: AppTheme.text }}>Recursos incluídos</Text>
+            </View>
+            {getSubscriptionPlan(selectedPlan).features.map((f, i) => (
+              <View key={i} style={pw.featRow}>
+                <View style={pw.featCheck}>
+                  <MaterialCommunityIcons name="check" size={10} color={AppTheme.accent} />
+                </View>
+                <Text style={pw.featText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Subscribe */}
+          <TouchableOpacity style={pw.subBtn} onPress={onClose} activeOpacity={0.8}>
+            <Text style={pw.subBtnText}>
+              {selectedPlan === 'free' ? 'Continuar Gratuito' : `Assinar ${getSubscriptionPlan(selectedPlan).displayName}`}
+            </Text>
+          </TouchableOpacity>
+          <Text style={pw.disclaimer}>Cancele a qualquer momento. Sem compromisso.</Text>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+const pw = StyleSheet.create({
+  root: { flex: 1, backgroundColor: AppTheme.background },
+  toolbar: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: AppTheme.cardBackground,
+  },
+  closeBtn: { fontSize: 16, color: AppTheme.textSecondary },
+  headerWrap: { alignItems: 'center', paddingVertical: 24 },
+  crownGlow: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: AppTheme.warmAmber + '2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  crownCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: AppTheme.warmAmber,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: AppTheme.warmAmber,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: AppTheme.text },
+  headerSub: {
+    fontSize: 14,
+    color: AppTheme.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  plansRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  planCard: {
+    flex: 1,
+    backgroundColor: AppTheme.cardBackground,
+    borderRadius: 16,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: AppTheme.border,
+  },
+  planCardSel: {
+    backgroundColor: AppTheme.accent,
+    borderColor: AppTheme.accent,
+    borderWidth: 2,
+    shadowColor: AppTheme.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  popularBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: AppTheme.warmAmber,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+    marginBottom: 8,
+  },
+  popularText: { fontSize: 10, fontWeight: 'bold', color: '#fff' },
+  planName: { fontSize: 14, fontWeight: 'bold', color: AppTheme.text, marginBottom: 4 },
+  planPrice: { fontSize: 12, fontWeight: 'bold', color: AppTheme.textSecondary },
+  planLimit: { fontSize: 10, color: AppTheme.textTertiary, marginTop: 4 },
+  featCard: {
+    backgroundColor: AppTheme.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  featRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 12 },
+  featCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: AppTheme.accent + '1F',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featText: { fontSize: 14, color: AppTheme.text },
+  subBtn: {
+    backgroundColor: AppTheme.accent,
+    borderRadius: 14,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: AppTheme.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  subBtnText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  disclaimer: { fontSize: 11, color: AppTheme.textTertiary, textAlign: 'center', marginTop: 14 },
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Settings Screen
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export default function SettingsScreen() {
+  const { currentUser, accessToken, signOut } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [language, setLanguage] = useState('pt');
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [currentPlan] = useState<SubscriptionPlanType>('free');
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const loadProfile = useCallback(async () => {
+    if (!accessToken || !currentUser?.id) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const p = await SupabaseService.fetchProfile(accessToken, currentUser.id);
+      if (p) {
+        setProfile(p as UserProfile);
+        setIsDarkMode(p.dark_mode ?? false);
+        setPushEnabled(p.push_enabled ?? true);
+      }
+    } catch { /* silent */ }
+    setLoading(false);
+  }, [accessToken, currentUser?.id]);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
+
+  const userName = profile?.full_name || currentUser?.user_metadata?.full_name || 'Produtor';
+  const userEmail = currentUser?.email || '';
+  const userRole = profile?.role || 'produtor';
+  const initial = (userName || 'P').charAt(0).toUpperCase();
+  const planInfo = getSubscriptionPlan(currentPlan);
+
+  const handleSignOut = () => {
+    Alert.alert('Tem certeza que deseja sair?', '', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: () => signOut() },
+    ]);
+  };
+
+  const toggleDarkMode = async (val: boolean) => {
+    setIsDarkMode(val);
+    if (accessToken && currentUser?.id) {
+      try { await SupabaseService.updateProfile(accessToken, currentUser.id, { dark_mode: val }); } catch {}
+    }
+  };
+
+  const togglePush = async (val: boolean) => {
+    setPushEnabled(val);
+    if (accessToken && currentUser?.id) {
+      try { await SupabaseService.updateProfile(accessToken, currentUser.id, { push_enabled: val }); } catch {}
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={AppTheme.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.container}>
+      <View style={s.header}>
+        <Text style={s.title}>Configurações</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* ── Profile Section ── */}
+        <Text style={s.sectionLabel}>PERFIL</Text>
+        <View style={s.card}>
+          <View style={s.profileRow}>
+            <View style={s.avatarCircle}>
+              <Text style={s.avatarText}>{initial}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.profileName}>{userName}</Text>
+              <Text style={s.profileEmail}>{userEmail}</Text>
+              <View style={s.roleBadge}>
+                <MaterialCommunityIcons name="shield-check" size={10} color={AppTheme.accent} />
+                <Text style={s.roleText}>{roleDisplayName(userRole)}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={s.divider} />
+          <TouchableOpacity style={s.row} onPress={() => setShowEditProfile(true)}>
+            <MaterialCommunityIcons name="pencil-outline" size={18} color={AppTheme.techBlue} />
+            <Text style={[s.rowText, { color: AppTheme.techBlue }]}>Editar Perfil</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Subscription Section ── */}
+        <Text style={s.sectionLabel}>ASSINATURA</Text>
+        <View style={s.card}>
+          <View style={s.subRow}>
+            <View style={s.crownBox}>
+              <MaterialCommunityIcons name="crown" size={16} color={AppTheme.warmAmber} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.subTitle}>Plano Atual</Text>
+              <Text style={s.subPlan}>{planInfo.displayName}</Text>
+            </View>
+            <Text style={s.subPrice}>{planInfo.price}</Text>
+          </View>
+          <View style={s.divider} />
+          <TouchableOpacity style={s.row} onPress={() => setShowPaywall(true)}>
+            <MaterialCommunityIcons name="arrow-up-circle" size={18} color={AppTheme.techBlue} />
+            <Text style={[s.rowText, { color: AppTheme.techBlue, flex: 1 }]}>Upgrade de Plano</Text>
+            <MaterialCommunityIcons name="chevron-right" size={14} color={AppTheme.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Appearance & Preferences ── */}
+        <Text style={s.sectionLabel}>APARÊNCIA E PREFERÊNCIAS</Text>
+        <View style={s.card}>
+          <View style={s.row}>
+            <MaterialCommunityIcons name="weather-night" size={18} color={AppTheme.text} />
+            <Text style={[s.rowText, { flex: 1 }]}>Modo Escuro</Text>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleDarkMode}
+              trackColor={{ true: AppTheme.accent, false: AppTheme.border }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={s.divider} />
+          <View style={s.row}>
+            <MaterialCommunityIcons name="earth" size={18} color={AppTheme.text} />
+            <Text style={[s.rowText, { flex: 1 }]}>Idioma</Text>
+            <TouchableOpacity onPress={() => setLanguage(language === 'pt' ? 'es' : 'pt')}>
+              <Text style={{ fontSize: 14, color: AppTheme.textSecondary }}>
+                {language === 'pt' ? 'Português' : 'Español'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.divider} />
+          <View style={s.row}>
+            <MaterialCommunityIcons name="bell-badge" size={18} color={AppTheme.text} />
+            <Text style={[s.rowText, { flex: 1 }]}>Notificações Push</Text>
+            <Switch
+              value={pushEnabled}
+              onValueChange={togglePush}
+              trackColor={{ true: AppTheme.accent, false: AppTheme.border }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+        {/* ── About ── */}
+        <Text style={s.sectionLabel}>SOBRE</Text>
+        <View style={s.card}>
+          <TouchableOpacity
+            style={s.row}
+            onPress={() => Linking.openURL('https://rumopragas.com.br/privacidade')}
+          >
+            <MaterialCommunityIcons name="hand-back-left" size={18} color={AppTheme.text} />
+            <Text style={[s.rowText, { flex: 1 }]}>Política de Privacidade</Text>
+            <MaterialCommunityIcons name="open-in-new" size={12} color={AppTheme.textTertiary} />
+          </TouchableOpacity>
+          <View style={s.divider} />
+          <TouchableOpacity
+            style={s.row}
+            onPress={() => Linking.openURL('https://rumopragas.com.br/termos')}
+          >
+            <MaterialCommunityIcons name="file-document" size={18} color={AppTheme.text} />
+            <Text style={[s.rowText, { flex: 1 }]}>Termos de Uso</Text>
+            <MaterialCommunityIcons name="open-in-new" size={12} color={AppTheme.textTertiary} />
+          </TouchableOpacity>
+          <View style={s.divider} />
+          <View style={s.row}>
+            <MaterialCommunityIcons name="information" size={18} color={AppTheme.text} />
+            <Text style={[s.rowText, { flex: 1 }]}>Versão</Text>
+            <Text style={{ fontSize: 14, color: AppTheme.textSecondary, fontVariant: ['tabular-nums'] }}>1.0.0</Text>
+          </View>
+        </View>
+
+        {/* ── Sign out ── */}
+        <View style={[s.card, { marginTop: 24, marginHorizontal: 16 }]}>
+          <TouchableOpacity style={[s.row, { justifyContent: 'center' }]} onPress={handleSignOut}>
+            <MaterialCommunityIcons name="logout" size={18} color={AppTheme.coral} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: AppTheme.coral }}>Sair da Conta</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Modals */}
+      <EditProfileModal
+        visible={showEditProfile}
+        onClose={() => { setShowEditProfile(false); loadProfile(); }}
+        token={accessToken}
+        userId={currentUser?.id}
+        initialName={userName}
+        initialRole={userRole}
+        initialCity={profile?.city || ''}
+        initialState={profile?.state || ''}
+        initialCrops={profile?.crops || []}
+      />
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
+    </View>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Styles
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: AppTheme.background },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 56,
+    paddingBottom: 8,
+    backgroundColor: AppTheme.cardBackground,
+  },
+  title: { fontSize: 28, fontWeight: 'bold', color: AppTheme.text },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: AppTheme.textSecondary,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  card: {
+    backgroundColor: AppTheme.cardBackground,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: AppTheme.border, marginLeft: 16 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  rowText: { fontSize: 15, color: AppTheme.text },
+
+  // Profile
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 16,
+  },
+  avatarCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: AppTheme.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: AppTheme.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  avatarText: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
+  profileName: { fontSize: 16, fontWeight: '600', color: AppTheme.text },
+  profileEmail: { fontSize: 12, color: AppTheme.textSecondary, marginTop: 2 },
+  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  roleText: { fontSize: 10, fontWeight: '600', color: AppTheme.accent },
+
+  // Subscription
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  crownBox: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: AppTheme.accent + '12',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  settingsRowContent: {
-    flex: 1,
-  },
-  settingsRowTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: AppTheme.text,
-  },
-  settingsRowSubtitle: {
-    fontSize: 12,
-    color: AppTheme.textSecondary,
-    marginTop: 2,
-  },
-  // Sign Out
-  signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    marginTop: 8,
-    backgroundColor: AppTheme.coral + '12',
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  signOutBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppTheme.coral,
-  },
-  // Modal shared
-  modalContainer: {
-    flex: 1,
-    backgroundColor: AppTheme.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppTheme.border,
-    backgroundColor: AppTheme.cardBackground,
-  },
-  modalCloseBtn: {
-    width: 60,
-  },
-  modalCancelText: {
-    fontSize: 15,
-    color: AppTheme.textSecondary,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: AppTheme.text,
-    textAlign: 'center',
-  },
-  modalSaveBtn: {
-    width: 60,
-    alignItems: 'flex-end',
-  },
-  modalSaveText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AppTheme.accent,
-  },
-  modalBody: {
-    flex: 1,
-  },
-  modalBodyContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  // Form
-  formGroup: {
-    marginBottom: 20,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppTheme.text,
-    marginBottom: 8,
-  },
-  formInput: {
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: AppTheme.text,
-    borderWidth: 1,
-    borderColor: AppTheme.border,
-  },
-  formPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: AppTheme.border,
-  },
-  formPickerText: {
-    fontSize: 15,
-    color: AppTheme.text,
-  },
-  pickerDropdown: {
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 12,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: AppTheme.border,
-    overflow: 'hidden',
-  },
-  pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppTheme.border,
-  },
-  pickerOptionActive: {
-    backgroundColor: AppTheme.accent + '10',
-  },
-  pickerOptionText: {
-    fontSize: 14,
-    color: AppTheme.text,
-  },
-  pickerOptionTextActive: {
-    color: AppTheme.accent,
-    fontWeight: '600',
-  },
-  cropsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  cropToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: AppTheme.cardBackground,
-    borderWidth: 1,
-    borderColor: AppTheme.border,
-  },
-  cropToggleText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: AppTheme.textSecondary,
-  },
-  // Paywall
-  planCard: {
-    backgroundColor: AppTheme.cardBackground,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  planCardActive: {
-    borderColor: AppTheme.accent,
-  },
-  planCardPro: {
-    borderColor: AppTheme.warmAmber,
-  },
-  planPopular: {
-    position: 'absolute',
-    top: -1,
-    right: 16,
-    backgroundColor: AppTheme.warmAmber,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-  },
-  planPopularText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  planCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  planCardInfo: {
-    flex: 1,
-  },
-  planName: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: AppTheme.textSecondary,
-  },
-  planNameActive: {
-    color: AppTheme.text,
-  },
-  planPrice: {
-    fontSize: 13,
-    color: AppTheme.textTertiary,
-    marginTop: 2,
-  },
-  planPriceActive: {
-    color: AppTheme.textSecondary,
-  },
-  planRadio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: AppTheme.border,
+    backgroundColor: AppTheme.warmAmber + '26',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  planRadioActive: {
-    borderColor: AppTheme.accent,
-  },
-  planRadioDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: AppTheme.accent,
-  },
-  planFeatures: {
-    gap: 6,
-  },
-  planFeatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  planFeatureText: {
-    fontSize: 13,
-    color: AppTheme.textTertiary,
-  },
-  planFeatureTextActive: {
-    color: AppTheme.text,
-  },
-  subscribeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: AppTheme.accent,
-    borderRadius: 14,
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  subscribeBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  paywallFooter: {
-    fontSize: 12,
-    color: AppTheme.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-  },
+  subTitle: { fontSize: 14, color: AppTheme.text },
+  subPlan: { fontSize: 12, fontWeight: 'bold', color: AppTheme.accent, marginTop: 2 },
+  subPrice: { fontSize: 14, fontWeight: '600', color: AppTheme.textSecondary },
 });
