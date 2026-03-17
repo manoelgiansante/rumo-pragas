@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showDiagnosisFlow = false
     @State private var navigateToHistory = false
     @State private var selectedDiagnosis: DiagnosisResult?
@@ -45,8 +46,12 @@ struct HomeView: View {
             async let recentTask: () = viewModel.loadRecentDiagnosis(token: authVM.accessToken, userId: authVM.currentUser?.id)
             async let countTask: () = viewModel.loadDiagnosisCount(token: authVM.accessToken, userId: authVM.currentUser?.id)
             _ = await (weatherTask, recentTask, countTask)
-            withAnimation(.easeOut(duration: 0.6)) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.6)) {
+                    appeared = true
+                }
             }
         }
         .refreshable {
@@ -76,7 +81,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(greetingText)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(.white.opacity(0.9))
                 Text(authVM.currentUser?.userMetadata?.fullName ?? "Produtor")
                     .font(.title.bold())
                     .foregroundStyle(.white)
@@ -112,7 +117,7 @@ struct HomeView: View {
         .padding(.horizontal, 16)
         .padding(.top, -16)
         .padding(.bottom, 32)
-        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.1), value: appeared)
+        .animation(reduceMotion ? nil : .spring(response: 0.6, dampingFraction: 0.85).delay(0.1), value: appeared)
     }
 
     private var weatherCard: some View {
@@ -127,7 +132,7 @@ struct HomeView: View {
                             Image(systemName: weather.icon)
                                 .font(.title3)
                                 .foregroundStyle(AppTheme.warmAmber)
-                                .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                                .symbolEffect(.pulse, options: .repeating.speed(0.5), isActive: !reduceMotion)
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
@@ -208,6 +213,7 @@ struct HomeView: View {
             .premiumCard(padding: 18)
         }
         .sensoryFeedback(.impact(weight: .light), trigger: showDiagnosisFlow)
+        .accessibilityLabel("Diagnosticar praga com câmera ou galeria")
     }
 
     private var statsRow: some View {
@@ -355,12 +361,14 @@ struct StatMiniCard: View {
             Text(value)
                 .font(.subheadline.bold().monospacedDigit())
             Text(label)
-                .font(.system(size: 10, weight: .medium))
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
         .premiumCard(padding: 14)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(value) \(label)")
     }
 }
 

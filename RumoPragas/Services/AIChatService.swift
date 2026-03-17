@@ -9,7 +9,7 @@ nonisolated final class AIChatService: Sendable {
         self.toolkitURL = Config.EXPO_PUBLIC_TOOLKIT_URL
     }
 
-    func sendMessage(messages: [[String: String]]) async throws -> String {
+    func sendMessage(messages: [[String: String]], token: String? = nil) async throws -> String {
         let endpoint = "\(toolkitURL)/agent/chat"
         guard let url = URL(string: endpoint) else {
             throw APIError.invalidURL
@@ -37,6 +37,10 @@ nonisolated final class AIChatService: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(Config.EXPO_PUBLIC_SUPABASE_ANON_KEY, forHTTPHeaderField: "apikey")
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.httpBody = body
         request.timeoutInterval = 60
 

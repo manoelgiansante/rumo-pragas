@@ -1,0 +1,17 @@
+// Config.xcconfig.example
+// Copie este arquivo para Config.xcconfig e preencha com seus valores reais
+// Config.xcconfig esta no .gitignore e NAO sera commitado
+
+SUPABASE_URL = https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY = sua-anon-key-aqui
+STRIPE_PUBLISHABLE_KEY = pk_test_xxx
+GOOGLE_CLIENT_ID = xxx.apps.googleusercontent.com
+TOOLKIT_URL = https://seu-toolkit-url.com
+RORK_API_BASE_URL =
+RORK_PROJECT_ID =
+RORK_TEAM_ID =
+RORK_AUTH_URL =
+RORK_APP_KEY =
+RORK_DB_ENDPOINT =
+RORK_DB_NAMESPACE =
+RORK_DB_TOKEN =

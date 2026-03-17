@@ -3,6 +3,7 @@ import SwiftUI
 struct AuthView: View {
     @Bindable var viewModel: AuthViewModel
     @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollView {
@@ -15,8 +16,12 @@ struct AuthView: View {
         .ignoresSafeArea(edges: .top)
         .background(Color(.systemBackground))
         .onAppear {
-            withAnimation(.easeOut(duration: 0.8)) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.8)) {
+                    appeared = true
+                }
             }
         }
     }
@@ -51,7 +56,7 @@ struct AuthView: View {
                     Image(systemName: "leaf.fill")
                         .font(.system(size: 28, weight: .medium))
                         .foregroundStyle(.white)
-                        .symbolEffect(.breathe, options: .repeating.speed(0.3))
+                        .symbolEffect(.breathe, options: .repeating.speed(0.3), isActive: !reduceMotion)
                 }
                 .opacity(appeared ? 1 : 0)
                 .scaleEffect(appeared ? 1 : 0.8)
@@ -63,7 +68,7 @@ struct AuthView: View {
 
                     Text("Inteligência artificial para\nproteção de lavouras")
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.75))
+                        .foregroundStyle(.white.opacity(0.9))
                         .lineSpacing(2)
                 }
                 .opacity(appeared ? 1 : 0)
@@ -174,13 +179,17 @@ struct AuthView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                 HStack(spacing: 4) {
-                    Link("Termos de Uso", destination: URL(string: "https://rumopragas.com.br/termos")!)
-                        .font(.caption2.weight(.medium))
+                    if let url = URL(string: "https://rumopragas.com.br/termos") {
+                        Link("Termos de Uso", destination: url)
+                            .font(.caption2.weight(.medium))
+                    }
                     Text("e")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    Link("Política de Privacidade", destination: URL(string: "https://rumopragas.com.br/privacidade")!)
-                        .font(.caption2.weight(.medium))
+                    if let url = URL(string: "https://rumopragas.com.br/privacidade") {
+                        Link("Política de Privacidade", destination: url)
+                            .font(.caption2.weight(.medium))
+                    }
                 }
             }
             .padding(.top, 8)
@@ -326,6 +335,7 @@ struct PremiumSecureField: View {
                     .font(.subheadline)
                     .foregroundStyle(.tertiary)
             }
+            .accessibilityLabel(isVisible ? "Ocultar senha" : "Mostrar senha")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)

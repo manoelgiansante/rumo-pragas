@@ -14,6 +14,7 @@ struct OnboardingView: View {
     let onFinish: () -> Void
     @State private var currentPage: Int = 0
     @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let pages: [OnboardingPage] = [
         OnboardingPage(
@@ -97,8 +98,12 @@ struct OnboardingView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.6)) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.6)) {
+                    appeared = true
+                }
             }
         }
     }
@@ -110,9 +115,11 @@ struct OnboardingView: View {
                     Capsule()
                         .fill(index == currentPage ? Color.white : Color.white.opacity(0.35))
                         .frame(width: index == currentPage ? 24 : 8, height: 8)
-                        .animation(.snappy(duration: 0.3), value: currentPage)
+                        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: currentPage)
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Página \(currentPage + 1) de \(pages.count)")
 
             if currentPage == pages.count - 1 {
                 Button {
@@ -140,7 +147,7 @@ struct OnboardingView: View {
                     } label: {
                         Text("Pular")
                             .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(.white.opacity(0.85))
                     }
 
                     Spacer()
@@ -175,6 +182,7 @@ struct OnboardingPageView: View {
     let page: OnboardingPage
     let isActive: Bool
     @State private var animateContent = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -214,16 +222,24 @@ struct OnboardingPageView: View {
         }
         .onChange(of: isActive) { _, newValue in
             if newValue {
-                animateContent = false
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15)) {
+                if reduceMotion {
                     animateContent = true
+                } else {
+                    animateContent = false
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.15)) {
+                        animateContent = true
+                    }
                 }
             }
         }
         .onAppear {
             if isActive {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3)) {
+                if reduceMotion {
                     animateContent = true
+                } else {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3)) {
+                        animateContent = true
+                    }
                 }
             }
         }
@@ -242,7 +258,7 @@ struct OnboardingPageView: View {
             Image(systemName: page.icon)
                 .font(.system(size: 42, weight: .medium))
                 .foregroundStyle(.white)
-                .symbolEffect(.breathe, options: .repeating.speed(0.4))
+                .symbolEffect(.breathe, options: .repeating.speed(0.4), isActive: !reduceMotion)
         }
     }
 
@@ -255,7 +271,7 @@ struct OnboardingPageView: View {
 
             Text(page.subtitle)
                 .font(.body)
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
@@ -287,7 +303,7 @@ struct OnboardingPageView: View {
                 .background(.white.opacity(0.08))
                 .clipShape(.rect(cornerRadius: 14))
                 .animation(
-                    .spring(response: 0.4, dampingFraction: 0.8).delay(Double(index) * 0.08),
+                    reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.8).delay(Double(index) * 0.08),
                     value: animateContent
                 )
             }

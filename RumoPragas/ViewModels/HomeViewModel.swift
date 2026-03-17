@@ -76,8 +76,7 @@ class HomeViewModel {
     func loadDiagnosisCount(token: String?, userId: String?) async {
         guard let token, let userId else { return }
         do {
-            let results = try await SupabaseService.shared.fetchDiagnoses(token: token, userId: userId, limit: 50)
-            diagnosisCount = results.count
+            diagnosisCount = try await SupabaseService.shared.fetchDiagnosisCount(token: token, userId: userId)
         } catch {
             diagnosisCount = 0
         }

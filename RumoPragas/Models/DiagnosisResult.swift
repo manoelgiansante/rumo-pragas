@@ -14,6 +14,9 @@ nonisolated struct DiagnosisResult: Identifiable, Codable, Sendable, Hashable {
     let locationName: String?
     let createdAt: String
 
+    /// Cached parsed notes — populated once during decoding to avoid repeated JSONDecoder allocations.
+    let parsedNotes: AgrioNotesData?
+
     nonisolated enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
@@ -29,9 +32,77 @@ nonisolated struct DiagnosisResult: Identifiable, Codable, Sendable, Hashable {
         case createdAt = "created_at"
     }
 
-    var parsedNotes: AgrioNotesData? {
-        guard let notes, let data = notes.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(AgrioNotesData.self, from: data)
+    init(
+        id: String,
+        userId: String,
+        crop: String,
+        pestId: String? = nil,
+        pestName: String? = nil,
+        confidence: Double? = nil,
+        imageUrl: String? = nil,
+        notes: String? = nil,
+        locationLat: Double? = nil,
+        locationLng: Double? = nil,
+        locationName: String? = nil,
+        createdAt: String
+    ) {
+        self.id = id
+        self.userId = userId
+        self.crop = crop
+        self.pestId = pestId
+        self.pestName = pestName
+        self.confidence = confidence
+        self.imageUrl = imageUrl
+        self.notes = notes
+        self.locationLat = locationLat
+        self.locationLng = locationLng
+        self.locationName = locationName
+        self.createdAt = createdAt
+
+        if let notes, let data = notes.data(using: .utf8) {
+            self.parsedNotes = try? JSONDecoder().decode(AgrioNotesData.self, from: data)
+        } else {
+            self.parsedNotes = nil
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        userId = try container.decode(String.self, forKey: .userId)
+        crop = try container.decode(String.self, forKey: .crop)
+        pestId = try container.decodeIfPresent(String.self, forKey: .pestId)
+        pestName = try container.decodeIfPresent(String.self, forKey: .pestName)
+        confidence = try container.decodeIfPresent(Double.self, forKey: .confidence)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        locationLat = try container.decodeIfPresent(Double.self, forKey: .locationLat)
+        locationLng = try container.decodeIfPresent(Double.self, forKey: .locationLng)
+        locationName = try container.decodeIfPresent(String.self, forKey: .locationName)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+
+        // Parse notes once during decoding
+        if let notes, let data = notes.data(using: .utf8) {
+            parsedNotes = try? JSONDecoder().decode(AgrioNotesData.self, from: data)
+        } else {
+            parsedNotes = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(crop, forKey: .crop)
+        try container.encodeIfPresent(pestId, forKey: .pestId)
+        try container.encodeIfPresent(pestName, forKey: .pestName)
+        try container.encodeIfPresent(confidence, forKey: .confidence)
+        try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encodeIfPresent(locationLat, forKey: .locationLat)
+        try container.encodeIfPresent(locationLng, forKey: .locationLng)
+        try container.encodeIfPresent(locationName, forKey: .locationName)
+        try container.encode(createdAt, forKey: .createdAt)
     }
 
     var enrichment: AgrioEnrichment? {

@@ -627,7 +627,7 @@ struct PremiumBadge: View {
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.caption2.weight(.semibold))
             Text(text)
                 .font(.caption.weight(.semibold))
         }
@@ -674,6 +674,8 @@ struct CollapsibleSection<Content: View>: View {
                 }
                 .padding(16)
             }
+            .accessibilityLabel("\(title), \(isExpanded ? "expandido" : "recolhido")")
+            .accessibilityHint("Toque para \(isExpanded ? "recolher" : "expandir")")
 
             if isExpanded {
                 Divider()

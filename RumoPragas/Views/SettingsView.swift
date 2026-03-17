@@ -40,6 +40,7 @@ struct SettingsView: View {
                         .font(.title2.bold())
                         .foregroundStyle(.white)
                 }
+                .accessibilityLabel("Avatar de \(viewModel.userName)")
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.userName)
@@ -49,7 +50,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                     HStack(spacing: 4) {
                         Image(systemName: "person.badge.shield.checkmark.fill")
-                            .font(.system(size: 10))
+                            .font(.caption2)
                         Text(roleDisplayName(viewModel.userRole))
                             .font(.caption2.weight(.semibold))
                     }
@@ -135,23 +136,27 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            Link(destination: URL(string: "https://rumopragas.com.br/privacidade")!) {
-                HStack {
-                    Label("Política de Privacidade", systemImage: "hand.raised.fill")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            if let url = URL(string: "https://rumopragas.com.br/privacidade") {
+                Link(destination: url) {
+                    HStack {
+                        Label("Política de Privacidade", systemImage: "hand.raised.fill")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
 
-            Link(destination: URL(string: "https://rumopragas.com.br/termos")!) {
-                HStack {
-                    Label("Termos de Uso", systemImage: "doc.text.fill")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            if let url = URL(string: "https://rumopragas.com.br/termos") {
+                Link(destination: url) {
+                    HStack {
+                        Label("Termos de Uso", systemImage: "doc.text.fill")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
 

@@ -128,8 +128,9 @@ nonisolated final class SupabaseService: Sendable {
     }
 
     func fetchDiagnoses(token: String, userId: String, limit: Int = 50) async throws -> [DiagnosisResult] {
+        let encodedUserId = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId
         guard let request = makeRequest(
-            path: "/rest/v1/pragas_diagnoses?user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)",
+            path: "/rest/v1/pragas_diagnoses?user_id=eq.\(encodedUserId)&order=created_at.desc&limit=\(limit)",
             token: token,
             additionalHeaders: ["Prefer": "return=representation"]
         ) else {
@@ -142,9 +143,32 @@ nonisolated final class SupabaseService: Sendable {
         return try JSONDecoder().decode([DiagnosisResult].self, from: data)
     }
 
+    func fetchDiagnosisCount(token: String, userId: String) async throws -> Int {
+        let encodedUserId = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId
+        guard var request = makeRequest(
+            path: "/rest/v1/pragas_diagnoses?user_id=eq.\(encodedUserId)&select=id",
+            token: token,
+            additionalHeaders: ["Prefer": "count=exact"]
+        ) else {
+            throw APIError.invalidURL
+        }
+        request.httpMethod = "HEAD"
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.networkError
+        }
+        if let range = http.value(forHTTPHeaderField: "Content-Range"),
+           let total = range.split(separator: "/").last,
+           let count = Int(total) {
+            return count
+        }
+        return 0
+    }
+
     func deleteDiagnosis(token: String, id: String) async throws {
+        let encodedId = id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? id
         guard let request = makeRequest(
-            path: "/rest/v1/pragas_diagnoses?id=eq.\(id)",
+            path: "/rest/v1/pragas_diagnoses?id=eq.\(encodedId)",
             method: "DELETE",
             token: token
         ) else {
@@ -157,9 +181,10 @@ nonisolated final class SupabaseService: Sendable {
     }
 
     func updateProfile(token: String, userId: String, profile: [String: Any]) async throws {
+        let encodedUserId = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId
         let body = try JSONSerialization.data(withJSONObject: profile)
         guard let request = makeRequest(
-            path: "/rest/v1/pragas_profiles?id=eq.\(userId)",
+            path: "/rest/v1/pragas_profiles?id=eq.\(encodedUserId)",
             method: "PATCH",
             body: body,
             token: token,
@@ -174,8 +199,9 @@ nonisolated final class SupabaseService: Sendable {
     }
 
     func fetchProfile(token: String, userId: String) async throws -> UserProfile? {
+        let encodedUserId = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId
         guard let request = makeRequest(
-            path: "/rest/v1/pragas_profiles?id=eq.\(userId)&limit=1",
+            path: "/rest/v1/pragas_profiles?id=eq.\(encodedUserId)&limit=1",
             token: token
         ) else {
             throw APIError.invalidURL
@@ -223,14 +249,18 @@ nonisolated final class SupabaseService: Sendable {
             throw APIError.networkError
         }
 
+        #if DEBUG
         print("[EdgeFunction] \(name) -> HTTP \(http.statusCode), \(data.count) bytes")
+        #endif
 
         if (200...299).contains(http.statusCode) {
             return data
         }
 
+        #if DEBUG
         let rawBody = String(data: data, encoding: .utf8) ?? "(empty)"
         print("[EdgeFunction] Error body: \(rawBody.prefix(1000))")
+        #endif
 
         if let errorObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             if let errMsg = errorObj["error"] as? String {

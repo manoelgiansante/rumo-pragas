@@ -42,6 +42,7 @@ class DiagnosisViewModel {
             return
         }
         isAnalyzing = true
+        defer { isAnalyzing = false }
         errorMessage = nil
         progress = 0
 
@@ -50,7 +51,6 @@ class DiagnosisViewModel {
 
         guard let token else {
             errorMessage = "Faça login para usar o diagnóstico"
-            isAnalyzing = false
             return
         }
 
@@ -111,12 +111,10 @@ class DiagnosisViewModel {
             progress = 1.0
             statusMessage = "Diagnóstico completo!"
             try? await Task.sleep(for: .seconds(0.5))
-            isAnalyzing = false
         } catch let error as APIError {
             handleAPIError(error)
         } catch {
             errorMessage = "Erro: \(error.localizedDescription)"
-            isAnalyzing = false
         }
     }
 
@@ -183,7 +181,6 @@ class DiagnosisViewModel {
         default:
             errorMessage = error.errorDescription ?? "Erro desconhecido"
         }
-        isAnalyzing = false
     }
 
     func reset() {

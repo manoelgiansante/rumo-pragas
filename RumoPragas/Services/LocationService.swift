@@ -2,6 +2,7 @@ import Foundation
 import CoreLocation
 
 @Observable
+@MainActor
 class LocationService: NSObject, CLLocationManagerDelegate {
     static let shared = LocationService()
 
@@ -73,6 +74,10 @@ class LocationService: NSObject, CLLocationManagerDelegate {
             cont.resume(returning: location)
         }
     }
+
+    // MARK: - CLLocationManagerDelegate
+    // NOTE: @MainActor na classe garante que o acesso a continuations e propriedades e thread-safe.
+    // TODO: Adicionar timeout em getLocationOnce() para evitar continuations pendentes indefinidamente.
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }

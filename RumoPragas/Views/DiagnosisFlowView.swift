@@ -11,6 +11,7 @@ struct DiagnosisFlowView: View {
     @State private var cameraImageData: Data?
     @State private var previewImage: UIImage?
     @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum FlowStep {
         case photoSelection
@@ -58,6 +59,7 @@ struct DiagnosisFlowView: View {
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
                     }
+                    .accessibilityLabel(flowStep == .cropSelection ? "Voltar" : "Fechar")
                 }
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
@@ -71,7 +73,11 @@ struct DiagnosisFlowView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) { appeared = true }
+            if reduceMotion {
+                appeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.5)) { appeared = true }
+            }
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPickerView(imageData: $cameraImageData)
@@ -126,7 +132,7 @@ struct DiagnosisFlowView: View {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 48, weight: .light))
                         .foregroundStyle(AppTheme.accent)
-                        .symbolEffect(.pulse, options: .repeating.speed(0.5))
+                        .symbolEffect(.pulse, options: .repeating.speed(0.5), isActive: !reduceMotion)
                 }
                 .opacity(appeared ? 1 : 0)
                 .scaleEffect(appeared ? 1 : 0.8)
@@ -229,7 +235,7 @@ struct DiagnosisFlowView: View {
 
                 Spacer().frame(height: 20)
             }
-            .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.1), value: appeared)
+            .animation(reduceMotion ? nil : .spring(response: 0.6, dampingFraction: 0.85).delay(0.1), value: appeared)
         }
     }
 

@@ -125,6 +125,9 @@ struct CropCategoryChip: View {
             .frame(minWidth: 72)
             .fixedSize(horizontal: true, vertical: false)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(count != nil ? "\(name), \(count!) pragas" : name)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

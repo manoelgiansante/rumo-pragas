@@ -3,6 +3,7 @@ import SwiftUI
 struct AIChatView: View {
     @State private var viewModel = AIChatViewModel()
     @FocusState private var isInputFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -25,7 +26,7 @@ struct AIChatView: View {
                                 .fill(AppTheme.techGradient)
                                 .frame(width: 28, height: 28)
                             Image(systemName: "sparkles")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.caption.weight(.bold))
                                 .foregroundStyle(.white)
                         }
                         Text("Agro IA")
@@ -42,6 +43,7 @@ struct AIChatView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
+                        .accessibilityLabel("Limpar conversa")
                     }
                 }
             }
@@ -72,9 +74,9 @@ struct AIChatView: View {
                             .shadow(color: AppTheme.accent.opacity(0.3), radius: 20, y: 8)
 
                         Image(systemName: "sparkles")
-                            .font(.system(size: 34, weight: .medium))
+                            .font(.system(.largeTitle, weight: .medium))
                             .foregroundStyle(.white)
-                            .symbolEffect(.pulse, options: .repeating.speed(0.4))
+                            .symbolEffect(.pulse, options: .repeating.speed(0.4), isActive: !reduceMotion)
                     }
                 }
 
@@ -112,7 +114,7 @@ struct AIChatView: View {
                                 Spacer()
 
                                 Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.caption2.weight(.bold))
                                     .foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal, 16)
@@ -208,9 +210,9 @@ struct SendButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "arrow.up")
-                .font(.system(size: 15, weight: .bold))
+                .font(.subheadline.weight(.bold))
                 .foregroundStyle(canSend ? .white : .secondary)
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
                 .background(
                     Circle().fill(
                         canSend
@@ -220,6 +222,7 @@ struct SendButton: View {
                 )
         }
         .disabled(!canSend)
+        .accessibilityLabel("Enviar mensagem")
     }
 }
 
@@ -267,7 +270,7 @@ struct MessageBubbleView: View {
                     )
 
                 Text(message.timestamp, style: .time)
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundStyle(.quaternary)
                     .padding(.horizontal, 4)
             }
@@ -280,6 +283,7 @@ struct MessageBubbleView: View {
 
 struct TypingIndicatorView: View {
     @State private var dotPhase = 0.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -289,7 +293,7 @@ struct TypingIndicatorView: View {
                     .frame(width: 30, height: 30)
 
                 Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
             }
             .padding(.top, 4)
@@ -299,7 +303,7 @@ struct TypingIndicatorView: View {
                     Circle()
                         .fill(AppTheme.accent.opacity(0.6))
                         .frame(width: 7, height: 7)
-                        .offset(y: dotPhase == Double(index) ? -4 : 0)
+                        .offset(y: reduceMotion ? 0 : (dotPhase == Double(index) ? -4 : 0))
                 }
             }
             .padding(.horizontal, 16)
@@ -307,14 +311,18 @@ struct TypingIndicatorView: View {
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(.rect(topLeadingRadius: 4, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18))
             .onAppear {
-                withAnimation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true)) {
-                    dotPhase = 2
+                if !reduceMotion {
+                    withAnimation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true)) {
+                        dotPhase = 2
+                    }
                 }
             }
 
             Spacer(minLength: 48)
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Agro IA está digitando")
     }
 }
 

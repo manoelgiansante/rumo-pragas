@@ -33,6 +33,9 @@ Package.resolved
 .env
 rork-eslint.config.js
 
+# Secrets - NUNCA commitar com valores reais
+Config.xcconfig
+
 core
 node_modules
 .expo

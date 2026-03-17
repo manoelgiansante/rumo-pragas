@@ -49,7 +49,8 @@ class AIChatViewModel {
                 ["role": msg.role.rawValue, "content": msg.content]
             }
 
-            let response = try await AIChatService.shared.sendMessage(messages: apiMessages)
+            // TODO: Injetar token de autenticacao via AuthViewModel/Environment
+            let response = try await AIChatService.shared.sendMessage(messages: apiMessages, token: nil)
 
             let assistantMessage = ChatMessage(role: .assistant, content: response)
             messages.append(assistantMessage)

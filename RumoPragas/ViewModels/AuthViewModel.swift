@@ -30,6 +30,7 @@ class AuthViewModel {
             isAuthenticated = true
             KeychainService.save(key: accessTokenKey, value: legacy)
             UserDefaults.standard.removeObject(forKey: accessTokenKey)
+            UserDefaults.standard.removeObject(forKey: refreshTokenKey)
         }
     }
 
@@ -48,6 +49,7 @@ class AuthViewModel {
             return
         }
         isLoading = true
+        defer { isLoading = false }
         errorMessage = nil
         do {
             let response = try await SupabaseService.shared.signIn(email: email, password: password)
@@ -55,13 +57,14 @@ class AuthViewModel {
                 saveTokens(access: token, refresh: response.refreshToken)
                 currentUser = response.user
                 isAuthenticated = true
+            } else {
+                errorMessage = "Verifique seu e-mail para confirmar a conta."
             }
         } catch let error as APIError {
             errorMessage = error.errorDescription
         } catch {
             errorMessage = "Falha no login. Verifique suas credenciais."
         }
-        isLoading = false
     }
 
     func signUp() async {
@@ -73,11 +76,17 @@ class AuthViewModel {
             errorMessage = "Digite um e-mail válido"
             return
         }
-        guard password.count >= 6 else {
-            errorMessage = "Senha deve ter pelo menos 6 caracteres"
+        guard password.count >= 8 else {
+            errorMessage = "Senha deve ter pelo menos 8 caracteres, incluindo uma letra maiúscula e um número"
+            return
+        }
+        guard password.range(of: "[A-Z]", options: .regularExpression) != nil,
+              password.range(of: "[0-9]", options: .regularExpression) != nil else {
+            errorMessage = "Senha deve conter pelo menos uma letra maiúscula e um número"
             return
         }
         isLoading = true
+        defer { isLoading = false }
         errorMessage = nil
         do {
             let response = try await SupabaseService.shared.signUp(
@@ -97,7 +106,6 @@ class AuthViewModel {
         } catch {
             errorMessage = "Falha no cadastro. Tente novamente."
         }
-        isLoading = false
     }
 
     func requestPasswordReset() async {
@@ -107,6 +115,7 @@ class AuthViewModel {
             return
         }
         isResetting = true
+        defer { isResetting = false }
         resetMessage = nil
         do {
             try await SupabaseService.shared.resetPassword(email: emailToReset)
@@ -114,7 +123,6 @@ class AuthViewModel {
         } catch {
             resetMessage = "Não foi possível enviar o e-mail. Verifique o endereço."
         }
-        isResetting = false
     }
 
     func signOut() {
@@ -160,7 +168,11 @@ class AuthViewModel {
                 isAuthenticated = true
                 return true
             }
-        } catch {}
+        } catch {
+            #if DEBUG
+            print("[Auth] Refresh failed: \(error)")
+            #endif
+        }
         return false
     }
 

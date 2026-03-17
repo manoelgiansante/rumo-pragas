@@ -91,6 +91,8 @@ struct CropSelectorSheet: View {
                             )
                         }
                         .sensoryFeedback(.selection, trigger: selectedCrop)
+                        .accessibilityLabel(crop.displayName)
+                        .accessibilityAddTraits(crop == selectedCrop ? .isSelected : [])
                     }
                 }
                 .padding(.horizontal)

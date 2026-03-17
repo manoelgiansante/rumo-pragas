@@ -44,6 +44,7 @@ struct SplashView: View {
     @State private var leafOpacity: Double = 0
     @State private var textOpacity: Double = 0
     @State private var pulseScale: CGFloat = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -55,7 +56,7 @@ struct SplashView: View {
                         Circle()
                             .stroke(Color.white.opacity(0.08 - Double(i) * 0.02), lineWidth: 1.5)
                             .frame(width: CGFloat(120 + i * 40), height: CGFloat(120 + i * 40))
-                            .scaleEffect(pulseScale)
+                            .scaleEffect(reduceMotion ? 1.0 : pulseScale)
                     }
 
                     ZStack {
@@ -70,7 +71,7 @@ struct SplashView: View {
                         Image(systemName: "leaf.fill")
                             .font(.system(size: 38, weight: .medium))
                             .foregroundStyle(.white)
-                            .symbolEffect(.breathe, options: .repeating.speed(0.3))
+                            .symbolEffect(.breathe, options: .repeating.speed(0.3), isActive: !reduceMotion)
                     }
                     .scaleEffect(leafScale)
                     .opacity(leafOpacity)
@@ -83,7 +84,7 @@ struct SplashView: View {
 
                     Text("Inteligência artificial para\nproteção de lavouras")
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.white.opacity(0.9))
                         .multilineTextAlignment(.center)
                         .lineSpacing(2)
                 }
@@ -92,15 +93,21 @@ struct SplashView: View {
         }
         .ignoresSafeArea()
         .onAppear {
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.7)) {
+            if reduceMotion {
                 leafScale = 1.0
                 leafOpacity = 1.0
-            }
-            withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
                 textOpacity = 1.0
-            }
-            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
-                pulseScale = 1.08
+            } else {
+                withAnimation(.spring(response: 0.7, dampingFraction: 0.7)) {
+                    leafScale = 1.0
+                    leafOpacity = 1.0
+                }
+                withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
+                    textOpacity = 1.0
+                }
+                withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                    pulseScale = 1.08
+                }
             }
         }
     }
