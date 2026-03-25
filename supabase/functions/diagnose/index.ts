@@ -1,12 +1,11 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY') ?? ''
+const CLAUDE_API_KEY = Deno.env.get('CLAUDE_API_KEY') ?? ''
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-const GEMINI_MODEL = 'gemini-2.0-flash'
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
 
 const SYSTEM_PROMPT = `Voce e um especialista em fitossanidade e entomologia agricola brasileira. Analise a imagem enviada e identifique pragas, doencas ou condicoes da planta.
 
@@ -79,7 +78,6 @@ interface DiagnosisRequest {
 }
 
 serve(async (req: Request) => {
-  // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -94,7 +92,6 @@ serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   }
 
-  // Verify auth
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
     return new Response(JSON.stringify({ error: 'Token de autenticacao ausente' }), {
@@ -105,7 +102,6 @@ serve(async (req: Request) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-  // Validate user token
   const token = authHeader.replace('Bearer ', '')
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
@@ -127,7 +123,7 @@ serve(async (req: Request) => {
       })
     }
 
-    if (!GEMINI_API_KEY) {
+    if (!CLAUDE_API_KEY) {
       return new Response(JSON.stringify({ error: 'API de diagnostico nao configurada' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -137,6 +133,11 @@ serve(async (req: Request) => {
     // Clean base64 (remove data URI prefix if present)
     const cleanBase64 = image_base64.replace(/^data:image\/\w+;base64,/, '')
 
+    // Detect media type
+    const isJpeg = cleanBase64.startsWith('/9j/') || cleanBase64.startsWith('/9J/')
+    const isPng = cleanBase64.startsWith('iVBOR')
+    const mediaType = isPng ? 'image/png' : isJpeg ? 'image/jpeg' : 'image/jpeg'
+
     // Build the prompt with crop context
     const cropContext = crop_type ? `\nA cultura informada pelo produtor e: ${crop_type}. Considere isso na sua analise.` : ''
     const locationContext = latitude && longitude
@@ -145,42 +146,51 @@ serve(async (req: Request) => {
 
     const userPrompt = `Analise esta imagem de uma planta/lavoura e faca o diagnostico fitossanitario completo.${cropContext}${locationContext}\n\nRetorne APENAS o JSON conforme o formato especificado, sem nenhum texto adicional.`
 
-    // Call Gemini Vision API
-    const geminiResponse = await fetch(GEMINI_URL, {
+    // Call Claude Vision API
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: SYSTEM_PROMPT + '\n\n' + userPrompt },
+        model: CLAUDE_MODEL,
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: [{
+          role: 'user',
+          content: [
             {
-              inline_data: {
-                mime_type: 'image/jpeg',
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
                 data: cleanBase64,
               },
             },
+            {
+              type: 'text',
+              text: userPrompt,
+            },
           ],
         }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 4096,
-        },
       }),
     })
 
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text()
-      console.error('Gemini API error:', errText)
+    if (!claudeResponse.ok) {
+      const errText = await claudeResponse.text()
+      console.error('Claude API error:', errText)
       return new Response(JSON.stringify({ error: 'Erro na analise da imagem. Tente novamente.' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const geminiData = await geminiResponse.json()
+    const claudeData = await claudeResponse.json()
 
-    // Extract text from Gemini response
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text
+    // Extract text from Claude response
+    const rawText = claudeData?.content?.[0]?.text
     if (!rawText) {
       return new Response(JSON.stringify({ error: 'Resposta vazia da IA. Tente com outra imagem.' }), {
         status: 502,
@@ -197,7 +207,7 @@ serve(async (req: Request) => {
         .trim()
       diagnosisData = JSON.parse(jsonStr)
     } catch {
-      console.error('Failed to parse Gemini response:', rawText)
+      console.error('Failed to parse Claude response:', rawText)
       return new Response(JSON.stringify({ error: 'Erro ao processar resultado. Tente novamente.' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -247,7 +257,6 @@ serve(async (req: Request) => {
       })
     }
 
-    // Return result matching DiagnosisResult type
     return new Response(JSON.stringify({
       ...saved,
       parsedNotes: notes,
