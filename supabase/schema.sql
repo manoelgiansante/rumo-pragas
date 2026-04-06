@@ -11,8 +11,10 @@ CREATE TABLE IF NOT EXISTS pragas_diagnoses (
   pest_id TEXT,
   pest_name TEXT,
   confidence DOUBLE PRECISION,
+  severity TEXT CHECK (severity IS NULL OR severity IN ('low', 'medium', 'high', 'critical')),
   image_url TEXT,
   notes TEXT,
+  metadata JSONB DEFAULT '{}',
   location_lat DOUBLE PRECISION,
   location_lng DOUBLE PRECISION,
   location_name TEXT,
@@ -27,6 +29,8 @@ CREATE TABLE IF NOT EXISTS pragas_profiles (
   city TEXT,
   state TEXT,
   crops TEXT[],
+  push_token TEXT,
+  deletion_requested_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -59,6 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_diagnoses_crop ON pragas_diagnoses(crop);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON pragas_profiles(id);
+CREATE INDEX IF NOT EXISTS idx_diagnoses_created_at ON pragas_diagnoses(created_at);
+CREATE INDEX IF NOT EXISTS idx_profiles_deletion_requested ON pragas_profiles(deletion_requested_at) WHERE deletion_requested_at IS NOT NULL;
 
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -77,6 +83,10 @@ CREATE POLICY "Users can view own diagnoses"
 CREATE POLICY "Users can insert own diagnoses"
   ON pragas_diagnoses FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own diagnoses"
+  ON pragas_diagnoses FOR UPDATE
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own diagnoses"
   ON pragas_diagnoses FOR DELETE

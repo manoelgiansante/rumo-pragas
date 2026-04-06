@@ -17,16 +17,17 @@ export function ConfidenceBar({ value }: ConfidenceBarProps) {
   const pct = Math.round(value * 100);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.track}>
-        <View
-          style={[
-            styles.fill,
-            { width: `${Math.min(pct, 100)}%`, backgroundColor: color },
-          ]}
-        />
+    <View
+      style={styles.container}
+      accessible
+      accessibilityLabel={`Confianca: ${pct} por cento`}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: pct }}
+    >
+      <View style={styles.track} accessibilityElementsHidden>
+        <View style={[styles.fill, { width: `${Math.min(pct, 100)}%`, backgroundColor: color }]} />
       </View>
-      <Text style={styles.label}>{pct}%</Text>
+      <Text style={styles.label} accessibilityElementsHidden>{pct}%</Text>
     </View>
   );
 }

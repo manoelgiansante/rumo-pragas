@@ -13,6 +13,7 @@ import { Camera, ClipboardList, BookOpen, ShieldCheck } from 'lucide-react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -20,8 +21,8 @@ const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
 
 interface OnboardingPage {
   id: string;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
   gradientColors: [string, string];
   Icon: typeof Camera;
 }
@@ -29,39 +30,36 @@ interface OnboardingPage {
 const PAGES: OnboardingPage[] = [
   {
     id: '1',
-    title: 'Diagnostico com IA',
-    subtitle:
-      'Tire uma foto da planta afetada e nossa inteligencia artificial identifica a praga ou doenca em segundos.',
+    titleKey: 'onboarding.page1Title',
+    subtitleKey: 'onboarding.page1Subtitle',
     gradientColors: ['#0F6B4D', '#1A966B'],
     Icon: Camera,
   },
   {
     id: '2',
-    title: 'Historico Completo',
-    subtitle:
-      'Acompanhe todos os diagnosticos realizados, visualize tendencias e tome decisoes baseadas em dados.',
+    titleKey: 'onboarding.page2Title',
+    subtitleKey: 'onboarding.page2Subtitle',
     gradientColors: ['#2563EB', '#3B82F6'],
     Icon: ClipboardList,
   },
   {
     id: '3',
-    title: 'Biblioteca de Pragas',
-    subtitle:
-      'Acesse informacoes detalhadas sobre as principais pragas e doencas das lavouras brasileiras.',
+    titleKey: 'onboarding.page3Title',
+    subtitleKey: 'onboarding.page3Subtitle',
     gradientColors: ['#D97706', '#F59E0B'],
     Icon: BookOpen,
   },
   {
     id: '4',
-    title: 'Proteja sua Lavoura',
-    subtitle:
-      'Receba recomendacoes de manejo integrado de pragas e proteja sua producao com tecnologia de ponta.',
+    titleKey: 'onboarding.page4Title',
+    subtitleKey: 'onboarding.page4Subtitle',
     gradientColors: ['#0F6B4D', '#29B887'],
     Icon: ShieldCheck,
   },
 ];
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -94,8 +92,8 @@ export default function OnboardingScreen() {
           <View style={styles.iconContainer}>
             <Icon size={64} color={Colors.white} strokeWidth={1.5} />
           </View>
-          <Text style={styles.pageTitle}>{item.title}</Text>
-          <Text style={styles.pageSubtitle}>{item.subtitle}</Text>
+          <Text style={styles.pageTitle}>{t(item.titleKey)}</Text>
+          <Text style={styles.pageSubtitle}>{t(item.subtitleKey)}</Text>
         </View>
       </LinearGradient>
     );
@@ -127,10 +125,7 @@ export default function OnboardingScreen() {
           {PAGES.map((page, index) => (
             <View
               key={page.id}
-              style={[
-                styles.dot,
-                index === currentIndex ? styles.dotActive : styles.dotInactive,
-              ]}
+              style={[styles.dot, index === currentIndex ? styles.dotActive : styles.dotInactive]}
             />
           ))}
         </View>
@@ -139,11 +134,25 @@ export default function OnboardingScreen() {
         <View style={styles.buttonsContainer}>
           {!isLastPage ? (
             <>
-              <TouchableOpacity onPress={finishOnboarding} style={styles.skipButton}>
-                <Text style={styles.skipText}>Pular</Text>
+              <TouchableOpacity
+                onPress={finishOnboarding}
+                style={styles.skipButton}
+                accessibilityLabel={t('onboarding.skipA11y')}
+                accessibilityRole="button"
+              >
+                <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={goToNext} style={styles.nextButton}>
-                <Text style={styles.nextText}>Proximo</Text>
+              <TouchableOpacity
+                onPress={goToNext}
+                style={styles.nextButton}
+                accessibilityLabel={t('onboarding.next')}
+                accessibilityRole="button"
+                accessibilityHint={t('onboarding.pageOf', {
+                  current: currentIndex + 1,
+                  total: PAGES.length,
+                })}
+              >
+                <Text style={styles.nextText}>{t('onboarding.next')}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -151,8 +160,10 @@ export default function OnboardingScreen() {
               onPress={finishOnboarding}
               style={styles.startButton}
               activeOpacity={0.8}
+              accessibilityLabel={t('onboarding.startA11y')}
+              accessibilityRole="button"
             >
-              <Text style={styles.startText}>Comecar Agora</Text>
+              <Text style={styles.startText}>{t('onboarding.startNow')}</Text>
             </TouchableOpacity>
           )}
         </View>

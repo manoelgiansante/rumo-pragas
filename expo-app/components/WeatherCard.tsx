@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, useColorScheme } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  useColorScheme,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PremiumCard } from './PremiumCard';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../constants/theme';
@@ -30,7 +37,10 @@ function getWeatherIcon(icon: string): React.ComponentProps<typeof Ionicons>['na
   return 'partly-sunny';
 }
 
-export function WeatherCard({ weather, isLoading = false }: WeatherCardProps) {
+export const WeatherCard = React.memo(function WeatherCard({
+  weather,
+  isLoading = false,
+}: WeatherCardProps) {
   const isDark = useColorScheme() === 'dark';
 
   if (isLoading) {
@@ -50,17 +60,23 @@ export function WeatherCard({ weather, isLoading = false }: WeatherCardProps) {
 
   return (
     <PremiumCard>
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        accessible
+        accessibilityLabel={`Clima em ${weather.location || 'sua regiao'}: ${Math.round(weather.temperature)} graus, ${weather.description}, umidade ${Math.round(weather.humidity)} por cento, precipitacao ${weather.dailyPrecipitationSum.toFixed(1)} milimetros, vento ${Math.round(weather.windSpeed)} quilometros por hora`}
+        accessibilityRole="summary"
+      >
         <View style={styles.leftSection}>
           <View style={styles.iconCircle}>
-            <Ionicons name={getWeatherIcon(weather.icon)} size={24} color={Colors.warmAmber} />
+            <Ionicons name={getWeatherIcon(weather.icon)} size={24} color={Colors.warmAmber} accessibilityElementsHidden />
           </View>
           <View style={styles.tempInfo}>
             <Text style={[styles.location, isDark && { color: Colors.systemGray2 }]}>
               {weather.location || 'Sua regiao'}
             </Text>
             <Text style={[styles.temperature, isDark && { color: Colors.textDark }]}>
-              {Math.round(weather.temperature)}{'\u00B0'}C
+              {Math.round(weather.temperature)}
+              {'\u00B0'}C
             </Text>
             <Text style={[styles.description, isDark && { color: Colors.systemGray2 }]}>
               {weather.description}
@@ -92,7 +108,9 @@ export function WeatherCard({ weather, isLoading = false }: WeatherCardProps) {
 
       {weather.forecast && weather.forecast.length > 0 && (
         <>
-          <View style={[styles.forecastDivider, isDark && { backgroundColor: Colors.separatorDark }]} />
+          <View
+            style={[styles.forecastDivider, isDark && { backgroundColor: Colors.separatorDark }]}
+          />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -106,7 +124,7 @@ export function WeatherCard({ weather, isLoading = false }: WeatherCardProps) {
       )}
     </PremiumCard>
   );
-}
+});
 
 function ForecastDayCard({ day, isDark }: { day: DailyForecast; isDark: boolean }) {
   return (
@@ -116,10 +134,12 @@ function ForecastDayCard({ day, isDark }: { day: DailyForecast; isDark: boolean 
       </Text>
       <Ionicons name={getWeatherIcon(day.icon)} size={18} color={Colors.warmAmber} />
       <Text style={[styles.forecastTemp, isDark && { color: Colors.textDark }]}>
-        {Math.round(day.temperatureMax)}{'\u00B0'}
+        {Math.round(day.temperatureMax)}
+        {'\u00B0'}
       </Text>
       <Text style={[styles.forecastTempMin, isDark && { color: Colors.systemGray2 }]}>
-        {Math.round(day.temperatureMin)}{'\u00B0'}
+        {Math.round(day.temperatureMin)}
+        {'\u00B0'}
       </Text>
     </View>
   );

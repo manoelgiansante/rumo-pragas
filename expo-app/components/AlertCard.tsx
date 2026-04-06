@@ -4,7 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 import type { PestAlert, AlertSeverity } from '../services/alerts';
 
-const SEVERITY_CONFIG: Record<AlertSeverity, { bg: string; border: string; text: string; label: string }> = {
+const SEVERITY_CONFIG: Record<
+  AlertSeverity,
+  { bg: string; border: string; text: string; label: string }
+> = {
   high: {
     bg: 'rgba(240, 102, 82, 0.10)',
     border: 'rgba(240, 102, 82, 0.30)',
@@ -29,7 +32,7 @@ interface AlertCardProps {
   alert: PestAlert;
 }
 
-export function AlertCard({ alert }: AlertCardProps) {
+export const AlertCard = React.memo(function AlertCard({ alert }: AlertCardProps) {
   const isDark = useColorScheme() === 'dark';
   const config = SEVERITY_CONFIG[alert.severity];
 
@@ -53,6 +56,9 @@ export function AlertCard({ alert }: AlertCardProps) {
         },
         isDark && styles.cardDark,
       ]}
+      accessible
+      accessibilityLabel={`Alerta ${config.label}: ${alert.title}. ${alert.description}. Cultura afetada: ${alert.cropAffected}`}
+      accessibilityRole="alert"
     >
       <View style={styles.header}>
         <View style={[styles.iconCircle, { backgroundColor: config.bg }]}>
@@ -63,9 +69,19 @@ export function AlertCard({ alert }: AlertCardProps) {
             {alert.title}
           </Text>
           <View style={styles.metaRow}>
-            <View style={[styles.severityBadge, { backgroundColor: config.bg, borderColor: config.border }]}>
+            <View
+              style={[
+                styles.severityBadge,
+                { backgroundColor: config.bg, borderColor: config.border },
+              ]}
+            >
               <Text style={[styles.severityText, { color: config.text }]}>{config.label}</Text>
             </View>
+            {alert.isForecast && (
+              <View style={styles.forecastBadge}>
+                <Text style={styles.forecastBadgeText}>Previsao</Text>
+              </View>
+            )}
             <Text style={styles.timestamp}>{timeAgo()}</Text>
           </View>
         </View>
@@ -81,7 +97,7 @@ export function AlertCard({ alert }: AlertCardProps) {
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -136,6 +152,17 @@ const styles = StyleSheet.create({
   severityText: {
     fontSize: FontSize.caption2,
     fontWeight: FontWeight.semibold,
+  },
+  forecastBadge: {
+    backgroundColor: Colors.techBlue,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  forecastBadgeText: {
+    fontSize: FontSize.caption2,
+    fontWeight: FontWeight.semibold,
+    color: '#FFFFFF',
   },
   timestamp: {
     fontSize: FontSize.caption2,

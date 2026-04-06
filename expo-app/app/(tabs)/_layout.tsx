@@ -1,11 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../../constants/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -30,7 +32,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.homeA11y'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -39,7 +42,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Historico',
+          title: t('tabs.history'),
+          tabBarAccessibilityLabel: t('tabs.historyA11y'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="time" size={size} color={color} />
           ),
@@ -48,7 +52,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Biblioteca',
+          title: t('tabs.library'),
+          tabBarAccessibilityLabel: t('tabs.libraryA11y'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="library" size={size} color={color} />
           ),
@@ -57,7 +62,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="ai-chat"
         options={{
-          title: 'Agro IA',
+          title: t('tabs.aiChat'),
+          tabBarAccessibilityLabel: t('tabs.aiChatA11y'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="sparkles" size={size} color={color} />
           ),
@@ -66,7 +72,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Ajustes',
+          title: t('tabs.settings'),
+          tabBarAccessibilityLabel: t('tabs.settingsA11y'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),

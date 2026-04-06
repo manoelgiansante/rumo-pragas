@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,17 +13,28 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Leaf, Eye, EyeOff, Mail, Lock, User } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { useAuthContext } from '../../context/AuthContext';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Gradients } from '../../constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
+import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  Gradients,
+} from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type AuthMode = 'login' | 'signup';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const { signIn, signUp, resetPassword, isLoading, error, clearError } = useAuthContext();
 
   const [mode, setMode] = useState<AuthMode>('login');
@@ -31,18 +42,46 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
 
+  // Check Apple Sign In availability on mount
+  useEffect(() => {
+    isAppleSignInAvailable().then(setAppleAvailable);
+  }, []);
+
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const isStrongPassword = (password: string): boolean => {
+    // At least 8 chars, one letter, one number
+    return password.length >= 8 && /[a-zA-Z]/.test(password) && /\d/.test(password);
+  };
+
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Atenção', 'Preencha todos os campos.');
+      Alert.alert('', t('auth.fillAllFields'));
+      return;
+    }
+
+    if (!isValidEmail(email.trim())) {
+      Alert.alert('', t('auth.invalidEmail'));
+      return;
+    }
+
+    if (mode === 'signup' && !isStrongPassword(password)) {
+      Alert.alert('', t('auth.weakPassword'));
       return;
     }
 
     if (mode === 'signup' && !fullName.trim()) {
-      Alert.alert('Atenção', 'Informe seu nome completo.');
+      Alert.alert('', t('auth.enterFullName'));
       return;
     }
 
@@ -52,10 +91,7 @@ export default function LoginScreen() {
         await signIn(email.trim(), password);
       } else {
         await signUp(email.trim(), password, fullName.trim());
-        Alert.alert(
-          'Conta criada',
-          'Verifique seu email para confirmar o cadastro.',
-        );
+        Alert.alert('', t('auth.checkEmail'));
       }
     } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -64,12 +100,12 @@ export default function LoginScreen() {
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('Atenção', 'Informe seu email para redefinir a senha.');
+      Alert.alert('', t('auth.enterEmail'));
       return;
     }
     try {
       await resetPassword(email.trim());
-      Alert.alert('Email enviado', 'Verifique sua caixa de entrada para redefinir a senha.');
+      Alert.alert('', t('auth.emailSent'));
     } catch {
       // error is handled by the hook
     }
@@ -78,184 +114,304 @@ export default function LoginScreen() {
   const switchMode = (newMode: AuthMode) => {
     clearError();
     setMode(newMode);
+    setAcceptedTerms(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleAppleSignIn = async () => {
+    try {
+      setAppleLoading(true);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const result = await signInWithApple();
+      if (!result) {
+        // User cancelled
+        return;
+      }
+    } catch (err: any) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t('common.error'), err?.message || t('auth.loginError'));
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        bounces={false}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Hero gradient header */}
-        <LinearGradient
-          colors={Gradients.hero as [string, string, string]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
         >
-          <View style={styles.heroContent}>
-            <View style={styles.iconCircle}>
-              <Leaf size={40} color={Colors.white} strokeWidth={2} />
-            </View>
-            <Text style={styles.heroTitle}>Rumo Pragas</Text>
-            <Text style={styles.heroSubtitle}>
-              Diagnostico inteligente de pragas agricolas
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* Form card */}
-        <View style={styles.formCard}>
-          {/* Segmented control */}
-          <View style={styles.segmentedControl}>
-            <TouchableOpacity
-              style={[styles.segment, mode === 'login' && styles.segmentActive]}
-              onPress={() => switchMode('login')}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  mode === 'login' && styles.segmentTextActive,
-                ]}
-              >
-                Entrar
+          {/* Hero gradient header */}
+          <LinearGradient
+            colors={Gradients.hero as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hero}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="leaf" size={40} color={Colors.white} />
+              </View>
+              <Text style={styles.heroTitle}>Rumo Pragas</Text>
+              <Text style={styles.heroSubtitle}>
+                Diagn\u00f3stico inteligente de pragas agr\u00edcolas
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.segment, mode === 'signup' && styles.segmentActive]}
-              onPress={() => switchMode('signup')}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  mode === 'signup' && styles.segmentTextActive,
-                ]}
-              >
-                Criar Conta
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Error message */}
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
             </View>
-          ) : null}
+          </LinearGradient>
 
-          {/* Name field (signup only) */}
-          {mode === 'signup' ? (
+          {/* Form card */}
+          <View style={styles.formCard}>
+            {/* Segmented control */}
+            <View style={styles.segmentedControl}>
+              <TouchableOpacity
+                style={[styles.segment, mode === 'login' && styles.segmentActive]}
+                onPress={() => switchMode('login')}
+                accessibilityLabel="Entrar"
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === 'login' }}
+              >
+                <Text style={[styles.segmentText, mode === 'login' && styles.segmentTextActive]}>
+                  {t('auth.login')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.segment, mode === 'signup' && styles.segmentActive]}
+                onPress={() => switchMode('signup')}
+                accessibilityLabel="Criar conta"
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === 'signup' }}
+              >
+                <Text style={[styles.segmentText, mode === 'signup' && styles.segmentTextActive]}>
+                  {t('auth.signup')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Error message */}
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {/* Name field (signup only) */}
+            {mode === 'signup' ? (
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color={Colors.systemGray}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nome completo"
+                    placeholderTextColor={Colors.systemGray2}
+                    value={fullName}
+                    onChangeText={setFullName}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    accessibilityLabel="Nome completo"
+                    accessibilityRole="text"
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {/* Email field */}
             <View style={styles.inputGroup}>
               <View style={styles.inputContainer}>
-                <User size={20} color={Colors.systemGray} style={styles.inputIcon} />
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={Colors.systemGray}
+                  style={styles.inputIcon}
+                />
                 <TextInput
+                  ref={emailRef}
                   style={styles.input}
-                  placeholder="Nome completo"
+                  placeholder="Email"
                   placeholderTextColor={Colors.systemGray2}
-                  value={fullName}
-                  onChangeText={setFullName}
-                  autoCapitalize="words"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
                   returnKeyType="next"
-                  onSubmitEditing={() => emailRef.current?.focus()}
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  accessibilityLabel="Endereco de email"
+                  accessibilityRole="text"
                 />
               </View>
             </View>
-          ) : null}
 
-          {/* Email field */}
-          <View style={styles.inputGroup}>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color={Colors.systemGray} style={styles.inputIcon} />
-              <TextInput
-                ref={emailRef}
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={Colors.systemGray2}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
-              />
+            {/* Password field */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={Colors.systemGray}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  ref={passwordRef}
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="Senha"
+                  placeholderTextColor={Colors.systemGray2}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                  accessibilityLabel="Senha"
+                  accessibilityRole="text"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityLabel={
+                    showPassword ? t('auth.hidePassword') : t('auth.showPassword')
+                  }
+                  accessibilityRole="button"
+                >
+                  {showPassword ? (
+                    <Ionicons name="eye-off-outline" size={20} color={Colors.systemGray} />
+                  ) : (
+                    <Ionicons name="eye-outline" size={20} color={Colors.systemGray} />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          {/* Password field */}
-          <View style={styles.inputGroup}>
-            <View style={styles.inputContainer}>
-              <Lock size={20} color={Colors.systemGray} style={styles.inputIcon} />
-              <TextInput
-                ref={passwordRef}
-                style={[styles.input, styles.passwordInput]}
-                placeholder="Senha"
-                placeholderTextColor={Colors.systemGray2}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
-              />
+            {/* Forgot password */}
+            {mode === 'login' ? (
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                onPress={handleResetPassword}
+                style={styles.forgotButton}
+                accessibilityLabel="Esqueci minha senha"
+                accessibilityRole="button"
+                accessibilityHint="Envia um email para redefinir sua senha"
               >
-                {showPassword ? (
-                  <EyeOff size={20} color={Colors.systemGray} />
-                ) : (
-                  <Eye size={20} color={Colors.systemGray} />
-                )}
+                <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            ) : null}
 
-          {/* Forgot password */}
-          {mode === 'login' ? (
-            <TouchableOpacity onPress={handleResetPassword} style={styles.forgotButton}>
-              <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {/* Submit button */}
-          <TouchableOpacity
-            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[Colors.accent, Colors.accentDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitGradient}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={Colors.white} />
-              ) : (
-                <Text style={styles.submitText}>
-                  {mode === 'login' ? 'Entrar' : 'Criar Conta'}
+            {/* LGPD consent checkbox (signup only) */}
+            {mode === 'signup' ? (
+              <View style={styles.consentRow}>
+                <TouchableOpacity
+                  style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Aceitar termos de uso e politica de privacidade"
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: acceptedTerms }}
+                >
+                  {acceptedTerms ? (
+                    <Ionicons name="checkmark" size={14} color={Colors.white} />
+                  ) : null}
+                </TouchableOpacity>
+                <Text style={styles.consentText}>
+                  {t('auth.acceptTerms')}{' '}
+                  <Text style={styles.consentLink} onPress={() => router.push('/privacy')}>
+                    {t('auth.privacyPolicy')}
+                  </Text>{' '}
+                  {t('auth.and')}{' '}
+                  <Text style={styles.consentLink} onPress={() => router.push('/terms')}>
+                    {t('auth.termsOfUse')}
+                  </Text>
                 </Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              </View>
+            ) : null}
 
-          {/* Terms */}
-          <Text style={styles.termsText}>
-            Ao continuar, voce concorda com os{' '}
-            <Text style={styles.termsLink} onPress={() => router.push('/terms')}>Termos de Uso</Text> e{' '}
-            <Text style={styles.termsLink} onPress={() => router.push('/privacy')}>Politica de Privacidade</Text>.
-          </Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            {/* Submit button */}
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (isLoading || (mode === 'signup' && !acceptedTerms)) && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={isLoading || (mode === 'signup' && !acceptedTerms)}
+              activeOpacity={0.8}
+              accessibilityLabel={mode === 'login' ? t('auth.loginA11y') : t('auth.signupA11y')}
+              accessibilityRole="button"
+              accessibilityState={{
+                disabled: isLoading || (mode === 'signup' && !acceptedTerms),
+                busy: isLoading,
+              }}
+            >
+              <LinearGradient
+                colors={[Colors.accent, Colors.accentDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitGradient}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitText}>
+                    {mode === 'login' ? t('auth.login') : t('auth.signup')}
+                  </Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Terms (login mode only — signup has explicit LGPD consent above) */}
+            {mode === 'login' ? (
+              <Text style={styles.termsText}>
+                {t('auth.acceptTerms')}{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/terms')}>
+                  {t('auth.termsOfUse')}
+                </Text>{' '}
+                {t('auth.and')}{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/privacy')}>
+                  {t('auth.privacyPolicy')}
+                </Text>
+              </Text>
+            ) : null}
+
+            {/* Social sign-in divider & Apple Sign In */}
+            {appleAvailable && (
+              <>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.appleButton}
+                  onPress={handleAppleSignIn}
+                  disabled={appleLoading}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Entrar com Apple"
+                  accessibilityRole="button"
+                >
+                  {appleLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-apple" size={20} color="#FFF" />
+                      <Text style={styles.appleButtonText}>{t('auth.signInWithApple')}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -409,5 +565,66 @@ const styles = StyleSheet.create({
   termsLink: {
     color: Colors.accent,
     fontWeight: FontWeight.medium,
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.xl,
+    gap: Spacing.md,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.systemGray3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: FontSize.footnote,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  consentLink: {
+    color: Colors.accent,
+    fontWeight: FontWeight.semibold,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.xl,
+    gap: Spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.systemGray4,
+  },
+  dividerText: {
+    fontSize: FontSize.footnote,
+    color: Colors.systemGray,
+    fontWeight: FontWeight.medium,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000',
+    borderRadius: BorderRadius.md,
+    paddingVertical: 14,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  appleButtonText: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: '#FFF',
   },
 });

@@ -106,6 +106,25 @@ export async function getSavedPushToken(): Promise<string | null> {
 }
 
 /**
+ * Schedules local notifications for high-severity pest alerts.
+ * Limits to a maximum of 2 notifications per batch to avoid spamming the user.
+ */
+export async function schedulePestAlertNotifications(
+  alerts: { id: string; title: string; description: string; severity: string }[],
+): Promise<void> {
+  const highAlerts = alerts.filter((a) => a.severity === 'high');
+
+  for (const alert of highAlerts.slice(0, 2)) {
+    await scheduleLocalPestAlert(
+      alert.title,
+      alert.description,
+      { screen: 'home', alertId: alert.id },
+      5,
+    );
+  }
+}
+
+/**
  * Schedules a local notification for a pest alert.
  * Useful for sending alerts based on weather conditions without a server.
  */
@@ -113,7 +132,7 @@ export async function scheduleLocalPestAlert(
   title: string,
   body: string,
   data?: Record<string, unknown>,
-  delaySeconds: number = 1
+  delaySeconds: number = 1,
 ) {
   await Notifications.scheduleNotificationAsync({
     content: {

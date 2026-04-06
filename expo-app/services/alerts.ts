@@ -10,6 +10,7 @@ export interface PestAlert {
   icon: string;
   cropAffected: string;
   date: string;
+  isForecast?: boolean;
 }
 
 interface AlertRule {
@@ -84,7 +85,8 @@ const ALERT_RULES: AlertRule[] = [
     severity: 'medium',
     icon: 'leaf',
     cropAffected: 'Soja, Milho, Algodao',
-    condition: (w) => w.humidity >= 60 && w.humidity <= 80 && w.temperature >= 22 && w.temperature <= 32,
+    condition: (w) =>
+      w.humidity >= 60 && w.humidity <= 80 && w.temperature >= 22 && w.temperature <= 32,
   },
   {
     id: 'percevejos_graos',
@@ -127,31 +129,133 @@ const ALERT_RULES: AlertRule[] = [
     icon: 'checkmark-circle',
     cropAffected: 'Todas as culturas',
     condition: (w) =>
-      w.temperature >= 18 && w.temperature <= 28 && w.humidity >= 40 && w.humidity <= 70 && w.rain < 1,
+      w.temperature >= 18 &&
+      w.temperature <= 28 &&
+      w.humidity >= 40 &&
+      w.humidity <= 70 &&
+      w.rain < 1,
   },
 ];
 
 /**
- * Generates pest alerts based on current weather conditions.
+ * Generates forecast-based pest alerts by analyzing the 7-day daily forecast.
+ * Looks for multi-day weather patterns that indicate pest/disease risks.
+ */
+export function generateForecastAlerts(weather: WeatherData): PestAlert[] {
+  const forecast = weather.forecast;
+  if (!forecast || forecast.length === 0) return [];
+
+  const now = new Date().toISOString();
+  const alerts: PestAlert[] = [];
+
+  // Rule A: 3+ consecutive days with precipitation > 5mm AND temp > 22C
+  // → Prolonged fungal disease risk
+  let consecutiveWetWarm = 0;
+  for (const day of forecast) {
+    if (day.precipitationSum > 5 && day.temperatureMax > 22) {
+      consecutiveWetWarm++;
+      if (consecutiveWetWarm >= 3) {
+        alerts.push({
+          id: 'forecast_doencas_fungicas_prolongado',
+          title: 'Risco prolongado de doencas fungicas nos proximos dias',
+          description:
+            'A previsao indica 3 ou mais dias consecutivos com chuvas acima de 5mm e temperaturas acima de 22\u00B0C. Estas condicoes favorecem fortemente o desenvolvimento de doencas fungicas como ferrugem, cercospora e antracnose. Antecipe aplicacoes preventivas de fungicida.',
+          severity: 'high',
+          icon: 'water',
+          cropAffected: 'Soja, Milho, Feijao, Cafe',
+          date: now,
+          isForecast: true,
+        });
+        break;
+      }
+    } else {
+      consecutiveWetWarm = 0;
+    }
+  }
+
+  // Rule B: Any day with min temp < 5C → Frost alert
+  const frostDay = forecast.find((day) => day.temperatureMin < 5);
+  if (frostDay) {
+    alerts.push({
+      id: 'forecast_geada',
+      title: 'Alerta de geada nos proximos dias',
+      description: `Previsao de temperatura minima abaixo de 5\u00B0C no dia ${frostDay.date}. Geadas podem causar danos severos em culturas sensiveis. Considere medidas de protecao como irrigacao por aspersao ou cobertura de mudas.`,
+      severity: 'high',
+      icon: 'snow',
+      cropAffected: 'Cafe, Citros, Hortalicas, Banana',
+      date: now,
+      isForecast: true,
+    });
+  }
+
+  // Rule C: 3+ days with zero precipitation AND temp > 30C
+  // → Prolonged dry period - mite/thrips risk
+  let consecutiveDryHot = 0;
+  for (const day of forecast) {
+    if (day.precipitationSum === 0 && day.temperatureMax > 30) {
+      consecutiveDryHot++;
+      if (consecutiveDryHot >= 3) {
+        alerts.push({
+          id: 'forecast_seco_acaros',
+          title: 'Periodo seco prolongado - monitore acaros e tripes',
+          description:
+            'A previsao indica 3 ou mais dias sem chuva com temperaturas acima de 30\u00B0C. Condicoes de seca prolongada favorecem a proliferacao de acaros e tripes. Intensifique o monitoramento da face inferior das folhas.',
+          severity: 'medium',
+          icon: 'bug',
+          cropAffected: 'Soja, Algodao, Citros, Milho',
+          date: now,
+          isForecast: true,
+        });
+        break;
+      }
+    } else {
+      consecutiveDryHot = 0;
+    }
+  }
+
+  return alerts;
+}
+
+/**
+ * Generates pest alerts based on current weather conditions AND the 7-day forecast.
  * Evaluates all rules against the weather data and returns matching alerts
  * sorted by severity (high first).
+ * Deduplicates by alert id, keeping the higher severity one.
  */
 export function generateAlerts(weather: WeatherData): PestAlert[] {
   const now = new Date().toISOString();
+  const severityOrder: Record<AlertSeverity, number> = { high: 0, medium: 1, low: 2 };
 
-  const matched = ALERT_RULES.filter((rule) => rule.condition(weather)).map((rule) => ({
-    id: rule.id,
-    title: rule.title,
-    description: rule.description,
-    severity: rule.severity,
-    icon: rule.icon,
-    cropAffected: rule.cropAffected,
-    date: now,
-  }));
+  // Current-conditions alerts
+  const currentAlerts: PestAlert[] = ALERT_RULES.filter((rule) => rule.condition(weather)).map(
+    (rule) => ({
+      id: rule.id,
+      title: rule.title,
+      description: rule.description,
+      severity: rule.severity,
+      icon: rule.icon,
+      cropAffected: rule.cropAffected,
+      date: now,
+    }),
+  );
+
+  // Forecast-based alerts
+  const forecastAlerts = generateForecastAlerts(weather);
+
+  // Merge and deduplicate by id (keep highest severity)
+  const alertMap = new Map<string, PestAlert>();
+
+  for (const alert of [...currentAlerts, ...forecastAlerts]) {
+    const existing = alertMap.get(alert.id);
+    if (!existing || severityOrder[alert.severity] < severityOrder[existing.severity]) {
+      alertMap.set(alert.id, alert);
+    }
+  }
+
+  const merged = Array.from(alertMap.values());
 
   // Sort: high > medium > low
-  const severityOrder: Record<AlertSeverity, number> = { high: 0, medium: 1, low: 2 };
-  matched.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  merged.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
-  return matched;
+  return merged;
 }

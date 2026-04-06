@@ -6,6 +6,7 @@ import {
   configureNotificationHandler,
   registerForPushNotificationsAsync,
 } from '../services/notifications';
+import { supabase } from '../services/supabase';
 
 // Configure handler at module level so it runs once
 configureNotificationHandler();
@@ -28,13 +29,27 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
+  const syncTokenToSupabase = useCallback(async (token: string) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('pragas_profiles').update({ push_token: token }).eq('id', user.id);
+      }
+    } catch (error) {
+      console.warn('Failed to sync push token to Supabase:', error);
+    }
+  }, []);
+
   const registerForNotifications = useCallback(async () => {
     const token = await registerForPushNotificationsAsync();
     if (token) {
       setExpoPushToken(token);
+      await syncTokenToSupabase(token);
     }
     return token;
-  }, []);
+  }, [syncTokenToSupabase]);
 
   useEffect(() => {
     if (shouldRegister) {
@@ -45,23 +60,21 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
     notificationListener.current = Notifications.addNotificationReceivedListener(
       (receivedNotification) => {
         setNotification(receivedNotification);
-      }
+      },
     );
 
     // Listen for user tapping on a notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data;
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
 
-        // Handle deep linking based on notification data
-        if (data?.screen === 'diagnosis' && data?.diagnosisId) {
-          router.push(`/diagnosis/${data.diagnosisId}`);
-        } else if (data?.screen === 'home') {
-          router.replace('/(tabs)');
-        }
-        // Default: just open the app (already handled by OS)
+      // Handle deep linking based on notification data
+      if (data?.screen === 'diagnosis' && data?.diagnosisId) {
+        router.push(`/diagnosis/${data.diagnosisId}`);
+      } else if (data?.screen === 'home') {
+        router.replace('/(tabs)');
       }
-    );
+      // Default: just open the app (already handled by OS)
+    });
 
     return () => {
       if (notificationListener.current) {

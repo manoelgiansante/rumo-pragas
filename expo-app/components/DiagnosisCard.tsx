@@ -21,6 +21,8 @@ interface DiagnosisCardProps {
   compact?: boolean;
 }
 
+/** @deprecated onPress prop was removed - use a wrapper TouchableOpacity instead */
+
 function getSeverityColor(severity: string): string {
   switch (severity) {
     case 'low':
@@ -55,7 +57,20 @@ function formatDatePtBr(dateStr: string): string {
   try {
     const date = new Date(dateStr);
     const day = date.getDate().toString().padStart(2, '0');
-    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const months = [
+      'jan',
+      'fev',
+      'mar',
+      'abr',
+      'mai',
+      'jun',
+      'jul',
+      'ago',
+      'set',
+      'out',
+      'nov',
+      'dez',
+    ];
     const month = months[date.getMonth()];
     return `${day} ${month}`;
   } catch {
@@ -65,18 +80,40 @@ function formatDatePtBr(dateStr: string): string {
 
 function getCropEmoji(crop: string): string {
   const emojiMap: Record<string, string> = {
-    soja: '🫘', milho: '🌽', cafe: '☕', algodao: '🏵️', cana: '🎋',
-    trigo: '🌾', arroz: '🍚', feijao: '🫘', batata: '🥔', tomate: '🍅',
-    mandioca: '🥖', citros: '🍊', uva: '🍇', banana: '🍌',
+    soja: '🫘',
+    milho: '🌽',
+    cafe: '☕',
+    algodao: '🏵️',
+    cana: '🎋',
+    trigo: '🌾',
+    arroz: '🍚',
+    feijao: '🫘',
+    batata: '🥔',
+    tomate: '🍅',
+    mandioca: '🥖',
+    citros: '🍊',
+    uva: '🍇',
+    banana: '🍌',
   };
   return emojiMap[crop] ?? '🌱';
 }
 
 function getCropDisplayName(crop: string): string {
   const nameMap: Record<string, string> = {
-    soja: 'Soja', milho: 'Milho', cafe: 'Cafe', algodao: 'Algodao', cana: 'Cana',
-    trigo: 'Trigo', arroz: 'Arroz', feijao: 'Feijao', batata: 'Batata', tomate: 'Tomate',
-    mandioca: 'Mandioca', citros: 'Citros', uva: 'Uva', banana: 'Banana',
+    soja: 'Soja',
+    milho: 'Milho',
+    cafe: 'Cafe',
+    algodao: 'Algodao',
+    cana: 'Cana',
+    trigo: 'Trigo',
+    arroz: 'Arroz',
+    feijao: 'Feijao',
+    batata: 'Batata',
+    tomate: 'Tomate',
+    mandioca: 'Mandioca',
+    citros: 'Citros',
+    uva: 'Uva',
+    banana: 'Banana',
   };
   return nameMap[crop] ?? crop;
 }
@@ -101,11 +138,14 @@ function parseNameFromNotes(notes?: string): string | undefined {
   }
 }
 
-export function DiagnosisCard({ diagnosis, compact = false }: DiagnosisCardProps) {
+export const DiagnosisCard = React.memo(function DiagnosisCard({
+  diagnosis,
+  compact = false,
+}: DiagnosisCardProps) {
   const isDark = useColorScheme() === 'dark';
   const severity = diagnosis.severity || parseSeverityFromNotes(diagnosis.notes);
   const severityColor = getSeverityColor(severity);
-  const isHealthy = diagnosis.is_healthy ?? diagnosis.pest_id === 'Healthy' ?? false;
+  const isHealthy = diagnosis.is_healthy ?? diagnosis.pest_id === 'Healthy';
   const displayName = parseNameFromNotes(diagnosis.notes) || diagnosis.pest_name || 'Diagnostico';
 
   return (
@@ -117,6 +157,9 @@ export function DiagnosisCard({ diagnosis, compact = false }: DiagnosisCardProps
           shadowColor: isDark ? 'transparent' : '#000',
         },
       ]}
+      accessible
+      accessibilityLabel={`${displayName}, ${diagnosis.crop ? getCropDisplayName(diagnosis.crop) : 'cultura nao informada'}, confianca ${Math.round((diagnosis.confidence ?? 0) * 100)} por cento, severidade ${getSeverityLabel(severity)}, ${formatDatePtBr(diagnosis.created_at)}`}
+      accessibilityRole="summary"
     >
       <View style={[styles.iconBox, { backgroundColor: `${severityColor}15` }]}>
         <Ionicons
@@ -127,10 +170,7 @@ export function DiagnosisCard({ diagnosis, compact = false }: DiagnosisCardProps
       </View>
 
       <View style={styles.info}>
-        <Text
-          style={[styles.pestName, isDark && { color: Colors.textDark }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.pestName, isDark && { color: Colors.textDark }]} numberOfLines={1}>
           {displayName}
         </Text>
 
@@ -143,20 +183,20 @@ export function DiagnosisCard({ diagnosis, compact = false }: DiagnosisCardProps
           ) : null}
 
           <Text style={styles.dot}>{'  \u2022  '}</Text>
-          <Text style={styles.confidence}>
-            {Math.round((diagnosis.confidence ?? 0) * 100)}%
-          </Text>
+          <Text style={styles.confidence}>{Math.round((diagnosis.confidence ?? 0) * 100)}%</Text>
         </View>
       </View>
 
       <View style={styles.rightSection}>
         <Text style={styles.date}>{formatDatePtBr(diagnosis.created_at)}</Text>
-        <Text style={[styles.severityLabel, { color: severityColor }]}>{getSeverityLabel(severity)}</Text>
+        <Text style={[styles.severityLabel, { color: severityColor }]}>
+          {getSeverityLabel(severity)}
+        </Text>
         <View style={[styles.severityBar, { backgroundColor: severityColor }]} />
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

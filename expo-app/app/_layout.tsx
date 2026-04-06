@@ -1,11 +1,23 @@
+import '../i18n';
 import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider, useAuthContext } from '../context/AuthContext';
+import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
+import { useOTAUpdate } from '../hooks/useOTAUpdate';
+import { initializePurchases } from '../services/purchases';
+import { initAnalytics, resetAnalytics } from '../services/analytics';
+import {
+  syncSubscriptionToSupabase,
+  startSubscriptionListener,
+  stopSubscriptionListener,
+} from '../services/subscriptionSync';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { Colors } from '../constants/theme';
 
 // Prevent the splash screen from auto-hiding before data is loaded
@@ -14,13 +26,38 @@ SplashScreen.preventAutoHideAsync();
 const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading } = useAuthContext();
+  const { isAuthenticated, isLoading, user } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
   // Register for push notifications only after the user is authenticated
   useNotifications(isAuthenticated);
+
+  // Auto-sync queued offline diagnoses when connectivity returns
+  useDiagnosisSync();
+
+  // Check for OTA updates on app launch (only in production builds)
+  useOTAUpdate();
+
+  // Initialise RevenueCat for in-app purchases (never blocks startup)
+  useEffect(() => {
+    initializePurchases(user?.id).catch((e) =>
+      console.warn('[RevenueCat] Init failed (non-blocking):', e),
+    );
+  }, [user?.id]);
+
+  // Initialize analytics and subscription sync when user is authenticated
+  useEffect(() => {
+    if (user?.id) {
+      initAnalytics(user.id);
+      syncSubscriptionToSupabase(user.id).catch(() => {});
+      startSubscriptionListener(user.id);
+    } else {
+      resetAnalytics();
+      stopSubscriptionListener();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((value) => {
@@ -59,24 +96,29 @@ function RootLayoutNav() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
+      <OfflineBanner />
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
-    </>
+    </View>
   );
 }
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

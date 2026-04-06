@@ -7,10 +7,13 @@ export interface ChatMessage {
 }
 
 export async function sendChatMessage(
-  messages: { role: string; content: string }[]
+  messages: { role: string; content: string }[],
 ): Promise<string> {
   // Get current session token
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
   if (sessionError || !session?.access_token) {
     throw new Error('Voce precisa estar logado para usar o chat IA');
@@ -22,10 +25,10 @@ export async function sendChatMessage(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${session.access_token}`,
     },
     body: JSON.stringify({
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.content,
       })),
@@ -33,15 +36,41 @@ export async function sendChatMessage(
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    let errorMessage = `Erro na IA (${response.status})`;
+    // Parse error body for structured error codes
+    let errorBody: { error?: string; code?: string; limit?: number } = {};
     try {
-      const parsed = JSON.parse(errorBody);
-      if (parsed.error) errorMessage = parsed.error;
+      errorBody = await response.json();
     } catch {
-      // Use default error message
+      // ignore parse errors
     }
-    throw new Error(errorMessage);
+
+    // Sanitize error messages - never expose raw API responses to users
+    let errorMessage: string;
+    switch (true) {
+      case response.status === 401:
+        errorMessage = 'Sessao expirada. Faca login novamente.';
+        break;
+      case response.status === 403 && errorBody.code === 'CHAT_LIMIT_REACHED':
+        errorMessage =
+          errorBody.error || 'Limite de mensagens atingido. Faca upgrade para continuar.';
+        break;
+      case response.status === 403:
+        errorMessage = 'Voce nao tem permissao para usar o chat IA. Verifique sua assinatura.';
+        break;
+      case response.status === 429:
+        errorMessage = 'Muitas mensagens enviadas. Aguarde um momento e tente novamente.';
+        break;
+      case response.status >= 500:
+        errorMessage =
+          'O servico de IA esta temporariamente indisponivel. Tente novamente em alguns minutos.';
+        break;
+      default:
+        errorMessage = 'Ocorreu um erro ao processar sua mensagem. Tente novamente.';
+    }
+
+    const error = new Error(errorMessage) as Error & { code?: string };
+    if (errorBody.code) error.code = errorBody.code;
+    throw error;
   }
 
   const data = await response.json();

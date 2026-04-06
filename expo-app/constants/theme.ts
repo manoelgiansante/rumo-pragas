@@ -26,6 +26,14 @@ export const Colors = {
   systemGray6: '#F2F2F7',
 };
 
+export const DarkColors = {
+  card: '#1C1C1E',
+  input: '#2C2C2E',
+  surface: '#2C2C2E',
+  surfaceSecondary: '#3A3A3C',
+  separator: '#38383A',
+};
+
 export const Gradients = {
   hero: ['#0F6B4D', '#1A966B', '#29B887'],
   tech: ['#1A966B', '#3882F2'],

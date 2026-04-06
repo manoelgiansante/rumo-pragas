@@ -21,18 +21,24 @@ function formatTime(date: Date): string {
   return `${h}:${m}`;
 }
 
-export function ChatBubble({ message }: ChatBubbleProps) {
+export const ChatBubble = React.memo(function ChatBubble({ message }: ChatBubbleProps) {
   const isDark = useColorScheme() === 'dark';
   const isUser = message.role === 'user';
 
   return (
-    <View style={[styles.row, isUser && styles.rowUser]}>
+    <View
+      style={[styles.row, isUser && styles.rowUser]}
+      accessible
+      accessibilityLabel={`${isUser ? 'Voce' : 'Assistente IA'}: ${message.content}`}
+      accessibilityRole="text"
+    >
       {!isUser && (
         <LinearGradient
           colors={Gradients.tech as [string, string]}
           style={styles.avatar}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
+          accessibilityElementsHidden
         >
           <Ionicons name="sparkles" size={14} color={Colors.white} />
         </LinearGradient>
@@ -68,21 +74,22 @@ export function ChatBubble({ message }: ChatBubbleProps) {
       </View>
     </View>
   );
-}
+});
 
 export function TypingIndicator() {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} accessible accessibilityLabel="Assistente IA esta digitando" accessibilityRole="text">
       <LinearGradient
         colors={Gradients.tech as [string, string]}
         style={styles.avatar}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
+        accessibilityElementsHidden
       >
         <Ionicons name="sparkles" size={14} color={Colors.white} />
       </LinearGradient>
 
-      <View style={[styles.bubble, styles.bubbleAI, styles.typingBubble]}>
+      <View style={[styles.bubble, styles.bubbleAI, styles.typingBubble]} accessibilityElementsHidden>
         <View style={styles.dotsRow}>
           {[0, 1, 2].map((i) => (
             <View key={i} style={[styles.dot, { opacity: 0.4 + i * 0.2 }]} />

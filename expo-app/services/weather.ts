@@ -56,51 +56,142 @@ const WEATHER_CODE_MAP: Record<number, { description: string; icon: string }> = 
   99: { description: 'Tempestade com granizo forte', icon: 'thunderstorm' },
 };
 
-export async function fetchWeather(latitude: number, longitude: number): Promise<WeatherData> {
-  const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
-    `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m` +
-    `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code` +
-    `&timezone=auto&forecast_days=7`;
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Weather API error: ${response.status}`);
+const WEATHER_CACHE_KEY = '@rumo_pragas_weather_cache';
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+interface WeatherCache {
+  data: WeatherData;
+  timestamp: number;
+}
+
+async function getCachedWeather(): Promise<WeatherData | null> {
+  try {
+    const raw = await AsyncStorage.getItem(WEATHER_CACHE_KEY);
+    if (!raw) return null;
+    const cache: WeatherCache = JSON.parse(raw);
+    const age = Date.now() - cache.timestamp;
+    if (age > CACHE_TTL_MS) return null;
+    return cache.data;
+  } catch {
+    return null;
   }
+}
 
-  const json = await response.json();
-  const current = json.current;
-  const daily = json.daily;
-  const code = current.weather_code as number;
-  const mapped = WEATHER_CODE_MAP[code] ?? { description: 'Desconhecido', icon: 'partly-sunny' };
+async function setCachedWeather(data: WeatherData): Promise<void> {
+  try {
+    const cache: WeatherCache = { data, timestamp: Date.now() };
+    await AsyncStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // Silently fail — caching is best-effort
+  }
+}
 
-  const forecast: DailyForecast[] = (daily.time as string[]).map((dateStr: string, i: number) => {
-    const dayCode = daily.weather_code[i] as number;
-    const dayMapped = WEATHER_CODE_MAP[dayCode] ?? { description: 'Desconhecido', icon: 'partly-sunny' };
-    const date = new Date(dateStr + 'T12:00:00');
-    return {
-      date: dateStr,
-      dayAbbrev: i === 0 ? 'Hoje' : DAY_ABBREVS[date.getDay()],
-      weatherCode: dayCode,
-      temperatureMax: daily.temperature_2m_max[i],
-      temperatureMin: daily.temperature_2m_min[i],
-      precipitationSum: daily.precipitation_sum[i],
-      description: dayMapped.description,
-      icon: dayMapped.icon,
+/**
+ * Returns cached weather data regardless of TTL.
+ * Used as fallback when the network request fails.
+ */
+async function getStaleCache(): Promise<WeatherData | null> {
+  try {
+    const raw = await AsyncStorage.getItem(WEATHER_CACHE_KEY);
+    if (!raw) return null;
+    const cache: WeatherCache = JSON.parse(raw);
+    return cache.data;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchWeather(
+  latitude: number,
+  longitude: number,
+): Promise<WeatherData | null> {
+  // Return fresh cache if available (within TTL)
+  const cached = await getCachedWeather();
+  if (cached) return cached;
+
+  try {
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+      `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code` +
+      `&timezone=auto&forecast_days=7`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Weather API error: ${response.status}`);
+    }
+
+    const json = await response.json();
+    const current = json.current;
+    const daily = json.daily;
+    const code = current.weather_code as number;
+    const mapped = WEATHER_CODE_MAP[code] ?? { description: 'Desconhecido', icon: 'partly-sunny' };
+
+    const forecast: DailyForecast[] = (daily.time as string[]).map((dateStr: string, i: number) => {
+      const dayCode = daily.weather_code[i] as number;
+      const dayMapped = WEATHER_CODE_MAP[dayCode] ?? {
+        description: 'Desconhecido',
+        icon: 'partly-sunny',
+      };
+      const date = new Date(dateStr + 'T12:00:00');
+      return {
+        date: dateStr,
+        dayAbbrev: i === 0 ? 'Hoje' : DAY_ABBREVS[date.getDay()],
+        weatherCode: dayCode,
+        temperatureMax: daily.temperature_2m_max[i],
+        temperatureMin: daily.temperature_2m_min[i],
+        precipitationSum: daily.precipitation_sum[i],
+        description: dayMapped.description,
+        icon: dayMapped.icon,
+      };
+    });
+
+    const weatherData: WeatherData = {
+      temperature: current.temperature_2m,
+      apparentTemperature: current.apparent_temperature,
+      humidity: current.relative_humidity_2m,
+      precipitation: current.precipitation,
+      rain: current.rain,
+      weatherCode: code,
+      windSpeed: current.wind_speed_10m,
+      dailyPrecipitationSum: daily.precipitation_sum?.[0] ?? 0,
+      description: mapped.description,
+      icon: mapped.icon,
+      forecast,
     };
-  });
 
-  return {
-    temperature: current.temperature_2m,
-    apparentTemperature: current.apparent_temperature,
-    humidity: current.relative_humidity_2m,
-    precipitation: current.precipitation,
-    rain: current.rain,
-    weatherCode: code,
-    windSpeed: current.wind_speed_10m,
-    dailyPrecipitationSum: daily.precipitation_sum?.[0] ?? 0,
-    description: mapped.description,
-    icon: mapped.icon,
-    forecast,
-  };
+    // Cache the successful response
+    await setCachedWeather(weatherData);
+
+    return weatherData;
+  } catch (error) {
+    console.error(
+      '[Weather] Falha ao buscar dados meteorologicos:',
+      error instanceof Error ? error.message : error,
+    );
+
+    // Network failed -- return stale cache if available so the UI still shows something
+    const stale = await getStaleCache();
+    if (stale) {
+      console.info('[Weather] Usando cache expirado como fallback');
+      return stale;
+    }
+
+    // No cache at all -- throw so the caller can show an error state
+    throw new WeatherError(
+      'Nao foi possivel obter dados meteorologicos. Verifique sua conexao.',
+      error instanceof Error ? error : undefined,
+    );
+  }
+}
+
+export class WeatherError extends Error {
+  cause?: Error;
+  constructor(message: string, cause?: Error) {
+    super(message);
+    this.name = 'WeatherError';
+    this.cause = cause;
+  }
 }

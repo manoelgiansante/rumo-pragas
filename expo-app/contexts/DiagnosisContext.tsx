@@ -51,9 +51,7 @@ export function DiagnosisProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <DiagnosisContext.Provider
-      value={{ ...state, setImage, setCrop, setResult, setError, reset }}
-    >
+    <DiagnosisContext.Provider value={{ ...state, setImage, setCrop, setResult, setError, reset }}>
       {children}
     </DiagnosisContext.Provider>
   );
