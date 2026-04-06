@@ -208,6 +208,8 @@ export default {
     deletionReceivedMessage:
       'Su solicitud de exclusión de cuenta ha sido registrada. Sus datos serán eliminados en hasta 15 días conforme la LGPD.',
     deletionError: 'No se pudo procesar la solicitud. Inténtelo de nuevo.',
+    subLoadError: 'Error al cargar suscripción',
+    subLoadRetry: 'Toque para intentar de nuevo',
   },
   common: {
     search: 'Buscar',

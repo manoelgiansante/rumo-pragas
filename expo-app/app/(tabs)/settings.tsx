@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,7 @@ export default function SettingsScreen() {
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
   const [subLoading, setSubLoading] = useState(true);
   const [subError, setSubError] = useState(false);
+  const subLoadingRef = useRef(false);
   const { isChecking, checkForUpdate } = useOTAUpdate();
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
@@ -114,7 +115,8 @@ export default function SettingsScreen() {
   }, [i18n]);
 
   const loadSubscriptionData = useCallback(async () => {
-    if (!user) return;
+    if (!user || subLoadingRef.current) return;
+    subLoadingRef.current = true;
     setSubLoading(true);
     setSubError(false);
     try {
@@ -141,6 +143,7 @@ export default function SettingsScreen() {
       console.error('Failed to load subscription data:', e);
       setSubError(true);
     } finally {
+      subLoadingRef.current = false;
       setSubLoading(false);
     }
   }, [user]);
@@ -242,10 +245,10 @@ export default function SettingsScreen() {
             <Ionicons name="cloud-offline-outline" size={20} color={Colors.coral} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.rowLabel, isDark && styles.textDark]}>
-                Erro ao carregar assinatura
+                {t('settings.subLoadError')}
               </Text>
               <Text style={{ fontSize: FontSize.caption, color: Colors.textSecondary }}>
-                Toque para tentar novamente
+                {t('settings.subLoadRetry')}
               </Text>
             </View>
             <Ionicons name="refresh" size={18} color={Colors.coral} />

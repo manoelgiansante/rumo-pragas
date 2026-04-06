@@ -206,6 +206,8 @@ export default {
     deletionReceivedMessage:
       'Your account deletion request has been registered. Your data will be removed within 15 days in accordance with LGPD.',
     deletionError: 'Could not process the request. Please try again.',
+    subLoadError: 'Failed to load subscription',
+    subLoadRetry: 'Tap to try again',
   },
   common: {
     search: 'Search',

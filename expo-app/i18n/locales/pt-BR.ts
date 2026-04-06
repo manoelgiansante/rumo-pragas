@@ -215,6 +215,8 @@ export default {
     deletionReceivedMessage:
       'Sua solicitação de exclusão de conta foi registrada. Seus dados serão removidos em até 15 dias conforme a LGPD.',
     deletionError: 'Não foi possível processar a solicitação. Tente novamente.',
+    subLoadError: 'Erro ao carregar assinatura',
+    subLoadRetry: 'Toque para tentar novamente',
   },
   // Common
   common: {
