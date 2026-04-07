@@ -1,8 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { OfflineBanner } from '../../components/OfflineBanner';
-
-// --- Mocks ---
+import i18n from '../../i18n';
 
 const mockNetworkStatus = {
   isConnected: true,
@@ -15,12 +14,11 @@ jest.mock('../../hooks/useNetworkStatus', () => ({
 }));
 
 jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: {
-      View,
-    },
+    default: { View },
     useSharedValue: (init: number) => ({ value: init }),
     useAnimatedStyle: (fn: () => object) => fn(),
     withTiming: (val: number) => val,
@@ -43,18 +41,17 @@ jest.mock('../../constants/theme', () => ({
   FontWeight: { semibold: '600' },
 }));
 
-// --- Tests ---
+const offlineText = i18n.t('common.offline');
+
 describe('OfflineBanner', () => {
   beforeEach(() => {
-    // Reset to connected state
     mockNetworkStatus.isConnected = true;
     mockNetworkStatus.isInternetReachable = true;
   });
 
   it('does not render when connected', () => {
     const { queryByText } = render(<OfflineBanner />);
-
-    expect(queryByText('Sem conexao com a internet')).toBeNull();
+    expect(queryByText(offlineText)).toBeNull();
   });
 
   it('renders banner text when disconnected', () => {
@@ -62,8 +59,7 @@ describe('OfflineBanner', () => {
     mockNetworkStatus.isInternetReachable = false;
 
     const { getByText } = render(<OfflineBanner />);
-
-    expect(getByText('Sem conexao com a internet')).toBeTruthy();
+    expect(getByText(offlineText)).toBeTruthy();
   });
 
   it('renders when internet is not reachable but isConnected is true', () => {
@@ -71,7 +67,6 @@ describe('OfflineBanner', () => {
     mockNetworkStatus.isInternetReachable = false;
 
     const { getByText } = render(<OfflineBanner />);
-
-    expect(getByText('Sem conexao com a internet')).toBeTruthy();
+    expect(getByText(offlineText)).toBeTruthy();
   });
 });

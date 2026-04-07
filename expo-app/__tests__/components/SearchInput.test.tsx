@@ -1,13 +1,12 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { SearchInput } from '../../components/SearchInput';
+import i18n from '../../i18n';
 
-// Mock @expo/vector-icons
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
-// Mock constants/theme
 jest.mock('../../constants/theme', () => ({
   Colors: {
     text: '#000000',
@@ -19,11 +18,13 @@ jest.mock('../../constants/theme', () => ({
   FontSize: { body: 17 },
 }));
 
-// Mock useColorScheme
 jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
   __esModule: true,
   default: jest.fn(() => 'light'),
 }));
+
+const defaultPlaceholder = i18n.t('common.searchDefault');
+const clearLabel = i18n.t('common.clearSearchA11y');
 
 describe('SearchInput', () => {
   const mockOnChangeText = jest.fn();
@@ -36,7 +37,6 @@ describe('SearchInput', () => {
     const { getByPlaceholderText } = render(
       <SearchInput value="" onChangeText={mockOnChangeText} placeholder="Buscar pragas..." />,
     );
-
     expect(getByPlaceholderText('Buscar pragas...')).toBeTruthy();
   });
 
@@ -44,40 +44,33 @@ describe('SearchInput', () => {
     const { getByPlaceholderText } = render(
       <SearchInput value="" onChangeText={mockOnChangeText} />,
     );
-
-    expect(getByPlaceholderText('Buscar...')).toBeTruthy();
+    expect(getByPlaceholderText(defaultPlaceholder)).toBeTruthy();
   });
 
   it('calls onChangeText when text is typed', () => {
     const { getByPlaceholderText } = render(
       <SearchInput value="" onChangeText={mockOnChangeText} placeholder="Buscar..." />,
     );
-
     const input = getByPlaceholderText('Buscar...');
     fireEvent.changeText(input, 'ferrugem');
-
     expect(mockOnChangeText).toHaveBeenCalledWith('ferrugem');
   });
 
   it('shows clear button when value has text', () => {
     const { getByLabelText } = render(<SearchInput value="soja" onChangeText={mockOnChangeText} />);
-
-    expect(getByLabelText('Limpar busca')).toBeTruthy();
+    expect(getByLabelText(clearLabel)).toBeTruthy();
   });
 
   it('does not show clear button when value is empty', () => {
     const { queryByLabelText } = render(<SearchInput value="" onChangeText={mockOnChangeText} />);
-
-    expect(queryByLabelText('Limpar busca')).toBeNull();
+    expect(queryByLabelText(clearLabel)).toBeNull();
   });
 
   it('calls onChangeText with empty string when clear button is pressed', () => {
     const { getByLabelText } = render(
       <SearchInput value="milho" onChangeText={mockOnChangeText} />,
     );
-
-    fireEvent.press(getByLabelText('Limpar busca'));
-
+    fireEvent.press(getByLabelText(clearLabel));
     expect(mockOnChangeText).toHaveBeenCalledWith('');
   });
 
@@ -85,7 +78,6 @@ describe('SearchInput', () => {
     const { getByLabelText } = render(
       <SearchInput value="" onChangeText={mockOnChangeText} placeholder="Buscar cultura..." />,
     );
-
     expect(getByLabelText('Buscar cultura...')).toBeTruthy();
   });
 });

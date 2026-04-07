@@ -2,13 +2,12 @@ import React from 'react';
 import { Text } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
+import i18n from '../../i18n';
 
-// Mock @expo/vector-icons
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
-// Mock constants/theme
 jest.mock('../../constants/theme', () => ({
   Colors: {
     accent: '#1A966B',
@@ -25,15 +24,11 @@ jest.mock('../../constants/theme', () => ({
   FontWeight: { regular: '400', semibold: '600', bold: '700' },
 }));
 
-// Component that throws on demand
 function ThrowingChild({ shouldThrow }: { shouldThrow: boolean }) {
-  if (shouldThrow) {
-    throw new Error('Test error message');
-  }
+  if (shouldThrow) throw new Error('Test error message');
   return <Text>Child content</Text>;
 }
 
-// Suppress console.error for expected error boundary logs
 const originalConsoleError = console.error;
 beforeAll(() => {
   console.error = jest.fn();
@@ -42,6 +37,9 @@ afterAll(() => {
   console.error = originalConsoleError;
 });
 
+const errorTitle = i18n.t('errorBoundary.title');
+const retryText = i18n.t('errorBoundary.retry');
+
 describe('ErrorBoundary', () => {
   it('renders children when no error occurs', () => {
     const { getByText } = render(
@@ -49,7 +47,6 @@ describe('ErrorBoundary', () => {
         <ThrowingChild shouldThrow={false} />
       </ErrorBoundary>,
     );
-
     expect(getByText('Child content')).toBeTruthy();
   });
 
@@ -59,24 +56,15 @@ describe('ErrorBoundary', () => {
         <ThrowingChild shouldThrow={true} />
       </ErrorBoundary>,
     );
-
-    // Should show error UI
-    expect(getByText('Algo deu errado')).toBeTruthy();
-    expect(getByText(/Ocorreu um erro inesperado/)).toBeTruthy();
-    expect(getByText('Tentar novamente')).toBeTruthy();
-
-    // Should NOT show children
+    expect(getByText(errorTitle)).toBeTruthy();
+    expect(getByText(retryText)).toBeTruthy();
     expect(queryByText('Child content')).toBeNull();
   });
 
-  it('resets error state when "Tentar novamente" is pressed', () => {
-    // We need a component that can toggle its throwing behavior
+  it('resets error state when retry is pressed', () => {
     let shouldThrow = true;
-
     function ToggleChild() {
-      if (shouldThrow) {
-        throw new Error('Recoverable error');
-      }
+      if (shouldThrow) throw new Error('Recoverable error');
       return <Text>Recovered content</Text>;
     }
 
@@ -86,29 +74,20 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     );
 
-    // Should show error UI initially
-    expect(getByText('Algo deu errado')).toBeTruthy();
-
-    // Fix the child so it won't throw again
+    expect(getByText(errorTitle)).toBeTruthy();
     shouldThrow = false;
-
-    // Press retry
-    fireEvent.press(getByText('Tentar novamente'));
-
-    // Should now show recovered content
+    fireEvent.press(getByText(retryText));
     expect(getByText('Recovered content')).toBeTruthy();
   });
 
   it('renders custom fallback when provided', () => {
     const fallback = <Text>Custom fallback</Text>;
-
     const { getByText, queryByText } = render(
       <ErrorBoundary fallback={fallback}>
         <ThrowingChild shouldThrow={true} />
       </ErrorBoundary>,
     );
-
     expect(getByText('Custom fallback')).toBeTruthy();
-    expect(queryByText('Algo deu errado')).toBeNull();
+    expect(queryByText(errorTitle)).toBeNull();
   });
 });

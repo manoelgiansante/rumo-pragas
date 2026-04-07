@@ -39,3 +39,4 @@ Config.xcconfig
 core
 node_modules
 .expo
+expo-app/coverage/

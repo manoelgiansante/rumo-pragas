@@ -30,9 +30,7 @@ global.fetch = mockFetch;
 
 // --- Helpers ---
 
-/** Generate a base64 string of approximately the given byte size. */
 function makeBase64(sizeBytes: number): string {
-  // base64 length ~ sizeBytes * 4/3
   const chars = Math.ceil(sizeBytes * (4 / 3));
   return 'A'.repeat(chars);
 }
@@ -59,41 +57,55 @@ describe('sendDiagnosis', () => {
 
   it('throws when base64 image exceeds 5 MB', async () => {
     const bigImage = makeBase64(6 * 1024 * 1024);
-
     await expect(sendDiagnosis(bigImage, 'soja', null, null, 'token')).rejects.toThrow(
-      'muito grande',
+      /muito grande/,
     );
   });
 
   it('does not throw for images under 5 MB', async () => {
     const smallImage = makeBase64(1 * 1024 * 1024);
-
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => makeDiagnosisRow(),
     });
-
     await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).resolves.toBeDefined();
   });
 
   it('validates that the endpoint URL uses HTTPS', async () => {
-    // Temporarily override Config to use non-HTTPS URL
     jest.resetModules();
+    jest.doMock('@react-native-async-storage/async-storage', () => ({
+      getItem: jest.fn().mockResolvedValue(null),
+      setItem: jest.fn().mockResolvedValue(undefined),
+      removeItem: jest.fn().mockResolvedValue(undefined),
+      multiRemove: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined),
+    }));
+    jest.doMock('expo-localization', () => ({
+      getLocales: () => [{ languageTag: 'pt-BR', languageCode: 'pt' }],
+    }));
     jest.doMock('../../constants/config', () => ({
       Config: {
         SUPABASE_URL: 'http://insecure.example.com',
         SUPABASE_ANON_KEY: 'key',
       },
     }));
+    jest.doMock('../../types/diagnosis', () => ({
+      parseNotes: jest.fn((notes: string | undefined) => {
+        if (!notes) return undefined;
+        try {
+          return JSON.parse(notes);
+        } catch {
+          return undefined;
+        }
+      }),
+    }));
 
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { sendDiagnosis: sendInsecure } = require('../../services/diagnosis');
     const smallImage = makeBase64(100);
-
     await expect(sendInsecure(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
-      'Configuracao de servidor invalida',
+      /servidor inv|invalid/i,
     );
-
-    // Restore mock
     jest.resetModules();
   });
 
@@ -124,9 +136,8 @@ describe('sendDiagnosis', () => {
     });
 
     const smallImage = makeBase64(100);
-
     await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
-      'limite de 5 diagnosticos do plano gratuito',
+      /limite de 5/,
     );
   });
 
@@ -138,9 +149,8 @@ describe('sendDiagnosis', () => {
     });
 
     const smallImage = makeBase64(100);
-
     await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
-      'Sessao expirada',
+      /[Ss]ess[aã]o expirad/,
     );
   });
 
@@ -152,9 +162,8 @@ describe('sendDiagnosis', () => {
     });
 
     const smallImage = makeBase64(100);
-
     await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
-      'servidor esta temporariamente indisponivel',
+      /servidor.*indispon|temporariamente/i,
     );
   });
 });
@@ -166,14 +175,12 @@ describe('fetchDiagnoses', () => {
 
   it('returns array of diagnoses on success', async () => {
     const rows = [makeDiagnosisRow(), makeDiagnosisRow({ id: 'diag-2' })];
-
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => rows,
     });
 
     const result = await fetchDiagnoses('token', 'user-1');
-
     expect(result).toHaveLength(2);
     expect(result[0]).toHaveProperty('id', 'diag-1');
     expect(result[1]).toHaveProperty('id', 'diag-2');
@@ -181,8 +188,7 @@ describe('fetchDiagnoses', () => {
 
   it('throws on non-OK response', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
-
-    await expect(fetchDiagnoses('token', 'user-1')).rejects.toThrow('Falha ao buscar diagnosticos');
+    await expect(fetchDiagnoses('token', 'user-1')).rejects.toThrow(/buscar diagn/i);
   });
 });
 
@@ -206,9 +212,7 @@ describe('fetchDiagnosisCount', () => {
   it('returns 0 when content-range header is missing', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      headers: {
-        get: () => null,
-      },
+      headers: { get: () => null },
     });
 
     const count = await fetchDiagnosisCount('token', 'user-1');
@@ -235,9 +239,6 @@ describe('deleteDiagnosis', () => {
 
   it('throws on failure', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
-
-    await expect(deleteDiagnosis('token', 'diag-abc')).rejects.toThrow(
-      'Falha ao excluir diagnostico',
-    );
+    await expect(deleteDiagnosis('token', 'diag-abc')).rejects.toThrow(/excluir diagn/i);
   });
 });

@@ -25,7 +25,6 @@ jest.mock('../../services/auth', () => ({
   resetPassword: (...args: unknown[]) => mockResetPassword(...args),
 }));
 
-// --- Helpers ---
 const mockSession = {
   user: { id: 'user-123', email: 'test@example.com' },
   access_token: 'token-abc',
@@ -40,7 +39,6 @@ function setupDefaultMocks(session: typeof mockSession | null = null) {
   });
 }
 
-// --- Tests ---
 describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -50,7 +48,6 @@ describe('useAuth', () => {
   it('starts with loading true and not authenticated', async () => {
     const { result } = renderHook(() => useAuth());
 
-    // Initial state before getSession resolves
     expect(result.current.isLoading).toBe(true);
     expect(result.current.isAuthenticated).toBe(false);
     expect(result.current.user).toBeNull();
@@ -62,7 +59,6 @@ describe('useAuth', () => {
 
   it('sets authenticated state when session exists', async () => {
     setupDefaultMocks(mockSession);
-
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -76,7 +72,6 @@ describe('useAuth', () => {
   it('signIn calls auth service with correct credentials', async () => {
     setupDefaultMocks(null);
     mockSignIn.mockResolvedValueOnce(undefined);
-
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -93,7 +88,6 @@ describe('useAuth', () => {
   it('signIn sets error state on failure', async () => {
     setupDefaultMocks(null);
     mockSignIn.mockRejectedValueOnce(new Error('Invalid credentials'));
-
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -104,7 +98,7 @@ describe('useAuth', () => {
       try {
         await result.current.signIn('bad@email.com', 'wrong');
       } catch {
-        // Expected to throw
+        // Expected
       }
     });
 
@@ -114,7 +108,6 @@ describe('useAuth', () => {
   it('signOut calls auth service', async () => {
     setupDefaultMocks(mockSession);
     mockSignOut.mockResolvedValueOnce(undefined);
-
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -131,7 +124,6 @@ describe('useAuth', () => {
   it('clearError resets the error state', async () => {
     setupDefaultMocks(null);
     mockSignIn.mockRejectedValueOnce(new Error('Fail'));
-
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -163,7 +155,6 @@ describe('useAuth', () => {
     });
 
     unmount();
-
     expect(mockSubscription.unsubscribe).toHaveBeenCalled();
   });
 
@@ -184,7 +175,6 @@ describe('useAuth', () => {
 
     expect(result.current.isAuthenticated).toBe(false);
 
-    // Simulate auth state change (user signs in)
     act(() => {
       authChangeCallback!('SIGNED_IN', mockSession);
     });

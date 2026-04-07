@@ -2,7 +2,6 @@ import {
   checkSubscriptionStatus,
   getOfferings,
   purchasePackage,
-  initializePurchases,
   restorePurchases,
 } from '../../services/purchases';
 

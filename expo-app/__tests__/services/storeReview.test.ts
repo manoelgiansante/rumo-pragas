@@ -2,21 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 import { trackSuccessfulDiagnosis, resetReviewTracking } from '../../services/storeReview';
 
-// --- Mocks ---
-
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  multiRemove: jest.fn(),
-}));
+// AsyncStorage is globally mocked via jest.setup.ts
+const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 
 jest.mock('expo-store-review', () => ({
   isAvailableAsync: jest.fn(),
   requestReview: jest.fn(),
 }));
 
-const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const StoreReview = require('expo-store-review') as {
   isAvailableAsync: jest.Mock;
   requestReview: jest.Mock;
@@ -25,19 +19,16 @@ const StoreReview = require('expo-store-review') as {
 const DIAGNOSIS_COUNT_KEY = '@rumo_pragas_successful_diagnoses';
 const REVIEW_PROMPTED_KEY = '@rumo_pragas_review_prompted';
 
-// --- Tests ---
 describe('storeReview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAsyncStorage.setItem.mockResolvedValue(undefined);
     mockAsyncStorage.multiRemove.mockResolvedValue(undefined);
-    // Default: not already prompted, platform is ios
     (Platform as any).OS = 'ios';
   });
 
   describe('trackSuccessfulDiagnosis', () => {
     it('increments the counter on each call', async () => {
-      // Not prompted yet
       mockAsyncStorage.getItem.mockImplementation((key: string) => {
         if (key === REVIEW_PROMPTED_KEY) return Promise.resolve(null);
         if (key === DIAGNOSIS_COUNT_KEY) return Promise.resolve('1');
@@ -45,7 +36,6 @@ describe('storeReview', () => {
       });
 
       await trackSuccessfulDiagnosis();
-
       expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(DIAGNOSIS_COUNT_KEY, '2');
     });
 
@@ -57,10 +47,7 @@ describe('storeReview', () => {
       });
 
       const alertSpy = jest.spyOn(Alert, 'alert');
-
       await trackSuccessfulDiagnosis();
-
-      // Count goes to 1, which is below threshold of 3
       expect(alertSpy).not.toHaveBeenCalled();
     });
 
@@ -72,15 +59,12 @@ describe('storeReview', () => {
       });
 
       StoreReview.isAvailableAsync.mockResolvedValueOnce(true);
-
       const alertSpy = jest.spyOn(Alert, 'alert');
-
       await trackSuccessfulDiagnosis();
 
-      // Count becomes 3 which equals threshold
       expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(REVIEW_PROMPTED_KEY, 'true');
       expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining('til'),
+        expect.stringMatching(/til/),
         expect.any(String),
         expect.any(Array),
       );
@@ -94,10 +78,7 @@ describe('storeReview', () => {
       });
 
       const alertSpy = jest.spyOn(Alert, 'alert');
-
       await trackSuccessfulDiagnosis();
-
-      // Should return early and NOT increment or alert
       expect(alertSpy).not.toHaveBeenCalled();
       expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
     });
@@ -112,12 +93,9 @@ describe('storeReview', () => {
       });
 
       StoreReview.isAvailableAsync.mockResolvedValueOnce(true);
-
       const alertSpy = jest.spyOn(Alert, 'alert');
-
       await trackSuccessfulDiagnosis();
 
-      // Should mark as prompted but NOT show alert on web
       expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(REVIEW_PROMPTED_KEY, 'true');
       expect(alertSpy).not.toHaveBeenCalled();
     });
@@ -126,7 +104,6 @@ describe('storeReview', () => {
   describe('resetReviewTracking', () => {
     it('clears both storage keys', async () => {
       await resetReviewTracking();
-
       expect(mockAsyncStorage.multiRemove).toHaveBeenCalledWith([
         DIAGNOSIS_COUNT_KEY,
         REVIEW_PROMPTED_KEY,
