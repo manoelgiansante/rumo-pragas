@@ -22,14 +22,27 @@ const SUPABASE_SERVICE_ROLE_KEY =
 // LGPD: process deletions after 15 days
 const DELETION_GRACE_PERIOD_DAYS = 15;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "*").split(",");
+
+function getCorsHeaders(req?: Request) {
+  const origin = req?.headers.get("origin") ?? "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes("*")
+    ? "*"
+    : ALLOWED_ORIGINS.includes(origin)
+      ? origin
+      : (ALLOWED_ORIGINS[0] ?? "");
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

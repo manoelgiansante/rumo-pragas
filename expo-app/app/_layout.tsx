@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Sentry from '@sentry/react-native';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
@@ -19,6 +20,26 @@ import {
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { Colors } from '../constants/theme';
+
+// Initialize Sentry for crash reporting & performance monitoring
+// SETUP: Replace the DSN below with your real Sentry DSN from sentry.io
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  // Disable in development to avoid noise
+  enabled: !__DEV__,
+  // Capture 20% of transactions for performance monitoring
+  tracesSampleRate: 0.2,
+  // Only send events in production
+  environment: __DEV__ ? 'development' : 'production',
+  // Attach user context when available
+  beforeSend(event) {
+    // Scrub sensitive data
+    if (event.request?.headers) {
+      delete event.request.headers['Authorization'];
+    }
+    return event;
+  },
+});
 
 // Prevent the splash screen from auto-hiding before data is loaded
 SplashScreen.preventAutoHideAsync();
@@ -53,11 +74,14 @@ function RootLayoutNav() {
       initAnalytics(user.id);
       syncSubscriptionToSupabase(user.id).catch(() => {});
       startSubscriptionListener(user.id);
+      // Set Sentry user context for crash reports
+      Sentry.setUser({ id: user.id, email: user.email });
     } else {
       resetAnalytics();
       stopSubscriptionListener();
+      Sentry.setUser(null);
     }
-  }, [user?.id]);
+  }, [user?.id, user?.email]);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((value) => {
@@ -112,7 +136,7 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -121,6 +145,9 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+// Wrap with Sentry for automatic error boundary and performance tracking
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   loading: {

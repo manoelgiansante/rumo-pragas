@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -30,10 +30,14 @@ export default function ResultScreen() {
   }>();
 
   // Parse result data upfront (before any hooks) to avoid conditional hook calls
-  let result: any = {};
-  try {
-    result = JSON.parse(data || '{}');
-  } catch {}
+  const result = useMemo(() => {
+    try {
+      return JSON.parse(data || '{}');
+    } catch {
+      // Invalid JSON data — use empty result, handled by empty state below
+      return {};
+    }
+  }, [data]);
 
   const isHealthy =
     !result.pest_name ||
@@ -41,17 +45,17 @@ export default function ResultScreen() {
     result.pest_id === 'Healthy';
   const confidence = result.confidence ?? 0;
 
-  const parseNotes = () => {
+  const enrichment = useMemo(() => {
     try {
-      if (result.parsedNotes) return result.parsedNotes;
-      if (typeof result.notes === 'string') return JSON.parse(result.notes);
-      return result.notes || {};
+      let notes: any = {};
+      if (result.parsedNotes) notes = result.parsedNotes;
+      else if (typeof result.notes === 'string') notes = JSON.parse(result.notes);
+      else notes = result.notes || {};
+      return notes.enrichment || {};
     } catch {
       return {};
     }
-  };
-  const notes = parseNotes();
-  const enrichment = notes.enrichment || {};
+  }, [result]);
 
   const getSeverityColor = () => {
     const severity = enrichment?.severity;
@@ -65,7 +69,7 @@ export default function ResultScreen() {
   };
   const severityColor = getSeverityColor();
 
-  const severityLabel = () => {
+  const severityLabel = useCallback(() => {
     const s = enrichment?.severity;
     if (s === 'critical') return t('severity.critical');
     if (s === 'high') return t('severity.high');
@@ -73,7 +77,7 @@ export default function ResultScreen() {
     if (s === 'low') return t('severity.low');
     if (s === 'none' || isHealthy) return t('severity.none');
     return t('severity.undefined');
-  };
+  }, [enrichment, isHealthy, t]);
 
   // Track successful diagnosis for store review prompt
   // Hook is called unconditionally (React rules of hooks) but logic is guarded
@@ -83,87 +87,14 @@ export default function ResultScreen() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Early returns AFTER all hooks have been called
-  if (queued === 'true') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorCenter}>
-          <View style={[styles.errorIcon, { backgroundColor: Colors.warmAmber + '1F' }]}>
-            <Ionicons name="cloud-upload-outline" size={44} color={Colors.warmAmber} />
-          </View>
-          <Text style={styles.errorTitle}>{t('diagnosis.queued')}</Text>
-          <Text style={styles.errorMsg}>{t('diagnosis.queuedMessage')}</Text>
-          <TouchableOpacity
-            style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
-            onPress={() => router.dismissAll()}
-            accessibilityLabel={t('diagnosis.backToHomeA11y')}
-            accessibilityRole="button"
-          >
-            <Text style={styles.closeBtnText}>{t('diagnosis.backToHome')}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorCenter}>
-          <View style={[styles.errorIcon, { backgroundColor: Colors.coral + '1F' }]}>
-            <Ionicons
-              name="warning"
-              size={44}
-              color={Colors.coral}
-              accessibilityLabel={t('diagnosis.errorIconA11y')}
-              accessibilityRole="image"
-            />
-          </View>
-          <Text style={styles.errorTitle}>{t('diagnosis.error')}</Text>
-          <Text style={styles.errorMsg}>{error}</Text>
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={() => router.dismissAll()}
-            accessibilityLabel={t('diagnosis.closeDiagnosisA11y')}
-            accessibilityRole="button"
-          >
-            <Text style={styles.closeBtnText}>{t('diagnosis.close')}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Empty state: no valid diagnosis data received
-  if (!data || (!result.pest_name && !result.pest_id)) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorCenter}>
-          <View style={[styles.errorIcon, { backgroundColor: Colors.systemGray5 }]}>
-            <Ionicons name="document-text-outline" size={44} color={Colors.systemGray} />
-          </View>
-          <Text style={styles.errorTitle}>{t('diagnosis.noData')}</Text>
-          <Text style={styles.errorMsg}>{t('diagnosis.noDataMsg')}</Text>
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={() => router.replace('/diagnosis/camera')}
-            accessibilityLabel={t('diagnosis.newDiagnosis')}
-            accessibilityRole="button"
-          >
-            <Text style={styles.closeBtnText}>{t('diagnosis.newDiagnosis')}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  // All useCallback hooks must be declared before any early returns (Rules of Hooks)
   const buildShareText = useCallback(() => {
     const pestName = isHealthy
       ? t('diagnosis.healthy')
       : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected');
     const conf = Math.round(confidence * 100);
     const crop = result.crop || t('diagnosis.notInformed');
-    const severity = severityLabel();
+    const sev = severityLabel();
 
     const symptoms = enrichment.symptoms?.length
       ? enrichment.symptoms.map((s: string) => `  - ${s}`).join('\n')
@@ -194,7 +125,7 @@ export default function ResultScreen() {
       '',
       `\u{1F50D} *${t('diagnosis.sharePest')}:* ${pestName}`,
       `\u{1F4CA} *${t('diagnosis.shareConfidence')}:* ${conf}%`,
-      `\u{26A0}\u{FE0F} *${t('diagnosis.shareSeverity')}:* ${severity}`,
+      `\u{26A0}\u{FE0F} *${t('diagnosis.shareSeverity')}:* ${sev}`,
       `\u{1F331} *${t('diagnosis.shareCrop')}:* ${crop}`,
       '',
       `\u{1F4CB} *${t('diagnosis.shareSymptoms')}:*`,
@@ -208,7 +139,7 @@ export default function ResultScreen() {
       '',
       `_${t('diagnosis.shareFooter')}_`,
     ].join('\n');
-  }, [result, enrichment, confidence, isHealthy, t]);
+  }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handleWhatsAppShare = useCallback(async () => {
     const text = buildShareText();
@@ -219,7 +150,7 @@ export default function ResultScreen() {
     } else {
       Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
     }
-  }, [buildShareText]);
+  }, [buildShareText, t]);
 
   const buildPdfHtml = useCallback(() => {
     const pestName = isHealthy
@@ -227,7 +158,7 @@ export default function ResultScreen() {
       : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected');
     const conf = Math.round(confidence * 100);
     const crop = result.crop || t('diagnosis.notInformed');
-    const severity = severityLabel();
+    const sev = severityLabel();
     const date = new Date().toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -330,7 +261,7 @@ export default function ResultScreen() {
     </div>
     <div class="summary-item">
       <div class="label">${t('diagnosis.pdfSeverity')}</div>
-      <div class="value severity-${enrichment?.severity || 'low'}">${severity}</div>
+      <div class="value severity-${enrichment?.severity || 'low'}">${sev}</div>
     </div>
     <div class="summary-item">
       <div class="label">${t('diagnosis.pdfCrop')}</div>
@@ -345,7 +276,7 @@ export default function ResultScreen() {
   </div>
 </body>
 </html>`;
-  }, [result, enrichment, confidence, isHealthy, t]);
+  }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handlePdfExport = useCallback(async () => {
     try {
@@ -360,10 +291,84 @@ export default function ResultScreen() {
         dialogTitle: t('diagnosis.exportPdfDialogTitle'),
         UTI: 'com.adobe.pdf',
       });
-    } catch (e: any) {
+    } catch {
       Alert.alert(t('common.error'), t('diagnosis.exportPdfError'));
     }
-  }, [buildPdfHtml]);
+  }, [buildPdfHtml, t]);
+
+  // Early returns AFTER all hooks have been called
+  if (queued === 'true') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorCenter}>
+          <View style={[styles.errorIcon, { backgroundColor: Colors.warmAmber + '1F' }]}>
+            <Ionicons name="cloud-upload-outline" size={44} color={Colors.warmAmber} />
+          </View>
+          <Text style={styles.errorTitle}>{t('diagnosis.queued')}</Text>
+          <Text style={styles.errorMsg}>{t('diagnosis.queuedMessage')}</Text>
+          <TouchableOpacity
+            style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
+            onPress={() => router.dismissAll()}
+            accessibilityLabel={t('diagnosis.backToHomeA11y')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.closeBtnText}>{t('diagnosis.backToHome')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorCenter}>
+          <View style={[styles.errorIcon, { backgroundColor: Colors.coral + '1F' }]}>
+            <Ionicons
+              name="warning"
+              size={44}
+              color={Colors.coral}
+              accessibilityLabel={t('diagnosis.errorIconA11y')}
+              accessibilityRole="image"
+            />
+          </View>
+          <Text style={styles.errorTitle}>{t('diagnosis.error')}</Text>
+          <Text style={styles.errorMsg}>{error}</Text>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => router.dismissAll()}
+            accessibilityLabel={t('diagnosis.closeDiagnosisA11y')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.closeBtnText}>{t('diagnosis.close')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Empty state: no valid diagnosis data received
+  if (!data || (!result.pest_name && !result.pest_id)) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorCenter}>
+          <View style={[styles.errorIcon, { backgroundColor: Colors.systemGray5 }]}>
+            <Ionicons name="document-text-outline" size={44} color={Colors.systemGray} />
+          </View>
+          <Text style={styles.errorTitle}>{t('diagnosis.noData')}</Text>
+          <Text style={styles.errorMsg}>{t('diagnosis.noDataMsg')}</Text>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => router.replace('/diagnosis/camera')}
+            accessibilityLabel={t('diagnosis.newDiagnosis')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.closeBtnText}>{t('diagnosis.newDiagnosis')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

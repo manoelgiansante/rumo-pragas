@@ -85,7 +85,9 @@ export default function HomeScreen() {
     try {
       const qCount = await getQueueCount();
       setPendingQueueCount(qCount);
-    } catch {}
+    } catch {
+      // Queue count fetch failed — non-critical, continue
+    }
 
     if (location) {
       try {
@@ -143,7 +145,7 @@ export default function HomeScreen() {
     if (weather.humidity > 80 || weather.temperature > 35) return t('home.riskHigh');
     if (weather.humidity > 60 || weather.temperature > 30) return t('home.riskMedium');
     return t('home.riskLow');
-  }, [weather]);
+  }, [weather, t]);
 
   const statsData = useMemo(
     () => [
@@ -161,7 +163,7 @@ export default function HomeScreen() {
         color: Colors.warmAmber,
       },
     ],
-    [diagnosisError, diagnosisCount, riskLevelText],
+    [diagnosisError, diagnosisCount, riskLevelText, t],
   );
 
   if (isInitialLoading) {
