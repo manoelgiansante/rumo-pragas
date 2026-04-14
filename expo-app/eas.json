@@ -10,6 +10,9 @@
       "channel": "development",
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168"
       }
     },
     "preview": {
@@ -17,6 +20,9 @@
       "channel": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168"
       }
     },
     "production": {
@@ -27,6 +33,9 @@
       },
       "android": {
         "image": "latest"
+      },
+      "env": {
+        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168"
       }
     }
   },
@@ -34,10 +43,14 @@
     "production": {
       "ios": {
         "appleId": "manoelgiansante@icloud.com",
-        "appleTeamId": "5YW9UY5LXP"
+        "appleTeamId": "5YW9UY5LXP",
+        "ascApiKeyId": "YQGT4C9TB8",
+        "ascApiKeyIssuerId": "315bb9b2-f8be-46c8-b564-1cc997361301",
+        "ascApiKeyPath": "/Users/manoelnascimento/.keys/AuthKey_YQGT4C9TB8.p8"
       },
       "android": {
-        "track": "internal"
+        "track": "internal",
+        "serviceAccountKeyPath": "/Users/manoelnascimento/Downloads/agrorumo-a24edb5d7fe4.json"
       }
     }
   }
