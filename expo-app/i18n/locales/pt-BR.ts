@@ -69,6 +69,8 @@ export default {
     resendVerification: 'Reenviar email de verificação',
     orContinueWith: 'ou continue com',
     signInWithApple: 'Entrar com Apple',
+    appName: 'Rumo Praga',
+    appTagline: 'Diagnóstico inteligente de pragas agrícolas',
     loginError: 'Erro ao entrar. Tente novamente.',
     hidePassword: 'Ocultar senha',
     showPassword: 'Mostrar senha',
@@ -88,6 +90,7 @@ export default {
   },
   // Diagnosis
   diagnosis: {
+    defaultName: 'Diagnóstico',
     takePhoto: 'Tirar Foto',
     chooseGallery: 'Escolher da Galeria',
     selectCrop: 'Selecione a Cultura',
@@ -174,7 +177,7 @@ export default {
     noTreatmentRecorded: 'Nenhum tratamento registrado',
     noPreventionRecorded: 'Nenhuma prevenção registrada',
     noInfoAvailable: 'Nenhuma informação disponível.',
-    shareTitle: 'Diagnóstico Rumo Pragas',
+    shareTitle: 'Diagnóstico Rumo Praga',
     sharePest: 'Praga',
     shareConfidence: 'Confiança',
     shareSeverity: 'Severidade',
@@ -182,15 +185,15 @@ export default {
     shareSymptoms: 'Sintomas',
     shareTreatment: 'Tratamento Recomendado',
     sharePrevention: 'Prevenção',
-    shareFooter: 'Diagnosticado por Rumo Pragas IA',
+    shareFooter: 'Diagnosticado por Rumo Praga',
     shareCulturalControl: 'Controle Cultural',
     shareChemicalControl: 'Controle Químico',
     shareBiologicalControl: 'Controle Biológico',
-    pdfTitle: 'Rumo Pragas - Relatório de Diagnóstico',
+    pdfTitle: 'Rumo Praga - Relatório de Diagnóstico',
     pdfPestIdentified: 'Praga Identificada',
     pdfSeverity: 'Severidade',
     pdfCrop: 'Cultura',
-    pdfFooter: 'Diagnóstico gerado pelo app Rumo Pragas - IA para proteção da lavoura',
+    pdfFooter: 'Diagnóstico gerado pelo app Rumo Praga - IA para proteção da lavoura',
     pdfChemicalWarning: '* Consulte um agrônomo para receituário agronômico',
     backToHomeA11y: 'Voltar para a tela inicial',
     errorIconA11y: 'Ícone de erro',
@@ -208,6 +211,8 @@ export default {
     currentPlan: 'Plano Atual',
     monthlyUsage: 'Uso Mensal',
     upgradePlan: 'Upgrade de Plano',
+    manageSubscription: 'Gerenciar Assinatura',
+    manageSubscriptionError: 'Não foi possível abrir a tela de assinaturas.',
     appearance: 'Aparência e Preferências',
     darkMode: 'Modo Escuro',
     language: 'Idioma',
@@ -225,6 +230,7 @@ export default {
     delete: 'Excluir',
     support: 'Suporte',
     contactSupport: 'Contato / Suporte',
+    supportSubject: 'Suporte Rumo Praga',
     fullName: 'Nome completo',
     city: 'Cidade',
     state: 'Estado',
@@ -254,6 +260,7 @@ export default {
   },
   // Common
   common: {
+    offlineBanner: 'Você está sem conexão com a internet',
     search: 'Buscar',
     loading: 'Carregando...',
     retry: 'Tentar novamente',
@@ -291,6 +298,7 @@ export default {
   },
   // Chat
   chat: {
+    suggestionA11y: 'Sugestão',
     title: 'Agro IA',
     subtitle: 'Seu assistente especializado em pragas e manejo integrado de pragas (MIP)',
     askAbout: 'PERGUNTE SOBRE',
@@ -530,7 +538,7 @@ export default {
   },
   // Paywall
   paywall: {
-    title: 'Rumo Pragas Pro',
+    title: 'Rumo Praga Pro',
     subtitle: 'Desbloqueie todo o potencial da IA para proteção da sua lavoura',
     subscribe: 'Assinar',
     continueFree: 'Continuar Gratuito',

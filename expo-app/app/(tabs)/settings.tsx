@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Platform,
   ActionSheetIOS,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,6 +45,50 @@ const LANGUAGE_DISPLAY: Record<string, string> = {
   es: 'Español',
 };
 
+interface SectionProps {
+  title: string;
+  children: React.ReactNode;
+  isDark: boolean;
+}
+
+function Section({ title, children, isDark }: SectionProps) {
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, isDark && styles.textMuted]}>{title}</Text>
+      <View style={[styles.sectionContent, isDark && styles.sectionContentDark]}>{children}</View>
+    </View>
+  );
+}
+
+interface RowProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string;
+  onPress?: () => void;
+  trailing?: React.ReactNode;
+  isDark: boolean;
+}
+
+function Row({ icon, label, value, onPress, trailing, isDark }: RowProps) {
+  return (
+    <TouchableOpacity
+      style={styles.row}
+      onPress={onPress}
+      disabled={!onPress && !trailing}
+      activeOpacity={0.7}
+      accessibilityLabel={label}
+      accessibilityRole={onPress ? 'button' : 'none'}
+      accessibilityValue={value ? { text: value } : undefined}
+    >
+      <Ionicons name={icon} size={20} color={Colors.accent} style={{ width: 28 }} />
+      <Text style={[styles.rowLabel, isDark && styles.textDark]}>{label}</Text>
+      {value && <Text style={styles.rowValue}>{value}</Text>}
+      {trailing}
+      {onPress && <Ionicons name="chevron-forward" size={16} color={Colors.systemGray3} />}
+    </TouchableOpacity>
+  );
+}
+
 export default function SettingsScreen() {
   const isDark = useColorScheme() === 'dark';
   const { user, signOut } = useAuthContext();
@@ -71,11 +116,15 @@ export default function SettingsScreen() {
 
   // Load persisted push notification preference
   useEffect(() => {
+    let mounted = true;
     AsyncStorage.getItem(PUSH_ENABLED_KEY).then((value) => {
-      if (value !== null) {
+      if (mounted && value !== null) {
         setPushEnabled(value === 'true');
       }
     });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handlePushToggle = useCallback((value: boolean) => {
@@ -122,27 +171,23 @@ export default function SettingsScreen() {
     setSubLoading(true);
     setSubError(false);
     try {
-      const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('plan, status')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      const currentPlan = (sub?.status === 'active' && sub?.plan) || 'free';
-      setPlan(currentPlan);
-
       const now = new Date();
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const { count } = await supabase
-        .from('pragas_diagnoses')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', firstOfMonth);
+      const [subResult, countResult] = await Promise.all([
+        supabase.from('subscriptions').select('plan, status').eq('user_id', user.id).maybeSingle(),
+        supabase
+          .from('pragas_diagnoses')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('created_at', firstOfMonth),
+      ]);
 
-      setUsedThisMonth(count ?? 0);
+      const currentPlan = (subResult.data?.status === 'active' && subResult.data?.plan) || 'free';
+      setPlan(currentPlan);
+      setUsedThisMonth(countResult.count ?? 0);
     } catch (e) {
-      console.error('Failed to load subscription data:', e);
+      if (__DEV__) console.error('Failed to load subscription data:', e);
       setSubError(true);
     } finally {
       subLoadingRef.current = false;
@@ -153,6 +198,18 @@ export default function SettingsScreen() {
   useEffect(() => {
     loadSubscriptionData();
   }, [loadSubscriptionData]);
+
+  // Apple Guideline 3.1.2 / Google Play policy: paying users must be able to
+  // manage/cancel their subscription from inside the app.
+  const openManageSubscription = useCallback(() => {
+    const url =
+      Platform.OS === 'ios'
+        ? 'itms-apps://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions';
+    Linking.openURL(url).catch(() => {
+      Alert.alert(t('common.error'), t('settings.manageSubscriptionError'));
+    });
+  }, [t]);
 
   const handleRestorePurchases = useCallback(async () => {
     if (!isRevenueCatConfigured()) return;
@@ -192,16 +249,32 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            // Mark deletion request in profile (LGPD: respond within 15 days)
-            if (user) {
-              await supabase
-                .from('pragas_profiles')
-                .update({ deletion_requested_at: new Date().toISOString() })
-                .eq('id', user.id);
+            // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
+            // Must pass the user's JWT so the Edge Function can verify identity
+            // before permanently wiping data and auth record.
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError || !sessionData?.session?.access_token) {
+              Alert.alert(t('common.error'), t('settings.deletionError'));
+              return;
             }
+
+            const { data, error } = await supabase.functions.invoke('delete-user-account', {
+              headers: {
+                Authorization: `Bearer ${sessionData.session.access_token}`,
+              },
+            });
+
+            if (error || !data?.ok) {
+              if (__DEV__) console.error('delete-user-account failed:', error, data);
+              Alert.alert(t('common.error'), t('settings.deletionError'));
+              return;
+            }
+
             await signOut();
             Alert.alert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
-          } catch {
+          } catch (e) {
+            if (__DEV__) console.error('handleDeleteAccount exception:', e);
             Alert.alert(t('common.error'), t('settings.deletionError'));
           }
         },
@@ -209,36 +282,11 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, isDark && styles.textMuted]}>{title}</Text>
-      <View style={[styles.sectionContent, isDark && styles.sectionContentDark]}>{children}</View>
-    </View>
-  );
-
-  const Row = ({ icon, label, value, onPress, trailing }: any) => (
-    <TouchableOpacity
-      style={styles.row}
-      onPress={onPress}
-      disabled={!onPress && !trailing}
-      activeOpacity={0.7}
-      accessibilityLabel={label}
-      accessibilityRole={onPress ? 'button' : 'none'}
-      accessibilityValue={value ? { text: value } : undefined}
-    >
-      <Ionicons name={icon} size={20} color={Colors.accent} style={{ width: 28 }} />
-      <Text style={[styles.rowLabel, isDark && styles.textDark]}>{label}</Text>
-      {value && <Text style={styles.rowValue}>{value}</Text>}
-      {trailing}
-      {onPress && <Ionicons name="chevron-forward" size={16} color={Colors.systemGray3} />}
-    </TouchableOpacity>
-  );
-
   return (
     <ScrollView style={[styles.container, isDark && styles.containerDark]}>
-      <Section title={t('settings.profile')}>
+      <Section isDark={isDark} title={t('settings.profile')}>
         <View style={styles.profileRow}>
-          <LinearGradient colors={Gradients.hero as any} style={styles.avatar}>
+          <LinearGradient colors={Gradients.hero} style={styles.avatar}>
             <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
           </LinearGradient>
           <View style={{ flex: 1 }}>
@@ -260,7 +308,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </Section>
 
-      <Section title={t('settings.subscription')}>
+      <Section isDark={isDark} title={t('settings.subscription')}>
         {subError && !subLoading ? (
           <TouchableOpacity
             style={styles.subErrorRow}
@@ -281,6 +329,7 @@ export default function SettingsScreen() {
         ) : (
           <>
             <Row
+              isDark={isDark}
               icon="diamond"
               label={t('settings.currentPlan')}
               value={subLoading ? undefined : PLAN_LABELS[plan] || plan}
@@ -289,6 +338,7 @@ export default function SettingsScreen() {
               }
             />
             <Row
+              isDark={isDark}
               icon="analytics"
               label={t('settings.monthlyUsage')}
               value={
@@ -307,6 +357,7 @@ export default function SettingsScreen() {
             />
             {plan === 'free' && (
               <Row
+                isDark={isDark}
                 icon="arrow-up-circle"
                 label={t('settings.upgradePlan')}
                 onPress={() => router.push('/paywall')}
@@ -314,6 +365,7 @@ export default function SettingsScreen() {
             )}
             {isRevenueCatConfigured() && (
               <Row
+                isDark={isDark}
                 icon="refresh-circle"
                 label={restoring ? t('common.loading') : t('paywall.restorePurchases')}
                 onPress={restoring ? undefined : handleRestorePurchases}
@@ -322,23 +374,35 @@ export default function SettingsScreen() {
                 }
               />
             )}
+            {/* Apple Guideline 3.1.2: native subscription management link. */}
+            {!subLoading && plan !== 'free' && (
+              <Row
+                isDark={isDark}
+                icon="card-outline"
+                label={t('settings.manageSubscription')}
+                onPress={openManageSubscription}
+              />
+            )}
           </>
         )}
       </Section>
 
-      <Section title={t('settings.appearance')}>
+      <Section isDark={isDark} title={t('settings.appearance')}>
         <Row
+          isDark={isDark}
           icon="moon"
           label={t('settings.darkMode')}
           value={isDark ? t('settings.darkModeActive') : t('settings.darkModeInactive')}
         />
         <Row
+          isDark={isDark}
           icon="globe"
           label={t('settings.language')}
           value={LANGUAGE_DISPLAY[i18n.language] || i18n.language}
           onPress={handleLanguageChange}
         />
         <Row
+          isDark={isDark}
           icon="notifications"
           label={t('settings.notifications')}
           trailing={
@@ -354,29 +418,40 @@ export default function SettingsScreen() {
         />
       </Section>
 
-      <Section title={t('settings.about')}>
+      <Section isDark={isDark} title={t('settings.about')}>
         <Row
+          isDark={isDark}
           icon="hand-left"
           label={t('auth.privacyPolicy')}
           onPress={() => router.push('/privacy')}
         />
         <Row
+          isDark={isDark}
           icon="document-text"
           label={t('auth.termsOfUse')}
           onPress={() => router.push('/terms')}
         />
         <Row
+          isDark={isDark}
           icon="refresh-outline"
           label={isChecking ? t('settings.checking') : t('settings.checkUpdates')}
           onPress={checkForUpdate}
         />
-        <Row icon="information-circle" label={t('settings.version')} value="1.0.0" />
         <Row
+          isDark={isDark}
+          icon="information-circle"
+          label={t('settings.version')}
+          value="1.0.0"
+        />
+        <Row
+          isDark={isDark}
           icon="mail-outline"
           label={t('settings.contactSupport')}
           onPress={() => {
             import('expo-linking').then(({ openURL }) =>
-              openURL('mailto:suporte@agrorumo.com.br?subject=Suporte%20Rumo%20Pragas'),
+              openURL(
+                `mailto:suporte@agrorumo.com.br?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
+              ),
             );
           }}
         />

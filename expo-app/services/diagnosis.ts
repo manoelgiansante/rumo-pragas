@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/react-native';
+import { router } from 'expo-router';
 import { Config } from '../constants/config';
 import type { DiagnosisResult } from '../types/diagnosis';
 import { parseNotes } from '../types/diagnosis';
@@ -46,6 +48,13 @@ export async function sendDiagnosis(
   longitude: number | null,
   token: string,
 ): Promise<DiagnosisResult> {
+  Sentry.addBreadcrumb({
+    category: 'diagnosis',
+    message: `Sending diagnosis for crop: ${cropType}`,
+    level: 'info',
+    data: { cropType, hasLocation: !!(latitude && longitude) },
+  });
+
   // Validate image size before sending
   validateBase64ImageSize(imageBase64);
 
@@ -69,11 +78,17 @@ export async function sendDiagnosis(
   });
 
   if (!response.ok) {
-    // Handle 403 with subscription limit details
+    // Handle 403 with subscription limit details — navigate to paywall
     if (response.status === 403) {
       try {
         const errorData = await response.json();
-        if (errorData.limit !== undefined) {
+        if (errorData?.limit !== undefined && errorData?.plan) {
+          // Fire-and-forget navigation to paywall so user can upgrade immediately.
+          try {
+            router.push('/paywall');
+          } catch (navErr) {
+            if (__DEV__) console.warn('[diagnosis] paywall navigation failed:', navErr);
+          }
           const planLabel = errorData.plan === 'free' ? i18n.t('errors.planFree') : errorData.plan;
           throw new Error(i18n.t('errors.planLimit', { limit: errorData.limit, plan: planLabel }));
         }

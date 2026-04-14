@@ -1,13 +1,19 @@
 /**
  * Subscription Sync Service
  *
- * Keeps Supabase subscription record in sync with RevenueCat.
- * Listens for purchase events from RevenueCat and updates
- * the subscriptions table accordingly.
+ * Source of truth for subscription state is the RevenueCat -> Supabase
+ * webhook (service_role). RLS blocks client-side writes to `subscriptions`,
+ * so this module intentionally does NOT attempt UPDATEs from the app.
+ *
+ * What this module does:
+ *  - Keeps a RevenueCat CustomerInfo listener alive.
+ *  - On updates, logs (in dev) the derived plan/status so we can debug
+ *    drift between RevenueCat and Supabase.
+ *  - Consumers should refetch the `subscriptions` row from Supabase
+ *    (populated by the webhook) whenever they need authoritative state.
  */
 
 import Purchases, { CustomerInfo } from 'react-native-purchases';
-import { supabase } from './supabase';
 import { isRevenueCatConfigured } from './purchases';
 
 type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
@@ -53,79 +59,57 @@ function deriveSubscriptionInfo(customerInfo: CustomerInfo): {
 }
 
 /**
- * Sync current RevenueCat state to Supabase for a specific user.
- * Call this after login, after purchases, or periodically.
+ * Pull current RevenueCat state for a user (no writes).
+ *
+ * REMOVED: Client UPDATE blocked by RLS (only service_role can write).
+ * Subscription state is authoritative via RevenueCat webhook.
+ * Callers should refresh their local cache by re-selecting from Supabase
+ * after this resolves — the webhook will have reconciled server-side.
  */
-export async function syncSubscriptionToSupabase(userId: string): Promise<void> {
+export async function syncSubscriptionToSupabase(_userId: string): Promise<void> {
   if (!isRevenueCatConfigured()) return;
 
   try {
     const customerInfo = await Purchases.getCustomerInfo();
     const info = deriveSubscriptionInfo(customerInfo);
-
-    const updatePayload: Record<string, unknown> = {
-      plan: info.plan,
-      status: info.status,
-      provider: info.provider,
-    };
-
-    if (info.periodEnd) {
-      updatePayload.current_period_end = info.periodEnd;
-    }
-
-    const { error } = await supabase
-      .from('subscriptions')
-      .update(updatePayload)
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('[SubscriptionSync] Failed to sync:', error);
-    } else {
-      console.warn('[SubscriptionSync] Synced:', info.plan, info.status);
+    if (__DEV__) {
+      console.warn(
+        '[SubscriptionSync] RC state (webhook is source of truth):',
+        info.plan,
+        info.status,
+      );
     }
   } catch (err) {
-    console.error('[SubscriptionSync] Error:', err);
+    if (__DEV__) console.error('[SubscriptionSync] Error:', err);
   }
 }
 
 /**
- * Register a RevenueCat listener that auto-syncs subscription changes.
- * Call once after Purchases.configure() and after getting the user ID.
+ * Register a RevenueCat listener for diagnostics only.
+ *
+ * REMOVED: Client UPDATE blocked by RLS (only service_role can write).
+ * Subscription state is authoritative via RevenueCat webhook.
+ * This listener only logs drift in dev so we can investigate; it does not
+ * attempt to write to Supabase. UI screens should re-select the
+ * `subscriptions` row after purchase flows to pick up webhook-applied state.
  */
-export function startSubscriptionListener(userId: string): void {
+export function startSubscriptionListener(_userId: string): void {
   if (!isRevenueCatConfigured()) return;
   if (listenerRegistered) return;
 
-  Purchases.addCustomerInfoUpdateListener(async (customerInfo: CustomerInfo) => {
-    console.warn('[SubscriptionSync] CustomerInfo updated');
-    const info = deriveSubscriptionInfo(customerInfo);
-
-    const updatePayload: Record<string, unknown> = {
-      plan: info.plan,
-      status: info.status,
-      provider: info.provider,
-    };
-
-    if (info.periodEnd) {
-      updatePayload.current_period_end = info.periodEnd;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update(updatePayload)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('[SubscriptionSync] Listener sync failed:', error);
-      }
-    } catch (err) {
-      console.error('[SubscriptionSync] Listener error:', err);
+  Purchases.addCustomerInfoUpdateListener((customerInfo: CustomerInfo) => {
+    if (__DEV__) {
+      const info = deriveSubscriptionInfo(customerInfo);
+      console.warn(
+        '[SubscriptionSync] CustomerInfo updated (webhook authoritative):',
+        info.plan,
+        info.status,
+      );
     }
   });
 
   listenerRegistered = true;
-  console.warn('[SubscriptionSync] Listener registered');
+  if (__DEV__) console.warn('[SubscriptionSync] Listener registered (read-only)');
 }
 
 /**
