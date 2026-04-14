@@ -138,7 +138,7 @@
         {
           "organization": "rumo-maquinas",
           "project": "rumo-pragas",
-          "uploadSourceMaps": false
+          "url": "https://sentry.io/"
         }
       ],
       "expo-tracking-transparency"

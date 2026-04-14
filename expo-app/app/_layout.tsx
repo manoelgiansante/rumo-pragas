@@ -27,12 +27,17 @@ import { Colors } from '../constants/theme';
 // SETUP: Replace the DSN below with your real Sentry DSN from sentry.io
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
-  // Disable in development to avoid noise
-  enabled: !__DEV__,
+  // Only enable when DSN is set AND not in dev
+  enabled: !__DEV__ && !!process.env.EXPO_PUBLIC_SENTRY_DSN,
   // Capture 20% of transactions for performance monitoring
   tracesSampleRate: 0.2,
   // Only send events in production
   environment: __DEV__ ? 'development' : 'production',
+  // Native crash reporting on iOS/Android
+  enableNative: true,
+  enableAutoSessionTracking: true,
+  // Attach JS stack traces to all events
+  attachStacktrace: true,
   // Attach user context when available
   beforeSend(event) {
     // Scrub sensitive data
