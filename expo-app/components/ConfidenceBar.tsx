@@ -7,8 +7,10 @@ interface ConfidenceBarProps {
   value: number; // 0..1
 }
 
+// Semantic colors: high confidence = trust (leaf green), mid = warmAmber,
+// low = muted grey. NEVER use coral for high confidence (coral = alert/error).
 function getBarColor(value: number): string {
-  if (value >= 0.7) return Colors.coral;
+  if (value >= 0.7) return Colors.accent;
   if (value >= 0.4) return Colors.warmAmber;
   return Colors.systemGray3;
 }

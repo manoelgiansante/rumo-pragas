@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A966B"
+      "backgroundColor": "#06281D"
     },
     "ios": {
       "supportsTablet": true,
@@ -48,7 +48,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1A966B"
+        "backgroundColor": "#06281D"
       },
       "package": "com.agrorumo.rumopragas",
       "permissions": [
@@ -114,7 +114,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#1A966B",
+          "color": "#06281D",
           "defaultChannel": "pest-alerts",
           "sounds": []
         }

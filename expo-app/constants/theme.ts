@@ -1,29 +1,31 @@
+// Design tokens: Rumo Pragas palette (@agrorumo/tokens — pragas)
+// Deep leaf green (#0B3D2E) + ochre earth (#C89B3C) + warm off-white (not SaaS grey).
 export const Colors = {
-  accent: '#1A966B',
-  accentDark: '#0F6B4D',
-  accentLight: '#29B887',
-  techBlue: '#3882F2',
-  techIndigo: '#5957D6',
-  warmAmber: '#EBB026',
-  coral: '#F06652',
+  accent: '#0B3D2E',
+  accentDark: '#06281D',
+  accentLight: '#145A45',
+  techBlue: '#435044', // support tone (de-emphasized, was bright blue = AI slop)
+  techIndigo: '#7A5C2E',
+  warmAmber: '#C89B3C',
+  coral: '#B3462E',
   white: '#FFFFFF',
   black: '#000000',
-  background: '#F2F2F7',
-  card: '#FFFFFF',
-  cardDark: '#1C1C1E',
-  backgroundDark: '#000000',
-  text: '#000000',
-  textDark: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textTertiary: '#C7C7CC',
-  separator: '#E5E5EA',
-  separatorDark: '#38383A',
-  systemGray: '#8E8E93',
-  systemGray2: '#AEAEB2',
-  systemGray3: '#C7C7CC',
-  systemGray4: '#D1D1D6',
-  systemGray5: '#E5E5EA',
-  systemGray6: '#F2F2F7',
+  background: '#F7F3EC',
+  card: '#FFFDF7',
+  cardDark: '#14201B',
+  backgroundDark: '#0A130F',
+  text: '#0F1A14',
+  textDark: '#F2F7F4',
+  textSecondary: '#435044',
+  textTertiary: '#8A8373',
+  separator: '#E5DECD',
+  separatorDark: '#1F2F29',
+  systemGray: '#8A8373',
+  systemGray2: '#A8A18E',
+  systemGray3: '#BAB097',
+  systemGray4: '#CEC7B4',
+  systemGray5: '#E5DECD',
+  systemGray6: '#F7F3EC',
 };
 
 export const DarkColors = {
@@ -34,11 +36,26 @@ export const DarkColors = {
   separator: '#38383A',
 };
 
-export const Gradients = {
-  hero: ['#0F6B4D', '#1A966B', '#29B887'],
-  tech: ['#1A966B', '#3882F2'],
-  mesh: ['#0F6B4D', '#1A8C65', '#2E80D9', '#0C7A59', '#1F9E74', '#3470C7'],
+// Sequential ramp (dark leaf → lighter leaf). NO rainbow, NO tech blue.
+export const Gradients: Record<string, readonly [string, string, ...string[]]> = {
+  hero: ['#06281D', '#0B3D2E', '#145A45'],
+  tech: ['#0B3D2E', '#145A45'],
+  mesh: ['#06281D', '#0B3D2E', '#145A45', '#0F4A37', '#0B3D2E', '#081F17'],
 };
+
+// 10-step sequential green ramp for charts (tokens.chartSequential)
+export const chartSequential = [
+  '#E8EFE9',
+  '#C6D7C9',
+  '#A1BDA6',
+  '#7CA285',
+  '#5C8B67',
+  '#3F754E',
+  '#27613A',
+  '#145A45',
+  '#0B3D2E',
+  '#06281D',
+] as const;
 
 export const Spacing = {
   xs: 4,
