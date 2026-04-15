@@ -1,0 +1,1 @@
+pragas,soja,milho,cafe,algodao,fungicida,lagarta,ferrugem,doenca,lavoura,IA,agronomo,agricultura

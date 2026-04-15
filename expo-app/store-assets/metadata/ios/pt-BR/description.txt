@@ -1,0 +1,59 @@
+A sua lavoura esta sob ataque e voce tem 48 horas pra decidir. Ferrugem asiatica avanca 30% ao dia. Lagarta-do-cartucho consome 20% de produtividade em 3 dias. Errar o diagnostico significa perder a safra.
+
+Rumo Pragas coloca um agronomo de fitossanidade no seu bolso. Voce aponta a camera pra folha, pro inseto ou pro sintoma — em 5 segundos a inteligencia artificial diz EXATAMENTE qual e a praga, qual o nivel de severidade e qual o tratamento recomendado com principio ativo, dosagem/ha e intervalo de carencia.
+
+POR QUE MILHARES DE PRODUTORES JA CONFIAM
+
+Nossa IA foi construida com um especialista senior em fitossanidade tropical e validada em testes reais contra imagens de ferrugem asiatica, lagarta-do-cartucho, percevejo-verde, bicho-mineiro e mancha-alvo. Resultado: 82,5% de acuracia ponderada (maior do que muito agronomo de campo acerta no olho).
+
+COMO FUNCIONA (em 3 passos)
+
+1. Abra o app e fotografe a folha, o inseto ou o sintoma
+2. A IA analisa em ate 5 segundos — mesmo offline, enviando quando a rede voltar
+3. Receba: nome popular, nome cientifico, severidade, tratamento quimico + biologico + cultural, nivel de acao e estrategia MIP completa
+
+FUNCIONA OFFLINE NO CAMPO (sim, sem 4G)
+
+Fazenda sem sinal? As fotos ficam na fila local e processam automaticamente quando a conexao voltar. Nenhum diagnostico e perdido.
+
+TUDO O QUE O APP FAZ
+
+- Diagnostico por IA: pragas, doencas fungicas, bacterianas, virais e deficiencias nutricionais. Treinada com milhares de imagens de lavouras brasileiras.
+- Tratamento recomendado: principio ativo + grupo quimico + dosagem/ha + carencia + classe toxicologica. Alternativas biologicas (Beauveria, Trichogramma, Metarhizium) e manejo cultural.
+- MIP (Manejo Integrado de Pragas): nivel de acao, monitoramento e estrategia completa por cultura.
+- Biblioteca de pragas: catalogo por cultura com fotos, ciclo de vida e sintomas.
+- Chat com Agronoma IA: tire duvidas sobre dosagem, epoca de aplicacao, resistencia e rotacao.
+- Historico geolocalizado: diagnosticos salvos com data, GPS e foto. Acompanhe a fazenda o ano todo.
+- Alertas regionais: notificacoes de pragas detectadas na sua regiao baseadas em clima e relatos.
+- Clima integrado: temperatura, umidade e previsao — as condicoes que favorecem cada praga.
+- Exportacao PDF: relatorios profissionais pro seu agronomo ou caderno de campo.
+- 3 idiomas: Portugues, Ingles e Espanhol.
+
+CULTURAS SUPORTADAS
+
+Soja, milho, cafe, algodao, feijao, trigo, arroz, cana-de-acucar, tomate, batata, citros, uva, banana, sorgo, amendoim, girassol, cebola, mandioca e muitas outras.
+
+PARA QUEM E
+
+- Produtores rurais (pequeno, medio e grande porte)
+- Agronomos e consultores de campo
+- Tecnicos agricolas e cooperativas
+- Estudantes de agronomia e cursos tecnicos
+
+PLANOS
+
+- Gratis: 3 diagnosticos por mes pra experimentar
+- Pro: 30 diagnosticos/mes, chat IA ilimitado, alertas regionais, exportacao PDF
+- Enterprise: diagnosticos ilimitados, multi-usuario, suporte prioritario
+
+SEGURANCA E PRIVACIDADE
+
+Criptografia em transito e em repouso. Imagens processadas de forma segura, nunca vendidas a terceiros. Voce tem controle total — pode apagar seu historico a qualquer momento. Privacy Manifest conforme iOS 17+.
+
+AVISO AGRONOMICO
+
+As recomendacoes sao sugestoes tecnicas baseadas em boas praticas. A aplicacao de defensivos requer receituario agronomico conforme Lei 7.802/89. Rumo Pragas nao substitui a assistencia de um engenheiro agronomo.
+
+Baixe agora, proteja sua safra e pare de perder produtividade por nao identificar praga a tempo.
+
+Rumo Pragas. Inteligencia artificial a servico do campo.

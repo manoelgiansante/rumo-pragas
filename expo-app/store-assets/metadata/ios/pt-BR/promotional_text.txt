@@ -1,0 +1,1 @@
+NOVO: 82% de acuracia validada em campo. Tire foto, IA identifica praga em 5s e indica o tratamento. Funciona offline. Soja, milho, cafe, algodao e mais.

@@ -1,0 +1,82 @@
+# ASO Screenshots capture — 5 screenshots for App Store + Play Store
+# Runs on booted simulator, logs in, navigates and captures key screens.
+appId: com.agrorumo.rumopragas
+tags:
+  - aso
+env:
+  TEST_EMAIL: test_diag_full@mailinator.com
+  TEST_PASSWORD: Validator-2026-Rumo!
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 20000
+
+# Skip onboarding if present
+- runFlow:
+    when:
+      visible: "Pular"
+    commands:
+      - tapOn:
+          text: "Pular"
+          optional: true
+
+# Screenshot: onboarding captured if still visible OR fall through
+- takeScreenshot: aso-01-onboarding
+
+# Login
+- runFlow:
+    when:
+      visible: "Entrar"
+    commands:
+      - tapOn:
+          text: "E-mail"
+      - inputText: ${TEST_EMAIL}
+      - tapOn:
+          text: "Senha"
+      - inputText: ${TEST_PASSWORD}
+      - hideKeyboard
+      - tapOn:
+          text: "Entrar"
+          index: 0
+
+# Wait for home
+- extendedWaitUntil:
+    visible: "Diagnosticar"
+    timeout: 20000
+
+- takeScreenshot: aso-02-home
+
+# Navigate to history tab if visible
+- runFlow:
+    when:
+      visible: "Histórico"
+    commands:
+      - tapOn:
+          text: "Histórico"
+      - waitForAnimationToEnd
+      - takeScreenshot: aso-03-history
+
+# Try biblioteca / library
+- runFlow:
+    when:
+      visible: "Biblioteca"
+    commands:
+      - tapOn:
+          text: "Biblioteca"
+      - waitForAnimationToEnd
+      - takeScreenshot: aso-04-library
+
+# Paywall via settings or "Mais"
+- runFlow:
+    when:
+      visible: "Ajustes"
+    commands:
+      - tapOn:
+          text: "Ajustes"
+      - waitForAnimationToEnd
+      - takeScreenshot: aso-05-settings

@@ -5,6 +5,10 @@ node_modules/
 android/
 ios/
 
+# Allow ASO store assets (for App Store + Play Store)
+!expo-app/store-assets/
+!expo-app/store-assets/**
+
 # Root-level config files (Swift project root, not expo-app/)
 /babel.config.js
 /metro.config.js
@@ -37,6 +41,8 @@ rork-eslint.config.js
 
 # Secrets - NUNCA commitar com valores reais
 Config.xcconfig
+.env.local
+.env*.local
 
 core
 node_modules
