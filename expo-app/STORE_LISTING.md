@@ -171,8 +171,9 @@ Apple exige declarar CADA tipo de dado coletado. Categorias abaixo refletem o ap
 None
 ```
 
-> Apesar de ter expo-tracking-transparency e NSUserTrackingUsageDescription, v1.0 NAO faz cross-app tracking.
-> Se futuramente ativar Meta SDK com ATT opt-in, migrar pra: "Identifiers (User ID), Usage Data".
+> expo-tracking-transparency e NSUserTrackingUsageDescription REMOVIDOS em 2026-04-14:
+> v1.0 NAO faz cross-app tracking e exibir o prompt ATT sem motivo legitimo viola Apple Guideline 5.1.2 (App Store Review).
+> Se futuramente ativar Meta SDK / ads com ATT opt-in, reintroduzir com pre-prompt screen + gating pos-login.
 
 #### Data Linked to You (identifica o usuario)
 

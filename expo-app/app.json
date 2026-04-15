@@ -21,9 +21,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Precisamos da câmera para fotografar pragas e sintomas nas lavouras para diagnóstico por IA.",
         "NSPhotoLibraryUsageDescription": "Precisamos acessar suas fotos para selecionar imagens de pragas e sintomas para diagnóstico por IA.",
-        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para mostrar condições climáticas da sua região e avaliar riscos de pragas.",
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSUserTrackingUsageDescription": "Usamos dados de rastreamento para personalizar anúncios e melhorar sua experiência no app."
+        "NSLocationWhenInUseUsageDescription": "Usamos sua localização (com sua permissão explícita) para melhorar o diagnóstico via agrônomo IA e enviar alertas regionais de pragas.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
@@ -140,8 +139,7 @@
           "project": "rumo-pragas",
           "url": "https://sentry.io/"
         }
-      ],
-      "expo-tracking-transparency"
+      ]
     ],
     "extra": {
       "eas": {

@@ -19,7 +19,6 @@ import {
   stopSubscriptionListener,
 } from '../services/subscriptionSync';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { Colors } from '../constants/theme';
 
@@ -52,12 +51,14 @@ Sentry.init({
 SplashScreen.preventAutoHideAsync();
 
 const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
+const LOCATION_CONSENT_SHOWN_KEY = '@rumo_pragas_location_consent_shown';
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
+  const [hasSeenLocationConsent, setHasSeenLocationConsent] = useState<boolean | null>(null);
 
   // Register for push notifications only after the user is authenticated
   useNotifications(isAuthenticated);
@@ -68,14 +69,12 @@ function RootLayoutNav() {
   // Check for OTA updates on app launch (only in production builds)
   useOTAUpdate();
 
-  // Request ATT permission on iOS before any tracking (Apple requirement)
-  useEffect(() => {
-    if (Platform.OS === 'ios') {
-      requestTrackingPermissionsAsync().catch((err) => {
-        if (__DEV__) console.warn('[ATT] Permission request failed:', err);
-      });
-    }
-  }, []);
+  // ATT (App Tracking Transparency) intentionally removed — Apple guideline 5.1.2:
+  // the app does not integrate any ad SDK and does not perform cross-app tracking,
+  // so prompting for ATT without a legitimate tracking purpose is grounds for rejection.
+  // If ads/cross-app tracking are added in the future: reintroduce with a pre-prompt
+  // screen explaining the purpose + gate call behind a post-login guard + AsyncStorage flag.
+
   // Initialise RevenueCat for in-app purchases (never blocks startup)
   useEffect(() => {
     initializePurchases(user?.id).catch((e) => {
@@ -110,34 +109,51 @@ function RootLayoutNav() {
         if (__DEV__) console.error('[Layout] Failed to read onboarding key:', err);
         if (mounted) setHasSeenOnboarding(false);
       });
+    // P0-3 (LGPD): Read whether the user has already seen the location consent screen
+    AsyncStorage.getItem(LOCATION_CONSENT_SHOWN_KEY)
+      .then((value) => {
+        if (mounted) setHasSeenLocationConsent(value === 'true');
+      })
+      .catch((err: unknown) => {
+        if (__DEV__) console.error('[Layout] Failed to read consent key:', err);
+        if (mounted) setHasSeenLocationConsent(false);
+      });
     return () => {
       mounted = false;
     };
   }, []);
 
-  // Hide splash screen once auth state and onboarding check are resolved
+  // Hide splash screen once auth state, onboarding and consent checks are resolved
   useEffect(() => {
-    if (!isLoading && hasSeenOnboarding !== null) {
+    if (!isLoading && hasSeenOnboarding !== null && hasSeenLocationConsent !== null) {
       SplashScreen.hideAsync();
     }
-  }, [isLoading, hasSeenOnboarding]);
+  }, [isLoading, hasSeenOnboarding, hasSeenLocationConsent]);
 
   useEffect(() => {
-    if (isLoading || hasSeenOnboarding === null) return;
+    if (isLoading || hasSeenOnboarding === null || hasSeenLocationConsent === null) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
+    const inConsentLocation = segments[0] === 'consent-location';
 
     if (!hasSeenOnboarding && !inOnboarding) {
       router.replace('/onboarding');
     } else if (!isAuthenticated && !inAuthGroup && hasSeenOnboarding) {
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && (inAuthGroup || inOnboarding)) {
+    } else if (isAuthenticated && !hasSeenLocationConsent && !inConsentLocation) {
+      // P0-3 (LGPD): show explicit consent once per user after first login
+      router.replace('/consent-location');
+    } else if (
+      isAuthenticated &&
+      hasSeenLocationConsent &&
+      (inAuthGroup || inOnboarding || inConsentLocation)
+    ) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, hasSeenOnboarding, router]);
+  }, [isAuthenticated, isLoading, segments, hasSeenOnboarding, hasSeenLocationConsent, router]);
 
-  if (isLoading || hasSeenOnboarding === null) {
+  if (isLoading || hasSeenOnboarding === null || hasSeenLocationConsent === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={Colors.accent} />
@@ -157,6 +173,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="consent-location" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="diagnosis"

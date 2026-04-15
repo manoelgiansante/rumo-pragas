@@ -57,6 +57,11 @@ export default function ResultScreen() {
     result.pest_id === 'Healthy';
   const confidence = result.confidence ?? 0;
 
+  // P0-1: invalid_image — edge function returned when confidence < 0.5 or not a plant
+  const isInvalidImage = result.pest_id === 'invalid_image';
+  // P0-1: Low-confidence warning — even when image is valid, alert user if < 0.7
+  const isLowConfidence = !isInvalidImage && !isHealthy && confidence > 0 && confidence < 0.7;
+
   const enrichment = useMemo((): AgrioEnrichment => {
     try {
       let notes: Record<string, unknown> = {} as Record<string, unknown>;
@@ -410,6 +415,42 @@ export default function ResultScreen() {
     );
   }
 
+  // P0-1: Invalid image state — edge function rejected for low confidence (<0.5) or non-plant
+  if (isInvalidImage) {
+    return (
+      <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+        <View style={styles.errorCenter}>
+          <View style={[styles.errorIcon, { backgroundColor: Colors.warmAmber + '1F' }]}>
+            <Ionicons name="image-outline" size={44} color={Colors.warmAmber} />
+          </View>
+          <Text style={[styles.errorTitle, isDark && styles.textDark]}>
+            {t('diagnosis.invalidImageTitle')}
+          </Text>
+          <Text style={styles.errorMsg}>
+            {result.parsedNotes?.message ||
+              (typeof result.notes === 'string'
+                ? (() => {
+                    try {
+                      return JSON.parse(result.notes).message;
+                    } catch {
+                      return t('diagnosis.invalidImageMsg');
+                    }
+                  })()
+                : t('diagnosis.invalidImageMsg'))}
+          </Text>
+          <TouchableOpacity
+            style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
+            onPress={() => router.replace('/diagnosis/camera')}
+            accessibilityLabel={t('diagnosis.tryAgainA11y')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.closeBtnText}>{t('diagnosis.tryAgain')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Empty state: no valid diagnosis data received
   if (!data || (!result.pest_name && !result.pest_id)) {
     return (
@@ -554,6 +595,19 @@ export default function ResultScreen() {
             </View>
           )}
         </View>
+
+        {/* P0-1: Low confidence warning banner — confidence < 70% */}
+        {isLowConfidence && (
+          <View
+            style={styles.lowConfidenceBanner}
+            accessible
+            accessibilityRole="alert"
+            accessibilityLabel={t('diagnosis.lowConfidenceBanner')}
+          >
+            <Ionicons name="warning" size={20} color="#B45309" />
+            <Text style={styles.lowConfidenceText}>{t('diagnosis.lowConfidenceBanner')}</Text>
+          </View>
+        )}
 
         <View style={styles.sections}>
           {enrichment.description && (
@@ -741,7 +795,7 @@ export default function ResultScreen() {
           </TouchableOpacity>
         </View>
 
-        <PremiumCard style={{ marginHorizontal: Spacing.lg, marginBottom: 32 }}>
+        <PremiumCard style={{ marginHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
           <Text style={styles.detailTitle}>{t('diagnosis.analysisDetails')}</Text>
           {[
             [t('diagnosis.selectedCrop'), result.crop],
@@ -757,6 +811,22 @@ export default function ResultScreen() {
               </View>
             ))}
         </PremiumCard>
+
+        {/* P0-1: Mandatory CREA legal disclaimer (Lei 7.802/89) on every diagnosis */}
+        <View
+          style={styles.legalDisclaimer}
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel={t('diagnosis.legalDisclaimer')}
+        >
+          <Ionicons
+            name="information-circle"
+            size={16}
+            color={Colors.textSecondary}
+            accessibilityElementsHidden
+          />
+          <Text style={styles.legalDisclaimerText}>{t('diagnosis.legalDisclaimer')}</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -903,4 +973,42 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent + '40',
   },
   actionBtnText: { fontSize: FontSize.caption, fontWeight: '700', color: '#FFF' },
+  // P0-1: Low confidence warning banner (confidence < 70%)
+  lowConfidenceBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    padding: 14,
+    backgroundColor: '#FEF3C7', // amber-100
+    borderLeftWidth: 4,
+    borderLeftColor: '#D97706', // amber-600
+    borderRadius: BorderRadius.md,
+  },
+  lowConfidenceText: {
+    flex: 1,
+    fontSize: FontSize.caption,
+    color: '#78350F', // amber-900
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  // P0-1: Legal disclaimer (Lei 7.802/89) — mandatory CREA warning
+  legalDisclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginHorizontal: Spacing.lg,
+    marginBottom: 32,
+    padding: 12,
+    backgroundColor: Colors.systemGray5,
+    borderRadius: BorderRadius.sm,
+  },
+  legalDisclaimerText: {
+    flex: 1,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
 });

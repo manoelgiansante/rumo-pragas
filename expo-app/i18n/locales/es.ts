@@ -207,6 +207,15 @@ export default {
     confidenceA11y: 'Confianza: {{pct}} por ciento',
     diagnosisLabel: 'Diagnóstico',
     cropNotInformed: 'cultivo no informado',
+    invalidImageTitle: 'Imagen no suficientemente clara',
+    invalidImageMsg:
+      'No se pudo identificar con seguridad. Intente nuevamente con mejor iluminación, enfoque nítido y acercamiento al área afectada.',
+    tryAgain: 'Tomar otra foto',
+    tryAgainA11y: 'Tomar otra foto de la plaga o enfermedad',
+    lowConfidenceBanner:
+      '⚠️ Confianza baja — consulte a un agrónomo antes de aplicar cualquier tratamiento.',
+    legalDisclaimer:
+      'Este diagnóstico es auxiliar y no reemplaza el recetario agronómico obligatorio por la Ley brasileña 7.802/89. Consulte a un agrónomo con CREA activo antes de aplicar plaguicidas.',
   },
   settings: {
     profile: 'Perfil',
@@ -272,6 +281,7 @@ export default {
     success: 'Exito',
     cancel: 'Cancelar',
     confirm: 'Confirmar',
+    ok: 'OK',
     save: 'Guardar',
     noResults: 'No se encontraron resultados',
     offline: 'Sin conexion a internet',
@@ -612,5 +622,23 @@ export default {
     pageOf: 'Página {{current}} de {{total}}',
     startNow: 'Empezar Ahora',
     startA11y: 'Empezar a usar la aplicación',
+  },
+  consent: {
+    location: {
+      title: '¿Compartir tu ubicación?',
+      subtitle:
+        'Podemos usar tu ubicación para mejorar el diagnóstico y enviar alertas regionales de plagas. Tú eliges — la app funciona sin esto.',
+      benefit1: 'Diagnóstico más preciso, ajustado a tu región',
+      benefit2: 'Alertas climáticas y de plagas para tu área',
+      benefit3: 'Recomendaciones de MIP regionales',
+      lgpdNotice:
+        'Conforme a la LGPD brasileña (Ley 13.709/2018): tu ubicación solo se envía al agrónomo IA con tu consentimiento explícito. Puedes revocarlo en cualquier momento en Ajustes.',
+      accept: 'Permitir ubicación',
+      acceptA11y: 'Permitir compartir ubicación',
+      decline: 'Ahora no',
+      declineA11y: 'Rechazar compartir ubicación',
+      footnote: 'Puedes cambiar esta elección en Ajustes > Privacidad.',
+      saveError: 'No se pudo guardar tu preferencia. Inténtalo de nuevo.',
+    },
   },
 };

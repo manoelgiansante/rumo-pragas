@@ -205,6 +205,14 @@ export default {
     confidenceA11y: 'Confidence: {{pct}} percent',
     diagnosisLabel: 'Diagnosis',
     cropNotInformed: 'crop not informed',
+    invalidImageTitle: 'Image not clear enough',
+    invalidImageMsg:
+      'Could not identify with confidence. Try again with better lighting, sharp focus, and a close view of the affected area.',
+    tryAgain: 'Take another photo',
+    tryAgainA11y: 'Take another photo of the pest or disease',
+    lowConfidenceBanner: '⚠️ Low confidence — consult an agronomist before applying any treatment.',
+    legalDisclaimer:
+      'This diagnosis is advisory and does not replace an agronomic prescription required by Brazilian Law 7.802/89. Consult a licensed agronomist (CREA) before applying pesticides.',
   },
   settings: {
     profile: 'Profile',
@@ -270,6 +278,7 @@ export default {
     success: 'Success',
     cancel: 'Cancel',
     confirm: 'Confirm',
+    ok: 'OK',
     save: 'Save',
     noResults: 'No results found',
     offline: 'No internet connection',
@@ -605,5 +614,23 @@ export default {
     pageOf: 'Page {{current}} of {{total}}',
     startNow: 'Get Started',
     startA11y: 'Start using the app',
+  },
+  consent: {
+    location: {
+      title: 'Share your location?',
+      subtitle:
+        'We can use your location to improve diagnosis accuracy and send regional pest alerts. Your choice — the app works without it.',
+      benefit1: 'More accurate diagnosis, tuned to your region',
+      benefit2: 'Weather and pest alerts for your area',
+      benefit3: 'Region-specific IPM recommendations',
+      lgpdNotice:
+        'Per Brazilian LGPD (Law 13.709/2018): your location is only sent to the AI agronomist with your explicit consent. You can revoke this anytime in Settings.',
+      accept: 'Allow location',
+      acceptA11y: 'Allow location sharing',
+      decline: 'Not now',
+      declineA11y: 'Decline location sharing',
+      footnote: 'You can change this choice anytime in Settings > Privacy.',
+      saveError: 'Could not save your preference. Please try again.',
+    },
   },
 };

@@ -4,6 +4,7 @@ import { Config } from '../constants/config';
 import type { DiagnosisResult } from '../types/diagnosis';
 import { parseNotes } from '../types/diagnosis';
 import i18n from '../i18n';
+import { hasLocationConsent } from './userPreferences';
 
 export type { DiagnosisResult };
 
@@ -47,12 +48,32 @@ export async function sendDiagnosis(
   latitude: number | null,
   longitude: number | null,
   token: string,
+  userId?: string,
 ): Promise<DiagnosisResult> {
+  // ── P0-3 (LGPD): gate lat/lng by explicit opt-in consent ──
+  // Default is "no consent → no location sent". Even if the caller provides
+  // coordinates, we drop them before leaving the device unless the user has
+  // explicitly consented via the onboarding / settings screen.
+  let safeLatitude: number | null = null;
+  let safeLongitude: number | null = null;
+  if (latitude !== null && longitude !== null && userId) {
+    try {
+      const consented = await hasLocationConsent(userId);
+      if (consented) {
+        safeLatitude = latitude;
+        safeLongitude = longitude;
+      }
+    } catch (e) {
+      // Fail closed — any error → no location sent
+      if (__DEV__) console.warn('[diagnosis] consent check failed, dropping location:', e);
+    }
+  }
+
   Sentry.addBreadcrumb({
     category: 'diagnosis',
     message: `Sending diagnosis for crop: ${cropType}`,
     level: 'info',
-    data: { cropType, hasLocation: !!(latitude && longitude) },
+    data: { cropType, hasLocation: !!(safeLatitude && safeLongitude) },
   });
 
   // Validate image size before sending
@@ -72,8 +93,8 @@ export async function sendDiagnosis(
     body: JSON.stringify({
       image_base64: imageBase64,
       crop_type: cropType,
-      latitude,
-      longitude,
+      latitude: safeLatitude,
+      longitude: safeLongitude,
     }),
   });
 

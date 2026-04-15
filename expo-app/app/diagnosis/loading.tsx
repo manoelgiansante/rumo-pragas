@@ -28,7 +28,7 @@ export default function LoadingScreen() {
   ];
   const { cropApiName } = useLocalSearchParams<{ cropApiName: string }>();
   const { imageBase64 } = useDiagnosis();
-  const { session } = useAuthContext();
+  const { session, user } = useAuthContext();
   const { location, getCurrentLocation } = useLocation();
   const { isConnected } = useNetworkStatus();
   const [step, setStep] = useState(0);
@@ -68,6 +68,7 @@ export default function LoadingScreen() {
           location?.latitude ?? null,
           location?.longitude ?? null,
           session?.access_token || '',
+          user?.id,
         );
 
         progress.value = withTiming(1, { duration: 500 });

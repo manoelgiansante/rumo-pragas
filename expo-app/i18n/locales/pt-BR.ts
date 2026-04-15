@@ -211,6 +211,16 @@ export default {
     confidenceA11y: 'Confiança: {{pct}} por cento',
     diagnosisLabel: 'Diagnóstico',
     cropNotInformed: 'cultura não informada',
+    // P0-1: Invalid image + low confidence + CREA legal disclaimer
+    invalidImageTitle: 'Imagem não clara o suficiente',
+    invalidImageMsg:
+      'Não foi possível identificar com segurança. Tente novamente com melhor iluminação, foco nítido e aproximação da área afetada da planta.',
+    tryAgain: 'Tirar outra foto',
+    tryAgainA11y: 'Tirar outra foto da praga ou doença',
+    lowConfidenceBanner:
+      '⚠️ Confiança baixa — consulte um agrônomo antes de aplicar qualquer tratamento.',
+    legalDisclaimer:
+      'Este diagnóstico é auxiliar e não substitui receituário agronômico obrigatório por Lei 7.802/89. Consulte um agrônomo com CREA ativo antes de aplicar defensivos.',
   },
   // Settings
   settings: {
@@ -278,6 +288,7 @@ export default {
     success: 'Sucesso',
     cancel: 'Cancelar',
     confirm: 'Confirmar',
+    ok: 'OK',
     save: 'Salvar',
     noResults: 'Nenhum resultado encontrado',
     offline: 'Sem conexão com a internet',
@@ -622,5 +633,24 @@ export default {
     pageOf: 'Página {{current}} de {{total}}',
     startNow: 'Começar Agora',
     startA11y: 'Começar a usar o aplicativo',
+  },
+  // P0-3 (LGPD) — explicit opt-in consent screens
+  consent: {
+    location: {
+      title: 'Compartilhar localização?',
+      subtitle:
+        'Podemos usar sua localização para melhorar o diagnóstico e enviar alertas regionais de pragas. A escolha é sua — o app funciona sem isso.',
+      benefit1: 'Diagnóstico mais preciso, ajustado à sua região',
+      benefit2: 'Alertas climáticos e de pragas da sua área',
+      benefit3: 'Recomendações regionais de MIP',
+      lgpdNotice:
+        'Em conformidade com a LGPD (Lei 13.709/2018): seus dados de localização só serão enviados ao agrônomo IA com sua autorização explícita. Você pode revogar a qualquer momento em Ajustes.',
+      accept: 'Permitir localização',
+      acceptA11y: 'Permitir compartilhamento de localização',
+      decline: 'Agora não',
+      declineA11y: 'Recusar compartilhamento de localização',
+      footnote: 'Você poderá alterar essa escolha a qualquer momento em Ajustes > Privacidade.',
+      saveError: 'Não foi possível salvar sua preferência. Tente novamente.',
+    },
   },
 };
