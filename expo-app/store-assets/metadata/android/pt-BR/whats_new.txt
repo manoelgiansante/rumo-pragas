@@ -1,0 +1,12 @@
+Primeira versao publica do Rumo Pragas
+
+- Diagnostico de pragas por IA com 82% de acuracia validada
+- 5 segundos pra identificar ferrugem, lagarta, percevejo e mais
+- Biblioteca por cultura (soja, milho, cafe, algodao)
+- Chat com Agronoma IA
+- Historico com GPS e data
+- Funciona offline
+- Exportacao PDF
+- Portugues, Ingles e Espanhol
+
+Obrigado por confiar. Boa safra!

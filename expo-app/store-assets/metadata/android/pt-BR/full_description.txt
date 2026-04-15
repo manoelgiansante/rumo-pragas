@@ -1,0 +1,68 @@
+Diagnostico de pragas agricolas com inteligencia artificial. Tire uma foto da lavoura e saiba EXATAMENTE qual praga esta atacando em 5 segundos.
+
+Rumo Pragas e o aplicativo que todo produtor rural precisa pra proteger a safra. Usando IA de ultima geracao, identifica pragas, doencas fungicas, bacterianas, virais e deficiencias nutricionais a partir de uma simples foto — mesmo em areas com sinal fraco.
+
+82,5% DE ACURACIA VALIDADA
+
+Nossa IA foi construida com especialista senior em fitossanidade tropical e testada contra imagens reais de ferrugem asiatica, lagarta-do-cartucho, percevejo-verde, bicho-mineiro do cafe e mancha-alvo. Validacao documentada pre-lancamento.
+
+COMO FUNCIONA
+
+1. Tire uma foto da folha, inseto ou sintoma
+2. A IA analisa a imagem em ate 5 segundos
+3. Receba diagnostico com nome da praga, nivel de confianca, severidade e tratamento completo
+
+Simples, rapido e funciona mesmo em areas com sinal fraco. Sem internet, os diagnosticos ficam na fila e processam automaticamente quando a conexao voltar.
+
+FUNCIONALIDADES
+
+Diagnostico por IA — Identifica pragas, doencas fungicas, bacterianas, virais e deficiencias nutricionais. Treinada com milhares de imagens de lavouras brasileiras.
+
+Tratamento recomendado — Principio ativo + grupo quimico + dosagem/ha + periodo de carencia + classe toxicologica. Alternativas biologicas (Beauveria, Trichogramma, Metarhizium) e manejo cultural.
+
+Manejo Integrado de Pragas (MIP) — Nivel de acao, epoca de monitoramento e estrategia por cultura.
+
+Biblioteca de pragas — Catalogo por cultura (soja, milho, cafe, algodao, feijao, trigo, arroz, cana, tomate, batata e mais). Cada praga com fotos, ciclo de vida, sintomas e metodos de controle.
+
+Chat com IA Agronoma — Duvidas sobre manejo, dosagem, epoca de aplicacao, resistencia e rotacao de principio ativo diretamente com consultor virtual.
+
+Historico completo — Diagnosticos salvos com data, GPS e foto. Acompanhe a evolucao fitossanitaria da propriedade o ano todo.
+
+Alertas regionais — Notificacoes sobre pragas detectadas na sua regiao, baseadas em dados climaticos e relatos de outros produtores.
+
+Clima integrado — Temperatura, umidade e previsao direto na home. Condicoes climaticas influenciam o risco de praga.
+
+Fila offline — Sem internet? Tire a foto, o diagnostico entra na fila e processa quando a rede voltar. Nenhum dado e perdido.
+
+3 Idiomas — Portugues, Ingles e Espanhol.
+
+Exportacao PDF — Relatorios profissionais pra compartilhar com agronomos e consultores.
+
+PARA QUEM E
+
+- Produtores rurais (pequeno, medio e grande porte)
+- Agronomos e consultores de campo
+- Tecnicos agricolas e cooperativas
+- Estudantes de agronomia
+
+CULTURAS SUPORTADAS
+
+Soja, milho, cafe, algodao, feijao, trigo, arroz, cana-de-acucar, tomate, batata, citros, uva, banana, sorgo, amendoim e muitas outras.
+
+SEGURANCA E PRIVACIDADE
+
+Dados protegidos com criptografia em transito e em repouso. Imagens processadas com seguranca e nunca vendidas a terceiros. Voce controla tudo — pode apagar o historico a qualquer momento.
+
+PLANOS
+
+- Gratis: 3 diagnosticos por mes
+- Pro: 30 diagnosticos/mes + chat ilimitado + alertas + PDF
+- Enterprise: diagnosticos ilimitados + multi-usuario
+
+AVISO AGRONOMICO
+
+Recomendacoes sao sugestoes tecnicas baseadas em boas praticas. A aplicacao de defensivos requer receituario agronomico conforme Lei 7.802/89. Rumo Pragas nao substitui engenheiro agronomo.
+
+Baixe agora e proteja sua lavoura com a tecnologia mais avancada do agro brasileiro.
+
+Rumo Pragas. Inteligencia artificial a servico do campo.
