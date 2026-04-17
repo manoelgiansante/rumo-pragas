@@ -140,9 +140,7 @@ describe('registerForPushNotificationsAsync', () => {
     }));
     jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
-    const { registerForPushNotificationsAsync: register } =
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../services/notifications');
+    const { registerForPushNotificationsAsync: register } = require('../../services/notifications');
     const token = await register();
     expect(token).toBeNull();
   });
@@ -200,9 +198,7 @@ describe('registerForPushNotificationsAsync', () => {
     }));
     jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
-    const { registerForPushNotificationsAsync: register } =
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('../../services/notifications');
+    const { registerForPushNotificationsAsync: register } = require('../../services/notifications');
     const token = await register();
     expect(token).toBeNull();
   });

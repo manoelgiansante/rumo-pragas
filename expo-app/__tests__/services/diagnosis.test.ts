@@ -100,7 +100,6 @@ describe('sendDiagnosis', () => {
       }),
     }));
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { sendDiagnosis: sendInsecure } = require('../../services/diagnosis');
     const smallImage = makeBase64(100);
     await expect(sendInsecure(smallImage, 'soja', null, null, 'token')).rejects.toThrow(

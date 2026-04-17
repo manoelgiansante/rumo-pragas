@@ -10,7 +10,6 @@ jest.mock('expo-store-review', () => ({
   requestReview: jest.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const StoreReview = require('expo-store-review') as {
   isAvailableAsync: jest.Mock;
   requestReview: jest.Mock;
