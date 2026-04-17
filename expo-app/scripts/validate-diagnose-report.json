@@ -1,0 +1,1524 @@
+{
+  "run_at": "2026-04-14T10:39:21.615Z",
+  "total_tests": 10,
+  "weighted_points": 33,
+  "weighted_max": 40,
+  "weighted_accuracy_pct": 82.5,
+  "strict_correct": 7,
+  "strict_accuracy_pct": 70,
+  "results": [
+    {
+      "test": "Lagarta da soja (Anticarsia gemmatalis)",
+      "points": 3,
+      "max": 4,
+      "reasons": ["crop ok (soja)", "pest ok (lagarta-do-cartucho)", "conf low (0.35)"],
+      "raw": {
+        "id": "5915b635-8a03-4548-af07-688d3008ed1e",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "soja",
+        "pest_id": "Spodoptera_frugiperda",
+        "pest_name": "Lagarta-do-cartucho",
+        "confidence": 0.35,
+        "image_url": null,
+        "notes": "{\"message\":\"Imagem mostra inseto adulto (provável mariposa/traça). Identificação de praga em soja requer melhor visualização da planta afetada. Imagem apresenta apenas o inseto adulto isolado, dificultando diagnóstico preciso.\",\"crop\":\"soja\",\"crop_confidence\":0.95,\"predictions\":[{\"id\":\"lepidoptera_adult\",\"confidence\":0.6,\"common_name\":\"Mariposa-praga (indeterminada)\",\"scientific_name\":\"Lepidoptera - Família indeterminada\",\"category\":\"pest\",\"type\":\"insect\"},{\"id\":\"inseto_braquiopode\",\"confidence\":0.4,\"common_name\":\"Possivelmente Spodoptera spp.\",\"scientific_name\":\"Spodoptera spp.\",\"category\":\"pest\",\"type\":\"insect\"}],\"enrichment\":{\"name_pt\":\"Diagnóstico limitado - Inseto adulto sem contexto de dano\",\"description\":\"A imagem fornecida mostra apenas um inseto adulto (mariposa/traça) isolado, sem visualização da planta hospedeira ou sintomas de dano. Para diagnóstico fitossanitário completo em soja é necessário: observação de folhas, frutos, hastes com sintomas visíveis, presença de larvas ou fezes características (frass). A posição geográfica (DF/Brasília) e identificação de soja como cultura sugerem possível presença de pragas relevantes como Spodoptera frugiperda, Anticarsia gemmatalis ou Helicoverpa armigera, mas sem evidência visual dos danos não é possível confirmação.\",\"causes\":[\"Inseto adulto capturado sem contexto de infestação visível\",\"Imagem insuficiente para correlacionar com danos em soja\"],\"symptoms\":[\"Não identificável na imagem - apenas inseto adulto presente\"],\"chemical_treatment\":[\"Aguardar confirmação de praga específica para recomendação de tratamento químico com receituário agronomico\"],\"biological_treatment\":[\"Aguardar identificação precisa da praga\"],\"cultural_treatment\":[\"Monitoramento intensivo da lavoura\",\"Busca por focos de infestação e sintomas de dano\"],\"prevention\":[\"Monitoramento regular com armadilhas luminosas\",\"Inspeção visual periódica da cultura\"],\"severity\":\"low\",\"lifecycle\":\"Não determinado - necessária identificação específica do inseto\",\"economic_impact\":\"Indeterminado sem confirmação de praga e nível de infestação\",\"monitoring\":[\"Captura de adultos em armadilhas luminosas\",\"Inspeção visual de plantas para larvas e danos foliares\",\"Busca de oviposições em folhas\"],\"favorable_conditions\":[\"Temperatura entre 20-30°C (típica do Distrito Federal)\",\"Umidade elevada\"],\"resistance_info\":\"Indisponível sem identificação de praga específica\",\"recommended_products\":[],\"related_pests\":[\"Spodoptera frugiperda (lagarta-do-cartucho)\",\"Anticarsia gemmatalis (lagarta-da-soja)\",\"Helicoverpa armigera (lagarta-da-espiga)\"],\"action_threshold\":\"Recomenda-se identificação precisa da praga antes de estabelecer nível de ação\",\"mip_strategy\":\"1. IDENTIFICAÇÃO: Capturar espécime para identificação entomológica precisa. 2. MONITORAMENTO: Usar armadilhas luminosas na área de soja para acompanhar voo de adultos. 3. OBSERVAÇÃO: Inspecionar plantas regularmente para presença de larvas, posturas e sintomas de dano. 4. CONTROLE: Basear-se em nível de ação específico da praga confirmada. 5. INTEGRAÇÃO: Considerar uso de defensivos biológicos (Baculovírus, Trichogramma, Beauveria) como primeira opção. 6. QUÍMICO: Utilizar inseticidas registrados no MAPA (conforme receituário agronomico) apenas se nível de ação for atingido.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:32:41.411697+00:00",
+        "parsedNotes": {
+          "message": "Imagem mostra inseto adulto (provável mariposa/traça). Identificação de praga em soja requer melhor visualização da planta afetada. Imagem apresenta apenas o inseto adulto isolado, dificultando diagnóstico preciso.",
+          "crop": "soja",
+          "crop_confidence": 0.95,
+          "predictions": [
+            {
+              "id": "lepidoptera_adult",
+              "confidence": 0.6,
+              "common_name": "Mariposa-praga (indeterminada)",
+              "scientific_name": "Lepidoptera - Família indeterminada",
+              "category": "pest",
+              "type": "insect"
+            },
+            {
+              "id": "inseto_braquiopode",
+              "confidence": 0.4,
+              "common_name": "Possivelmente Spodoptera spp.",
+              "scientific_name": "Spodoptera spp.",
+              "category": "pest",
+              "type": "insect"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Diagnóstico limitado - Inseto adulto sem contexto de dano",
+            "description": "A imagem fornecida mostra apenas um inseto adulto (mariposa/traça) isolado, sem visualização da planta hospedeira ou sintomas de dano. Para diagnóstico fitossanitário completo em soja é necessário: observação de folhas, frutos, hastes com sintomas visíveis, presença de larvas ou fezes características (frass). A posição geográfica (DF/Brasília) e identificação de soja como cultura sugerem possível presença de pragas relevantes como Spodoptera frugiperda, Anticarsia gemmatalis ou Helicoverpa armigera, mas sem evidência visual dos danos não é possível confirmação.",
+            "causes": [
+              "Inseto adulto capturado sem contexto de infestação visível",
+              "Imagem insuficiente para correlacionar com danos em soja"
+            ],
+            "symptoms": ["Não identificável na imagem - apenas inseto adulto presente"],
+            "chemical_treatment": [
+              "Aguardar confirmação de praga específica para recomendação de tratamento químico com receituário agronomico"
+            ],
+            "biological_treatment": ["Aguardar identificação precisa da praga"],
+            "cultural_treatment": [
+              "Monitoramento intensivo da lavoura",
+              "Busca por focos de infestação e sintomas de dano"
+            ],
+            "prevention": [
+              "Monitoramento regular com armadilhas luminosas",
+              "Inspeção visual periódica da cultura"
+            ],
+            "severity": "low",
+            "lifecycle": "Não determinado - necessária identificação específica do inseto",
+            "economic_impact": "Indeterminado sem confirmação de praga e nível de infestação",
+            "monitoring": [
+              "Captura de adultos em armadilhas luminosas",
+              "Inspeção visual de plantas para larvas e danos foliares",
+              "Busca de oviposições em folhas"
+            ],
+            "favorable_conditions": [
+              "Temperatura entre 20-30°C (típica do Distrito Federal)",
+              "Umidade elevada"
+            ],
+            "resistance_info": "Indisponível sem identificação de praga específica",
+            "recommended_products": [],
+            "related_pests": [
+              "Spodoptera frugiperda (lagarta-do-cartucho)",
+              "Anticarsia gemmatalis (lagarta-da-soja)",
+              "Helicoverpa armigera (lagarta-da-espiga)"
+            ],
+            "action_threshold": "Recomenda-se identificação precisa da praga antes de estabelecer nível de ação",
+            "mip_strategy": "1. IDENTIFICAÇÃO: Capturar espécime para identificação entomológica precisa. 2. MONITORAMENTO: Usar armadilhas luminosas na área de soja para acompanhar voo de adultos. 3. OBSERVAÇÃO: Inspecionar plantas regularmente para presença de larvas, posturas e sintomas de dano. 4. CONTROLE: Basear-se em nível de ação específico da praga confirmada. 5. INTEGRAÇÃO: Considerar uso de defensivos biológicos (Baculovírus, Trichogramma, Beauveria) como primeira opção. 6. QUÍMICO: Utilizar inseticidas registrados no MAPA (conforme receituário agronomico) apenas se nível de ação for atingido."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Anticarsia_gemmatalis_%2845090719022%29.jpg/1280px-Anticarsia_gemmatalis_%2845090719022%29.jpg"
+    },
+    {
+      "test": "Lagarta da soja (eggs/Anticarsia)",
+      "points": 2,
+      "max": 4,
+      "reasons": [
+        "crop ok (soja)",
+        "pest miss (cochonilhas | scale_insects_soybean)",
+        "conf ok (0.92)"
+      ],
+      "raw": {
+        "id": "f24599f2-90ef-4f70-b721-11f632edb17d",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "soja",
+        "pest_id": "Scale_insects_soybean",
+        "pest_name": "Cochonilhas",
+        "confidence": 0.92,
+        "image_url": null,
+        "notes": "{\"message\":\"Identificada infestação de cochonilhas (escamas) em soja. Estruturas esféricas características de cochonilhas da família Coccidae visíveis em alta densidade. Requer intervenção fitossanitária imediata.\",\"crop\":\"Soja\",\"crop_confidence\":0.95,\"predictions\":[{\"id\":\"scale_insect_coccidae\",\"confidence\":0.92,\"common_name\":\"Cochonilhas ou Escamas\",\"scientific_name\":\"Família Coccidae (possível Saissetia oleae ou similar)\",\"category\":\"pest\",\"type\":\"insect\"},{\"id\":\"mealybug_pseudococcidae\",\"confidence\":0.78,\"common_name\":\"Cochonilhas farinhosas\",\"scientific_name\":\"Família Pseudococcidae\",\"category\":\"pest\",\"type\":\"insect\"}],\"enrichment\":{\"name_pt\":\"Cochonilhas ou Escamas\",\"description\":\"Cochonilhas são insetos homópteros que se alimentam da seiva das plantas. Possuem corpo protegido por uma cobertura cerosa ou escamosa que as caracteriza. No Brasil, várias espécies atacam a soja causando enfraquecimento severo das plantas. Os adultos e ninfas se fixam nas folhas, caules e ramos, formando colônias densas. A reprodução é rápida em condições favoráveis.\",\"causes\":[\"Infestação por cochonilhas da família Coccidae ou Pseudococcidae\",\"Disseminação por contato direto entre plantas\",\"Transporte passivo por insetos, vento ou ferramentas contaminadas\",\"Condições climáticas favoráveis (temperaturas moderadas e umidade)\"],\"symptoms\":[\"Estruturas esféricas ou ovoides de cor creme a amarelada cobrindo folhas e ramos\",\"Enfraquecimento geral da planta\",\"Redução de vigor vegetativo\",\"Possível presença de melada que atrai fungos fumagina\",\"Folhas amareladas e com manchas escuras\",\"Redução na produtividade se não controladas\"],\"chemical_treatment\":[\"Óleo mineral (100-150 mL/100L de água) - aplicação em pós-colheita preferencial\",\"Inseticidas neonicotinóides: imidacloprida (dosagem conforme bula, geralmente 200-250 mL/ha)\",\"Inseticidas piretroides: cipermetrina (500-750 mL/ha) ou deltametrina (400-600 mL/ha)\",\"Inseticidas organofosforados: metamidofós (600-800 mL/ha) - verificar restrições\",\"Enxofre em pó ou pulverizável (2-4 kg/ha)\",\"NOTA: Aplicações devem respeitar restrições de período vegetativo da soja. Receituário agronômico obrigatório.\"],\"biological_treatment\":[\"Liberação de Cryptolaemus montrouzieri (joaninha predadora de cochonilhas)\",\"Uso de fungos entomopatogênicos como Beauveria bassiana ou Metarhizium anisopliae\",\"Preservação de predadores naturais como joaninhas e insetos parasitoides\",\"Incentivo à fauna benéfica através de plantas-iscas e redução de pesticidas\"],\"cultural_treatment\":[\"Eliminação de plantas hospedeiras vizinhas severamente infestadas\",\"Limpeza e desinfecção de ferramentas de trabalho\",\"Rotação de culturas para interrupção do ciclo populacional\",\"Manejo adequado de irrigação evitando excesso de umidade\",\"Remoção manual de ramos severamente infestados\",\"Monitoramento constante da lavoura durante o período vegetativo\",\"Quarentena de mudas antes do plantio\"],\"prevention\":[\"Uso de sementes e mudas certificadas e livres de pragas\",\"Inspeção regular das plantas durante o ciclo\",\"Manutenção da limpeza da área de cultivo\",\"Evitar superdensidades de plantio que favorecem disseminação\",\"Manejo equilibrado de fertilizantes (excesso de nitrogênio favorece)\",\"Controle de plantas daninhas que podem hospedar a praga\",\"Escolha de épocas de plantio que reduzam coincidência com picos populacionais\"],\"severity\":\"high\",\"lifecycle\":\"As cochonilhas possuem ciclo de vida variável conforme a espécie (8-15 gerações/ano em condições favoráveis). Fêmeas são sedentárias e se fixam nas plantas para se alimentar. Machos possuem asas e mobilidade maior. Reprodução por partenogênese parcial ou sexuada. Ovos são depositados sob a escama ou corpo ceroso da fêmea. Período de incubação varia de 5-10 dias. Desenvolvimento rápido em temperaturas de 25-30°C.\",\"economic_impact\":\"Perdas significativas de produtividade em soja infestadas. Redução do valor comercial das plantas ornamentais. Em lavouras comerciais, infestações severas podem reduzir rendimento em 20-40%. Custos de controle químico elevados. Impacto maior em sistemas de cultivo protegido ou em estágios iniciais do desenvolvimento das plantas.\",\"monitoring\":[\"Inspeção visual semanal de folhas superiores, inferiores e caules\",\"Armadilhas amarelas pegajosas para monitorar população de adultos alados\",\"Contagem de ninfas e adultos em plantas aleatoriamente selecionadas\",\"Observação de presença de melada e fungos fumagina como indicadores indiretos\",\"Registro de datas de primeira ocorrência para previsão de picos populacionais\"],\"favorable_conditions\":[\"Temperaturas entre 20-30°C\",\"Umidade relativa do ar acima de 60%\",\"Plantas com vigência reduzida (déficit hídrico ou nutricional)\",\"Ausência de inimigos naturais\",\"Excesso de adubação nitrogenada\",\"Período de estiagem prolongada reduzindo pressão natural\",\"Proximidade de plantas hospedeiras infestadas\"],\"resistance_info\":\"Não há evidências de desenvolvimento de resistência significativo em populações de cochonilhas da soja no Brasil até o momento, mas recomenda-se rodízio de princípios ativos para prevenção. Populações submetidas a pressão seletiva intensa de um mesmo inseticida podem apresentar tolerância gradual.\",\"recommended_products\":[{\"name\":\"Óleo mineral Premium\",\"active_ingredient\":\"Óleo mineral 99%\",\"dosage\":\"100-150 mL/100L de água\",\"interval\":\"Repouso até colheita em aplicações pré-colheita\",\"safety_period\":\"0 dias em aplicações pós-colheita\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Imidacloprida\",\"active_ingredient\":\"Imidacloprida 700g/L\",\"dosage\":\"200-250 mL/ha\",\"interval\":\"7-14 dias entre aplicações\",\"safety_period\":\"14 dias antes da colheita\",\"toxic_class\":\"Classe III\"},{\"name\":\"Cipermetrina\",\"active_ingredient\":\"Cipermetrina 100g/L\",\"dosage\":\"500-750 mL/ha\",\"interval\":\"7-10 dias\",\"safety_period\":\"7 dias antes da colheita\",\"toxic_class\":\"Classe II\"},{\"name\":\"Enxofre 600g/L\",\"active_ingredient\":\"Enxofre 600g/L\",\"dosage\":\"2-4 kg/ha\",\"interval\":\"7-15 dias\",\"safety_period\":\"3 dias antes da colheita\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Beauveria bassiana\",\"active_ingredient\":\"Beauveria bassiana 2x10⁸ UFC/mL\",\"dosage\":\"500 mL a 1L/ha\",\"interval\":\"7-14 dias\",\"safety_period\":\"Biológico, verificar bula\",\"toxic_class\":\"Classe IV\"}],\"related_pests\":[\"Afídeos (Aphis gossypii)\",\"Mosca-branca (Bemisia tabaci)\",\"Tripes (Frankliniella spp.)\",\"Ácaros-praga (Tetranychus spp.)\"],\"action_threshold\":\"Aplicar controle quando observar 1-2 cochonilhas por cm² de folha ou presença visível de colônias densas em 15% das plantas. Para cochonilhas farinhosas, nível de ação é menor (0,5-1 indivíduos/cm²) devido à rapidez de reprodução.\",\"mip_strategy\":\"Estratégia integrada recomendada: (1) Monitoramento semanal da população a partir do V3-V4 da soja; (2) Remoção manual de ramos infestados para reduzir inóculo inicial; (3) Controle biológico com liberação de Cryptolaemus montrouzieri se disponível na região (Brasília-DF possui fornecedores); (4) Se limiar econômico atingido, aplicar inseticida seletivo (óleo mineral ou pireteroides) no início da infestação; (5) Alternância de princípios ativos para evitar resistência; (6) Após colheita, eliminar restos culturais e plantas voluntárias; (7) Em próximo plantio, considerar variedades mais tolerantes se disponíveis e rotação com culturas não hospedeiras. Integração com controle nutricional adequado (evitar excesso N) potencializa estratégia de MIP.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:33:09.372038+00:00",
+        "parsedNotes": {
+          "message": "Identificada infestação de cochonilhas (escamas) em soja. Estruturas esféricas características de cochonilhas da família Coccidae visíveis em alta densidade. Requer intervenção fitossanitária imediata.",
+          "crop": "Soja",
+          "crop_confidence": 0.95,
+          "predictions": [
+            {
+              "id": "scale_insect_coccidae",
+              "confidence": 0.92,
+              "common_name": "Cochonilhas ou Escamas",
+              "scientific_name": "Família Coccidae (possível Saissetia oleae ou similar)",
+              "category": "pest",
+              "type": "insect"
+            },
+            {
+              "id": "mealybug_pseudococcidae",
+              "confidence": 0.78,
+              "common_name": "Cochonilhas farinhosas",
+              "scientific_name": "Família Pseudococcidae",
+              "category": "pest",
+              "type": "insect"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Cochonilhas ou Escamas",
+            "description": "Cochonilhas são insetos homópteros que se alimentam da seiva das plantas. Possuem corpo protegido por uma cobertura cerosa ou escamosa que as caracteriza. No Brasil, várias espécies atacam a soja causando enfraquecimento severo das plantas. Os adultos e ninfas se fixam nas folhas, caules e ramos, formando colônias densas. A reprodução é rápida em condições favoráveis.",
+            "causes": [
+              "Infestação por cochonilhas da família Coccidae ou Pseudococcidae",
+              "Disseminação por contato direto entre plantas",
+              "Transporte passivo por insetos, vento ou ferramentas contaminadas",
+              "Condições climáticas favoráveis (temperaturas moderadas e umidade)"
+            ],
+            "symptoms": [
+              "Estruturas esféricas ou ovoides de cor creme a amarelada cobrindo folhas e ramos",
+              "Enfraquecimento geral da planta",
+              "Redução de vigor vegetativo",
+              "Possível presença de melada que atrai fungos fumagina",
+              "Folhas amareladas e com manchas escuras",
+              "Redução na produtividade se não controladas"
+            ],
+            "chemical_treatment": [
+              "Óleo mineral (100-150 mL/100L de água) - aplicação em pós-colheita preferencial",
+              "Inseticidas neonicotinóides: imidacloprida (dosagem conforme bula, geralmente 200-250 mL/ha)",
+              "Inseticidas piretroides: cipermetrina (500-750 mL/ha) ou deltametrina (400-600 mL/ha)",
+              "Inseticidas organofosforados: metamidofós (600-800 mL/ha) - verificar restrições",
+              "Enxofre em pó ou pulverizável (2-4 kg/ha)",
+              "NOTA: Aplicações devem respeitar restrições de período vegetativo da soja. Receituário agronômico obrigatório."
+            ],
+            "biological_treatment": [
+              "Liberação de Cryptolaemus montrouzieri (joaninha predadora de cochonilhas)",
+              "Uso de fungos entomopatogênicos como Beauveria bassiana ou Metarhizium anisopliae",
+              "Preservação de predadores naturais como joaninhas e insetos parasitoides",
+              "Incentivo à fauna benéfica através de plantas-iscas e redução de pesticidas"
+            ],
+            "cultural_treatment": [
+              "Eliminação de plantas hospedeiras vizinhas severamente infestadas",
+              "Limpeza e desinfecção de ferramentas de trabalho",
+              "Rotação de culturas para interrupção do ciclo populacional",
+              "Manejo adequado de irrigação evitando excesso de umidade",
+              "Remoção manual de ramos severamente infestados",
+              "Monitoramento constante da lavoura durante o período vegetativo",
+              "Quarentena de mudas antes do plantio"
+            ],
+            "prevention": [
+              "Uso de sementes e mudas certificadas e livres de pragas",
+              "Inspeção regular das plantas durante o ciclo",
+              "Manutenção da limpeza da área de cultivo",
+              "Evitar superdensidades de plantio que favorecem disseminação",
+              "Manejo equilibrado de fertilizantes (excesso de nitrogênio favorece)",
+              "Controle de plantas daninhas que podem hospedar a praga",
+              "Escolha de épocas de plantio que reduzam coincidência com picos populacionais"
+            ],
+            "severity": "high",
+            "lifecycle": "As cochonilhas possuem ciclo de vida variável conforme a espécie (8-15 gerações/ano em condições favoráveis). Fêmeas são sedentárias e se fixam nas plantas para se alimentar. Machos possuem asas e mobilidade maior. Reprodução por partenogênese parcial ou sexuada. Ovos são depositados sob a escama ou corpo ceroso da fêmea. Período de incubação varia de 5-10 dias. Desenvolvimento rápido em temperaturas de 25-30°C.",
+            "economic_impact": "Perdas significativas de produtividade em soja infestadas. Redução do valor comercial das plantas ornamentais. Em lavouras comerciais, infestações severas podem reduzir rendimento em 20-40%. Custos de controle químico elevados. Impacto maior em sistemas de cultivo protegido ou em estágios iniciais do desenvolvimento das plantas.",
+            "monitoring": [
+              "Inspeção visual semanal de folhas superiores, inferiores e caules",
+              "Armadilhas amarelas pegajosas para monitorar população de adultos alados",
+              "Contagem de ninfas e adultos em plantas aleatoriamente selecionadas",
+              "Observação de presença de melada e fungos fumagina como indicadores indiretos",
+              "Registro de datas de primeira ocorrência para previsão de picos populacionais"
+            ],
+            "favorable_conditions": [
+              "Temperaturas entre 20-30°C",
+              "Umidade relativa do ar acima de 60%",
+              "Plantas com vigência reduzida (déficit hídrico ou nutricional)",
+              "Ausência de inimigos naturais",
+              "Excesso de adubação nitrogenada",
+              "Período de estiagem prolongada reduzindo pressão natural",
+              "Proximidade de plantas hospedeiras infestadas"
+            ],
+            "resistance_info": "Não há evidências de desenvolvimento de resistência significativo em populações de cochonilhas da soja no Brasil até o momento, mas recomenda-se rodízio de princípios ativos para prevenção. Populações submetidas a pressão seletiva intensa de um mesmo inseticida podem apresentar tolerância gradual.",
+            "recommended_products": [
+              {
+                "name": "Óleo mineral Premium",
+                "active_ingredient": "Óleo mineral 99%",
+                "dosage": "100-150 mL/100L de água",
+                "interval": "Repouso até colheita em aplicações pré-colheita",
+                "safety_period": "0 dias em aplicações pós-colheita",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Imidacloprida",
+                "active_ingredient": "Imidacloprida 700g/L",
+                "dosage": "200-250 mL/ha",
+                "interval": "7-14 dias entre aplicações",
+                "safety_period": "14 dias antes da colheita",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Cipermetrina",
+                "active_ingredient": "Cipermetrina 100g/L",
+                "dosage": "500-750 mL/ha",
+                "interval": "7-10 dias",
+                "safety_period": "7 dias antes da colheita",
+                "toxic_class": "Classe II"
+              },
+              {
+                "name": "Enxofre 600g/L",
+                "active_ingredient": "Enxofre 600g/L",
+                "dosage": "2-4 kg/ha",
+                "interval": "7-15 dias",
+                "safety_period": "3 dias antes da colheita",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Beauveria bassiana",
+                "active_ingredient": "Beauveria bassiana 2x10⁸ UFC/mL",
+                "dosage": "500 mL a 1L/ha",
+                "interval": "7-14 dias",
+                "safety_period": "Biológico, verificar bula",
+                "toxic_class": "Classe IV"
+              }
+            ],
+            "related_pests": [
+              "Afídeos (Aphis gossypii)",
+              "Mosca-branca (Bemisia tabaci)",
+              "Tripes (Frankliniella spp.)",
+              "Ácaros-praga (Tetranychus spp.)"
+            ],
+            "action_threshold": "Aplicar controle quando observar 1-2 cochonilhas por cm² de folha ou presença visível de colônias densas em 15% das plantas. Para cochonilhas farinhosas, nível de ação é menor (0,5-1 indivíduos/cm²) devido à rapidez de reprodução.",
+            "mip_strategy": "Estratégia integrada recomendada: (1) Monitoramento semanal da população a partir do V3-V4 da soja; (2) Remoção manual de ramos infestados para reduzir inóculo inicial; (3) Controle biológico com liberação de Cryptolaemus montrouzieri se disponível na região (Brasília-DF possui fornecedores); (4) Se limiar econômico atingido, aplicar inseticida seletivo (óleo mineral ou pireteroides) no início da infestação; (5) Alternância de princípios ativos para evitar resistência; (6) Após colheita, eliminar restos culturais e plantas voluntárias; (7) Em próximo plantio, considerar variedades mais tolerantes se disponíveis e rotação com culturas não hospedeiras. Integração com controle nutricional adequado (evitar excesso N) potencializa estratégia de MIP."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Velvetbean_caterpillar%2C_eggs_2014-06-06-14.48.01_ZS_PMax_%2815753693807%29.jpg/1280px-Velvetbean_caterpillar%2C_eggs_2014-06-06-14.48.01_ZS_PMax_%2815753693807%29.jpg"
+    },
+    {
+      "test": "Lagarta do cartucho em milho (Spodoptera frugiperda)",
+      "points": 4,
+      "max": 4,
+      "reasons": ["crop ok (milho)", "pest ok (lagarta-do-cartucho)", "conf ok (0.92)"],
+      "raw": {
+        "id": "8c84a416-4b25-4042-9564-aa112e7b5288",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "milho",
+        "pest_id": "fall_armyworm",
+        "pest_name": "Lagarta-do-cartucho",
+        "confidence": 0.92,
+        "image_url": null,
+        "notes": "{\"message\":\"Presença de lesões características de Spodoptera frugiperda em folhas de milho, com orifícios e bordas irregulares típicas da alimentação da lagarta-do-cartucho\",\"crop\":\"Milho\",\"crop_confidence\":0.98,\"predictions\":[{\"id\":\"fall_armyworm\",\"confidence\":0.92,\"common_name\":\"Lagarta-do-cartucho\",\"scientific_name\":\"Spodoptera frugiperda\",\"category\":\"pest\",\"type\":\"insect\"},{\"id\":\"armyworm\",\"confidence\":0.08,\"common_name\":\"Lagarta-militar\",\"scientific_name\":\"Pseudaletia sequax\",\"category\":\"pest\",\"type\":\"insect\"}],\"enrichment\":{\"name_pt\":\"Lagarta-do-cartucho do milho\",\"description\":\"A lagarta-do-cartucho (Spodoptera frugiperda) é a principal praga do milho no Brasil. As larvas penetram no cartucho foliar (região de crescimento apical) e alimentam-se das folhas em expansão, causando danos severos. Trata-se de uma praga polífaga que ataca diversas culturas. Possui ciclo de vida curto (20-30 dias em condições favoráveis) e pode gerar múltiplas gerações por ciclo de cultivo, especialmente em regiões tropicais como o Centro-Oeste brasileiro.\",\"causes\":[\"Oviposição de mariposas fêmeas de S. frugiperda nas folhas\",\"Migração de populações de áreas adjacentes\",\"Presença de hospedeiros alternativos na região\",\"Falta de controle químico preventivo\"],\"symptoms\":[\"Lesões irregulares nas folhas com bordas irregulares e orifícios\",\"Raspagem de tecido foliar (inicialmente)\",\"Lesões mais profundas conforme desenvolvimento larval\",\"Dano no cartucho foliar (folhas em expansão)\",\"Fezes pretas visíveis nas lesões\",\"Deformação de folhas novas em estádios avançados\"],\"chemical_treatment\":[\"Spinosad 480 SC - 100-150 mL/ha (Carência: 7 dias)\",\"Clorantraniliprole 50% - 40-50 mL/ha (Carência: 7 dias)\",\"Emamectina benzoato - 30-40 mL/ha (Carência: 14 dias)\",\"Lambda-cialotrina 50 g/L - 150-200 mL/ha (Carência: 21 dias)\",\"Tiofanato-metílico + Clotianidina - conforme bula (Carência: 14 dias)\",\"Metomil 215 SC - 400-600 mL/ha (Carência: 21 dias)\"],\"biological_treatment\":[\"Bacillus thuringiensis (Bt) - Cry1Ab, Cry1F eficazes em larvas pequenas\",\"Baculovírus (SfMNPV) - Agermectin, Gemstar - aplicar em larvas jovens\",\"Fungos entomopatogênicos - Metarhizium anisopliae\",\"Parasitoides - Trichogramma pretiosum e Telenomus remus\"],\"cultural_treatment\":[\"Rotação de culturas com não-hospedeiras\",\"Destruição de restos culturais (reduz inóculo)\",\"Plantio em épocas que evitem coincidência com picos populacionais\",\"Cultivo mínimo reduz emergência de pupas\",\"Manejo de plantas daninhas hospedeiras (capim-arroz, capim-pé-de-galinha)\",\"Irrigação adequada para manter vigor da planta\"],\"prevention\":[\"Monitoramento semanal a partir do V4-V5 do milho\",\"Uso de cultivares com genes Bt (Cry1F ou Cry1Ab)\",\"Semeadura escalonada para evitar picos populacionais\",\"Manutenção de faixas de refúgio (20% da área sem Bt)\",\"Controle químico preventivo em V2-V4 se pressão histórica alta\",\"Evitar monocultivo de milho\"],\"severity\":\"high\",\"lifecycle\":\"Ciclo de vida: Ovo (3-4 dias) → Larva (15-20 dias em 5 instares) → Pupa (8-10 dias no solo) → Adulto (mariposa). A mariposa tem longevidade de 10-15 dias. No Brasil, especialmente no Cerrado (latitude -15.78), ocorrem 4-5 gerações por ano. Pupação ocorre no solo a 2-5 cm de profundidade.\",\"economic_impact\":\"Perdas potenciais de até 40-50% em produtividade se não controlada. Danos diretos em folhas reduzem fotossíntese. Danos no cartucho podem comprometer colheita mecanizada. Custos de controle variáveis conforme número de aplicações necessárias.\",\"monitoring\":[\"Inspeção visual de plantas a cada 3-4 dias em V3-V8\",\"Contagem de plantas atacadas e larvas por planta\",\"Nível de ação: 20% de plantas com larvas no cartucho ou dano em folhas em V4-V6\",\"Armadilhas luminosas ou feromônios para monitoramento de adultos\",\"Observação de fezes ('frass') preto nas folhas e cartucho\"],\"favorable_conditions\":[\"Temperatura de 20-30°C (ótimo 25-27°C)\",\"Umidade relativa > 60%\",\"Período nublado favorece oviposição\",\"Presença de hospedeiros alternativos próximos\",\"Plantios contínuos de milho na região\",\"Falta de inimigos naturais\"],\"resistance_info\":\"Há relatos de resistência a piretroides sintéticos em populações brasileiras. Importante rotacionar mecanismos de ação (Grupos IRAC 5, 11, 28 para Bt e químicos convencionais 3A, 6, 22 para sintéticos). Monitorar eficácia de aplicações.\",\"recommended_products\":[{\"name\":\"Spinosad\",\"active_ingredient\":\"Spinosad\",\"dosage\":\"100-150 mL/ha\",\"interval\":\"7-10 dias se necessário\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe III (Medianamente tóxico)\"},{\"name\":\"Premio\",\"active_ingredient\":\"Clorantraniliprole\",\"dosage\":\"40-50 mL/ha\",\"interval\":\"10-14 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe III\"},{\"name\":\"Ampligo\",\"active_ingredient\":\"Lambda-cialotrina + Clorantraniliprole\",\"dosage\":\"150-200 mL/ha\",\"interval\":\"10-14 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe II (Muito tóxico)\"},{\"name\":\"Certero\",\"active_ingredient\":\"Emamectina benzoato\",\"dosage\":\"30-40 mL/ha\",\"interval\":\"7-10 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"Classe III\"},{\"name\":\"Bt (Cry1Ab ou Cry1F)\",\"active_ingredient\":\"Bacillus thuringiensis\",\"dosage\":\"500 mL a 1 L/ha conforme produto\",\"interval\":\"7 dias se necessário\",\"safety_period\":\"0 dias\",\"toxic_class\":\"Classe IV (Pouco tóxico)\"}],\"related_pests\":[\"Lagarta-militar (Pseudaletia sequax)\",\"Lagarta-da-espiga (Helicoverpa armigera)\",\"Broca-do-milho (Diatraea saccharalis)\"],\"action_threshold\":\"Nível de ação: 20% de plantas com larvas vivas no cartucho no estádio V4-V6; 50% de plantas com dano foliar em V2-V3; presença de larvas observadas durante monitoramento indica necessidade de controle imediato\",\"mip_strategy\":\"Estratégia de MIP recomendada: (1) Usar cultivares Bt (Cry1F/Cry1Ab) como base; (2) Implementar faixa de refúgio com variedade não-Bt (20% da área); (3) Monitoramento semanal em V3-V8; (4) Aplicação química apenas quando nível de ação atingido, priorizando produtos seletivos (Bt, spinosad, diamidas) sobre piretroides; (5) Intercalar mecanismos de ação para evitar resistência; (6) Rotação de culturas; (7) Controle de plantas hospedeiras daninhas; (8) Preservação de inimigos naturais; (9) Destruição de restos culturais pós-colheita; (10) Informação e capacitação contínua de produtores sobre identificação e monitoramento\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:33:36.142258+00:00",
+        "parsedNotes": {
+          "message": "Presença de lesões características de Spodoptera frugiperda em folhas de milho, com orifícios e bordas irregulares típicas da alimentação da lagarta-do-cartucho",
+          "crop": "Milho",
+          "crop_confidence": 0.98,
+          "predictions": [
+            {
+              "id": "fall_armyworm",
+              "confidence": 0.92,
+              "common_name": "Lagarta-do-cartucho",
+              "scientific_name": "Spodoptera frugiperda",
+              "category": "pest",
+              "type": "insect"
+            },
+            {
+              "id": "armyworm",
+              "confidence": 0.08,
+              "common_name": "Lagarta-militar",
+              "scientific_name": "Pseudaletia sequax",
+              "category": "pest",
+              "type": "insect"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Lagarta-do-cartucho do milho",
+            "description": "A lagarta-do-cartucho (Spodoptera frugiperda) é a principal praga do milho no Brasil. As larvas penetram no cartucho foliar (região de crescimento apical) e alimentam-se das folhas em expansão, causando danos severos. Trata-se de uma praga polífaga que ataca diversas culturas. Possui ciclo de vida curto (20-30 dias em condições favoráveis) e pode gerar múltiplas gerações por ciclo de cultivo, especialmente em regiões tropicais como o Centro-Oeste brasileiro.",
+            "causes": [
+              "Oviposição de mariposas fêmeas de S. frugiperda nas folhas",
+              "Migração de populações de áreas adjacentes",
+              "Presença de hospedeiros alternativos na região",
+              "Falta de controle químico preventivo"
+            ],
+            "symptoms": [
+              "Lesões irregulares nas folhas com bordas irregulares e orifícios",
+              "Raspagem de tecido foliar (inicialmente)",
+              "Lesões mais profundas conforme desenvolvimento larval",
+              "Dano no cartucho foliar (folhas em expansão)",
+              "Fezes pretas visíveis nas lesões",
+              "Deformação de folhas novas em estádios avançados"
+            ],
+            "chemical_treatment": [
+              "Spinosad 480 SC - 100-150 mL/ha (Carência: 7 dias)",
+              "Clorantraniliprole 50% - 40-50 mL/ha (Carência: 7 dias)",
+              "Emamectina benzoato - 30-40 mL/ha (Carência: 14 dias)",
+              "Lambda-cialotrina 50 g/L - 150-200 mL/ha (Carência: 21 dias)",
+              "Tiofanato-metílico + Clotianidina - conforme bula (Carência: 14 dias)",
+              "Metomil 215 SC - 400-600 mL/ha (Carência: 21 dias)"
+            ],
+            "biological_treatment": [
+              "Bacillus thuringiensis (Bt) - Cry1Ab, Cry1F eficazes em larvas pequenas",
+              "Baculovírus (SfMNPV) - Agermectin, Gemstar - aplicar em larvas jovens",
+              "Fungos entomopatogênicos - Metarhizium anisopliae",
+              "Parasitoides - Trichogramma pretiosum e Telenomus remus"
+            ],
+            "cultural_treatment": [
+              "Rotação de culturas com não-hospedeiras",
+              "Destruição de restos culturais (reduz inóculo)",
+              "Plantio em épocas que evitem coincidência com picos populacionais",
+              "Cultivo mínimo reduz emergência de pupas",
+              "Manejo de plantas daninhas hospedeiras (capim-arroz, capim-pé-de-galinha)",
+              "Irrigação adequada para manter vigor da planta"
+            ],
+            "prevention": [
+              "Monitoramento semanal a partir do V4-V5 do milho",
+              "Uso de cultivares com genes Bt (Cry1F ou Cry1Ab)",
+              "Semeadura escalonada para evitar picos populacionais",
+              "Manutenção de faixas de refúgio (20% da área sem Bt)",
+              "Controle químico preventivo em V2-V4 se pressão histórica alta",
+              "Evitar monocultivo de milho"
+            ],
+            "severity": "high",
+            "lifecycle": "Ciclo de vida: Ovo (3-4 dias) → Larva (15-20 dias em 5 instares) → Pupa (8-10 dias no solo) → Adulto (mariposa). A mariposa tem longevidade de 10-15 dias. No Brasil, especialmente no Cerrado (latitude -15.78), ocorrem 4-5 gerações por ano. Pupação ocorre no solo a 2-5 cm de profundidade.",
+            "economic_impact": "Perdas potenciais de até 40-50% em produtividade se não controlada. Danos diretos em folhas reduzem fotossíntese. Danos no cartucho podem comprometer colheita mecanizada. Custos de controle variáveis conforme número de aplicações necessárias.",
+            "monitoring": [
+              "Inspeção visual de plantas a cada 3-4 dias em V3-V8",
+              "Contagem de plantas atacadas e larvas por planta",
+              "Nível de ação: 20% de plantas com larvas no cartucho ou dano em folhas em V4-V6",
+              "Armadilhas luminosas ou feromônios para monitoramento de adultos",
+              "Observação de fezes ('frass') preto nas folhas e cartucho"
+            ],
+            "favorable_conditions": [
+              "Temperatura de 20-30°C (ótimo 25-27°C)",
+              "Umidade relativa > 60%",
+              "Período nublado favorece oviposição",
+              "Presença de hospedeiros alternativos próximos",
+              "Plantios contínuos de milho na região",
+              "Falta de inimigos naturais"
+            ],
+            "resistance_info": "Há relatos de resistência a piretroides sintéticos em populações brasileiras. Importante rotacionar mecanismos de ação (Grupos IRAC 5, 11, 28 para Bt e químicos convencionais 3A, 6, 22 para sintéticos). Monitorar eficácia de aplicações.",
+            "recommended_products": [
+              {
+                "name": "Spinosad",
+                "active_ingredient": "Spinosad",
+                "dosage": "100-150 mL/ha",
+                "interval": "7-10 dias se necessário",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe III (Medianamente tóxico)"
+              },
+              {
+                "name": "Premio",
+                "active_ingredient": "Clorantraniliprole",
+                "dosage": "40-50 mL/ha",
+                "interval": "10-14 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Ampligo",
+                "active_ingredient": "Lambda-cialotrina + Clorantraniliprole",
+                "dosage": "150-200 mL/ha",
+                "interval": "10-14 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe II (Muito tóxico)"
+              },
+              {
+                "name": "Certero",
+                "active_ingredient": "Emamectina benzoato",
+                "dosage": "30-40 mL/ha",
+                "interval": "7-10 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Bt (Cry1Ab ou Cry1F)",
+                "active_ingredient": "Bacillus thuringiensis",
+                "dosage": "500 mL a 1 L/ha conforme produto",
+                "interval": "7 dias se necessário",
+                "safety_period": "0 dias",
+                "toxic_class": "Classe IV (Pouco tóxico)"
+              }
+            ],
+            "related_pests": [
+              "Lagarta-militar (Pseudaletia sequax)",
+              "Lagarta-da-espiga (Helicoverpa armigera)",
+              "Broca-do-milho (Diatraea saccharalis)"
+            ],
+            "action_threshold": "Nível de ação: 20% de plantas com larvas vivas no cartucho no estádio V4-V6; 50% de plantas com dano foliar em V2-V3; presença de larvas observadas durante monitoramento indica necessidade de controle imediato",
+            "mip_strategy": "Estratégia de MIP recomendada: (1) Usar cultivares Bt (Cry1F/Cry1Ab) como base; (2) Implementar faixa de refúgio com variedade não-Bt (20% da área); (3) Monitoramento semanal em V3-V8; (4) Aplicação química apenas quando nível de ação atingido, priorizando produtos seletivos (Bt, spinosad, diamidas) sobre piretroides; (5) Intercalar mecanismos de ação para evitar resistência; (6) Rotação de culturas; (7) Controle de plantas hospedeiras daninhas; (8) Preservação de inimigos naturais; (9) Destruição de restos culturais pós-colheita; (10) Informação e capacitação contínua de produtores sobre identificação e monitoramento"
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Zea_mays_damaged_by_Spodoptera_frugiperda_%28200218-0814%29.jpg/1280px-Zea_mays_damaged_by_Spodoptera_frugiperda_%28200218-0814%29.jpg"
+    },
+    {
+      "test": "Lagarta do cartucho no colmo",
+      "points": 4,
+      "max": 4,
+      "reasons": ["crop ok (milho)", "pest ok (lagarta-do-cartucho)", "conf ok (0.78)"],
+      "raw": {
+        "id": "12f21ae6-da3e-47e4-8cd3-2ac6d467ed65",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "milho",
+        "pest_id": "spodoptera_frugiperda",
+        "pest_name": "Lagarta-do-cartucho",
+        "confidence": 0.78,
+        "image_url": null,
+        "notes": "{\"message\":\"Presença de inseto praga com características de lepidóptero em cultivo de milho. Observado dano foliar compatível com lagarta-do-cartucho e possível presença de parasitóide natural (himenóptero).\",\"crop\":\"Milho\",\"crop_confidence\":0.95,\"predictions\":[{\"id\":\"spodoptera_frugiperda\",\"confidence\":0.78,\"common_name\":\"Lagarta-do-cartucho\",\"scientific_name\":\"Spodoptera frugiperda (J.E. Smith, 1797)\",\"category\":\"pest\",\"type\":\"insect\"},{\"id\":\"parasitoid_wasp\",\"confidence\":0.65,\"common_name\":\"Vespa parasitóide\",\"scientific_name\":\"Himenóptero parasitóide (possível Trichogramma ou Cotesia)\",\"category\":\"pest\",\"type\":\"insect\"}],\"enrichment\":{\"name_pt\":\"Lagarta-do-cartucho ou Lagarta-militar\",\"description\":\"A Spodoptera frugiperda é uma das pragas mais importantes da cultura do milho no Brasil. A larva causa danos ao penetrar no cartucho foliar, alimentando-se das folhas em desenvolvimento. Também pode atacar o colmo e as espigas. A praga é polífaga, alimentando-se de diversas culturas. Tem desenvolvimento rápido em clima quente e pode completar múltiplas gerações por ano.\",\"causes\":[\"Presença de plantas hospedeiras no período de semeadura\",\"Temperatura elevada (20-30°C ideal para desenvolvimento)\",\"Umidade relativa adequada\",\"Ausência de controle químico preventivo\",\"Resistência já presente em populações de milho convencional\"],\"symptoms\":[\"Raspagens e furos nas folhas do cartucho\",\"Desfibramentos nas folhas internas\",\"Presença de fezes escuras (frass) no cartucho\",\"Destruição progressiva das folhas em desenvolvimento\",\"Em estágios avançados, dano nos estilos dos óvulos\"],\"chemical_treatment\":[\"Clorantraniliprole 200g/L SC: 10-15 mL/100L de água, intervalo de 7-10 dias (Receituário agronomico obrigatório)\",\"Spinosad 480g/L: 50-75 mL/100L de água, intervalo de 7-10 dias\",\"Profenofós 500g/L: 50-75 mL/100L de água, intervalo de 10-14 dias\",\"Indoxacarbe 150g/L: 40-60 mL/100L de água, intervalo de 10-14 dias\",\"Emamectina benzoato 19g/L: 60-80 mL/100L de água, intervalo de 7-14 dias\"],\"biological_treatment\":[\"Liberação de Trichogramma pretiosum para controle de ovos (200-400 parasitóides/ha)\",\"Aplicação de Baculovírus (vírus da poliedrosis nuclear) - SfNPV\",\"Utilização de Beauveria bassiana e Metarhizium anisopliae\",\"Promoção de inimigos naturais como joaninhas, crisopídeos e himenópteros parasitóides\",\"Conservação de faixas de plantas hospedeiras de parasitóides\"],\"cultural_treatment\":[\"Plantio de variedades transgênicas Bt (Cry1Ab, Cry1F ou piramidadas) como primeira linha de defesa\",\"Rotação de culturas para quebrar o ciclo da praga\",\"Destruição de restos culturais e plantas daninhas hospedeiras\",\"Manejo da semeadura (época e densidade adequadas)\",\"Monitoramento visual 2-3 vezes por semana em V4-V6\",\"Eliminação manual de focos pequenos\",\"Sincronização com picos de oviposição da praga\"],\"prevention\":[\"Uso de sementes tratadas com inseticidas (neonicotinóides)\",\"Semeadura em época adequada (evitar períodos de alta pressão da praga)\",\"Manutenção de plantas de cobertura para parasitóides\",\"Monitoramento de plantas voluntárias de milho\",\"Alternância de grupos químicos para evitar resistência\",\"Manejo integrado desde o plantio\"],\"severity\":\"high\",\"lifecycle\":\"A lagarta-do-cartucho completa seu ciclo de vida em 25-30 dias em condições ótimas (25-28°C). Fêmeas colocam ovos em massas (100-150 ovos) na face abaxial das folhas. Larvas passam por 6 instares larvais (8-12 dias). Pupação ocorre no solo (8-15 dias). Adultos vivem 7-10 dias. Podem ocorrer 4-6 gerações por ano no Brasil central/norte.\",\"economic_impact\":\"Perdas de até 30-40% em milho convencional sem controle. Em milho Bt, redução de 95% de danos. Custos com controle químico variam de R$ 50-150/ha por aplicação. Impacto maior em estágios iniciais da cultura (V4-V8).\",\"monitoring\":[\"Verificação de presença de ovos na face abaxial das folhas (antes de eclosão)\",\"Contagem de lagartas no cartucho (V4-V8) em 20 plantas/talhão\",\"Observação de danos progressivos nas folhas internas\",\"Nível de ação: presença de 10-15% de plantas com larvas vivas no cartucho\",\"Armadilhas com feromônio sintético para monitoramento de adultos\",\"Inspeção de fezes (frass) como indicativo de presença recente\"],\"favorable_conditions\":[\"Temperatura de 20-30°C (ótimo 25-28°C)\",\"Umidade relativa entre 60-100%\",\"Ausência de inimigos naturais ou seu controle químico\",\"Plantas em estádio fenológico susceptível (V4-V10)\",\"Presença de plantas hospedeiras alternativas próximas\",\"Períodos com baixa pluviosidade facilitam oviposição\"],\"resistance_info\":\"População de S. frugiperda no Brasil apresenta variabilidade quanto à susceptibilidade a diferentes toxinas Bt. Há relatos de resistência a Cry1F em algumas regiões. Recomenda-se pirâmides gênicas (2 ou mais eventos Bt) e rotação química para retardar seleção de resistência.\",\"recommended_products\":[{\"name\":\"Ampligo 150 ZC\",\"active_ingredient\":\"Clorantraniliprole + Lambda-cialotrina\",\"dosage\":\"100-150 mL/ha\",\"interval\":\"10-14 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Premio\",\"active_ingredient\":\"Clorantraniliprole\",\"dosage\":\"10-15 mL/100L\",\"interval\":\"7-10 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Dipel\",\"active_ingredient\":\"Bacillus thuringiensis subspecie kurstaki\",\"dosage\":\"500-750 mL/100L\",\"interval\":\"7 dias\",\"safety_period\":\"0 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Spinosad SC\",\"active_ingredient\":\"Spinosad\",\"dosage\":\"50-75 mL/100L\",\"interval\":\"7-10 dias\",\"safety_period\":\"3 dias\",\"toxic_class\":\"Classe III\"}],\"related_pests\":[\"Helicoverpa armigera (Lagarta-da-maçã)\",\"Pseudaletia sequax (Lagarta-do-trigo)\",\"Diatraea saccharalis (Broca-da-cana)\",\"Elasmopalpus lignosellus (Broca-das-sementes)\"],\"action_threshold\":\"Início de controle quando observado 10-15% de plantas com larvas vivas no cartucho ou presença de 2-3 lagartas por cartucho, considerando também tamanho das larvas e estádio da cultura. Em estádios iniciais (V4-V6), limiar é menor. Em milho Bt, monitoramento mais intensivo para identificar falhas.\",\"mip_strategy\":\"1) Utilizare sementes Bt de qualidade comprovada como base (primeira ação). 2) Monitoramento intensivo V4-V10 com duas visitas semanais. 3) Conservação de parasitóides naturais mantendo plantas hospedeiras e evitando inseticidas de amplo espectro. 4) Aplicação seletiva de inseticidas apenas quando limiar de ação atingido, alternando grupos químicos (diamidas, organofosforados, piretroides, spinosadídeos). 5) Rotação de culturas anualmente. 6) Destruição de restos culturais pós-colheita. 7) Semeadura em época adequada para reduzir picos populacionais. 8) Evitar aplicações preventivas desnecessárias. 9) Integrar dados de clima local para prognóstico.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:34:02.696265+00:00",
+        "parsedNotes": {
+          "message": "Presença de inseto praga com características de lepidóptero em cultivo de milho. Observado dano foliar compatível com lagarta-do-cartucho e possível presença de parasitóide natural (himenóptero).",
+          "crop": "Milho",
+          "crop_confidence": 0.95,
+          "predictions": [
+            {
+              "id": "spodoptera_frugiperda",
+              "confidence": 0.78,
+              "common_name": "Lagarta-do-cartucho",
+              "scientific_name": "Spodoptera frugiperda (J.E. Smith, 1797)",
+              "category": "pest",
+              "type": "insect"
+            },
+            {
+              "id": "parasitoid_wasp",
+              "confidence": 0.65,
+              "common_name": "Vespa parasitóide",
+              "scientific_name": "Himenóptero parasitóide (possível Trichogramma ou Cotesia)",
+              "category": "pest",
+              "type": "insect"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Lagarta-do-cartucho ou Lagarta-militar",
+            "description": "A Spodoptera frugiperda é uma das pragas mais importantes da cultura do milho no Brasil. A larva causa danos ao penetrar no cartucho foliar, alimentando-se das folhas em desenvolvimento. Também pode atacar o colmo e as espigas. A praga é polífaga, alimentando-se de diversas culturas. Tem desenvolvimento rápido em clima quente e pode completar múltiplas gerações por ano.",
+            "causes": [
+              "Presença de plantas hospedeiras no período de semeadura",
+              "Temperatura elevada (20-30°C ideal para desenvolvimento)",
+              "Umidade relativa adequada",
+              "Ausência de controle químico preventivo",
+              "Resistência já presente em populações de milho convencional"
+            ],
+            "symptoms": [
+              "Raspagens e furos nas folhas do cartucho",
+              "Desfibramentos nas folhas internas",
+              "Presença de fezes escuras (frass) no cartucho",
+              "Destruição progressiva das folhas em desenvolvimento",
+              "Em estágios avançados, dano nos estilos dos óvulos"
+            ],
+            "chemical_treatment": [
+              "Clorantraniliprole 200g/L SC: 10-15 mL/100L de água, intervalo de 7-10 dias (Receituário agronomico obrigatório)",
+              "Spinosad 480g/L: 50-75 mL/100L de água, intervalo de 7-10 dias",
+              "Profenofós 500g/L: 50-75 mL/100L de água, intervalo de 10-14 dias",
+              "Indoxacarbe 150g/L: 40-60 mL/100L de água, intervalo de 10-14 dias",
+              "Emamectina benzoato 19g/L: 60-80 mL/100L de água, intervalo de 7-14 dias"
+            ],
+            "biological_treatment": [
+              "Liberação de Trichogramma pretiosum para controle de ovos (200-400 parasitóides/ha)",
+              "Aplicação de Baculovírus (vírus da poliedrosis nuclear) - SfNPV",
+              "Utilização de Beauveria bassiana e Metarhizium anisopliae",
+              "Promoção de inimigos naturais como joaninhas, crisopídeos e himenópteros parasitóides",
+              "Conservação de faixas de plantas hospedeiras de parasitóides"
+            ],
+            "cultural_treatment": [
+              "Plantio de variedades transgênicas Bt (Cry1Ab, Cry1F ou piramidadas) como primeira linha de defesa",
+              "Rotação de culturas para quebrar o ciclo da praga",
+              "Destruição de restos culturais e plantas daninhas hospedeiras",
+              "Manejo da semeadura (época e densidade adequadas)",
+              "Monitoramento visual 2-3 vezes por semana em V4-V6",
+              "Eliminação manual de focos pequenos",
+              "Sincronização com picos de oviposição da praga"
+            ],
+            "prevention": [
+              "Uso de sementes tratadas com inseticidas (neonicotinóides)",
+              "Semeadura em época adequada (evitar períodos de alta pressão da praga)",
+              "Manutenção de plantas de cobertura para parasitóides",
+              "Monitoramento de plantas voluntárias de milho",
+              "Alternância de grupos químicos para evitar resistência",
+              "Manejo integrado desde o plantio"
+            ],
+            "severity": "high",
+            "lifecycle": "A lagarta-do-cartucho completa seu ciclo de vida em 25-30 dias em condições ótimas (25-28°C). Fêmeas colocam ovos em massas (100-150 ovos) na face abaxial das folhas. Larvas passam por 6 instares larvais (8-12 dias). Pupação ocorre no solo (8-15 dias). Adultos vivem 7-10 dias. Podem ocorrer 4-6 gerações por ano no Brasil central/norte.",
+            "economic_impact": "Perdas de até 30-40% em milho convencional sem controle. Em milho Bt, redução de 95% de danos. Custos com controle químico variam de R$ 50-150/ha por aplicação. Impacto maior em estágios iniciais da cultura (V4-V8).",
+            "monitoring": [
+              "Verificação de presença de ovos na face abaxial das folhas (antes de eclosão)",
+              "Contagem de lagartas no cartucho (V4-V8) em 20 plantas/talhão",
+              "Observação de danos progressivos nas folhas internas",
+              "Nível de ação: presença de 10-15% de plantas com larvas vivas no cartucho",
+              "Armadilhas com feromônio sintético para monitoramento de adultos",
+              "Inspeção de fezes (frass) como indicativo de presença recente"
+            ],
+            "favorable_conditions": [
+              "Temperatura de 20-30°C (ótimo 25-28°C)",
+              "Umidade relativa entre 60-100%",
+              "Ausência de inimigos naturais ou seu controle químico",
+              "Plantas em estádio fenológico susceptível (V4-V10)",
+              "Presença de plantas hospedeiras alternativas próximas",
+              "Períodos com baixa pluviosidade facilitam oviposição"
+            ],
+            "resistance_info": "População de S. frugiperda no Brasil apresenta variabilidade quanto à susceptibilidade a diferentes toxinas Bt. Há relatos de resistência a Cry1F em algumas regiões. Recomenda-se pirâmides gênicas (2 ou mais eventos Bt) e rotação química para retardar seleção de resistência.",
+            "recommended_products": [
+              {
+                "name": "Ampligo 150 ZC",
+                "active_ingredient": "Clorantraniliprole + Lambda-cialotrina",
+                "dosage": "100-150 mL/ha",
+                "interval": "10-14 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Premio",
+                "active_ingredient": "Clorantraniliprole",
+                "dosage": "10-15 mL/100L",
+                "interval": "7-10 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Dipel",
+                "active_ingredient": "Bacillus thuringiensis subspecie kurstaki",
+                "dosage": "500-750 mL/100L",
+                "interval": "7 dias",
+                "safety_period": "0 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Spinosad SC",
+                "active_ingredient": "Spinosad",
+                "dosage": "50-75 mL/100L",
+                "interval": "7-10 dias",
+                "safety_period": "3 dias",
+                "toxic_class": "Classe III"
+              }
+            ],
+            "related_pests": [
+              "Helicoverpa armigera (Lagarta-da-maçã)",
+              "Pseudaletia sequax (Lagarta-do-trigo)",
+              "Diatraea saccharalis (Broca-da-cana)",
+              "Elasmopalpus lignosellus (Broca-das-sementes)"
+            ],
+            "action_threshold": "Início de controle quando observado 10-15% de plantas com larvas vivas no cartucho ou presença de 2-3 lagartas por cartucho, considerando também tamanho das larvas e estádio da cultura. Em estádios iniciais (V4-V6), limiar é menor. Em milho Bt, monitoramento mais intensivo para identificar falhas.",
+            "mip_strategy": "1) Utilizare sementes Bt de qualidade comprovada como base (primeira ação). 2) Monitoramento intensivo V4-V10 com duas visitas semanais. 3) Conservação de parasitóides naturais mantendo plantas hospedeiras e evitando inseticidas de amplo espectro. 4) Aplicação seletiva de inseticidas apenas quando limiar de ação atingido, alternando grupos químicos (diamidas, organofosforados, piretroides, spinosadídeos). 5) Rotação de culturas anualmente. 6) Destruição de restos culturais pós-colheita. 7) Semeadura em época adequada para reduzir picos populacionais. 8) Evitar aplicações preventivas desnecessárias. 9) Integrar dados de clima local para prognóstico."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Spodoptera_frugiperda_in_stalk_of_Zea_mays.jpg/1280px-Spodoptera_frugiperda_in_stalk_of_Zea_mays.jpg"
+    },
+    {
+      "test": "Ferrugem do cafe (folhas em fazenda)",
+      "points": 2,
+      "max": 4,
+      "reasons": [
+        "crop ok (cafe)",
+        "pest miss (cercosporiose do cafe | cercospora_coffeicola)",
+        "conf ok (0.85)"
+      ],
+      "raw": {
+        "id": "08c1908b-0923-49a5-b87a-2c074e369894",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "cafe",
+        "pest_id": "Cercospora_coffeicola",
+        "pest_name": "Cercosporiose do Café",
+        "confidence": 0.85,
+        "image_url": null,
+        "notes": "{\"message\":\"Identificada doença fúngica Cercosporiose do Café com lesões características em folhas, com halo amarelado e centro necrótico. Requer controle químico e cultural imediato.\",\"crop\":\"Café\",\"crop_confidence\":0.95,\"predictions\":[{\"id\":\"Cercospora_coffeicola\",\"confidence\":0.85,\"common_name\":\"Cercosporiose do Café\",\"scientific_name\":\"Cercospora coffeicola\",\"category\":\"disease\",\"type\":\"fungus\"},{\"id\":\"Phaeoisariopsis_griseola\",\"confidence\":0.1,\"common_name\":\"Mancha Angular (possibilidade secundária)\",\"scientific_name\":\"Phaeoisariopsis griseola\",\"category\":\"disease\",\"type\":\"fungus\"}],\"enrichment\":{\"name_pt\":\"Cercosporiose do Café\",\"description\":\"A Cercosporiose, causada pelo fungo Cercospora coffeicola, é uma das principais doenças foliares do cafeeiro no Brasil. A doença afeta principalmente as folhas, causando lesões características que podem levar à desfolha prematura em casos severos. O fungo sobrevive em resíduos de folhas infectadas no solo e é disseminado por chuva e orvalho, sendo favorecido por alta umidade e temperaturas amenas a moderadas (18-25°C). Causa redução da área fotossintetizante e depreciação da qualidade dos frutos.\",\"causes\":[\"Fungo Cercospora coffeicola\",\"Alta umidade relativa (>90%)\",\"Temperatura entre 18-25°C\",\"Chuvas frequentes\",\"Deficiência nutricional que reduz resistência da planta\",\"Resíduos infectados no solo\"],\"symptoms\":[\"Lesões circulares a irregulares nas folhas\",\"Centro necrótico (marrom a cinzento)\",\"Halo amarelado ao redor das lesões\",\"Pontuações avermelhadas no início da infecção\",\"Desfolha prematura em casos severos\",\"Lesões principalmente na face inferior das folhas\"],\"chemical_treatment\":[\"Cobre (hidróxido de cobre ou oxicloreto de cobre) 2-4 kg/ha - Intervalo de 14 dias\",\"Mancozebe 1,5-2,0 kg/ha - Intervalo de 10-14 dias\",\"Tebuconazol 0,75-1,0 L/ha - Intervalo de 14 dias\",\"Tiofanato-metílico 0,6-1,0 kg/ha - Intervalo de 7-10 dias\",\"Azoxistrobina 0,6-0,75 L/ha - Intervalo de 14 dias\"],\"biological_treatment\":[\"Trichoderma spp. em pulverizações foliares\",\"Bacillus subtilis como agente de biocontrole\",\"Manejo de microbiota competitiva do solo\"],\"cultural_treatment\":[\"Poda de limpeza removendo folhas e ramos infectados\",\"Desfolha sanitária das folhas doentes\",\"Retirada de resíduos infectados e sua queimação ou enterrio profundo\",\"Adubação equilibrada, especialmente com potássio e zinco para aumentar resistência\",\"Manejo de irrigação evitando molhamento foliar noturno prolongado\",\"Espaçamento adequado para melhor aeração\",\"Podas de condução para melhorar circulação de ar\"],\"prevention\":[\"Uso de variedades mais resistentes quando disponíveis\",\"Monitoramento regular da lavoura a partir de janeiro-fevereiro\",\"Plantio em áreas com boa drenagem e aeração\",\"Limpeza de ferramentas entre plantas para evitar disseminação\",\"Evitar trabalhos de colheita/poda com folhas molhadas\",\"Manutenção de quebra-ventos para melhorar ventilação\",\"Eliminação de plantas voluntárias entre safras\"],\"severity\":\"high\",\"lifecycle\":\"O fungo sobrevive em folhas caídas e resíduos no solo durante a entressafra. Com o retorno das chuvas (primavera/verão), ocorre liberação de esporos que são dispersos pela água das chuvas e orvalho. Os esporos penetram as folhas através de estômatos, iniciando novo ciclo de infecção. Período de incubação varia de 10-15 dias dependendo das condições climáticas. A doença é mais severa entre os meses de outubro a abril no Brasil Central.\",\"economic_impact\":\"Pode causar redução de 30-50% na produção em safras com alta incidência. Além da perda de folhas, afeta a qualidade dos frutos e reduz a capacidade fotossintética da planta, comprometendo a safra seguinte. Custos elevados com controle químico contínuo durante a estação de risco.\",\"monitoring\":[\"Observação semanal das folhas do terço médio e inferior da planta\",\"Avaliação da incidência em ao menos 50 plantas por talhão\",\"Registro de temperatura e umidade relativa para prever picos de infecção\",\"Monitoramento intensificado de janeiro a abril em regiões de altitude (900-1.300m)\"],\"favorable_conditions\":[\"Umidade relativa acima de 90%\",\"Temperatura entre 18-25°C\",\"Períodos prolongados de chuva\",\"Presença de orvalho prolongado nas folhas\",\"Solos com deficiência de potássio ou zinco\",\"Plantios com espaçamento reduzido e baixa aeração\",\"Plantas enfraquecidas por deficiência nutricional\"],\"resistance_info\":\"Não existem variedades comerciais de café totalmente imunes à Cercosporiose. Algumas variedades como Catimor e Sarchimor apresentam maior resistência comparadas à Bourbon e Typica. Desenvolvimento de resistência do fungo a fungicidas benzimidazóis é preocupante em algumas regiões, recomendando-se rotação de princípios ativos.\",\"recommended_products\":[{\"name\":\"Calda Bordalesa ou Hidróxido de Cobre\",\"active_ingredient\":\"Cobre metálico\",\"dosage\":\"3 kg/ha\",\"interval\":\"14 dias\",\"safety_period\":\"60 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Dithane ou Mancozebe comercial\",\"active_ingredient\":\"Mancozebe\",\"dosage\":\"1,5-2,0 kg/ha\",\"interval\":\"10-14 dias\",\"safety_period\":\"45 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Folicur\",\"active_ingredient\":\"Tebuconazol\",\"dosage\":\"0,75-1,0 L/ha\",\"interval\":\"14 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"Classe III\"},{\"name\":\"Systhane\",\"active_ingredient\":\"Miclobutanil\",\"dosage\":\"0,5-1,0 L/ha\",\"interval\":\"14 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"Classe III\"}],\"related_pests\":[\"Mancha Angular (Phaeoisariopsis griseola)\",\"Ferrugem do Café (Hemileia vastatrix)\",\"Mancha de Phoma (Phoma coarctata)\"],\"action_threshold\":\"Iniciar pulverizações quando incidência atingir 10-15% de folhas com lesões ou assim que primeiros sintomas forem detectados no período chuvoso (outubro a abril). A presença de condições climáticas favoráveis justifica aplicações preventivas.\",\"mip_strategy\":\"1) MONITORAMENTO: Inspeções semanais de janeiro a abril focando folhas do terço médio-inferior; 2) CONTROLE CULTURAL: Poda sanitária, desfolha das plantas doentes, limpeza de resíduos, adubação balanceada com potássio; 3) CONTROLE QUÍMICO: Aplicações preventivas alternando fungicidas de contato (cobre, mancozebe) com sistêmicos (tebuconazol, triazóis) respeitando intervalo de 14 dias durante período chuvoso; 4) MANEJO AMBIENTAL: Melhorar drenagem, espaçamento e aeração do cafezal; 5) ROTAÇÃO DE PRINCÍPIOS ATIVOS para evitar resistência. Recomenda-se programa integrado iniciando em janeiro com fungicidas de contato e alternando com sistêmicos conforme presença de sintomas.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:36:08.857562+00:00",
+        "parsedNotes": {
+          "message": "Identificada doença fúngica Cercosporiose do Café com lesões características em folhas, com halo amarelado e centro necrótico. Requer controle químico e cultural imediato.",
+          "crop": "Café",
+          "crop_confidence": 0.95,
+          "predictions": [
+            {
+              "id": "Cercospora_coffeicola",
+              "confidence": 0.85,
+              "common_name": "Cercosporiose do Café",
+              "scientific_name": "Cercospora coffeicola",
+              "category": "disease",
+              "type": "fungus"
+            },
+            {
+              "id": "Phaeoisariopsis_griseola",
+              "confidence": 0.1,
+              "common_name": "Mancha Angular (possibilidade secundária)",
+              "scientific_name": "Phaeoisariopsis griseola",
+              "category": "disease",
+              "type": "fungus"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Cercosporiose do Café",
+            "description": "A Cercosporiose, causada pelo fungo Cercospora coffeicola, é uma das principais doenças foliares do cafeeiro no Brasil. A doença afeta principalmente as folhas, causando lesões características que podem levar à desfolha prematura em casos severos. O fungo sobrevive em resíduos de folhas infectadas no solo e é disseminado por chuva e orvalho, sendo favorecido por alta umidade e temperaturas amenas a moderadas (18-25°C). Causa redução da área fotossintetizante e depreciação da qualidade dos frutos.",
+            "causes": [
+              "Fungo Cercospora coffeicola",
+              "Alta umidade relativa (>90%)",
+              "Temperatura entre 18-25°C",
+              "Chuvas frequentes",
+              "Deficiência nutricional que reduz resistência da planta",
+              "Resíduos infectados no solo"
+            ],
+            "symptoms": [
+              "Lesões circulares a irregulares nas folhas",
+              "Centro necrótico (marrom a cinzento)",
+              "Halo amarelado ao redor das lesões",
+              "Pontuações avermelhadas no início da infecção",
+              "Desfolha prematura em casos severos",
+              "Lesões principalmente na face inferior das folhas"
+            ],
+            "chemical_treatment": [
+              "Cobre (hidróxido de cobre ou oxicloreto de cobre) 2-4 kg/ha - Intervalo de 14 dias",
+              "Mancozebe 1,5-2,0 kg/ha - Intervalo de 10-14 dias",
+              "Tebuconazol 0,75-1,0 L/ha - Intervalo de 14 dias",
+              "Tiofanato-metílico 0,6-1,0 kg/ha - Intervalo de 7-10 dias",
+              "Azoxistrobina 0,6-0,75 L/ha - Intervalo de 14 dias"
+            ],
+            "biological_treatment": [
+              "Trichoderma spp. em pulverizações foliares",
+              "Bacillus subtilis como agente de biocontrole",
+              "Manejo de microbiota competitiva do solo"
+            ],
+            "cultural_treatment": [
+              "Poda de limpeza removendo folhas e ramos infectados",
+              "Desfolha sanitária das folhas doentes",
+              "Retirada de resíduos infectados e sua queimação ou enterrio profundo",
+              "Adubação equilibrada, especialmente com potássio e zinco para aumentar resistência",
+              "Manejo de irrigação evitando molhamento foliar noturno prolongado",
+              "Espaçamento adequado para melhor aeração",
+              "Podas de condução para melhorar circulação de ar"
+            ],
+            "prevention": [
+              "Uso de variedades mais resistentes quando disponíveis",
+              "Monitoramento regular da lavoura a partir de janeiro-fevereiro",
+              "Plantio em áreas com boa drenagem e aeração",
+              "Limpeza de ferramentas entre plantas para evitar disseminação",
+              "Evitar trabalhos de colheita/poda com folhas molhadas",
+              "Manutenção de quebra-ventos para melhorar ventilação",
+              "Eliminação de plantas voluntárias entre safras"
+            ],
+            "severity": "high",
+            "lifecycle": "O fungo sobrevive em folhas caídas e resíduos no solo durante a entressafra. Com o retorno das chuvas (primavera/verão), ocorre liberação de esporos que são dispersos pela água das chuvas e orvalho. Os esporos penetram as folhas através de estômatos, iniciando novo ciclo de infecção. Período de incubação varia de 10-15 dias dependendo das condições climáticas. A doença é mais severa entre os meses de outubro a abril no Brasil Central.",
+            "economic_impact": "Pode causar redução de 30-50% na produção em safras com alta incidência. Além da perda de folhas, afeta a qualidade dos frutos e reduz a capacidade fotossintética da planta, comprometendo a safra seguinte. Custos elevados com controle químico contínuo durante a estação de risco.",
+            "monitoring": [
+              "Observação semanal das folhas do terço médio e inferior da planta",
+              "Avaliação da incidência em ao menos 50 plantas por talhão",
+              "Registro de temperatura e umidade relativa para prever picos de infecção",
+              "Monitoramento intensificado de janeiro a abril em regiões de altitude (900-1.300m)"
+            ],
+            "favorable_conditions": [
+              "Umidade relativa acima de 90%",
+              "Temperatura entre 18-25°C",
+              "Períodos prolongados de chuva",
+              "Presença de orvalho prolongado nas folhas",
+              "Solos com deficiência de potássio ou zinco",
+              "Plantios com espaçamento reduzido e baixa aeração",
+              "Plantas enfraquecidas por deficiência nutricional"
+            ],
+            "resistance_info": "Não existem variedades comerciais de café totalmente imunes à Cercosporiose. Algumas variedades como Catimor e Sarchimor apresentam maior resistência comparadas à Bourbon e Typica. Desenvolvimento de resistência do fungo a fungicidas benzimidazóis é preocupante em algumas regiões, recomendando-se rotação de princípios ativos.",
+            "recommended_products": [
+              {
+                "name": "Calda Bordalesa ou Hidróxido de Cobre",
+                "active_ingredient": "Cobre metálico",
+                "dosage": "3 kg/ha",
+                "interval": "14 dias",
+                "safety_period": "60 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Dithane ou Mancozebe comercial",
+                "active_ingredient": "Mancozebe",
+                "dosage": "1,5-2,0 kg/ha",
+                "interval": "10-14 dias",
+                "safety_period": "45 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Folicur",
+                "active_ingredient": "Tebuconazol",
+                "dosage": "0,75-1,0 L/ha",
+                "interval": "14 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Systhane",
+                "active_ingredient": "Miclobutanil",
+                "dosage": "0,5-1,0 L/ha",
+                "interval": "14 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "Classe III"
+              }
+            ],
+            "related_pests": [
+              "Mancha Angular (Phaeoisariopsis griseola)",
+              "Ferrugem do Café (Hemileia vastatrix)",
+              "Mancha de Phoma (Phoma coarctata)"
+            ],
+            "action_threshold": "Iniciar pulverizações quando incidência atingir 10-15% de folhas com lesões ou assim que primeiros sintomas forem detectados no período chuvoso (outubro a abril). A presença de condições climáticas favoráveis justifica aplicações preventivas.",
+            "mip_strategy": "1) MONITORAMENTO: Inspeções semanais de janeiro a abril focando folhas do terço médio-inferior; 2) CONTROLE CULTURAL: Poda sanitária, desfolha das plantas doentes, limpeza de resíduos, adubação balanceada com potássio; 3) CONTROLE QUÍMICO: Aplicações preventivas alternando fungicidas de contato (cobre, mancozebe) com sistêmicos (tebuconazol, triazóis) respeitando intervalo de 14 dias durante período chuvoso; 4) MANEJO AMBIENTAL: Melhorar drenagem, espaçamento e aeração do cafezal; 5) ROTAÇÃO DE PRINCÍPIOS ATIVOS para evitar resistência. Recomenda-se programa integrado iniciando em janeiro com fungicidas de contato e alternando com sistêmicos conforme presença de sintomas."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Coffee_leaves_with_rust_at_Fairview_Estate%2C_Kiambu%2C_KE.jpg/1280px-Coffee_leaves_with_rust_at_Fairview_Estate%2C_Kiambu%2C_KE.jpg"
+    },
+    {
+      "test": "Ferrugem do cafe (defoliation)",
+      "points": 4,
+      "max": 4,
+      "reasons": ["crop ok (cafe)", "pest ok (ferrugem do cafe)", "conf ok (0.92)"],
+      "raw": {
+        "id": "ac13bb47-5ab9-4418-aa35-5d41b4d71918",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "cafe",
+        "pest_id": "coffee_leaf_rust",
+        "pest_name": "Ferrugem do Café",
+        "confidence": 0.92,
+        "image_url": null,
+        "notes": "{\"message\":\"Identificada ferrugem do café (Hemileia vastatrix) com presença de lesões nas folhas e possível esporulação. Praga de grande importância econômica que requer controle imediato.\",\"crop\":\"Café\",\"crop_confidence\":0.98,\"predictions\":[{\"id\":\"hemileia_vastatrix\",\"confidence\":0.92,\"common_name\":\"Ferrugem do Café\",\"scientific_name\":\"Hemileia vastatrix\",\"category\":\"disease\",\"type\":\"fungus\"},{\"id\":\"coffee_leaf_spot\",\"confidence\":0.35,\"common_name\":\"Mancha de Folhas do Café\",\"scientific_name\":\"Cercospora coffeicola\",\"category\":\"disease\",\"type\":\"fungus\"}],\"enrichment\":{\"name_pt\":\"Ferrugem do Café\",\"description\":\"A ferrugem do café é causada pelo fungo Hemileia vastatrix, um dos principais problemas fitossanitários da cafeicultura brasileira. O fungo afeta primariamente as folhas, causando lesões características que reduzem a capacidade fotossintética da planta. Em infestações severas, causa desfolhamento intenso, comprometendo a produção presente e futura. O patógeno é biotrófico, dependendo de tecido vivo para sua sobrevivência.\",\"causes\":[\"Infecção por Hemileia vastatrix\",\"Condições de alta umidade e temperaturas moderadas (20-24°C)\",\"Chuvas frequentes e molhamento foliar prolongado\",\"Plantios adensados com má circulação de ar\",\"Deficiências nutricionais, especialmente potássio\"],\"symptoms\":[\"Manchas amareladas na face inferior das folhas\",\"Pústulas pulverulentas de cor alaranjada a marrom\",\"Lesões necróticas ao redor das pústulas na face superior\",\"Desfolhamento progressivo em casos severos\",\"Enfraquecimento geral da planta\"],\"chemical_treatment\":[\"Enxofre em pó 80% - 5-10 kg/ha (aplicações preventivas)\",\"Oxicloreto de cobre 50% - 2-4 kg/ha\",\"Mancozebe 80% - 2-3 kg/ha\",\"Ciproconazol 10% - 0,5-1 L/ha\",\"Tebuconazol 20% - 0,5-0,75 L/ha\",\"Piraclostrobina + Epoxiconazol - conforme bula do produto\",\"Trifloxistrobina - 0,4-0,6 L/ha\"],\"biological_treatment\":[\"Utilizacao de fungos antagonistas como Bacillus subtilis\",\"Trichoderma spp. em aplicações foliares preventivas\",\"Promoção de inimigos naturais (ácaros predadores e micro-organismos endófitos)\"],\"cultural_treatment\":[\"Manutenção da adubação equilibrada, especialmente potássio\",\"Poda adequada para melhorar circulação de ar\",\"Eliminação de plantas doentes ou com alta incidência\",\"Controle de plantas infestantes que favorecem umidade\",\"Evitar molhamento foliar prolongado\",\"Plantios com espaçamento adequado\",\"Limpeza de ferramentas entre plantas\",\"Colheita seletiva deixando resíduos adequados no solo\"],\"prevention\":[\"Utilizar variedades resistentes ou tolerantes (H2, H3, H5, H7, Obatã, Acaiá)\",\"Manter monitoramento constante da lavoura\",\"Aplicações preventivas de fungicidas antes da época crítica\",\"Manutenção adequada da fertilidade do solo\",\"Evitar umidade excessiva no solo\",\"Isolamento de focos de infecção\",\"Rotação de princípios ativos para evitar resistência\",\"Usar plantas com maior vigor vegetativo\"],\"severity\":\"high\",\"lifecycle\":\"O ciclo da ferrugem do café inicia com a esporulação das pústulas, liberando esporos que são dispersos por água (chuva, orvalho) ou ar. Os esporos chegam aos estômatos das folhas onde germinam sob condições de alta umidade. A penetração ocorre diretamente através do estômato. O período de latência varia de 20-30 dias dependendo da temperatura. Após este período, novas pústulas são formadas liberando novos esporos. Em condições favoráveis, pode haver várias gerações por ano.\",\"economic_impact\":\"A ferrugem do café causa perdas significativas na produção, podendo reduzir em até 50% ou mais em casos de infestação severa não controlada. Além da redução direta de produção, causa desfolhamento que afeta a safra seguinte. Representa um dos maiores custos com defensivos na cafeicultura brasileira.\",\"monitoring\":[\"Inspeção visual semanal das plantas, observando principalmente a face inferior das folhas\",\"Amostragem de folhas: coletar 10 plantas/hectare, 10 folhas por planta\",\"Usar armadilhas de esporulação ou câmara úmida para identificar focos iniciais\",\"Registrar temperatura e umidade para prever picos de infecção\",\"Monitorar antes da época crítica (março-junho no Brasil Central)\"],\"favorable_conditions\":[\"Temperaturas entre 20-24°C\",\"Umidade relativa do ar superior a 90%\",\"Chuvas frequentes\",\"Orvalho prolongado (mais de 4 horas)\",\"Plantios adensados\",\"Deficiência de potássio no solo\",\"Sombreamento excessivo\"],\"resistance_info\":\"Existem variedades resistentes disponíveis como H2, H3, H5, H7, Obatã, Acaiá e outras. Porém, há relatos de superação de resistência em algumas regiões. O uso alternado de diferentes mecanismos de resistência e fungicidas é recomendado. A resistência do fungo a fungicidas da classe dos triazóis tem aumentado em algumas áreas do Brasil.\",\"recommended_products\":[{\"name\":\"Enxofre em Pó\",\"active_ingredient\":\"Enxofre 80%\",\"dosage\":\"5-10 kg/ha\",\"interval\":\"7-14 dias entre aplicações\",\"safety_period\":\"0 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Priori Top\",\"active_ingredient\":\"Tebuconazol 20% + Trifloxistrobina 10%\",\"dosage\":\"0,5-0,75 L/ha\",\"interval\":\"14-21 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"Classe III\"},{\"name\":\"Opera\",\"active_ingredient\":\"Piraclostrobina + Epoxiconazol\",\"dosage\":\"Conforme bula\",\"interval\":\"14-21 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"Classe III\"},{\"name\":\"Folicur\",\"active_ingredient\":\"Tebuconazol 20%\",\"dosage\":\"0,5-0,75 L/ha\",\"interval\":\"14-21 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"Classe III\"}],\"related_pests\":[\"Mancha de folhas do café (Cercospora coffeicola)\",\"Ácaro-do-café (Oligonychus ilicis)\",\"Broca-do-café (Hypothenemus hampei)\"],\"action_threshold\":\"Presença de primeiros sintomas em 5% das plantas ou 10% das folhas já requer intervenção. Em período crítico, iniciar aplicações preventivas quando previsão de chuvas frequentes.\",\"mip_strategy\":\"1) RESISTÊNCIA GENÉTICA: Usar variedades resistentes ou tolerantes como H2, H3, H5, H7, Obatã. 2) MANEJO CULTURAL: Adubação equilibrada com ênfase em potássio, poda adequada, eliminação de focos iniciais, manutenção do espaçamento adequado. 3) MONITORAMENTO: Inspeções semanais durante período chuvoso, amostragem de plantas. 4) CONTROLE QUÍMICO: Aplicações preventivas de enxofre ou fungicidas a base de triazóis e estrobilurinas antes da época crítica, alternando princípios ativos para evitar resistência. 5) FATORES AMBIENTAIS: Melhorar aeração, evitar excesso de umidade. Aplicar receituário agronômico para qualquer controle químico.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:36:33.576782+00:00",
+        "parsedNotes": {
+          "message": "Identificada ferrugem do café (Hemileia vastatrix) com presença de lesões nas folhas e possível esporulação. Praga de grande importância econômica que requer controle imediato.",
+          "crop": "Café",
+          "crop_confidence": 0.98,
+          "predictions": [
+            {
+              "id": "hemileia_vastatrix",
+              "confidence": 0.92,
+              "common_name": "Ferrugem do Café",
+              "scientific_name": "Hemileia vastatrix",
+              "category": "disease",
+              "type": "fungus"
+            },
+            {
+              "id": "coffee_leaf_spot",
+              "confidence": 0.35,
+              "common_name": "Mancha de Folhas do Café",
+              "scientific_name": "Cercospora coffeicola",
+              "category": "disease",
+              "type": "fungus"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Ferrugem do Café",
+            "description": "A ferrugem do café é causada pelo fungo Hemileia vastatrix, um dos principais problemas fitossanitários da cafeicultura brasileira. O fungo afeta primariamente as folhas, causando lesões características que reduzem a capacidade fotossintética da planta. Em infestações severas, causa desfolhamento intenso, comprometendo a produção presente e futura. O patógeno é biotrófico, dependendo de tecido vivo para sua sobrevivência.",
+            "causes": [
+              "Infecção por Hemileia vastatrix",
+              "Condições de alta umidade e temperaturas moderadas (20-24°C)",
+              "Chuvas frequentes e molhamento foliar prolongado",
+              "Plantios adensados com má circulação de ar",
+              "Deficiências nutricionais, especialmente potássio"
+            ],
+            "symptoms": [
+              "Manchas amareladas na face inferior das folhas",
+              "Pústulas pulverulentas de cor alaranjada a marrom",
+              "Lesões necróticas ao redor das pústulas na face superior",
+              "Desfolhamento progressivo em casos severos",
+              "Enfraquecimento geral da planta"
+            ],
+            "chemical_treatment": [
+              "Enxofre em pó 80% - 5-10 kg/ha (aplicações preventivas)",
+              "Oxicloreto de cobre 50% - 2-4 kg/ha",
+              "Mancozebe 80% - 2-3 kg/ha",
+              "Ciproconazol 10% - 0,5-1 L/ha",
+              "Tebuconazol 20% - 0,5-0,75 L/ha",
+              "Piraclostrobina + Epoxiconazol - conforme bula do produto",
+              "Trifloxistrobina - 0,4-0,6 L/ha"
+            ],
+            "biological_treatment": [
+              "Utilizacao de fungos antagonistas como Bacillus subtilis",
+              "Trichoderma spp. em aplicações foliares preventivas",
+              "Promoção de inimigos naturais (ácaros predadores e micro-organismos endófitos)"
+            ],
+            "cultural_treatment": [
+              "Manutenção da adubação equilibrada, especialmente potássio",
+              "Poda adequada para melhorar circulação de ar",
+              "Eliminação de plantas doentes ou com alta incidência",
+              "Controle de plantas infestantes que favorecem umidade",
+              "Evitar molhamento foliar prolongado",
+              "Plantios com espaçamento adequado",
+              "Limpeza de ferramentas entre plantas",
+              "Colheita seletiva deixando resíduos adequados no solo"
+            ],
+            "prevention": [
+              "Utilizar variedades resistentes ou tolerantes (H2, H3, H5, H7, Obatã, Acaiá)",
+              "Manter monitoramento constante da lavoura",
+              "Aplicações preventivas de fungicidas antes da época crítica",
+              "Manutenção adequada da fertilidade do solo",
+              "Evitar umidade excessiva no solo",
+              "Isolamento de focos de infecção",
+              "Rotação de princípios ativos para evitar resistência",
+              "Usar plantas com maior vigor vegetativo"
+            ],
+            "severity": "high",
+            "lifecycle": "O ciclo da ferrugem do café inicia com a esporulação das pústulas, liberando esporos que são dispersos por água (chuva, orvalho) ou ar. Os esporos chegam aos estômatos das folhas onde germinam sob condições de alta umidade. A penetração ocorre diretamente através do estômato. O período de latência varia de 20-30 dias dependendo da temperatura. Após este período, novas pústulas são formadas liberando novos esporos. Em condições favoráveis, pode haver várias gerações por ano.",
+            "economic_impact": "A ferrugem do café causa perdas significativas na produção, podendo reduzir em até 50% ou mais em casos de infestação severa não controlada. Além da redução direta de produção, causa desfolhamento que afeta a safra seguinte. Representa um dos maiores custos com defensivos na cafeicultura brasileira.",
+            "monitoring": [
+              "Inspeção visual semanal das plantas, observando principalmente a face inferior das folhas",
+              "Amostragem de folhas: coletar 10 plantas/hectare, 10 folhas por planta",
+              "Usar armadilhas de esporulação ou câmara úmida para identificar focos iniciais",
+              "Registrar temperatura e umidade para prever picos de infecção",
+              "Monitorar antes da época crítica (março-junho no Brasil Central)"
+            ],
+            "favorable_conditions": [
+              "Temperaturas entre 20-24°C",
+              "Umidade relativa do ar superior a 90%",
+              "Chuvas frequentes",
+              "Orvalho prolongado (mais de 4 horas)",
+              "Plantios adensados",
+              "Deficiência de potássio no solo",
+              "Sombreamento excessivo"
+            ],
+            "resistance_info": "Existem variedades resistentes disponíveis como H2, H3, H5, H7, Obatã, Acaiá e outras. Porém, há relatos de superação de resistência em algumas regiões. O uso alternado de diferentes mecanismos de resistência e fungicidas é recomendado. A resistência do fungo a fungicidas da classe dos triazóis tem aumentado em algumas áreas do Brasil.",
+            "recommended_products": [
+              {
+                "name": "Enxofre em Pó",
+                "active_ingredient": "Enxofre 80%",
+                "dosage": "5-10 kg/ha",
+                "interval": "7-14 dias entre aplicações",
+                "safety_period": "0 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Priori Top",
+                "active_ingredient": "Tebuconazol 20% + Trifloxistrobina 10%",
+                "dosage": "0,5-0,75 L/ha",
+                "interval": "14-21 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Opera",
+                "active_ingredient": "Piraclostrobina + Epoxiconazol",
+                "dosage": "Conforme bula",
+                "interval": "14-21 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Folicur",
+                "active_ingredient": "Tebuconazol 20%",
+                "dosage": "0,5-0,75 L/ha",
+                "interval": "14-21 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "Classe III"
+              }
+            ],
+            "related_pests": [
+              "Mancha de folhas do café (Cercospora coffeicola)",
+              "Ácaro-do-café (Oligonychus ilicis)",
+              "Broca-do-café (Hypothenemus hampei)"
+            ],
+            "action_threshold": "Presença de primeiros sintomas em 5% das plantas ou 10% das folhas já requer intervenção. Em período crítico, iniciar aplicações preventivas quando previsão de chuvas frequentes.",
+            "mip_strategy": "1) RESISTÊNCIA GENÉTICA: Usar variedades resistentes ou tolerantes como H2, H3, H5, H7, Obatã. 2) MANEJO CULTURAL: Adubação equilibrada com ênfase em potássio, poda adequada, eliminação de focos iniciais, manutenção do espaçamento adequado. 3) MONITORAMENTO: Inspeções semanais durante período chuvoso, amostragem de plantas. 4) CONTROLE QUÍMICO: Aplicações preventivas de enxofre ou fungicidas a base de triazóis e estrobilurinas antes da época crítica, alternando princípios ativos para evitar resistência. 5) FATORES AMBIENTAIS: Melhorar aeração, evitar excesso de umidade. Aplicar receituário agronômico para qualquer controle químico."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Coffee-leaf-rust-defoliation.jpg/1280px-Coffee-leaf-rust-defoliation.jpg"
+    },
+    {
+      "test": "Ferrugem do cafe (close-up Hemileia)",
+      "points": 4,
+      "max": 4,
+      "reasons": ["crop ok (cafe)", "pest ok (ferrugem do cafe)", "conf ok (0.92)"],
+      "raw": {
+        "id": "3087e2d7-1fee-4c04-acb6-518a6f853185",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "cafe",
+        "pest_id": "Hemileia_vastatrix",
+        "pest_name": "Ferrugem do Café",
+        "confidence": 0.92,
+        "image_url": null,
+        "notes": "{\"message\":\"Identificada Ferrugem do Café (Hemileia vastatrix) com pústulas características em ambas as faces da folha. Doença fúngica de alta relevância econômica que requer intervenção imediata.\",\"crop\":\"Café\",\"crop_confidence\":0.98,\"predictions\":[{\"id\":\"Hemileia_vastatrix\",\"confidence\":0.92,\"common_name\":\"Ferrugem do Café\",\"scientific_name\":\"Hemileia vastatrix\",\"category\":\"disease\",\"type\":\"fungus\"}],\"enrichment\":{\"name_pt\":\"Ferrugem do Café\",\"description\":\"Doença fúngica causada por Hemileia vastatrix, o patógeno mais importante da cafeicultura brasileira. Afeta principalmente a face inferior das folhas, onde se observam pústulas de coloração alaranjada/ferrugem. O fungo penetra pelos estômatos e compromete a fotossíntese, causando queda prematura de folhas e redução severa na produção. Pode causar perdas de até 50% em safras consecutivas em áreas sem controle adequado.\",\"causes\":[\"Infecção pelo fungo Hemileia vastatrix\",\"Condições de alta umidade e temperatura amena\",\"Presença de orvalho prolongado nas folhas\",\"Plantios densos com má arejação\"],\"symptoms\":[\"Pústulas alaranjadas/ocre na face inferior das folhas\",\"Halo amarelado ao redor das pústulas\",\"Evolução para necrose e queda de folhas\",\"Desfolhamento progressivo dos ramos\",\"Exposição de frutos ao sol\"],\"chemical_treatment\":[\"Oxicloreto de cobre 500-750 g/ha (contato preventivo)\",\"Mancozebe 1.5-2.0 kg/ha (protetor, uso preventivo)\",\"Triazol sistêmico: Tebuconazol 100-150 mL/ha (curativo e preventivo) - Requer receituário agronomico\",\"Piraclostrobina + Epoxiconazol 250-300 mL/ha - Requer receituário agronomico\",\"Azoxistrobina 200-250 mL/ha para manejo de resistência - Requer receituário agronomico\"],\"biological_treatment\":[\"Aplicação de Bacillus subtilis em estádios iniciais da doença\",\"Uso de óleos essenciais e extratos vegetais com propriedades fungistáticas\",\"Promoção de inimigos naturais do fungo através de diversificação de plantas\"],\"cultural_treatment\":[\"Poda adequada para melhorar aerjação das plantas\",\"Espaçamento correto entre plantas (4x2m ou 4x1.5m recomendado)\",\"Desfolha em início de infecção para reduzir inóculo\",\"Coleta e destruição de folhas caídas infectadas\",\"Limpeza de equipamentos entre plantios\",\"Evitar trabalhar na lavoura em dias com folhas molhadas\",\"Adequação do sistema de irrigação (gotejamento preferível)\"],\"prevention\":[\"Escolha de cultivares resistentes ou tolerantes (Mundo Novo, Catuaí, Acaiá com genes de resistência)\",\"Monitoramento mensal da doença durante período de chuvas\",\"Aplicações preventivas de cobre a partir de setembro-outubro nas regiões do Centro-Oeste\",\"Manutenção da sanidade do viveiro\",\"Evitar plantios em áreas muito úmidas e sombreadas\",\"Rotação com culturas não hospedeiras\"],\"severity\":\"high\",\"lifecycle\":\"O fungo completa seu ciclo em 4-6 semanas em condições de temperatura de 18-25°C e alta umidade. Produz uredósporos continuamente que são dispersos pelo vento e água. Em temperaturas abaixo de 15°C ou acima de 27°C há redução na infecção. A doença tem maior incidência no período chuvoso (setembro a março na região Centro-Oeste). Sobrevive em folhas caídas infectadas no solo.\",\"economic_impact\":\"Doença de maior impacto econômico na cafeicultura brasileira, causando perdas anuais estimadas em milhões de reais. Reduz a produção em 30-50% em áreas sem controle, afeta a qualidade do café e aumenta custos com aplicações de fungicidas. Maior impacto em plantios convencionais em comparação com sombreados.\",\"monitoring\":[\"Inspeção visual semanal durante período chuvoso, observando face inferior das folhas do terço médio e inferior\",\"Contagem de pústulas por folha (limiar de ação: 2-3% de folhas infectadas)\",\"Amostragem de 10 plantas por hectare em zigue-zague\",\"Uso de armadilhas de esporos em regiões críticas\",\"Registro fotográfico da evolução\"],\"favorable_conditions\":[\"Temperatura entre 18-25°C (ótimo 21-23°C)\",\"Umidade relativa acima de 90%\",\"Orvalho noturno persistente (molhamento por 10-12 horas)\",\"Plantios densos com sombreamento\",\"Deficiências nutricionais (especialmente potássio)\"],\"resistance_info\":\"Algumas cultivares apresentam resistência: Mundo Novo IP371-6, Catuaí com gene de resistência H (derivado de Híbrido de Timor), Acaiá IAC 474-19. Entretanto, têm sido relatados patótipos virulentos que quebram essa resistência. Recomenda-se monitoramento constante e alternância de mecanismos de ação de fungicidas.\",\"recommended_products\":[{\"name\":\"Oxicloreto de cobre\",\"active_ingredient\":\"Oxicloreto de cobre 50%\",\"dosage\":\"500-750 g/ha\",\"interval\":\"15-21 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe IV (Pouco tóxico)\"},{\"name\":\"Mancozebe\",\"active_ingredient\":\"Mancozebe 80%\",\"dosage\":\"1.5-2.0 kg/ha\",\"interval\":\"15-21 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"Classe III (Medianamente tóxico)\"},{\"name\":\"Tebuconazol\",\"active_ingredient\":\"Tebuconazol 430 SC\",\"dosage\":\"100-150 mL/ha\",\"interval\":\"21-30 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"Classe III (Medianamente tóxico) - Requer receituário\"},{\"name\":\"Piraclostrobina + Epoxiconazol\",\"active_ingredient\":\"Piraclostrobina + Epoxiconazol\",\"dosage\":\"250-300 mL/ha\",\"interval\":\"21-30 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"Classe III (Medianamente tóxico) - Requer receituário\"}],\"related_pests\":[\"Cercosporiose do Café (Cercospora coffeicola)\",\"Mancha de Phoma (Phoma costaricana)\",\"Olho-pardo (Mycena citricolor)\"],\"action_threshold\":\"Iniciar controle quando 2-3% das folhas apresentarem pústulas, ou preventivamente antes do período chuvoso em regiões de alta incidência (setembro nas regiões Centro-Oeste e Sudeste)\",\"mip_strategy\":\"Adotar estratégia integrada: (1) Uso de cultivares resistentes quando disponíveis; (2) Manejo cultural com poda adequada e espaçamento; (3) Monitoramento semanal durante chuvas; (4) Aplicações preventivas de cobre a partir de setembro; (5) Alternância de fungicidas (cobre → triazol → estrobilurina) para evitar resistência; (6) Aplicações nutricionais de potássio para aumentar resistência da planta; (7) Eliminação de folhas caídas infectadas; (8) Controle fitossanitário rigoroso. Aplicações químicas devem ser guiadas por receituário de agrônomo.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:36:56.441081+00:00",
+        "parsedNotes": {
+          "message": "Identificada Ferrugem do Café (Hemileia vastatrix) com pústulas características em ambas as faces da folha. Doença fúngica de alta relevância econômica que requer intervenção imediata.",
+          "crop": "Café",
+          "crop_confidence": 0.98,
+          "predictions": [
+            {
+              "id": "Hemileia_vastatrix",
+              "confidence": 0.92,
+              "common_name": "Ferrugem do Café",
+              "scientific_name": "Hemileia vastatrix",
+              "category": "disease",
+              "type": "fungus"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Ferrugem do Café",
+            "description": "Doença fúngica causada por Hemileia vastatrix, o patógeno mais importante da cafeicultura brasileira. Afeta principalmente a face inferior das folhas, onde se observam pústulas de coloração alaranjada/ferrugem. O fungo penetra pelos estômatos e compromete a fotossíntese, causando queda prematura de folhas e redução severa na produção. Pode causar perdas de até 50% em safras consecutivas em áreas sem controle adequado.",
+            "causes": [
+              "Infecção pelo fungo Hemileia vastatrix",
+              "Condições de alta umidade e temperatura amena",
+              "Presença de orvalho prolongado nas folhas",
+              "Plantios densos com má arejação"
+            ],
+            "symptoms": [
+              "Pústulas alaranjadas/ocre na face inferior das folhas",
+              "Halo amarelado ao redor das pústulas",
+              "Evolução para necrose e queda de folhas",
+              "Desfolhamento progressivo dos ramos",
+              "Exposição de frutos ao sol"
+            ],
+            "chemical_treatment": [
+              "Oxicloreto de cobre 500-750 g/ha (contato preventivo)",
+              "Mancozebe 1.5-2.0 kg/ha (protetor, uso preventivo)",
+              "Triazol sistêmico: Tebuconazol 100-150 mL/ha (curativo e preventivo) - Requer receituário agronomico",
+              "Piraclostrobina + Epoxiconazol 250-300 mL/ha - Requer receituário agronomico",
+              "Azoxistrobina 200-250 mL/ha para manejo de resistência - Requer receituário agronomico"
+            ],
+            "biological_treatment": [
+              "Aplicação de Bacillus subtilis em estádios iniciais da doença",
+              "Uso de óleos essenciais e extratos vegetais com propriedades fungistáticas",
+              "Promoção de inimigos naturais do fungo através de diversificação de plantas"
+            ],
+            "cultural_treatment": [
+              "Poda adequada para melhorar aerjação das plantas",
+              "Espaçamento correto entre plantas (4x2m ou 4x1.5m recomendado)",
+              "Desfolha em início de infecção para reduzir inóculo",
+              "Coleta e destruição de folhas caídas infectadas",
+              "Limpeza de equipamentos entre plantios",
+              "Evitar trabalhar na lavoura em dias com folhas molhadas",
+              "Adequação do sistema de irrigação (gotejamento preferível)"
+            ],
+            "prevention": [
+              "Escolha de cultivares resistentes ou tolerantes (Mundo Novo, Catuaí, Acaiá com genes de resistência)",
+              "Monitoramento mensal da doença durante período de chuvas",
+              "Aplicações preventivas de cobre a partir de setembro-outubro nas regiões do Centro-Oeste",
+              "Manutenção da sanidade do viveiro",
+              "Evitar plantios em áreas muito úmidas e sombreadas",
+              "Rotação com culturas não hospedeiras"
+            ],
+            "severity": "high",
+            "lifecycle": "O fungo completa seu ciclo em 4-6 semanas em condições de temperatura de 18-25°C e alta umidade. Produz uredósporos continuamente que são dispersos pelo vento e água. Em temperaturas abaixo de 15°C ou acima de 27°C há redução na infecção. A doença tem maior incidência no período chuvoso (setembro a março na região Centro-Oeste). Sobrevive em folhas caídas infectadas no solo.",
+            "economic_impact": "Doença de maior impacto econômico na cafeicultura brasileira, causando perdas anuais estimadas em milhões de reais. Reduz a produção em 30-50% em áreas sem controle, afeta a qualidade do café e aumenta custos com aplicações de fungicidas. Maior impacto em plantios convencionais em comparação com sombreados.",
+            "monitoring": [
+              "Inspeção visual semanal durante período chuvoso, observando face inferior das folhas do terço médio e inferior",
+              "Contagem de pústulas por folha (limiar de ação: 2-3% de folhas infectadas)",
+              "Amostragem de 10 plantas por hectare em zigue-zague",
+              "Uso de armadilhas de esporos em regiões críticas",
+              "Registro fotográfico da evolução"
+            ],
+            "favorable_conditions": [
+              "Temperatura entre 18-25°C (ótimo 21-23°C)",
+              "Umidade relativa acima de 90%",
+              "Orvalho noturno persistente (molhamento por 10-12 horas)",
+              "Plantios densos com sombreamento",
+              "Deficiências nutricionais (especialmente potássio)"
+            ],
+            "resistance_info": "Algumas cultivares apresentam resistência: Mundo Novo IP371-6, Catuaí com gene de resistência H (derivado de Híbrido de Timor), Acaiá IAC 474-19. Entretanto, têm sido relatados patótipos virulentos que quebram essa resistência. Recomenda-se monitoramento constante e alternância de mecanismos de ação de fungicidas.",
+            "recommended_products": [
+              {
+                "name": "Oxicloreto de cobre",
+                "active_ingredient": "Oxicloreto de cobre 50%",
+                "dosage": "500-750 g/ha",
+                "interval": "15-21 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe IV (Pouco tóxico)"
+              },
+              {
+                "name": "Mancozebe",
+                "active_ingredient": "Mancozebe 80%",
+                "dosage": "1.5-2.0 kg/ha",
+                "interval": "15-21 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "Classe III (Medianamente tóxico)"
+              },
+              {
+                "name": "Tebuconazol",
+                "active_ingredient": "Tebuconazol 430 SC",
+                "dosage": "100-150 mL/ha",
+                "interval": "21-30 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "Classe III (Medianamente tóxico) - Requer receituário"
+              },
+              {
+                "name": "Piraclostrobina + Epoxiconazol",
+                "active_ingredient": "Piraclostrobina + Epoxiconazol",
+                "dosage": "250-300 mL/ha",
+                "interval": "21-30 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "Classe III (Medianamente tóxico) - Requer receituário"
+              }
+            ],
+            "related_pests": [
+              "Cercosporiose do Café (Cercospora coffeicola)",
+              "Mancha de Phoma (Phoma costaricana)",
+              "Olho-pardo (Mycena citricolor)"
+            ],
+            "action_threshold": "Iniciar controle quando 2-3% das folhas apresentarem pústulas, ou preventivamente antes do período chuvoso em regiões de alta incidência (setembro nas regiões Centro-Oeste e Sudeste)",
+            "mip_strategy": "Adotar estratégia integrada: (1) Uso de cultivares resistentes quando disponíveis; (2) Manejo cultural com poda adequada e espaçamento; (3) Monitoramento semanal durante chuvas; (4) Aplicações preventivas de cobre a partir de setembro; (5) Alternância de fungicidas (cobre → triazol → estrobilurina) para evitar resistência; (6) Aplicações nutricionais de potássio para aumentar resistência da planta; (7) Eliminação de folhas caídas infectadas; (8) Controle fitossanitário rigoroso. Aplicações químicas devem ser guiadas por receituário de agrônomo."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Hemileia_vastatrix_-_coffee_leaf_rust.jpg/1280px-Hemileia_vastatrix_-_coffee_leaf_rust.jpg"
+    },
+    {
+      "test": "Percevejo verde (Nezara viridula)",
+      "points": 2,
+      "max": 4,
+      "reasons": [
+        "crop ok (soja)",
+        "pest miss (perceveju-verde | chlorochroa_species)",
+        "conf ok (0.92)"
+      ],
+      "raw": {
+        "id": "c7268492-c0c0-4a69-be10-e2858aac1dce",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "soja",
+        "pest_id": "Chlorochroa_species",
+        "pest_name": "Perceveju-verde",
+        "confidence": 0.92,
+        "image_url": null,
+        "notes": "{\"message\":\"Identificado percevejo-verde em espiga de trigo. Em soja, causa danos significativos sugando seiva de grãos em desenvolvimento.\",\"crop\":\"Soja\",\"crop_confidence\":0.95,\"predictions\":[{\"id\":\"Chlorochroa_sp\",\"confidence\":0.92,\"common_name\":\"Percevejo-verde\",\"scientific_name\":\"Chlorochroa sp. (possivelmente Chlorochroa ligata ou Chlorochroa maculiventris)\",\"category\":\"pest\",\"type\":\"insect\"},{\"id\":\"Hemiptera_pentatomidae\",\"confidence\":0.88,\"common_name\":\"Percevejo da familia Pentatomidae\",\"scientific_name\":\"Pentatomidae\",\"category\":\"pest\",\"type\":\"insect\"}],\"enrichment\":{\"name_pt\":\"Percevejo-verde\",\"description\":\"Inseto da ordem Hemiptera, família Pentatomidae, com corpo achatado, forma ovalada e coloração verde clara a amarelada. Alimenta-se penetrando o aparelho bucal nos tecidos vegetais para sugar a seiva. Na soja, causa danos diretos aos grãos em desenvolvimento, reduzindo peso, qualidade e viabilidade. Também transmite fungos fitopatogênicos durante a alimentação.\",\"causes\":[\"Infestação natural de percevejos migratórios de plantas hospedeiras adjacentes\",\"Ausência de controle químico no momento crítico de desenvolvimento dos grãos\",\"Presença de plantas daninhas hospedeiras próximas à lavoura\"],\"symptoms\":[\"Picadas visíveis nos grãos com descoloração ao redor\",\"Deformação e enrugamento de grãos atacados\",\"Grãos com aspecto ressecado e peso reduzido\",\"Presença do inseto adulto ou ninfas nas vagens e espigas\",\"Manchas escuras ou enegrecidas onde o percevejos se alimentam\"],\"chemical_treatment\":[\"Piretróides sintéticos (deltametrina 25g/L - 1,0-1,2 L/ha, betaciflutrina - conforme bula)\",\"Neonicotinoides (imidacloprido 700g/L - conforme recomendação técnica)\",\"Organofosforados (metamidofós - 600g/L - conforme indicação)\",\"Reguladores de crescimento de insetos (piriproxifen - conforme bula registrada)\",\"Inseticidas de contato e ingestão (clorpirifós - conforme bula MAPA)\"],\"biological_treatment\":[\"Liberação de parasitóides naturais como Trissolcus basalis ou Telenomus podisi (controle de ovos)\",\"Utilização de fungos entomopatogênicos como Beauveria bassiana ou Metarhizium anisopliae\",\"Conservação de predadores naturais como joaninhas (Coccinellidae) e aranhas\",\"Produtos biologicamente baseados em fungos e bactérias selecionados\"],\"cultural_treatment\":[\"Monitoramento regular com pano branco em fase fenológica R4-R6 (maturação do grão)\",\"Eliminação de plantas hospedeiras e daninhas próximas à lavoura\",\"Rotação de culturas para reduzir população de percevejos\",\"Plantio escalonado para evitar concentração de plantas susceptíveis\",\"Colheita rápida para evitar exposição prolongada do grão atacável\",\"Manejo de cobertura vegetal para não servir como abrigo de percevejos\",\"Destruição de restos culturais após colheita\"],\"prevention\":[\"Monitoramento semanal durante período crítico (R3-R6) usando pano de batida ou aspirador entomológico\",\"Definição do nível de ação: 2-4 percevejos por pano de batida ou 20% de vagens atacadas\",\"Manutenção de bordadura com plantas repelentes ou não hospedeiras\",\"Escolha de variedades com ciclo mais curto para evitar período de susceptibilidade prolongada\",\"Uso de cultivares com tolerância ou resistência quando disponível\",\"Plantas atrativas ou armadilhas cromáticas para monitoramento e captura\",\"Redução de aplicações de inseticidas que eliminam inimigos naturais\"],\"severity\":\"high\",\"lifecycle\":\"Ciclo de vida varia com temperatura: em condições do Brasil Central (região de Brasília, lat -15.78) completam 3-4 gerações por safra. Ovos são depositados em clusters nas folhas e hastes; eclodem em 5-10 dias. Ninfas passam por 5 instares em 20-30 dias. Adultos vivem 40-60 dias. Hibernam como adultos em restos vegetais e plantas hospedeiras.\",\"economic_impact\":\"Perdas podem alcançar 30-60% da produção se não controladas adequadamente, especialmente em períodos de alta infestação durante R4-R6. Grãos atacados têm redução de peso de 20-40% e desvalorização no mercado por qualidade inferior.\",\"monitoring\":[\"Pano de batida branco (1m x 1m) em 10 pontos diferentes da lavoura\",\"Batida direta das plantas contando percevejos presentes\",\"Aspirador entomológico para coleta de ninfas e adultos\",\"Inspeção visual de vagens para identificar picadas e grãos danificados\",\"Monitoramento a partir de R3 até colheita, com frequência de 2-3 dias em épocas críticas\",\"Registrar dados de temperatura para prever picos de infestação\"],\"favorable_conditions\":[\"Temperatura entre 22-30°C (ótimo 26-28°C)\",\"Umidade relativa entre 60-85%\",\"Ausência de chuvas frequentes que prejudicam deslocamento\",\"Presença de plantas hospedeiras adjacentes (plantas daninhas, culturas anteriores)\",\"Deficiência de inimigos naturais pela aplicação excessiva de inseticidas\",\"Lavouras homogêneas sem diversidade vegetal\"],\"resistance_info\":\"Não há relato de resistência genética em soja ao percevejo-verde, mas há variação em suscetibilidade entre cultivares. Alguns cultivares com ciclo mais curto apresentam menor prejuízo por evitar picos populacionais.\",\"recommended_products\":[{\"name\":\"Decis 25 EC\",\"active_ingredient\":\"Deltametrina 25g/L\",\"dosage\":\"1,0-1,2 L/ha\",\"interval\":\"7-10 dias entre aplicações\",\"safety_period\":\"21 dias\",\"toxic_class\":\"III (Medianamente tóxico)\"},{\"name\":\"Engeo Pleno\",\"active_ingredient\":\"Tiametoxam 141g/L + Lambda-cialotrina 106g/L\",\"dosage\":\"0,3-0,4 L/ha conforme recomendação\",\"interval\":\"14 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"II (Altamente tóxico)\"},{\"name\":\"Polo 500\",\"active_ingredient\":\"Clorpirifós 500g/L\",\"dosage\":\"1,6-2,0 L/ha\",\"interval\":\"10-14 dias\",\"safety_period\":\"21 dias\",\"toxic_class\":\"II (Altamente tóxico)\"},{\"name\":\"Furadan 350 SC\",\"active_ingredient\":\"Carbofuran 350g/L\",\"dosage\":\"0,8-1,2 L/ha\",\"interval\":\"7 dias\",\"safety_period\":\"30 dias\",\"toxic_class\":\"I (Extremamente tóxico)\"},{\"name\":\"Beauveria bassiana WP\",\"active_ingredient\":\"Beauveria bassiana (1,0 x 10⁹ UFC/g)\",\"dosage\":\"1,0-2,0 kg/ha\",\"interval\":\"7 dias\",\"safety_period\":\"1 dia\",\"toxic_class\":\"IV (Pouco tóxico)\"}],\"related_pests\":[\"Perceveju-marrom (Euschistus heros)\",\"Perceveju-rajado (Riptortus serripes)\",\"Lagarta-da-soja (Anticarsia gemmatalis)\",\"Broca-das-leguminosas (Epinotia aporema)\"],\"action_threshold\":\"2-4 percevejos por pano de batida (10 pontos amostrais) ou presença de 20% de vagens/grãos atacados durante R3-R6. Iniciar controle quando atingir o nível de ação.\",\"mip_strategy\":\"Manejo Integrado baseado em: (1) Monitoramento semanal rigoroso em período crítico R3-R6 com pano de batida; (2) Controle químico apenas quando nível de ação for atingido, priorizando produtos seletivos a inimigos naturais; (3) Conservação de parasitóides e predadores naturais mantendo bordaduras com plantas alternativas; (4) Rotação de culturas e eliminação de restos culturais; (5) Uso de biopesticidas quando populações forem baixas; (6) Escolha de cultivares com ciclo adequado; (7) Registrar todas as aplicações e dados de eficiência para melhor planejamento futuro. Evitar aplicações preventivas.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:37:23.147266+00:00",
+        "parsedNotes": {
+          "message": "Identificado percevejo-verde em espiga de trigo. Em soja, causa danos significativos sugando seiva de grãos em desenvolvimento.",
+          "crop": "Soja",
+          "crop_confidence": 0.95,
+          "predictions": [
+            {
+              "id": "Chlorochroa_sp",
+              "confidence": 0.92,
+              "common_name": "Percevejo-verde",
+              "scientific_name": "Chlorochroa sp. (possivelmente Chlorochroa ligata ou Chlorochroa maculiventris)",
+              "category": "pest",
+              "type": "insect"
+            },
+            {
+              "id": "Hemiptera_pentatomidae",
+              "confidence": 0.88,
+              "common_name": "Percevejo da familia Pentatomidae",
+              "scientific_name": "Pentatomidae",
+              "category": "pest",
+              "type": "insect"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Percevejo-verde",
+            "description": "Inseto da ordem Hemiptera, família Pentatomidae, com corpo achatado, forma ovalada e coloração verde clara a amarelada. Alimenta-se penetrando o aparelho bucal nos tecidos vegetais para sugar a seiva. Na soja, causa danos diretos aos grãos em desenvolvimento, reduzindo peso, qualidade e viabilidade. Também transmite fungos fitopatogênicos durante a alimentação.",
+            "causes": [
+              "Infestação natural de percevejos migratórios de plantas hospedeiras adjacentes",
+              "Ausência de controle químico no momento crítico de desenvolvimento dos grãos",
+              "Presença de plantas daninhas hospedeiras próximas à lavoura"
+            ],
+            "symptoms": [
+              "Picadas visíveis nos grãos com descoloração ao redor",
+              "Deformação e enrugamento de grãos atacados",
+              "Grãos com aspecto ressecado e peso reduzido",
+              "Presença do inseto adulto ou ninfas nas vagens e espigas",
+              "Manchas escuras ou enegrecidas onde o percevejos se alimentam"
+            ],
+            "chemical_treatment": [
+              "Piretróides sintéticos (deltametrina 25g/L - 1,0-1,2 L/ha, betaciflutrina - conforme bula)",
+              "Neonicotinoides (imidacloprido 700g/L - conforme recomendação técnica)",
+              "Organofosforados (metamidofós - 600g/L - conforme indicação)",
+              "Reguladores de crescimento de insetos (piriproxifen - conforme bula registrada)",
+              "Inseticidas de contato e ingestão (clorpirifós - conforme bula MAPA)"
+            ],
+            "biological_treatment": [
+              "Liberação de parasitóides naturais como Trissolcus basalis ou Telenomus podisi (controle de ovos)",
+              "Utilização de fungos entomopatogênicos como Beauveria bassiana ou Metarhizium anisopliae",
+              "Conservação de predadores naturais como joaninhas (Coccinellidae) e aranhas",
+              "Produtos biologicamente baseados em fungos e bactérias selecionados"
+            ],
+            "cultural_treatment": [
+              "Monitoramento regular com pano branco em fase fenológica R4-R6 (maturação do grão)",
+              "Eliminação de plantas hospedeiras e daninhas próximas à lavoura",
+              "Rotação de culturas para reduzir população de percevejos",
+              "Plantio escalonado para evitar concentração de plantas susceptíveis",
+              "Colheita rápida para evitar exposição prolongada do grão atacável",
+              "Manejo de cobertura vegetal para não servir como abrigo de percevejos",
+              "Destruição de restos culturais após colheita"
+            ],
+            "prevention": [
+              "Monitoramento semanal durante período crítico (R3-R6) usando pano de batida ou aspirador entomológico",
+              "Definição do nível de ação: 2-4 percevejos por pano de batida ou 20% de vagens atacadas",
+              "Manutenção de bordadura com plantas repelentes ou não hospedeiras",
+              "Escolha de variedades com ciclo mais curto para evitar período de susceptibilidade prolongada",
+              "Uso de cultivares com tolerância ou resistência quando disponível",
+              "Plantas atrativas ou armadilhas cromáticas para monitoramento e captura",
+              "Redução de aplicações de inseticidas que eliminam inimigos naturais"
+            ],
+            "severity": "high",
+            "lifecycle": "Ciclo de vida varia com temperatura: em condições do Brasil Central (região de Brasília, lat -15.78) completam 3-4 gerações por safra. Ovos são depositados em clusters nas folhas e hastes; eclodem em 5-10 dias. Ninfas passam por 5 instares em 20-30 dias. Adultos vivem 40-60 dias. Hibernam como adultos em restos vegetais e plantas hospedeiras.",
+            "economic_impact": "Perdas podem alcançar 30-60% da produção se não controladas adequadamente, especialmente em períodos de alta infestação durante R4-R6. Grãos atacados têm redução de peso de 20-40% e desvalorização no mercado por qualidade inferior.",
+            "monitoring": [
+              "Pano de batida branco (1m x 1m) em 10 pontos diferentes da lavoura",
+              "Batida direta das plantas contando percevejos presentes",
+              "Aspirador entomológico para coleta de ninfas e adultos",
+              "Inspeção visual de vagens para identificar picadas e grãos danificados",
+              "Monitoramento a partir de R3 até colheita, com frequência de 2-3 dias em épocas críticas",
+              "Registrar dados de temperatura para prever picos de infestação"
+            ],
+            "favorable_conditions": [
+              "Temperatura entre 22-30°C (ótimo 26-28°C)",
+              "Umidade relativa entre 60-85%",
+              "Ausência de chuvas frequentes que prejudicam deslocamento",
+              "Presença de plantas hospedeiras adjacentes (plantas daninhas, culturas anteriores)",
+              "Deficiência de inimigos naturais pela aplicação excessiva de inseticidas",
+              "Lavouras homogêneas sem diversidade vegetal"
+            ],
+            "resistance_info": "Não há relato de resistência genética em soja ao percevejo-verde, mas há variação em suscetibilidade entre cultivares. Alguns cultivares com ciclo mais curto apresentam menor prejuízo por evitar picos populacionais.",
+            "recommended_products": [
+              {
+                "name": "Decis 25 EC",
+                "active_ingredient": "Deltametrina 25g/L",
+                "dosage": "1,0-1,2 L/ha",
+                "interval": "7-10 dias entre aplicações",
+                "safety_period": "21 dias",
+                "toxic_class": "III (Medianamente tóxico)"
+              },
+              {
+                "name": "Engeo Pleno",
+                "active_ingredient": "Tiametoxam 141g/L + Lambda-cialotrina 106g/L",
+                "dosage": "0,3-0,4 L/ha conforme recomendação",
+                "interval": "14 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "II (Altamente tóxico)"
+              },
+              {
+                "name": "Polo 500",
+                "active_ingredient": "Clorpirifós 500g/L",
+                "dosage": "1,6-2,0 L/ha",
+                "interval": "10-14 dias",
+                "safety_period": "21 dias",
+                "toxic_class": "II (Altamente tóxico)"
+              },
+              {
+                "name": "Furadan 350 SC",
+                "active_ingredient": "Carbofuran 350g/L",
+                "dosage": "0,8-1,2 L/ha",
+                "interval": "7 dias",
+                "safety_period": "30 dias",
+                "toxic_class": "I (Extremamente tóxico)"
+              },
+              {
+                "name": "Beauveria bassiana WP",
+                "active_ingredient": "Beauveria bassiana (1,0 x 10⁹ UFC/g)",
+                "dosage": "1,0-2,0 kg/ha",
+                "interval": "7 dias",
+                "safety_period": "1 dia",
+                "toxic_class": "IV (Pouco tóxico)"
+              }
+            ],
+            "related_pests": [
+              "Perceveju-marrom (Euschistus heros)",
+              "Perceveju-rajado (Riptortus serripes)",
+              "Lagarta-da-soja (Anticarsia gemmatalis)",
+              "Broca-das-leguminosas (Epinotia aporema)"
+            ],
+            "action_threshold": "2-4 percevejos por pano de batida (10 pontos amostrais) ou presença de 20% de vagens/grãos atacados durante R3-R6. Iniciar controle quando atingir o nível de ação.",
+            "mip_strategy": "Manejo Integrado baseado em: (1) Monitoramento semanal rigoroso em período crítico R3-R6 com pano de batida; (2) Controle químico apenas quando nível de ação for atingido, priorizando produtos seletivos a inimigos naturais; (3) Conservação de parasitóides e predadores naturais mantendo bordaduras com plantas alternativas; (4) Rotação de culturas e eliminação de restos culturais; (5) Uso de biopesticidas quando populações forem baixas; (6) Escolha de cultivares com ciclo adequado; (7) Registrar todas as aplicações e dados de eficiência para melhor planejamento futuro. Evitar aplicações preventivas."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Nezara_viridula_MHNT_verte.jpg/1280px-Nezara_viridula_MHNT_verte.jpg"
+    },
+    {
+      "test": "Percevejo verde (portrait)",
+      "points": 4,
+      "max": 4,
+      "reasons": ["crop ok (soja)", "pest ok (percevejo-verde)", "conf ok (0.92)"],
+      "raw": {
+        "id": "d5997a95-84bd-4783-8d4b-ed334e6ff17f",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "soja",
+        "pest_id": "green_stink_bug",
+        "pest_name": "Percevejo-verde",
+        "confidence": 0.92,
+        "image_url": null,
+        "notes": "{\"message\":\"Percevejo-verde (Chinavia halys) identificado em soja. Praga chave com potencial de causar danos significativos nos grãos em desenvolvimento.\",\"crop\":\"Soja\",\"crop_confidence\":0.95,\"predictions\":[{\"id\":\"green_stink_bug_soybean\",\"confidence\":0.92,\"common_name\":\"Percevejo-verde\",\"scientific_name\":\"Chinavia halys (Sin. Penthalia halys)\",\"category\":\"pest\",\"type\":\"insect\"},{\"id\":\"stink_bug_complex\",\"confidence\":0.88,\"common_name\":\"Complexo de percevejos\",\"scientific_name\":\"Hemiptera: Pentatomidae\",\"category\":\"pest\",\"type\":\"insect\"}],\"enrichment\":{\"name_pt\":\"Percevejo-verde\",\"description\":\"O percevejo-verde (Chinavia halys) é uma das principais pragas da soja no Brasil, especialmente na região Centro-Oeste. É um inseto sugador que se alimenta do suco das plantas, causando danos desde o florescimento até a maturação. O inseto possui aparelho bucal tipo estilete que penetra profundamente nos tecidos vegetais, prejudicando tanto folhas quanto sementes em desenvolvimento. A fêmea é maior (12-14 mm) que o macho (10-12 mm).\",\"causes\":[\"Presença de hospedeiros alternativos nas proximidades da lavoura\",\"Falta de controle de plantas daninhas que servem como alimento\",\"Condições climáticas favoráveis (temperaturas entre 25-30°C)\",\"Ausência de práticas de MIP\"],\"symptoms\":[\"Pontuações escuras nas vagens de soja\",\"Deformação de sementes e abortamento de grãos\",\"Redução no tamanho e peso das sementes\",\"Apodrecimento prematuro de vagens\",\"Murcha de flores e vagens jovens\",\"Presença do inseto na planta durante o dia e noite\"],\"chemical_treatment\":[\"Piriproxifém 50 SC - 100-150 mL/ha (carência 14 dias)\",\"Imidacloprido 70 WS - 50-100 g/ha (carência 7 dias)\",\"Tiamexoxam 250 WG - 100-150 g/ha (carência 7 dias)\",\"Acefato 75 SP - 750-1000 g/ha (carência 7 dias)\",\"Lambda-cialotrina 50 EC - 15-30 mL/ha (carência 7 dias)\",\"Óleo mineral + inseticida (sinergismo na aplicação)\"],\"biological_treatment\":[\"Aplicação de Beauveria bassiana - 1-2 × 10^8 conídios/mL\",\"Aplicação de Metarhizium anisopliae - 1-2 × 10^8 conídios/mL\",\"Conservação de parasitoides nativos (Telenomus e Trissolcus)\",\"Promoção de inimigos naturais (joaninhas, vespas parasitoides)\",\"Plantio de culturas atrativas (sorgo, milho) para atrair predadores\"],\"cultural_treatment\":[\"Monitoramento regular da lavoura (pano branco) 2-3 vezes/semana\",\"Eliminação de plantas daninhas hospedeiras\",\"Plantio de plantas não-hospedeiras (milho, feijão) como barreira\",\"Destruição de restos culturais infestados\",\"Rotação de culturas com não-hospedeiros\",\"Manutenção de bordaduras com vegetação para inimigos naturais\",\"Colheita rápida para evitar posturas na lavoura\",\"Evitar plantios muito próximos de outras áreas de soja\"],\"prevention\":[\"Escolher variedades de soja com melhor arquitetura (menos favorem insetos)\",\"Realizar amostragem sistemática antes da floração\",\"Monitorar pela manhã quando insetos estão menos ativos\",\"Manter calendário de monitoramento desde V6-V8\",\"Conhecer nível de controle econômico (1-2 insetos/pano/10 puxadas)\",\"Usar técnica do pano branco para monitoramento eficiente\",\"Preservar faixas de vegetação natural na propriedade\"],\"severity\":\"high\",\"lifecycle\":\"O percevejo-verde completa 3-4 gerações por ciclo produtivo da soja no Brasil Central. Inverna em estado adulto em hospedeiros alternativos e vegetação remanescente. Primavera: procura por hospedeiros para alimentação e reprodução. Fêmeas colocam ovos em posturas de 5-15 ovos, em duas fileiras, principalmente na face inferior das folhas. Período de incubação: 4-7 dias (25-30°C). Ninfas (5 ínstares) levam 15-25 dias para atingir a fase adulta. Adultos podem viver 60-90 dias.\",\"economic_impact\":\"Perdas de até 40% em produtividade quando não controlado no florescimento e enchimento de grãos. Cada inseto pode danificar 5-10 sementes/dia. Em alta população, reduz drasticamente a viabilidade das sementes. Custo de controle químico: R$ 50-150/ha. Perda econômica pode chegar a R$ 500-800/ha em infestações severas.\",\"monitoring\":[\"Método do pano branco: colocar pano branco sob ramo e fazer movimento para baixo - insetos caem no pano\",\"10 pontos de amostragem por talhão (zigzag)\",\"Amostragem de 10 puxadas por ponto em V8-R1\",\"Avaliação visual de danos em vagens a partir de R3\",\"Contagem de posturas nas folhas (indicador de próximas gerações)\",\"Verificação de presença de inimigos naturais\",\"Amostragem semanal em período de risco (floração a R5)\"],\"favorable_conditions\":[\"Temperaturas entre 25-30°C\",\"Umidade relativa entre 40-80%\",\"Ausência de chuvas que causem mortalidade\",\"Plantas daninhas presentes na área\",\"Monocultura de soja\",\"Falta de inimigos naturais\",\"Lavouras próximas em desenvolvimento similar\"],\"resistance_info\":\"Não há relato de resistência em campo do percevejo-verde a inseticidas. No entanto, recomenda-se rotação de grupos químicos para evitar seleção de populações. Possibilidade futura de resistência exige manejo cuidadoso. Evitar aplicações desnecessárias fora do nível de controle.\",\"recommended_products\":[{\"name\":\"Actara\",\"active_ingredient\":\"Tiamexoxam 250 WG\",\"dosage\":\"100-150 g/ha\",\"interval\":\"7 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"III (Medianamente tóxico)\"},{\"name\":\"Confidor\",\"active_ingredient\":\"Imidacloprido 70 WS\",\"dosage\":\"50-100 g/ha\",\"interval\":\"7 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"III (Medianamente tóxico)\"},{\"name\":\"Astro\",\"active_ingredient\":\"Piriproxifém 50 SC\",\"dosage\":\"100-150 mL/ha\",\"interval\":\"7 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"III (Medianamente tóxico)\"},{\"name\":\"Karate\",\"active_ingredient\":\"Lambda-cialotrina 50 EC\",\"dosage\":\"15-30 mL/ha\",\"interval\":\"7 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"III (Medianamente tóxico)\"}],\"related_pests\":[\"Percevejo-marrom (Euschistus heros)\",\"Percevejo-rajado (Piezodorus guildinii)\",\"Percevejos-pequenos (Nysius spp.)\",\"Mosca-branca (Bemisia tabaci)\"],\"action_threshold\":\"1-2 insetos/pano/10 puxadas (fase vegetativa); 2-3 insetos/pano em R1 (floração); 1 inseto/pano em R3-R5 (enchimento de grãos) - crítico a partir de R4\",\"mip_strategy\":\"Estratégia de Manejo Integrado de Pragas: 1) Monitoramento semanal com pano branco a partir de V6; 2) Controle cultural com eliminação de hospedeiros alternativos e plantas daninhas; 3) Preservação de inimigos naturais (parasitoides e predadores); 4) Controle biológico com fungos entomopatogênicos se disponível; 5) Controle químico somente quando atingir nível de controle (1-2 insetos/pano em V-R1; 1 inseto/pano em R3+); 6) Rotação de ingredientes ativos para evitar resistência; 7) Aplicação com equipamento calibrado e volume adequado; 8) Preferência por produtos seletivos aos inimigos naturais (piriproxifém); 9) Integração com outras culturas para reduzir pressão de inóculo; 10) Registro de todas as intervenções para análise posterior\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:38:56.350945+00:00",
+        "parsedNotes": {
+          "message": "Percevejo-verde (Chinavia halys) identificado em soja. Praga chave com potencial de causar danos significativos nos grãos em desenvolvimento.",
+          "crop": "Soja",
+          "crop_confidence": 0.95,
+          "predictions": [
+            {
+              "id": "green_stink_bug_soybean",
+              "confidence": 0.92,
+              "common_name": "Percevejo-verde",
+              "scientific_name": "Chinavia halys (Sin. Penthalia halys)",
+              "category": "pest",
+              "type": "insect"
+            },
+            {
+              "id": "stink_bug_complex",
+              "confidence": 0.88,
+              "common_name": "Complexo de percevejos",
+              "scientific_name": "Hemiptera: Pentatomidae",
+              "category": "pest",
+              "type": "insect"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Percevejo-verde",
+            "description": "O percevejo-verde (Chinavia halys) é uma das principais pragas da soja no Brasil, especialmente na região Centro-Oeste. É um inseto sugador que se alimenta do suco das plantas, causando danos desde o florescimento até a maturação. O inseto possui aparelho bucal tipo estilete que penetra profundamente nos tecidos vegetais, prejudicando tanto folhas quanto sementes em desenvolvimento. A fêmea é maior (12-14 mm) que o macho (10-12 mm).",
+            "causes": [
+              "Presença de hospedeiros alternativos nas proximidades da lavoura",
+              "Falta de controle de plantas daninhas que servem como alimento",
+              "Condições climáticas favoráveis (temperaturas entre 25-30°C)",
+              "Ausência de práticas de MIP"
+            ],
+            "symptoms": [
+              "Pontuações escuras nas vagens de soja",
+              "Deformação de sementes e abortamento de grãos",
+              "Redução no tamanho e peso das sementes",
+              "Apodrecimento prematuro de vagens",
+              "Murcha de flores e vagens jovens",
+              "Presença do inseto na planta durante o dia e noite"
+            ],
+            "chemical_treatment": [
+              "Piriproxifém 50 SC - 100-150 mL/ha (carência 14 dias)",
+              "Imidacloprido 70 WS - 50-100 g/ha (carência 7 dias)",
+              "Tiamexoxam 250 WG - 100-150 g/ha (carência 7 dias)",
+              "Acefato 75 SP - 750-1000 g/ha (carência 7 dias)",
+              "Lambda-cialotrina 50 EC - 15-30 mL/ha (carência 7 dias)",
+              "Óleo mineral + inseticida (sinergismo na aplicação)"
+            ],
+            "biological_treatment": [
+              "Aplicação de Beauveria bassiana - 1-2 × 10^8 conídios/mL",
+              "Aplicação de Metarhizium anisopliae - 1-2 × 10^8 conídios/mL",
+              "Conservação de parasitoides nativos (Telenomus e Trissolcus)",
+              "Promoção de inimigos naturais (joaninhas, vespas parasitoides)",
+              "Plantio de culturas atrativas (sorgo, milho) para atrair predadores"
+            ],
+            "cultural_treatment": [
+              "Monitoramento regular da lavoura (pano branco) 2-3 vezes/semana",
+              "Eliminação de plantas daninhas hospedeiras",
+              "Plantio de plantas não-hospedeiras (milho, feijão) como barreira",
+              "Destruição de restos culturais infestados",
+              "Rotação de culturas com não-hospedeiros",
+              "Manutenção de bordaduras com vegetação para inimigos naturais",
+              "Colheita rápida para evitar posturas na lavoura",
+              "Evitar plantios muito próximos de outras áreas de soja"
+            ],
+            "prevention": [
+              "Escolher variedades de soja com melhor arquitetura (menos favorem insetos)",
+              "Realizar amostragem sistemática antes da floração",
+              "Monitorar pela manhã quando insetos estão menos ativos",
+              "Manter calendário de monitoramento desde V6-V8",
+              "Conhecer nível de controle econômico (1-2 insetos/pano/10 puxadas)",
+              "Usar técnica do pano branco para monitoramento eficiente",
+              "Preservar faixas de vegetação natural na propriedade"
+            ],
+            "severity": "high",
+            "lifecycle": "O percevejo-verde completa 3-4 gerações por ciclo produtivo da soja no Brasil Central. Inverna em estado adulto em hospedeiros alternativos e vegetação remanescente. Primavera: procura por hospedeiros para alimentação e reprodução. Fêmeas colocam ovos em posturas de 5-15 ovos, em duas fileiras, principalmente na face inferior das folhas. Período de incubação: 4-7 dias (25-30°C). Ninfas (5 ínstares) levam 15-25 dias para atingir a fase adulta. Adultos podem viver 60-90 dias.",
+            "economic_impact": "Perdas de até 40% em produtividade quando não controlado no florescimento e enchimento de grãos. Cada inseto pode danificar 5-10 sementes/dia. Em alta população, reduz drasticamente a viabilidade das sementes. Custo de controle químico: R$ 50-150/ha. Perda econômica pode chegar a R$ 500-800/ha em infestações severas.",
+            "monitoring": [
+              "Método do pano branco: colocar pano branco sob ramo e fazer movimento para baixo - insetos caem no pano",
+              "10 pontos de amostragem por talhão (zigzag)",
+              "Amostragem de 10 puxadas por ponto em V8-R1",
+              "Avaliação visual de danos em vagens a partir de R3",
+              "Contagem de posturas nas folhas (indicador de próximas gerações)",
+              "Verificação de presença de inimigos naturais",
+              "Amostragem semanal em período de risco (floração a R5)"
+            ],
+            "favorable_conditions": [
+              "Temperaturas entre 25-30°C",
+              "Umidade relativa entre 40-80%",
+              "Ausência de chuvas que causem mortalidade",
+              "Plantas daninhas presentes na área",
+              "Monocultura de soja",
+              "Falta de inimigos naturais",
+              "Lavouras próximas em desenvolvimento similar"
+            ],
+            "resistance_info": "Não há relato de resistência em campo do percevejo-verde a inseticidas. No entanto, recomenda-se rotação de grupos químicos para evitar seleção de populações. Possibilidade futura de resistência exige manejo cuidadoso. Evitar aplicações desnecessárias fora do nível de controle.",
+            "recommended_products": [
+              {
+                "name": "Actara",
+                "active_ingredient": "Tiamexoxam 250 WG",
+                "dosage": "100-150 g/ha",
+                "interval": "7 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "III (Medianamente tóxico)"
+              },
+              {
+                "name": "Confidor",
+                "active_ingredient": "Imidacloprido 70 WS",
+                "dosage": "50-100 g/ha",
+                "interval": "7 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "III (Medianamente tóxico)"
+              },
+              {
+                "name": "Astro",
+                "active_ingredient": "Piriproxifém 50 SC",
+                "dosage": "100-150 mL/ha",
+                "interval": "7 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "III (Medianamente tóxico)"
+              },
+              {
+                "name": "Karate",
+                "active_ingredient": "Lambda-cialotrina 50 EC",
+                "dosage": "15-30 mL/ha",
+                "interval": "7 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "III (Medianamente tóxico)"
+              }
+            ],
+            "related_pests": [
+              "Percevejo-marrom (Euschistus heros)",
+              "Percevejo-rajado (Piezodorus guildinii)",
+              "Percevejos-pequenos (Nysius spp.)",
+              "Mosca-branca (Bemisia tabaci)"
+            ],
+            "action_threshold": "1-2 insetos/pano/10 puxadas (fase vegetativa); 2-3 insetos/pano em R1 (floração); 1 inseto/pano em R3-R5 (enchimento de grãos) - crítico a partir de R4",
+            "mip_strategy": "Estratégia de Manejo Integrado de Pragas: 1) Monitoramento semanal com pano branco a partir de V6; 2) Controle cultural com eliminação de hospedeiros alternativos e plantas daninhas; 3) Preservação de inimigos naturais (parasitoides e predadores); 4) Controle biológico com fungos entomopatogênicos se disponível; 5) Controle químico somente quando atingir nível de controle (1-2 insetos/pano em V-R1; 1 inseto/pano em R3+); 6) Rotação de ingredientes ativos para evitar resistência; 7) Aplicação com equipamento calibrado e volume adequado; 8) Preferência por produtos seletivos aos inimigos naturais (piriproxifém); 9) Integração com outras culturas para reduzir pressão de inóculo; 10) Registro de todas as intervenções para análise posterior"
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Nezara_viridula_MHNT_portrait.jpg/1280px-Nezara_viridula_MHNT_portrait.jpg"
+    },
+    {
+      "test": "Mancha alvo (Corynespora cassiicola) em pepino",
+      "points": 4,
+      "max": 4,
+      "reasons": [
+        "crop ok (morango/framboesa)",
+        "pest ok (mancha-de-phyllaachora)",
+        "conf ok (0.78)"
+      ],
+      "raw": {
+        "id": "fafd10ba-4b1e-4ca6-ae7c-a5d73156e1ef",
+        "user_id": "96d2a602-026c-47a6-a287-b878cafc2593",
+        "crop": "outro",
+        "pest_id": "Phyllachora_leaf_spot",
+        "pest_name": "Mancha-de-Phyllaachora",
+        "confidence": 0.78,
+        "image_url": null,
+        "notes": "{\"message\":\"Presença de doença fúngica com manchas necróticas em folhas, possivelmente Phyllaachora ou similar doença de mancha foliar em cultivo de morango ou framboesa\",\"crop\":\"Morango/Framboesa\",\"crop_confidence\":0.85,\"predictions\":[{\"id\":\"phyllaachora_sp\",\"confidence\":0.78,\"common_name\":\"Mancha-de-Phyllaachora\",\"scientific_name\":\"Phyllaachora spp.\",\"category\":\"disease\",\"type\":\"fungus\"},{\"id\":\"leaf_spot_fungal\",\"confidence\":0.72,\"common_name\":\"Mancha-foliar-fúngica\",\"scientific_name\":\"Mycosphaerella fragariae ou similar\",\"category\":\"disease\",\"type\":\"fungus\"},{\"id\":\"angular_leaf_spot\",\"confidence\":0.65,\"common_name\":\"Mancha-angular\",\"scientific_name\":\"Xanthomonas fragariae\",\"category\":\"disease\",\"type\":\"bacteria\"}],\"enrichment\":{\"name_pt\":\"Mancha-foliar-fúngica em Morango/Framboesa\",\"description\":\"Doença fúngica que afeta folhas de morangueiro e framboeseira, caracterizada pelo aparecimento de manchas necróticas de coloração marrom-acinzentada com padrão irregular distribuído na lâmina foliar. O fungo penetra através de ferimentos ou aberturas naturais, afetando principalmente folhas mais velhas e em condições de alta umidade. Pode reduzir significativamente a capacidade fotossintética das plantas.\",\"causes\":[\"Infecção fúngica por Phyllaachora spp. ou fungos similares\",\"Condições de alta umidade relativa do ar\",\"Temperaturas entre 15-25°C\",\"Respingos de água durante rega ou chuva\",\"Ferimentos nas folhas facilitando entrada do patógeno\"],\"symptoms\":[\"Manchas necróticas marrom-acinzentadas nas folhas\",\"Distribuição irregular das lesões\",\"Possível halo amarelado ao redor das manchas\",\"Coalescência de lesões em infecções severas\",\"Desfolha progressiva em plantas severamente afetadas\"],\"chemical_treatment\":[\"Mancozebe 800 PM: 2-2,5 kg/ha, intervalo de 7-14 dias (carência 7 dias)\",\"Clorotalonil 500 SC: 2-3 L/ha, intervalo de 7 dias (carência 7 dias)\",\"Enxofre 500 PM: 3-4 kg/ha, intervalo de 7-10 dias (carência 3 dias)\",\"Tebuconazol 250 EC: 0,5-1 L/ha, intervalo de 14-21 dias (carência 14 dias)\",\"Tiofanato-metílico 700 PM: 1-1,5 kg/ha, intervalo de 7-10 dias (carência 3 dias)\"],\"biological_treatment\":[\"Aplicação de Bacillus subtilis (produtos registrados como biodefensivos)\",\"Trichoderma spp. para controle biológico do inóculo\",\"Pulverizações com Bordeaux para controle preventivo\"],\"cultural_treatment\":[\"Remoção e destruição de folhas infectadas\",\"Melhoria da circulação de ar no dossel através da poda sanitária\",\"Evitar regas por aspersão, preferindo irrigação por gotejamento\",\"Condução de plantas para reduzir densidade do dossel\",\"Desinfestação de ferramentas entre plantas\",\"Remoção de plantas severamente afetadas\"],\"prevention\":[\"Plantio de mudas sadias de cultivares resistentes quando disponíveis\",\"Manutenção de distanciamento adequado entre plantas\",\"Monitoramento regular das plantas\",\"Evitar cultivo contínuo (rotação de cultura)\",\"Higiene da estufa ou ambiente de cultivo\",\"Controle de plantas daninhas próximas\",\"Manejo adequado de umidade relativa\"],\"severity\":\"high\",\"lifecycle\":\"O fungo passa o inverno em folhas infectadas e restos de cultura. Na primavera, produz estruturas reprodutivas (ascos) que liberam esporos durante períodos úmidos. Os esporos são disseminados por respingos de água, ferramentas contaminadas ou pelo contato direto entre folhas. Após a infecção, o período de incubação varia de 7-14 dias dependendo das condições de temperatura e umidade.\",\"economic_impact\":\"A redução da área fotossinteticamente ativa leva a diminuição da produção de frutos, menor acúmulo de açúcares e redução de até 40% da produtividade em casos severos sem controle adequado.\",\"monitoring\":[\"Inspeção visual semanal das plantas, principalmente folhas inferiores\",\"Buscar presença de manchas características nas folhas mais velhas\",\"Monitorar condições de umidade na estufa ou cultivo\",\"Anotação da progressão de sintomas em plantas marcadas\",\"Observação de desfolha anormal ou prematura\"],\"favorable_conditions\":[\"Umidade relativa do ar acima de 80%\",\"Temperatura entre 15-25°C\",\"Períodos prolongados de molhamento foliar\",\"Plantas com densidade de plantio excessiva\",\"Nutrição inadequada, principalmente deficiência de potássio\",\"Presença de ferimentos nas folhas\"],\"resistance_info\":\"Algumas cultivares de morango apresentam resistência parcial a doenças foliares. Recomenda-se consultar o fornecedor de mudas sobre disponibilidade de cultivares resistentes. A resistência varietal é complementar às práticas de manejo.\",\"recommended_products\":[{\"name\":\"Mancozebe (vários fabricantes)\",\"active_ingredient\":\"Mancozebe 800 g/kg\",\"dosage\":\"2-2,5 kg/ha\",\"interval\":\"7-14 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe III\"},{\"name\":\"Clorotalonil (vários fabricantes)\",\"active_ingredient\":\"Clorotalonil 500 g/L\",\"dosage\":\"2-3 L/ha\",\"interval\":\"7 dias\",\"safety_period\":\"7 dias\",\"toxic_class\":\"Classe II\"},{\"name\":\"Enxofre em pó (vários fabricantes)\",\"active_ingredient\":\"Enxofre 500 g/kg\",\"dosage\":\"3-4 kg/ha\",\"interval\":\"7-10 dias\",\"safety_period\":\"3 dias\",\"toxic_class\":\"Classe IV\"},{\"name\":\"Tebuconazol (vários fabricantes)\",\"active_ingredient\":\"Tebuconazol 250 g/L\",\"dosage\":\"0,5-1 L/ha\",\"interval\":\"14-21 dias\",\"safety_period\":\"14 dias\",\"toxic_class\":\"Classe III\"}],\"related_pests\":[\"Oídio do morango (Podosphaera aphanis)\",\"Mofo-cinzento (Botrytis cinerea)\",\"Mancha-de-Dendrophoma (Dendrophoma obscurans)\"],\"action_threshold\":\"Presença de manchas em 5-10% das folhas já justifica intervenção. A doença deve ser controlada na fase inicial para evitar progressão rápida.\",\"mip_strategy\":\"ESTRATÉGIA DE MANEJO INTEGRADO: 1) PREVENTIVO: Use cultivares resistentes quando disponíveis, mantenha espaçamento adequado para boa circulação de ar, evite regas por aspersão, remova folhas inferiores regularmente, monitore umidade relativa mantendo-a abaixo de 85% quando possível; 2) MONITORAMENTO: Inspecione plantas semanalmente, focando nas folhas mais velhas e sombreadas, registre presença e progressão de sintomas; 3) CONTROLE: Ao detectar primeiros sintomas, inicie aplicações de fungicidas preventivos em rotação (mancozebe + enxofre) a cada 7-10 dias, alternando com tebuconazol a cada 14-21 dias para evitar resistência. Remova manualmente folhas severamente afetadas; 4) QUÍMICO: Utilize fungicidas registrados no MAPA com receituário agronômico. Respeite carências e intervalos de segurança. Alterne grupos químicos para reduzir risco de resistência; 5) BIOLÓGICO: Aplique Bacillus subtilis quando disponível, complementar ao controle químico; 6) CULTURAL: Destrua resíduos infectados, desinfeste ferramentas, evite cultivo contínuo na mesma área. A integração dessas práticas reduz custo e risco ambiental mantendo eficácia do controle.\"}}",
+        "location_lat": -15.78,
+        "location_lng": -47.93,
+        "location_name": null,
+        "created_at": "2026-04-14T10:39:21.453583+00:00",
+        "parsedNotes": {
+          "message": "Presença de doença fúngica com manchas necróticas em folhas, possivelmente Phyllaachora ou similar doença de mancha foliar em cultivo de morango ou framboesa",
+          "crop": "Morango/Framboesa",
+          "crop_confidence": 0.85,
+          "predictions": [
+            {
+              "id": "phyllaachora_sp",
+              "confidence": 0.78,
+              "common_name": "Mancha-de-Phyllaachora",
+              "scientific_name": "Phyllaachora spp.",
+              "category": "disease",
+              "type": "fungus"
+            },
+            {
+              "id": "leaf_spot_fungal",
+              "confidence": 0.72,
+              "common_name": "Mancha-foliar-fúngica",
+              "scientific_name": "Mycosphaerella fragariae ou similar",
+              "category": "disease",
+              "type": "fungus"
+            },
+            {
+              "id": "angular_leaf_spot",
+              "confidence": 0.65,
+              "common_name": "Mancha-angular",
+              "scientific_name": "Xanthomonas fragariae",
+              "category": "disease",
+              "type": "bacteria"
+            }
+          ],
+          "enrichment": {
+            "name_pt": "Mancha-foliar-fúngica em Morango/Framboesa",
+            "description": "Doença fúngica que afeta folhas de morangueiro e framboeseira, caracterizada pelo aparecimento de manchas necróticas de coloração marrom-acinzentada com padrão irregular distribuído na lâmina foliar. O fungo penetra através de ferimentos ou aberturas naturais, afetando principalmente folhas mais velhas e em condições de alta umidade. Pode reduzir significativamente a capacidade fotossintética das plantas.",
+            "causes": [
+              "Infecção fúngica por Phyllaachora spp. ou fungos similares",
+              "Condições de alta umidade relativa do ar",
+              "Temperaturas entre 15-25°C",
+              "Respingos de água durante rega ou chuva",
+              "Ferimentos nas folhas facilitando entrada do patógeno"
+            ],
+            "symptoms": [
+              "Manchas necróticas marrom-acinzentadas nas folhas",
+              "Distribuição irregular das lesões",
+              "Possível halo amarelado ao redor das manchas",
+              "Coalescência de lesões em infecções severas",
+              "Desfolha progressiva em plantas severamente afetadas"
+            ],
+            "chemical_treatment": [
+              "Mancozebe 800 PM: 2-2,5 kg/ha, intervalo de 7-14 dias (carência 7 dias)",
+              "Clorotalonil 500 SC: 2-3 L/ha, intervalo de 7 dias (carência 7 dias)",
+              "Enxofre 500 PM: 3-4 kg/ha, intervalo de 7-10 dias (carência 3 dias)",
+              "Tebuconazol 250 EC: 0,5-1 L/ha, intervalo de 14-21 dias (carência 14 dias)",
+              "Tiofanato-metílico 700 PM: 1-1,5 kg/ha, intervalo de 7-10 dias (carência 3 dias)"
+            ],
+            "biological_treatment": [
+              "Aplicação de Bacillus subtilis (produtos registrados como biodefensivos)",
+              "Trichoderma spp. para controle biológico do inóculo",
+              "Pulverizações com Bordeaux para controle preventivo"
+            ],
+            "cultural_treatment": [
+              "Remoção e destruição de folhas infectadas",
+              "Melhoria da circulação de ar no dossel através da poda sanitária",
+              "Evitar regas por aspersão, preferindo irrigação por gotejamento",
+              "Condução de plantas para reduzir densidade do dossel",
+              "Desinfestação de ferramentas entre plantas",
+              "Remoção de plantas severamente afetadas"
+            ],
+            "prevention": [
+              "Plantio de mudas sadias de cultivares resistentes quando disponíveis",
+              "Manutenção de distanciamento adequado entre plantas",
+              "Monitoramento regular das plantas",
+              "Evitar cultivo contínuo (rotação de cultura)",
+              "Higiene da estufa ou ambiente de cultivo",
+              "Controle de plantas daninhas próximas",
+              "Manejo adequado de umidade relativa"
+            ],
+            "severity": "high",
+            "lifecycle": "O fungo passa o inverno em folhas infectadas e restos de cultura. Na primavera, produz estruturas reprodutivas (ascos) que liberam esporos durante períodos úmidos. Os esporos são disseminados por respingos de água, ferramentas contaminadas ou pelo contato direto entre folhas. Após a infecção, o período de incubação varia de 7-14 dias dependendo das condições de temperatura e umidade.",
+            "economic_impact": "A redução da área fotossinteticamente ativa leva a diminuição da produção de frutos, menor acúmulo de açúcares e redução de até 40% da produtividade em casos severos sem controle adequado.",
+            "monitoring": [
+              "Inspeção visual semanal das plantas, principalmente folhas inferiores",
+              "Buscar presença de manchas características nas folhas mais velhas",
+              "Monitorar condições de umidade na estufa ou cultivo",
+              "Anotação da progressão de sintomas em plantas marcadas",
+              "Observação de desfolha anormal ou prematura"
+            ],
+            "favorable_conditions": [
+              "Umidade relativa do ar acima de 80%",
+              "Temperatura entre 15-25°C",
+              "Períodos prolongados de molhamento foliar",
+              "Plantas com densidade de plantio excessiva",
+              "Nutrição inadequada, principalmente deficiência de potássio",
+              "Presença de ferimentos nas folhas"
+            ],
+            "resistance_info": "Algumas cultivares de morango apresentam resistência parcial a doenças foliares. Recomenda-se consultar o fornecedor de mudas sobre disponibilidade de cultivares resistentes. A resistência varietal é complementar às práticas de manejo.",
+            "recommended_products": [
+              {
+                "name": "Mancozebe (vários fabricantes)",
+                "active_ingredient": "Mancozebe 800 g/kg",
+                "dosage": "2-2,5 kg/ha",
+                "interval": "7-14 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe III"
+              },
+              {
+                "name": "Clorotalonil (vários fabricantes)",
+                "active_ingredient": "Clorotalonil 500 g/L",
+                "dosage": "2-3 L/ha",
+                "interval": "7 dias",
+                "safety_period": "7 dias",
+                "toxic_class": "Classe II"
+              },
+              {
+                "name": "Enxofre em pó (vários fabricantes)",
+                "active_ingredient": "Enxofre 500 g/kg",
+                "dosage": "3-4 kg/ha",
+                "interval": "7-10 dias",
+                "safety_period": "3 dias",
+                "toxic_class": "Classe IV"
+              },
+              {
+                "name": "Tebuconazol (vários fabricantes)",
+                "active_ingredient": "Tebuconazol 250 g/L",
+                "dosage": "0,5-1 L/ha",
+                "interval": "14-21 dias",
+                "safety_period": "14 dias",
+                "toxic_class": "Classe III"
+              }
+            ],
+            "related_pests": [
+              "Oídio do morango (Podosphaera aphanis)",
+              "Mofo-cinzento (Botrytis cinerea)",
+              "Mancha-de-Dendrophoma (Dendrophoma obscurans)"
+            ],
+            "action_threshold": "Presença de manchas em 5-10% das folhas já justifica intervenção. A doença deve ser controlada na fase inicial para evitar progressão rápida.",
+            "mip_strategy": "ESTRATÉGIA DE MANEJO INTEGRADO: 1) PREVENTIVO: Use cultivares resistentes quando disponíveis, mantenha espaçamento adequado para boa circulação de ar, evite regas por aspersão, remova folhas inferiores regularmente, monitore umidade relativa mantendo-a abaixo de 85% quando possível; 2) MONITORAMENTO: Inspecione plantas semanalmente, focando nas folhas mais velhas e sombreadas, registre presença e progressão de sintomas; 3) CONTROLE: Ao detectar primeiros sintomas, inicie aplicações de fungicidas preventivos em rotação (mancozebe + enxofre) a cada 7-10 dias, alternando com tebuconazol a cada 14-21 dias para evitar resistência. Remova manualmente folhas severamente afetadas; 4) QUÍMICO: Utilize fungicidas registrados no MAPA com receituário agronômico. Respeite carências e intervalos de segurança. Alterne grupos químicos para reduzir risco de resistência; 5) BIOLÓGICO: Aplique Bacillus subtilis quando disponível, complementar ao controle químico; 6) CULTURAL: Destrua resíduos infectados, desinfeste ferramentas, evite cultivo contínuo na mesma área. A integração dessas práticas reduz custo e risco ambiental mantendo eficácia do controle."
+          }
+        }
+      },
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Cucumis_sativus_-_Corynespora_cassiicola-1-Hinrichs-Berger.jpg/1280px-Cucumis_sativus_-_Corynespora_cassiicola-1-Hinrichs-Berger.jpg"
+    }
+  ]
+}

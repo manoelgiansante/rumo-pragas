@@ -1,0 +1,38 @@
+# History flow — navigates to the History tab and verifies the screen.
+# Passes whether the list has items (diagnoses rendered) or is empty (empty state).
+appId: com.agrorumo.rumopragas
+tags:
+  - history
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible: "Diagnosticar Praga"
+    timeout: 15000
+
+# Tap Histórico tab (tabBarAccessibilityLabel falls back to title "Histórico")
+- tapOn: "Histórico"
+
+- extendedWaitUntil:
+    visible:
+      text: "Histórico"
+    timeout: 10000
+
+# Either the list is populated or we see the empty-state
+- assertVisible:
+    text: "(Nenhum diagnóstico|Buscar por praga ou cultura|diagnósticos)"
+
+- takeScreenshot: history-list
+
+# Optional: test the search input if visible
+- runFlow:
+    when:
+      visible: "Buscar por praga ou cultura"
+    commands:
+      - tapOn: "Buscar por praga ou cultura"
+      - inputText: "soja"
+      - hideKeyboard
+      - takeScreenshot: history-search
+      - tapOn:
+          text: "Limpar busca"
+          optional: true

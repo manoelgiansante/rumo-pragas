@@ -1,0 +1,58 @@
+# Paywall flow — opens the paywall and verifies plans are shown.
+# Two entry points tried: (1) direct navigation via settings upgrade link,
+# (2) via diagnosis limit (requires exceeding free tier — not guaranteed deterministic).
+appId: com.agrorumo.rumopragas
+tags:
+  - paywall
+  - subscription
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible: "Diagnosticar Praga"
+    timeout: 15000
+
+# Primary path: Settings → Upgrade de Plano (opens paywall directly)
+- tapOn: "Ajustes"
+
+- extendedWaitUntil:
+    visible: "Assinatura"
+    timeout: 10000
+
+# Try to tap the upgrade action
+- tapOn:
+    text: "Upgrade de Plano"
+    optional: true
+
+# Alternative: tap the subscription row (some builds show "Rumo Praga Pro" here)
+- tapOn:
+    text: "Rumo Praga Pro"
+    optional: true
+
+# Paywall should be visible now
+- extendedWaitUntil:
+    visible:
+      text: "(Rumo Praga Pro|Desbloqueie|Recursos incluídos|Assinar)"
+    timeout: 15000
+
+- assertVisible:
+    text: "(Gratuito|Pro|Enterprise)"
+
+- takeScreenshot: paywall-plans
+
+# Validate popular badge / pricing strings
+- assertVisible:
+    text: "Popular"
+    optional: true
+- assertVisible:
+    text: "/mês"
+    optional: true
+
+# Close the paywall
+- tapOn:
+    text: "Fechar paywall"
+    optional: true
+- tapOn:
+    text: "Continuar Gratuito"
+    optional: true
+- back

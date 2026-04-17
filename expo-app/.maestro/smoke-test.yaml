@@ -1,0 +1,44 @@
+# Smoke test — launches the app and confirms the main UI renders.
+# Does NOT require auth: onboarding + login screens are valid targets.
+appId: com.agrorumo.rumopragas
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+# Wait for splash/initial render
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 20000
+
+# App should land on one of these screens — any match passes
+- runFlow:
+    when:
+      visible: "Rumo Praga"
+    commands:
+      - assertVisible: "Rumo Praga"
+
+# Fallback: onboarding screen
+- runFlow:
+    when:
+      visible: "Diagnóstico com IA"
+    commands:
+      - assertVisible: "Diagnóstico com IA"
+      - tapOn:
+          text: "Pular"
+          optional: true
+
+# Fallback: already authenticated, home tab
+- runFlow:
+    when:
+      visible: "Diagnosticar Praga"
+    commands:
+      - assertVisible: "Diagnosticar Praga"
+      - assertVisible:
+          text: "Início"
+          optional: true
+
+- takeScreenshot: smoke-home-screen

@@ -23,7 +23,7 @@
 - Content Rating: Everyone (IARC)
 - Target Audience: 18+
 - Contains Ads: No
-- In-app purchases: Yes (R$ 29,90 a R$ 299,90)
+- In-app purchases: Yes (R$ 49,90/mês ou R$ 499/ano)
 
 ---
 
@@ -53,10 +53,10 @@
 
 | Campo | Valor |
 |---|---|
-| Website | https://rumo-pragas-landing.vercel.app |
-| Email | agrorumo.apps@gmail.com |
+| Website | https://pragas.agrorumo.com |
+| Email | contato@agrorumo.com |
 | Phone | (opcional) |
-| Privacy Policy | https://rumo-pragas-landing.vercel.app/privacy |
+| Privacy Policy | https://pragas.agrorumo.com/privacidade |
 
 ---
 

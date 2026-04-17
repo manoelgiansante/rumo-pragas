@@ -1,4 +1,4 @@
-# Press Kit — Rumo Praga
+# Press Kit — Rumo Pragas
 
 > **Uso:** jornalistas, parceiros, revendas, influenciadores do agro.
 > **Versão deste kit:** 1.0 (abril / 2026)
@@ -8,15 +8,15 @@
 
 ## One-liner
 
-> **Rumo Praga é o app brasileiro que identifica pragas e doenças agrícolas a partir de uma foto, em segundos, mesmo sem internet boa no campo.**
+> **Rumo Pragas é o app brasileiro que identifica pragas e doenças agrícolas a partir de uma foto, em segundos, mesmo sem internet boa no campo.**
 
 ## Boilerplate curto (até 300 caracteres)
 
-> O Rumo Praga usa inteligência artificial treinada com imagens reais de lavouras brasileiras para ajudar o produtor a identificar pragas e doenças a partir de uma foto no celular. Funciona offline e gera laudo em PDF. É um produto da AgroRumo Tecnologia Agrícola.
+> O Rumo Pragas usa inteligência artificial treinada com imagens reais de lavouras brasileiras para ajudar o produtor a identificar pragas e doenças a partir de uma foto no celular. Funciona offline e gera laudo em PDF. É um produto da AgroRumo Tecnologia Agrícola.
 
 ## Boilerplate longo (para releases)
 
-> O Rumo Praga é um aplicativo de diagnóstico de pragas e doenças para o agronegócio brasileiro. Com inteligência artificial treinada especificamente em lavouras nacionais, o app permite que o produtor rural tire uma foto da folha, caule ou fruto com sintoma e receba, em segundos, a identificação da praga mais provável, o nível de severidade estimado e a recomendação técnica. Suporta mais de 30 culturas e 500 pragas, gera laudo em PDF para compartilhar com o agrônomo e funciona com queue offline, pensado para a realidade da internet rural. O Rumo Praga é uma ferramenta auxiliar que não substitui o receituário agronômico. Faz parte do portfólio da AgroRumo Tecnologia Agrícola LTDA, empresa brasileira que desenvolve tecnologia para o campo.
+> O Rumo Pragas é um aplicativo de diagnóstico de pragas e doenças para o agronegócio brasileiro. Com inteligência artificial treinada especificamente em lavouras nacionais, o app permite que o produtor rural tire uma foto da folha, caule ou fruto com sintoma e receba, em segundos, a identificação da praga mais provável, o nível de severidade estimado e a recomendação técnica. Suporta mais de 30 culturas e 500 pragas, gera laudo em PDF para compartilhar com o agrônomo e funciona com queue offline, pensado para a realidade da internet rural. O Rumo Pragas é uma ferramenta auxiliar que não substitui o receituário agronômico. Faz parte do portfólio da AgroRumo Tecnologia Agrícola LTDA, empresa brasileira que desenvolve tecnologia para o campo.
 
 ## Highlights numéricos
 
@@ -29,7 +29,7 @@
 
 ## Problema que resolvemos
 
-A identificação correta de uma praga ou doença no começo do ciclo define o sucesso de uma safra. Hoje o produtor depende de mandar foto em grupos de WhatsApp, esperar a visita do agrônomo ou confiar na memória. Isso custa tempo, tempo custa produtividade, e produtividade custa dinheiro. O Rumo Praga encurta esse ciclo para segundos, entregando uma triagem inicial confiável, em português do campo, direto no celular que o produtor já tem no bolso.
+A identificação correta de uma praga ou doença no começo do ciclo define o sucesso de uma safra. Hoje o produtor depende de mandar foto em grupos de WhatsApp, esperar a visita do agrônomo ou confiar na memória. Isso custa tempo, tempo custa produtividade, e produtividade custa dinheiro. O Rumo Pragas encurta esse ciclo para segundos, entregando uma triagem inicial confiável, em português do campo, direto no celular que o produtor já tem no bolso.
 
 ## Diferenciais
 
@@ -41,7 +41,7 @@ A identificação correta de uma praga ou doença no começo do ciclo define o s
 
 ## Disclaimer legal (usar sempre que a mídia citar precisão/ROI)
 
-> O Rumo Praga é uma ferramenta auxiliar de diagnóstico e não substitui o receituário agronômico, obrigatório por lei (Lei 7.802/89) para compra e aplicação de defensivos agrícolas. Resultados individuais podem variar.
+> O Rumo Pragas é uma ferramenta auxiliar de diagnóstico e não substitui o receituário agronômico, obrigatório por lei (Lei 7.802/89) para compra e aplicação de defensivos agrícolas. Resultados individuais podem variar.
 
 ## Screenshots oficiais (arquivos referenciados)
 
@@ -88,7 +88,7 @@ Todos os arquivos estão em `/Users/manoelnascimento/AgroRumo Projetos/Apps/rumo
 - Manter margem de respiro mínima equivalente à altura da letra "R" do wordmark
 - Não substituir a tipografia oficial por imitações
 
-Para solicitar os arquivos vetoriais (SVG + PNG + favicon), enviar e-mail para **contato@agrorumo.com** com assunto **"Press kit — Rumo Praga"**.
+Para solicitar os arquivos vetoriais (SVG + PNG + favicon), enviar e-mail para **contato@agrorumo.com** com assunto **"Press kit — Rumo Pragas"**.
 
 ---
 
@@ -102,8 +102,8 @@ Para solicitar os arquivos vetoriais (SVG + PNG + favicon), enviar e-mail para *
 
 - Site oficial: https://pragas.agrorumo.com
 - Site institucional AgroRumo: https://agrorumo.com
-- App Store (iOS): https://apps.apple.com/app/rumo-praga
-- Google Play (Android): https://play.google.com/store/apps/details?id=com.agrorumo.pragas
+- App Store (iOS): https://apps.apple.com/app/rumo-pragas
+- Google Play (Android): https://play.google.com/store/apps/details?id=com.agrorumo.rumopragas
 - Instagram: https://instagram.com/agrorumo
 - YouTube: https://youtube.com/@agrorumo
 - LinkedIn: https://linkedin.com/company/agrorumo
@@ -117,7 +117,7 @@ Para solicitar os arquivos vetoriais (SVG + PNG + favicon), enviar e-mail para *
 
 ## Histórico rápido da AgroRumo
 
-A AgroRumo nasceu como estúdio independente de tecnologia agrícola com foco em apps para produtor rural brasileiro. Hoje o portfolio inclui Rumo Máquinas (controle de frota agrícola, em produção com clientes pagantes), Campo Vivo (monitoramento por satélite), Rumo Finance (gestão financeira), Rumo Operacional e Rumo Confinamento. O Rumo Praga é o lançamento mais recente do grupo.
+A AgroRumo nasceu como estúdio independente de tecnologia agrícola com foco em apps para produtor rural brasileiro. Hoje o portfolio inclui Rumo Máquinas (controle de frota agrícola, em produção com clientes pagantes), Campo Vivo (monitoramento por satélite), Rumo Finance (gestão financeira), Rumo Operacional e Rumo Confinamento. O Rumo Pragas é o lançamento mais recente do grupo.
 
 ---
 

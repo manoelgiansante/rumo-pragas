@@ -13,11 +13,11 @@
       "backgroundColor": "#06281D"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.agrorumo.rumopragas",
       "buildNumber": "1",
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:rumo-pragas-landing.vercel.app"],
+      "associatedDomains": ["applinks:pragas.agrorumo.com"],
       "infoPlist": {
         "NSCameraUsageDescription": "Precisamos da câmera para fotografar pragas e sintomas nas lavouras para diagnóstico por IA.",
         "NSPhotoLibraryUsageDescription": "Precisamos acessar suas fotos para selecionar imagens de pragas e sintomas para diagnóstico por IA.",
@@ -46,9 +46,11 @@
       }
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#06281D"
+        "backgroundColor": "#06281D",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.agrorumo.rumopragas",
       "permissions": [
@@ -64,7 +66,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "rumo-pragas-landing.vercel.app",
+              "host": "pragas.agrorumo.com",
               "pathPrefix": "/"
             }
           ],

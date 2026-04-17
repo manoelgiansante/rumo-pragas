@@ -151,15 +151,15 @@ Obrigado por confiar na Rumo Pragas. Boa safra!
 
 ### URLs obrigatorias
 
-| Tipo             | URL                                                     | Status                    |
-| ---------------- | ------------------------------------------------------- | ------------------------- |
-| Privacy Policy   | `https://rumo-pragas-landing.vercel.app/privacy`        | 200 OK                    |
-| Terms of Service | `https://rumo-pragas-landing.vercel.app/terms`          | 200 OK                    |
-| Support URL      | `https://rumo-pragas-landing.vercel.app/`               | 200 OK (hero tem suporte) |
-| Marketing URL    | `https://rumo-pragas-landing.vercel.app/`               | 200 OK                    |
-| Delete Account   | `https://rumo-pragas-landing.vercel.app/delete-account` | 200 OK                    |
+| Tipo             | URL                                          | Status                    |
+| ---------------- | -------------------------------------------- | ------------------------- |
+| Privacy Policy   | `https://pragas.agrorumo.com/privacidade`    | 200 OK                    |
+| Terms of Service | `https://pragas.agrorumo.com/termos`         | 200 OK                    |
+| Support URL      | `https://pragas.agrorumo.com/`               | 200 OK (hero tem suporte) |
+| Marketing URL    | `https://pragas.agrorumo.com/`               | 200 OK                    |
+| Delete Account   | `https://pragas.agrorumo.com/delete-account` | 200 OK                    |
 
-> RESOLVIDO (2026-04-13): URLs em `app.json` atualizadas de `rumopragas.vercel.app` (404) para `rumo-pragas-landing.vercel.app` (200 OK em /privacy, /terms, /delete-account).
+> RESOLVIDO (2026-04-16): URLs em `app.json` e docs atualizadas para `pragas.agrorumo.com` (dominio final de producao).
 
 ### App Store Privacy Labels (App Privacy)
 
@@ -245,7 +245,7 @@ Nenhum (todos dados estao vinculados ao User ID)
 | **Content Rating**    | Everyone                                                                     | —     |
 | **Target Audience**   | 18+                                                                          | —     |
 | **Contains Ads**      | No                                                                           | —     |
-| **In-app purchases**  | Yes (R$ 29,90 - 299,90)                                                      | —     |
+| **In-app purchases**  | Yes (R$ 49,90/mês ou R$ 499/ano)                                             | —     |
 
 > Google Play TEM categoria Agriculture? **Nao oficialmente.** Melhor: **Tools** com tags secundarias. Alternativa: Business (se focar em consultores) ou Education.
 
@@ -345,12 +345,12 @@ Obrigado por confiar. Boa safra!
 
 ### Store Listing Contact
 
-| Campo          | Valor                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------- |
-| Website        | `https://rumo-pragas-landing.vercel.app`                                              |
-| Email          | `suporte@agrorumo.com.br` _(verificar se existe, senao usar agrorumo.apps@gmail.com)_ |
-| Phone          | opcional                                                                              |
-| Privacy Policy | `https://rumo-pragas-landing.vercel.app/privacy`                                      |
+| Campo          | Valor                                     |
+| -------------- | ----------------------------------------- |
+| Website        | `https://pragas.agrorumo.com`             |
+| Email          | `contato@agrorumo.com`                    |
+| Phone          | opcional                                  |
+| Privacy Policy | `https://pragas.agrorumo.com/privacidade` |
 
 ### Data Safety (Play Console)
 
@@ -590,8 +590,8 @@ Comece gratis.
 
 ### Bloqueios ANTES de submeter
 
-- [x] Corrigir URLs em `app.json` de `rumopragas.vercel.app` (404) pra `rumo-pragas-landing.vercel.app`
-- [ ] Verificar email de suporte `suporte@agrorumo.com.br` existe (senao usar `agrorumo.apps@gmail.com`)
+- [x] Corrigir URLs em `app.json` para `pragas.agrorumo.com` (dominio final)
+- [x] Email de suporte: `contato@agrorumo.com`
 - [ ] Screenshots binarios em 1290x2796 (iOS) e 1080x2340 (Android) — 5 variantes cada = 10 arquivos
 - [ ] Feature graphic 1024x500 PNG (Play)
 - [ ] App icon 1024x1024 sem transparencia nem cantos arredondados (Apple arredonda)

@@ -1,0 +1,110 @@
+# Diagnosis flow — Home → Camera (gallery picker) → Crop select → Loading → Results.
+# Uses gallery (not live camera) for determinism on emulators/simulators.
+# Note: picker selection is handled natively and may require a fixture image in
+# the simulator/emulator photo library. On Android, pre-load a test image via:
+#   adb push test-pest.jpg /sdcard/Download/
+#   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/test-pest.jpg
+appId: com.agrorumo.rumopragas
+tags:
+  - diagnosis
+---
+- runFlow: auth-flow.yaml
+
+# From home, tap diagnose CTA
+- extendedWaitUntil:
+    visible: "Diagnosticar Praga"
+    timeout: 15000
+- tapOn: "Diagnosticar Praga"
+
+# Camera entry screen
+- extendedWaitUntil:
+    visible: "Identificação por IA"
+    timeout: 10000
+- assertVisible: "Tirar Foto"
+- assertVisible: "Escolher da Galeria"
+- takeScreenshot: diag-camera-entry
+
+# Use gallery for a reproducible run
+- tapOn: "Escolher da Galeria"
+
+# Handle native permission dialog (iOS + Android). Accept in all variants.
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- runFlow:
+    when:
+      visible: "Permitir"
+    commands:
+      - tapOn: "Permitir"
+- runFlow:
+    when:
+      visible: "Allow Access to All Photos"
+    commands:
+      - tapOn: "Allow Access to All Photos"
+
+# Pick the first image from the native picker — selector varies per platform
+- runFlow:
+    when:
+      visible: "Photos"
+    commands:
+      - tapOn:
+          point: "25%,40%"
+          optional: true
+- runFlow:
+    when:
+      visible: "Recents"
+    commands:
+      - tapOn:
+          point: "25%,40%"
+          optional: true
+- runFlow:
+    when:
+      visible: "Galeria"
+    commands:
+      - tapOn:
+          point: "25%,40%"
+          optional: true
+
+# iOS "Choose" confirmation button after cropping
+- tapOn:
+    text: "Choose"
+    optional: true
+- tapOn:
+    text: "Escolher"
+    optional: true
+- tapOn:
+    text: "Done"
+    optional: true
+
+# Crop-select screen
+- extendedWaitUntil:
+    visible: "Selecionar Cultura"
+    timeout: 30000
+- assertVisible: "Qual cultura está afetada?"
+- takeScreenshot: diag-crop-select
+
+# Pick first crop in the list
+- tapOn:
+    text: "Soja"
+    optional: true
+
+- tapOn: "Iniciar Diagnóstico"
+
+# Loading screen — any of the steps are valid
+- extendedWaitUntil:
+    visible:
+      text: "(Preparando|Enviando|Identificando|Processando).*"
+    timeout: 15000
+- takeScreenshot: diag-loading
+
+# Results screen — expect either pest detected or healthy plant
+- extendedWaitUntil:
+    visible:
+      text: "(Praga Detectada|Planta Saudável|Novo Diagnóstico)"
+    timeout: 60000
+- takeScreenshot: diag-result
+
+- assertVisible:
+    text: "(Praga Detectada|Planta Saudável|Novo Diagnóstico)"

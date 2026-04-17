@@ -1,11 +1,11 @@
-# ASO Final — Rumo Praga
+# ASO Final — Rumo Pragas
 
-App: **Rumo Praga** (Rumo Pragas IA)
+App: **Rumo Pragas** (Rumo Pragas IA)
 Categoria primária: **Utilitários** (iOS) / **Ferramentas** (Android)
 Categoria secundária sugerida: **Produtividade**
 Idioma principal de submissão: **pt-BR**
 Bundle iOS: `com.agrorumo.rumopragas`
-Package Android: `com.agrorumo.pragas`
+Package Android: `com.agrorumo.rumopragas`
 
 ---
 
@@ -13,9 +13,9 @@ Package Android: `com.agrorumo.pragas`
 
 ### Name (até 30 caracteres)
 ```
-Rumo Praga
+Rumo Pragas
 ```
-*(10 caracteres — deixa espaço para badges sazonais se necessário)*
+*(11 caracteres — deixa espaço para badges sazonais se necessário)*
 
 ### Subtitle (até 30 caracteres)
 ```
@@ -37,7 +37,7 @@ lavoura,agro,IA,agricultura,agrônomo,fazenda,soja,milho,algodão,café,cana,doe
 
 ### Description (até 4000 caracteres)
 ```
-Rumo Praga é o aplicativo brasileiro que identifica pragas e doenças agrícolas a partir de uma foto do seu celular. Desenvolvido para a realidade do campo: funciona com queue offline, é rápido e fala a língua do produtor.
+Rumo Pragas é o aplicativo brasileiro que identifica pragas e doenças agrícolas a partir de uma foto do seu celular. Desenvolvido para a realidade do campo: funciona com queue offline, é rápido e fala a língua do produtor.
 
 COMO FUNCIONA
 1. Tire uma foto da folha, caule ou fruto com sintoma
@@ -75,7 +75,7 @@ PRIVACIDADE E SEGURANÇA
 • Não usamos tracking para publicidade de terceiros
 
 DISCLAIMER IMPORTANTE
-O Rumo Praga é uma ferramenta auxiliar de diagnóstico. Não substitui o receituário agronômico, que é obrigatório por lei (Lei 7.802/89) para a compra e aplicação de defensivos agrícolas. Resultados individuais podem variar conforme condição da foto, iluminação e estágio da praga.
+O Rumo Pragas é uma ferramenta auxiliar de diagnóstico. Não substitui o receituário agronômico, que é obrigatório por lei (Lei 7.802/89) para a compra e aplicação de defensivos agrícolas. Resultados individuais podem variar conforme condição da foto, iluminação e estágio da praga.
 
 SOBRE A AGRORUMO
 Somos a AgroRumo Tecnologia Agrícola, empresa brasileira focada em levar tecnologia de ponta para quem realmente está no campo. Construímos apps para o agro BR, em português do campo, com engenheiros, agrônomos e produtores na mesa desde o dia 1.
@@ -88,7 +88,7 @@ Site: https://pragas.agrorumo.com
 
 ### What's New (a cada versão, até 4000 caracteres)
 ```
-Versão 1.0 — estreia do Rumo Praga no Brasil.
+Versão 1.0 — estreia do Rumo Pragas no Brasil.
 • Diagnóstico por foto com IA treinada para o agro brasileiro
 • Mais de 30 culturas e 500 pragas catalogadas
 • Laudo em PDF profissional
@@ -109,7 +109,7 @@ https://pragas.agrorumo.com
 
 ### Privacy Policy URL
 ```
-https://pragas.agrorumo.com/privacy
+https://pragas.agrorumo.com/privacidade
 ```
 
 ### App Privacy — resumo dos labels a declarar
@@ -126,9 +126,9 @@ https://pragas.agrorumo.com/privacy
 
 ### Título / App name (até 30 caracteres)
 ```
-Rumo Praga: diagnóstico IA
+Rumo Pragas: diagnóstico IA
 ```
-*(26 caracteres)*
+*(27 caracteres)*
 
 ### Short description (até 80 caracteres)
 ```
@@ -138,7 +138,7 @@ Tire uma foto da praga e veja o diagnóstico em segundos. IA feita pro agro BR.
 
 ### Full description (até 4000 caracteres)
 ```
-O Rumo Praga é o aplicativo brasileiro que identifica pragas e doenças agrícolas a partir de uma foto do celular. Pensado para a realidade do campo: funciona com queue offline, é rápido e em português do produtor.
+O Rumo Pragas é o aplicativo brasileiro que identifica pragas e doenças agrícolas a partir de uma foto do celular. Pensado para a realidade do campo: funciona com queue offline, é rápido e em português do produtor.
 
 Como funciona:
 1. Aponte a câmera para a folha, caule ou fruto com sintoma
@@ -175,7 +175,7 @@ Privacidade e segurança:
 • Você pode exportar ou excluir todos os seus dados pelo próprio app
 
 Disclaimer:
-O Rumo Praga é uma ferramenta auxiliar de diagnóstico e não substitui o receituário agronômico exigido pela Lei 7.802/89 para compra e aplicação de defensivos agrícolas. Resultados individuais podem variar.
+O Rumo Pragas é uma ferramenta auxiliar de diagnóstico e não substitui o receituário agronômico exigido pela Lei 7.802/89 para compra e aplicação de defensivos agrícolas. Resultados individuais podem variar.
 
 Sobre a AgroRumo:
 Somos uma empresa brasileira de tecnologia agrícola. Nosso portfolio: Rumo Máquinas (controle de frota), Campo Vivo (monitoramento por satélite), Rumo Finance, Rumo Operacional e Rumo Confinamento.

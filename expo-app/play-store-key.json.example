@@ -1,0 +1,16 @@
+{
+  "// DOC": "Service Account do Google Play Console. Criar em https://play.google.com/console -> Setup -> API access -> Create service account -> Grant 'Release apps to testing tracks' + 'Release apps to production'. Depois baixar o JSON e rodar: ./scripts/setup-play-store-key.sh /path/to/downloaded-play-key.json",
+  "// AVISO": "ESTE E UM ARQUIVO DE EXEMPLO. O arquivo real play-store-key.json NAO deve ser commitado (ja esta no .gitignore).",
+  "// ERRADO-NAO-USAR": "play-store-key.analytics-mcp.backup.json e a Service Account do projeto 'agrorumo' (analytics-mcp) — NAO usar pro Play Console.",
+  "type": "service_account",
+  "project_id": "api-XXXXXXXXXXXXXXXXXXX-XXXXXX",
+  "private_key_id": "PREENCHER_PRIVATE_KEY_ID_DO_JSON_BAIXADO",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nPREENCHER_CHAVE_PRIVADA\n-----END PRIVATE KEY-----\n",
+  "client_email": "nome-da-sa@api-XXXXXXXXXXXXXXXXXXX-XXXXXX.iam.gserviceaccount.com",
+  "client_id": "PREENCHER_CLIENT_ID",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/nome-da-sa%40api-XXXXXXXXXXXXXXXXXXX-XXXXXX.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

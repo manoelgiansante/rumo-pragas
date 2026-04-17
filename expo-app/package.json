@@ -19,7 +19,7 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
-      "eslint --fix --max-warnings 0"
+      "eslint --fix --max-warnings 0 --no-warn-ignored"
     ],
     "*.{json,md}": [
       "prettier --write"
@@ -55,6 +55,7 @@
     "expo-build-properties": "~55.0.13",
     "expo-camera": "~55.0.15",
     "expo-constants": "~55.0.9",
+    "expo-crypto": "~55.0.14",
     "expo-device": "~55.0.15",
     "expo-font": "~55.0.4",
     "expo-haptics": "~55.0.14",
@@ -93,7 +94,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vercel/node": "^5.6.7",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",

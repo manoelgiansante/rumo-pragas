@@ -7,14 +7,14 @@
 
 ## Campos
 
-| Campo | Arquivo | Limite | Atual |
-|---|---|---|---|
-| App Name | `pt-BR/name.txt` | 30 | 11 |
-| Subtitle | `pt-BR/subtitle.txt` | 30 | 25 |
-| Keywords | `pt-BR/keywords.txt` | 100 | 96 |
-| Promotional Text | `pt-BR/promotional_text.txt` | 170 | 159 |
-| Description | `pt-BR/description.txt` | 4000 | ~3780 |
-| What's New | `pt-BR/whats_new.txt` | 4000 | ~585 |
+| Campo            | Arquivo                      | Limite | Atual |
+| ---------------- | ---------------------------- | ------ | ----- |
+| App Name         | `pt-BR/name.txt`             | 30     | 11    |
+| Subtitle         | `pt-BR/subtitle.txt`         | 30     | 25    |
+| Keywords         | `pt-BR/keywords.txt`         | 100    | 96    |
+| Promotional Text | `pt-BR/promotional_text.txt` | 170    | 159   |
+| Description      | `pt-BR/description.txt`      | 4000   | ~3780 |
+| What's New       | `pt-BR/whats_new.txt`        | 4000   | ~585  |
 
 ## Categorias
 
@@ -36,11 +36,11 @@ Também disponíveis em 6.5" (1242x2688) em `../../ios/6.5/`.
 
 ## URLs
 
-- Privacy: https://rumo-pragas-landing.vercel.app/privacy
-- Terms: https://rumo-pragas-landing.vercel.app/terms
-- Support: https://rumo-pragas-landing.vercel.app/
-- Marketing: https://rumo-pragas-landing.vercel.app/
-- Delete Account: https://rumo-pragas-landing.vercel.app/delete-account
+- Privacy: https://pragas.agrorumo.com/privacidade
+- Terms: https://pragas.agrorumo.com/termos
+- Support: https://pragas.agrorumo.com/
+- Marketing: https://pragas.agrorumo.com/
+- Delete Account: https://pragas.agrorumo.com/delete-account
 
 ## Upload via ASC MCP
 

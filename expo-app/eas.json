@@ -41,7 +41,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "@EXPO_PUBLIC_REVENUECAT_IOS_KEY",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "@EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"
       }
     }
   },

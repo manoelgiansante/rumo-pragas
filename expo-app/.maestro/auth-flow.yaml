@@ -1,0 +1,81 @@
+# Auth flow — logs in with test credentials.
+# Skips onboarding if present, enters email+password, taps "Entrar".
+# Validates landing on the authenticated home screen.
+appId: com.agrorumo.rumopragas
+tags:
+  - auth
+env:
+  TEST_EMAIL: test_diag_full@mailinator.com
+  TEST_PASSWORD: Validator-2026-Rumo!
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 20000
+
+# Skip onboarding if visible
+- runFlow:
+    when:
+      visible: "Pular"
+    commands:
+      - tapOn:
+          text: "Pular"
+          optional: true
+
+# If already logged in, log out via settings — best-effort
+- runFlow:
+    when:
+      visible: "Diagnosticar Praga"
+    commands:
+      - tapOn:
+          text: "Ajustes"
+          optional: true
+      - scroll
+      - tapOn:
+          text: "Sair da Conta"
+          optional: true
+      - tapOn:
+          text: "Sair"
+          optional: true
+
+# Ensure we are on the login segmented control
+- extendedWaitUntil:
+    visible: "Entrar"
+    timeout: 10000
+
+- assertVisible: "Entrar"
+
+# Select "Entrar" segment (login tab) in case signup was last active
+- tapOn:
+    text: "Entrar"
+    index: 0
+    optional: true
+
+# Email field (placeholder "Email")
+- tapOn:
+    text: "Email"
+- inputText: ${TEST_EMAIL}
+- hideKeyboard
+
+# Password field (placeholder "Senha")
+- tapOn:
+    text: "Senha"
+- inputText: ${TEST_PASSWORD}
+- hideKeyboard
+
+# Submit — the bottom button also has text "Entrar". Use the last match.
+- tapOn:
+    text: "Entrar"
+    index: 1
+
+# Wait for authenticated home to render
+- extendedWaitUntil:
+    visible: "Diagnosticar Praga"
+    timeout: 30000
+
+- assertVisible: "Diagnosticar Praga"
+- takeScreenshot: auth-logged-in
