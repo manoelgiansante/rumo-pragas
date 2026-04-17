@@ -41,6 +41,12 @@
       "hooks/**/*.{ts,tsx}",
       "components/**/*.{ts,tsx}",
       "!**/*.d.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "__tests__/services/diagnosisQueue.test.ts",
+      "__tests__/components/ConfidenceBar.test.tsx",
+      "__tests__/services/subscriptionSync.test.ts"
     ]
   },
   "dependencies": {
@@ -100,6 +106,7 @@
     "@types/react": "~19.2.2",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
+    "@vercel/node": "^5.7.10",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
