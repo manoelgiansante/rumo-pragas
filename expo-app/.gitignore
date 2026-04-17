@@ -41,3 +41,6 @@ yarn-error.*
 /ios
 /android
 .vercel
+credentials.json
+credentials/
+play-store-key.json
