@@ -106,6 +106,7 @@ export default {
     queuedMessage: 'Su diagnostico se enviara automaticamente cuando se restablezca la conexion.',
     backToHome: 'Volver al inicio',
     permissionRequired: 'Permiso requerido',
+    openSettings: 'Abrir Ajustes',
     cameraPermissionMsg:
       'Necesitamos acceso a la cámara para fotografiar plagas y enfermedades en su cultivo. Habilítelo en la configuración del dispositivo.',
     galleryPermissionMsg:
@@ -355,6 +356,9 @@ export default {
     serverUnavailable:
       'El servidor no está disponible temporalmente. Intente de nuevo en unos minutos.',
     diagnosisError: 'Ocurrió un error al procesar el diagnóstico. Intente de nuevo.',
+    requestTimeout:
+      'El análisis tardó más de 60 segundos. Verifique su conexión e intente de nuevo.',
+    networkError: 'No se pudo conectar al servidor. Verifique su conexión e intente de nuevo.',
     weatherUnavailable: 'No se pudieron obtener datos meteorológicos. Verifique su conexión.',
     planLimit:
       'Ha alcanzado el límite de {{limit}} diagnósticos del plan {{plan}}. Actualice para continuar.',
@@ -573,6 +577,11 @@ export default {
     restoreA11y: 'Restaurar compras anteriores',
     featuresIncluded: 'Recursos incluidos',
     cancelNote: 'Cancele en cualquier momento. Sin compromiso.',
+    legalDisclosure:
+      'El pago se cargará a su cuenta de App Store/Google Play al confirmar la compra. La suscripción se renueva automáticamente a menos que se cancele al menos 24 horas antes del final del período actual. Su cuenta será cargada por la renovación dentro de las 24 horas previas al final del período actual al mismo precio. Puede gestionar y cancelar sus suscripciones desde la configuración de su cuenta en la tienda después de la compra.',
+    legalPrivacy: 'Política de Privacidad',
+    legalTerms: 'Términos de Uso',
+    legalLinksA11y: 'Abrir documentos legales',
     unlimited: 'ilimitado',
     diagPerMonth: 'diag/mes',
     popular: 'Popular',

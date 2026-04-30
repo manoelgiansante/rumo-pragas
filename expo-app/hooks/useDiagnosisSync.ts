@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Sentry from '@sentry/react-native';
+// iOS 26 TurboModule crash defense — see services/sentry-shim.ts
+import { captureException } from '../services/sentry-shim';
 import { useNetworkStatus } from './useNetworkStatus';
 import { useAuthContext } from '../contexts/AuthContext';
 import { sendDiagnosis } from '../services/diagnosis';
@@ -60,7 +61,7 @@ async function moveToDLQ(item: PendingDiagnosis, lastError?: string): Promise<vo
     if (__DEV__) console.warn('[DiagnosisSync] DLQ write failed:', err);
     // Still report to Sentry even if DLQ persistence failed
     try {
-      Sentry.captureException(err, {
+      captureException(err, {
         extra: { context: 'DLQ_write_failed', itemId: item.id },
       });
     } catch {
@@ -140,7 +141,7 @@ export function useDiagnosisSync() {
             const errMessage = error instanceof Error ? error.message : String(error);
             await moveToDLQ(item, errMessage);
             try {
-              Sentry.captureException(new Error('Diagnosis sync DLQ'), {
+              captureException(new Error('Diagnosis sync DLQ'), {
                 extra: {
                   itemId: item.id,
                   cropType: item.cropType,

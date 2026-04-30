@@ -8,7 +8,15 @@ import es from './locales/es';
 
 const LANGUAGE_KEY = '@rumo_pragas_language';
 
-const deviceLanguage = getLocales()[0]?.languageTag || 'pt-BR';
+// Defensive: getLocales() is a synchronous native call. Wrap in try/catch so
+// a TurboModule failure on cold boot never aborts module evaluation
+// (Apple reviewer first-launch hardening 2026-04-27).
+let deviceLanguage = 'pt-BR';
+try {
+  deviceLanguage = getLocales()[0]?.languageTag || 'pt-BR';
+} catch (e) {
+  if (__DEV__) console.warn('[i18n] getLocales failed, defaulting to pt-BR:', e);
+}
 
 const getDefaultLanguage = (): string => {
   if (deviceLanguage.startsWith('pt')) return 'pt-BR';
@@ -27,12 +35,20 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-// Load persisted language preference (async, overrides device default if set)
-AsyncStorage.getItem(LANGUAGE_KEY).then((savedLang) => {
-  if (savedLang && savedLang !== i18n.language) {
-    i18n.changeLanguage(savedLang);
-  }
-});
+// Load persisted language preference (async, overrides device default if set).
+// Wrapped in .catch() — never crash boot if AsyncStorage rejects on a fresh
+// install or corrupt sandbox. Silent fallback to device-detected language.
+AsyncStorage.getItem(LANGUAGE_KEY)
+  .then((savedLang) => {
+    if (savedLang && savedLang !== i18n.language) {
+      i18n.changeLanguage(savedLang).catch(() => {
+        /* ignore — keep device default */
+      });
+    }
+  })
+  .catch(() => {
+    /* ignore — keep device default */
+  });
 
 export default i18n;
 export { LANGUAGE_KEY };

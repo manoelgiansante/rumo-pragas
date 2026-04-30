@@ -73,8 +73,9 @@ immediately provide an updated build.
   function — photos are not retained after the diagnosis completes.
 - We do NOT track users across apps or websites. No IDFA requested.
 - Account deletion is available in-app: `Configuracoes > Conta > Excluir Conta`.
-- Privacy Policy: https://rumopragas.com.br/privacy
-- Terms of Service: https://rumopragas.com.br/terms
+- Privacy Policy: https://pragas.agrorumo.com/privacidade
+- Terms of Service: https://pragas.agrorumo.com/termos
+- Account deletion (web): https://pragas.agrorumo.com/delete-account
 
 ---
 
@@ -100,6 +101,7 @@ returned.
 If you encounter any issue during review:
 
 - **Email:** support@agrorumo.com
+- **Support web:** https://pragas.agrorumo.com/
 - **Response time:** under 4 business hours (Brasilia time, UTC-3)
 - **Developer:** Manoel Nascimento
 - **Company:** AgroRumo

@@ -23,43 +23,72 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { Colors } from '../constants/theme';
 
-// Initialize Sentry for crash reporting & performance monitoring
-// SETUP: Replace the DSN below with your real Sentry DSN from sentry.io
-const expoConfig = Constants.expoConfig;
-const appVersion = expoConfig?.version ?? '0.0.0';
-const iosBuildNumber = expoConfig?.ios?.buildNumber;
-const androidVersionCode = expoConfig?.android?.versionCode;
-const sentryDist =
-  iosBuildNumber ?? (androidVersionCode != null ? String(androidVersionCode) : undefined);
-const sentryRelease =
-  (expoConfig?.extra as { sentryRelease?: string } | undefined)?.sentryRelease ??
-  `rumo-pragas@${appVersion}`;
+// Sentry lazy init — NEVER call Sentry.init() at module scope.
+// On iOS 26 New Architecture (TurboModules), native module calls during JS
+// bundle evaluation can raise ObjC exceptions before the RN bridge is ready,
+// causing SIGABRT / crash on launch. Init is deferred to the first useEffect
+// inside RootLayout, and wrapped in try/catch so a Sentry failure never
+// brings down the app. Pattern adopted from Campo Vivo (2026-04-25).
+let sentryInitialized = false;
+function initSentryOnce() {
+  if (sentryInitialized) return;
+  try {
+    const expoConfig = Constants.expoConfig;
+    const appVersion = expoConfig?.version ?? '0.0.0';
+    const iosBuildNumber = expoConfig?.ios?.buildNumber;
+    const androidVersionCode = expoConfig?.android?.versionCode;
+    const sentryDist =
+      iosBuildNumber ?? (androidVersionCode != null ? String(androidVersionCode) : undefined);
+    const sentryRelease =
+      (expoConfig?.extra as { sentryRelease?: string } | undefined)?.sentryRelease ??
+      `rumo-pragas@${appVersion}`;
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
-  // Only enable when DSN is set AND not in dev
-  enabled: !__DEV__ && !!process.env.EXPO_PUBLIC_SENTRY_DSN,
-  // Capture 20% of transactions for performance monitoring
-  tracesSampleRate: 0.2,
-  // Only send events in production
-  environment: __DEV__ ? 'development' : 'production',
-  // Explicit release + dist so Sentry can match source maps per build
-  release: sentryRelease,
-  dist: sentryDist,
-  // Native crash reporting on iOS/Android
-  enableNative: true,
-  enableAutoSessionTracking: true,
-  // Attach JS stack traces to all events
-  attachStacktrace: true,
-  // Attach user context when available
-  beforeSend(event) {
-    // Scrub sensitive data
-    if (event.request?.headers) {
-      delete event.request.headers['Authorization'];
-    }
-    return event;
-  },
-});
+    Sentry.init({
+      dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+      enabled: !__DEV__ && !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+      tracesSampleRate: 0.1,
+      profilesSampleRate: 0.1,
+      environment: __DEV__ ? 'development' : 'production',
+      release: sentryRelease,
+      dist: sentryDist,
+      enableNative: true,
+      enableAutoSessionTracking: true,
+      attachStacktrace: true,
+      sendDefaultPii: false,
+      beforeSend(event) {
+        // Strip Authorization headers (token leak guard)
+        if (event.request?.headers) {
+          delete event.request.headers['Authorization'];
+          delete event.request.headers['authorization'];
+          delete event.request.headers['Cookie'];
+          delete event.request.headers['cookie'];
+        }
+        // Never send PII fields on user object
+        if (event.user) {
+          delete event.user.email;
+          delete event.user.username;
+          delete event.user.ip_address;
+        }
+        return event;
+      },
+      beforeBreadcrumb(breadcrumb) {
+        // Drop breadcrumbs that may capture URLs with tokens/secrets
+        if (breadcrumb.category === 'xhr' || breadcrumb.category === 'fetch') {
+          if (breadcrumb.data?.url && typeof breadcrumb.data.url === 'string') {
+            // Strip query strings (may contain tokens)
+            breadcrumb.data.url = breadcrumb.data.url.split('?')[0];
+          }
+        }
+        return breadcrumb;
+      },
+    });
+    sentryInitialized = true;
+  } catch (err) {
+    // Never crash the app on Sentry init failure.
+    if (__DEV__) console.warn('[Sentry] init failed (non-fatal):', err);
+    sentryInitialized = true;
+  }
+}
 
 // Prevent the splash screen from auto-hiding before data is loaded
 SplashScreen.preventAutoHideAsync();
@@ -104,8 +133,11 @@ function RootLayoutNav() {
         if (__DEV__) console.error('[Layout] Subscription sync failed:', err);
       });
       startSubscriptionListener(user.id);
-      // Set Sentry user context for crash reports
-      Sentry.setUser({ id: user.id, email: user.email });
+      // Set Sentry user context for crash reports — ID ONLY, no PII (no email).
+      // beforeSend strips email defensively, but we also avoid passing it here.
+      Sentry.setUser({ id: user.id });
+      Sentry.setTag('app.platform', Platform.OS);
+      Sentry.setTag('app.version', Constants.expoConfig?.version ?? 'unknown');
     } else {
       resetAnalytics();
       stopSubscriptionListener();
@@ -209,6 +241,12 @@ function RootLayoutNav() {
 }
 
 function RootLayout() {
+  // Lazy Sentry init — deferred to first render to avoid module-scope native
+  // calls that crash on iOS 26 TurboModule bridge (SIGABRT on cold start).
+  useEffect(() => {
+    initSentryOnce();
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>

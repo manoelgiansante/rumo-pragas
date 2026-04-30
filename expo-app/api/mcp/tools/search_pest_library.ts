@@ -1,16 +1,21 @@
 import { z } from 'zod';
-import { getSupabase } from '../_supabase';
 import { ToolHandler, ok, err } from '../_types';
 
 const InputSchema = z.object({
   query: z.string().min(1).max(100),
-  culture: z.string().optional(),
+  culture: z.string().max(80).optional(),
   limit: z.number().int().min(1).max(50).optional().default(10),
 });
 
+// Escape PostgREST `or()` filter wildcards in the user-supplied query so it
+// can't break out of the ilike pattern (e.g. injecting commas / parens).
+function escapeIlike(s: string): string {
+  return s.replace(/[%_,()*]/g, (ch) => `\\${ch}`);
+}
+
 export const searchPestLibrary: ToolHandler = {
   name: 'search_pest_library',
-  description: 'Busca na biblioteca de pragas por nome/sintoma. Pode filtrar por cultura.',
+  description: 'Busca na biblioteca pública de pragas por nome/sintoma. Pode filtrar por cultura.',
   inputSchema: {
     type: 'object',
     required: ['query'],
@@ -20,18 +25,19 @@ export const searchPestLibrary: ToolHandler = {
       limit: { type: 'number', default: 10 },
     },
   },
-  async handler(input) {
+  async handler(input, ctx) {
     const parsed = InputSchema.safeParse(input);
     if (!parsed.success) return err(`Invalid input: ${parsed.error.message}`);
     const { query, culture, limit } = parsed.data;
 
-    const supabase = getSupabase();
-    let q = supabase
+    // pest_library is public (no per-user data) but we still go through the
+    // JWT-bound client so anonymous callers cannot reach it.
+    const safe = escapeIlike(query);
+    let q = ctx.supabase
       .from('pest_library')
       .select('id, name, scientific_name, cultures, description, control_methods')
+      .or(`name.ilike.%${safe}%,scientific_name.ilike.%${safe}%,description.ilike.%${safe}%`)
       .limit(limit);
-    // Use ilike on name / description for full-text-ish search
-    q = q.or(`name.ilike.%${query}%,scientific_name.ilike.%${query}%,description.ilike.%${query}%`);
     if (culture) q = q.contains('cultures', [culture]);
 
     const { data, error } = await q;

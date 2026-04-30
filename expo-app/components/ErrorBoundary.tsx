@@ -1,7 +1,8 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Sentry from '@sentry/react-native';
+// iOS 26 TurboModule crash defense — see services/sentry-shim.ts
+import { withScope, captureException } from '../services/sentry-shim';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 import i18n from '../i18n';
 
@@ -28,14 +29,21 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (__DEV__) console.error('[ErrorBoundary] Erro capturado:', error.message);
     if (__DEV__) console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
-    // Report to Sentry for production crash tracking
-    Sentry.captureException(error, {
-      contexts: {
-        react: {
+    // Report to Sentry for production crash tracking. Tag as react-error-boundary
+    // for filtering / Apple reviewer triage. Wrapped in try/catch so a Sentry
+    // failure never re-throws inside componentDidCatch (which would be fatal).
+    try {
+      withScope((scope) => {
+        scope.setTag('error.boundary', 'root');
+        scope.setLevel('fatal');
+        scope.setContext('react', {
           componentStack: errorInfo.componentStack ?? undefined,
-        },
-      },
-    });
+        });
+        captureException(error);
+      });
+    } catch (sentryErr) {
+      if (__DEV__) console.warn('[ErrorBoundary] Sentry capture failed:', sentryErr);
+    }
   }
 
   resetError = () => {

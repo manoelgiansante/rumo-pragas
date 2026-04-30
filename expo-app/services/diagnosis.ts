@@ -1,4 +1,5 @@
-import * as Sentry from '@sentry/react-native';
+// iOS 26 TurboModule crash defense — see services/sentry-shim.ts
+import { addBreadcrumb } from './sentry-shim';
 import { router } from 'expo-router';
 import { Config } from '../constants/config';
 import type { DiagnosisResult } from '../types/diagnosis';
@@ -9,6 +10,9 @@ import { hasLocationConsent } from './userPreferences';
 export type { DiagnosisResult };
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+// P0: hard timeout for diagnose edge function — reviewer on slow network must
+// see a clear error within 60s, never an infinite spinner (App Store 2.1.0 rejection risk).
+const DIAGNOSE_TIMEOUT_MS = 60_000;
 
 function validateBase64ImageSize(base64: string): void {
   // Base64 encodes 3 bytes into 4 chars, so decoded size ~ base64.length * 3/4
@@ -69,7 +73,7 @@ export async function sendDiagnosis(
     }
   }
 
-  Sentry.addBreadcrumb({
+  addBreadcrumb({
     category: 'diagnosis',
     message: `Sending diagnosis for crop: ${cropType}`,
     level: 'info',
@@ -84,19 +88,35 @@ export async function sendDiagnosis(
   // Validate URL is HTTPS
   validateHttpsUrl(url);
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      image_base64: imageBase64,
-      crop_type: cropType,
-      latitude: safeLatitude,
-      longitude: safeLongitude,
-    }),
-  });
+  // P0: AbortController + timeout — never let reviewer hang on slow network
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DIAGNOSE_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        image_base64: imageBase64,
+        crop_type: cropType,
+        latitude: safeLatitude,
+        longitude: safeLongitude,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    // AbortError → user-facing timeout message; otherwise generic network error
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(i18n.t('errors.requestTimeout'), { cause: err });
+    }
+    throw new Error(i18n.t('errors.networkError'), { cause: err });
+  }
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     // Handle 403 with subscription limit details — navigate to paywall

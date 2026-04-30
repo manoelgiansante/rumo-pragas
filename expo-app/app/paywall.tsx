@@ -163,6 +163,12 @@ export default function PaywallScreen() {
   }, [selected, configured, findPackageForPlan, t]);
 
   const handleRestore = useCallback(async () => {
+    // If RC is not configured (missing key), surface a graceful error instead
+    // of crashing — keeps the Restore button always tappable for reviewers.
+    if (!configured) {
+      Alert.alert(t('common.error'), t('paywall.restoreError'));
+      return;
+    }
     setRestoring(true);
     try {
       const customerInfo = await restorePurchases();
@@ -184,7 +190,7 @@ export default function PaywallScreen() {
     } finally {
       setRestoring(false);
     }
-  }, [t]);
+  }, [t, configured]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -288,22 +294,52 @@ export default function PaywallScreen() {
         </TouchableOpacity>
         <Text style={styles.cancelNote}>{t('paywall.cancelNote')}</Text>
 
-        {configured && (
-          <TouchableOpacity
-            onPress={handleRestore}
-            disabled={restoring}
-            style={styles.restoreBtn}
-            accessibilityLabel={t('paywall.restoreA11y')}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: restoring, busy: restoring }}
-          >
-            {restoring ? (
-              <ActivityIndicator size="small" color={Colors.accent} />
-            ) : (
-              <Text style={styles.restoreText}>{t('paywall.restorePurchases')}</Text>
-            )}
-          </TouchableOpacity>
+        {/* Apple Schedule 2 / Guideline 3.1.2: auto-renew disclosure REQUIRED for
+            auto-renewable subscriptions. Must appear adjacent to subscribe CTA. */}
+        {selected !== 'free' && (
+          <Text style={styles.legalDisclosure}>{t('paywall.legalDisclosure')}</Text>
         )}
+
+        {/* Apple Guideline 3.1.2 / 5.1.1: link to Privacy + Terms (EULA) on paywall. */}
+        <View
+          style={styles.legalLinks}
+          accessibilityLabel={t('paywall.legalLinksA11y')}
+          accessibilityRole="none"
+        >
+          <TouchableOpacity
+            onPress={() => router.push('/privacy')}
+            accessibilityRole="link"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.legalLinkText}>{t('paywall.legalPrivacy')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalLinkSeparator}>·</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/terms')}
+            accessibilityRole="link"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.legalLinkText}>{t('paywall.legalTerms')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Apple Guideline 3.1.1: Restore Purchases must ALWAYS be visible to
+            users on the paywall, regardless of RC config state. If RC isn't
+            configured we still render the button and surface a graceful error. */}
+        <TouchableOpacity
+          onPress={handleRestore}
+          disabled={restoring}
+          style={styles.restoreBtn}
+          accessibilityLabel={t('paywall.restoreA11y')}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: restoring, busy: restoring }}
+        >
+          {restoring ? (
+            <ActivityIndicator size="small" color={Colors.accent} />
+          ) : (
+            <Text style={styles.restoreText}>{t('paywall.restorePurchases')}</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -383,4 +419,29 @@ const styles = StyleSheet.create({
   },
   restoreBtn: { alignItems: 'center', marginTop: 16, paddingVertical: 8 },
   restoreText: { fontSize: FontSize.subheadline, color: Colors.accent, fontWeight: '600' },
+  legalDisclosure: {
+    fontSize: FontSize.caption2,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 4,
+    lineHeight: 16,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  legalLinkText: {
+    fontSize: FontSize.caption,
+    color: Colors.accent,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  legalLinkSeparator: {
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+  },
 });

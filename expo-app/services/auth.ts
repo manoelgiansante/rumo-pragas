@@ -1,8 +1,9 @@
 import { supabase } from './supabase';
-import * as Sentry from '@sentry/react-native';
+// iOS 26 TurboModule crash defense — see services/sentry-shim.ts
+import { addBreadcrumb } from './sentry-shim';
 
 export async function signIn(email: string, password: string) {
-  Sentry.addBreadcrumb({ category: 'auth', message: 'Sign in attempt', level: 'info' });
+  addBreadcrumb({ category: 'auth', message: 'Sign in attempt', level: 'info' });
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -12,7 +13,7 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signUp(email: string, password: string, fullName: string) {
-  Sentry.addBreadcrumb({ category: 'auth', message: 'Sign up attempt', level: 'info' });
+  addBreadcrumb({ category: 'auth', message: 'Sign up attempt', level: 'info' });
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -25,7 +26,7 @@ export async function signUp(email: string, password: string, fullName: string) 
 }
 
 export async function signOut() {
-  Sentry.addBreadcrumb({ category: 'auth', message: 'Sign out', level: 'info' });
+  addBreadcrumb({ category: 'auth', message: 'Sign out', level: 'info' });
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }

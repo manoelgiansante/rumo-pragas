@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
@@ -45,16 +46,34 @@ export default function CameraScreen() {
   const pickImage = async (useCamera: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    // P0: when permission denied (especially canAskAgain=false), give the user a
+    // direct "Open Settings" CTA instead of a dead-end Alert. Apple reviewer that
+    // accidentally taps "Don't Allow" on a fresh install needs a recovery path —
+    // otherwise the core flow is gated behind a system Settings deep dive.
+    const showPermissionAlert = (msg: string) => {
+      Alert.alert(t('diagnosis.permissionRequired'), msg, [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('diagnosis.openSettings'),
+          onPress: () => {
+            Linking.openSettings().catch(() => {
+              /* best effort */
+            });
+          },
+        },
+      ]);
+    };
+
     if (useCamera) {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('diagnosis.permissionRequired'), t('diagnosis.cameraPermissionMsg'));
+        showPermissionAlert(t('diagnosis.cameraPermissionMsg'));
         return;
       }
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('diagnosis.permissionRequired'), t('diagnosis.galleryPermissionMsg'));
+        showPermissionAlert(t('diagnosis.galleryPermissionMsg'));
         return;
       }
     }

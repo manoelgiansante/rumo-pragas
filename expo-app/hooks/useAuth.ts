@@ -22,8 +22,36 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let mounted = true;
+
+    // Apple-reviewer hardening (2026-04-27, App Completeness 2.1.0):
+    // getSession() must NEVER leave isLoading=true forever. If the network is
+    // bad (reviewer is often on slow wifi), if GoTrue is degraded, or if
+    // SecureStore returns a corrupt token, the promise can hang/reject and
+    // the splash screen would never hide -> Apple flags as "incomplete".
+    // We race the promise against an 8s timeout and always resolve isLoading.
+    const SESSION_TIMEOUT_MS = 8000;
+
+    const sessionPromise = supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          if (__DEV__) console.warn('[useAuth] getSession returned error:', error.message);
+          return null;
+        }
+        return data.session;
+      })
+      .catch((err) => {
+        if (__DEV__) console.warn('[useAuth] getSession threw:', err);
+        return null;
+      });
+
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), SESSION_TIMEOUT_MS);
+    });
+
+    Promise.race([sessionPromise, timeoutPromise]).then((session) => {
+      if (!mounted) return;
       setState({
         user: session?.user ?? null,
         session,
@@ -33,10 +61,11 @@ export function useAuth() {
       });
     });
 
-    // Listen for auth changes
+    // Listen for auth changes (also resolves isLoading -> belt and suspenders)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setState((prev) => ({
         ...prev,
         user: session?.user ?? null,
@@ -47,6 +76,7 @@ export function useAuth() {
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);

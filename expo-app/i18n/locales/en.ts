@@ -106,6 +106,7 @@ export default {
     queuedMessage: 'Your diagnosis will be sent automatically when connection is restored.',
     backToHome: 'Back to home',
     permissionRequired: 'Permission required',
+    openSettings: 'Open Settings',
     cameraPermissionMsg:
       'We need camera access to photograph pests and diseases on your crop. Enable it in your device settings.',
     galleryPermissionMsg:
@@ -351,6 +352,8 @@ export default {
     tooManyRequests: 'Too many requests. Please wait a moment and try again.',
     serverUnavailable: 'The server is temporarily unavailable. Please try again in a few minutes.',
     diagnosisError: 'An error occurred while processing the diagnosis. Please try again.',
+    requestTimeout: 'Analysis took longer than 60 seconds. Check your connection and try again.',
+    networkError: 'Unable to reach the server. Check your connection and try again.',
     weatherUnavailable: 'Unable to retrieve weather data. Check your connection.',
     planLimit:
       'You have reached the limit of {{limit}} diagnoses on the {{plan}} plan. Upgrade to continue.',
@@ -567,6 +570,11 @@ export default {
     restoreA11y: 'Restore previous purchases',
     featuresIncluded: 'Features included',
     cancelNote: 'Cancel anytime. No commitment.',
+    legalDisclosure:
+      'Payment will be charged to your App Store/Google Play account at confirmation of purchase. Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period at the same price. You can manage and cancel your subscriptions by going to your account settings on the store after purchase.',
+    legalPrivacy: 'Privacy Policy',
+    legalTerms: 'Terms of Use',
+    legalLinksA11y: 'Open legal documents',
     unlimited: 'unlimited',
     diagPerMonth: 'diag/month',
     popular: 'Popular',
