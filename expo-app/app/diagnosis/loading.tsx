@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withRepeat,
+  withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { FontSize, Gradients } from '../../constants/theme';
+import { Colors, FontSize, FontWeight } from '../../constants/theme';
+import { Hero } from '../../components/ui';
 import { sendDiagnosis } from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
@@ -37,6 +39,9 @@ export default function LoadingScreen() {
   const progress = useSharedValue(0);
   const stepOpacity = useSharedValue(1);
   const stepTranslateY = useSharedValue(0);
+  // Animated leaf: gentle pulse + slow rotation, runs on UI thread.
+  const leafScale = useSharedValue(1);
+  const leafRotate = useSharedValue(0);
   const hasStartedAnalysis = useRef(false);
   const isMountedRef = useRef(true);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -70,6 +75,27 @@ export default function LoadingScreen() {
   useEffect(() => {
     getCurrentLocation();
   }, [getCurrentLocation]);
+
+  // Kick off the leaf "thinking" animation once on mount (worklet, UI thread).
+  useEffect(() => {
+    leafScale.value = withRepeat(
+      withSequence(
+        withTiming(1.08, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    );
+    leafRotate.value = withRepeat(
+      withSequence(
+        withTiming(6, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+        withTiming(-6, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      true,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Guard against StrictMode double-invoke — prevents duplicate Claude API calls
@@ -198,62 +224,126 @@ export default function LoadingScreen() {
     transform: [{ translateY: stepTranslateY.value }],
   }));
 
+  const leafAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: leafScale.value }, { rotate: `${leafRotate.value}deg` }],
+  }));
+
   return (
-    <LinearGradient colors={Gradients.mesh} style={styles.container}>
-      <View
-        style={styles.center}
-        accessible
-        accessibilityLabel={`${t('diagnosis.analyzingA11y')}. ${STEPS[step]}`}
-        accessibilityRole="progressbar"
-      >
-        <View style={styles.iconCircle}>
-          <Ionicons name="leaf" size={38} color="#FFF" accessibilityElementsHidden />
-        </View>
-
-        <Animated.Text
-          style={[styles.status, stepTextAnimatedStyle]}
-          accessibilityLiveRegion="polite"
-          maxFontSizeMultiplier={1.3}
+    <View style={styles.root}>
+      {/* Top half: brand Hero (deep leaf gradient) */}
+      <Hero topInset={32} style={styles.heroTop}>
+        <View
+          style={styles.heroInner}
+          accessible
+          accessibilityLabel={`${t('diagnosis.analyzingA11y')}. ${STEPS[step]}`}
+          accessibilityRole="progressbar"
         >
-          {STEPS[step]}
-        </Animated.Text>
+          <Animated.View style={[styles.leafCircle, leafAnimatedStyle]}>
+            <Ionicons name="leaf" size={44} color="#FFF" accessibilityElementsHidden />
+            {/* Subtle sparkle accent in warm amber, off-axis */}
+            <View style={styles.sparkle} pointerEvents="none">
+              <Ionicons name="sparkles" size={18} color={Colors.warmAmber} />
+            </View>
+          </Animated.View>
 
+          <Animated.Text
+            style={[styles.title, stepTextAnimatedStyle]}
+            accessibilityLiveRegion="polite"
+            maxFontSizeMultiplier={1.3}
+          >
+            {STEPS[step]}
+          </Animated.Text>
+
+          <Text style={styles.subtitle} maxFontSizeMultiplier={1.4}>
+            {t('diagnosis.aiHint')}
+          </Text>
+        </View>
+      </Hero>
+
+      {/* Bottom half: progress bar + step indicator on background */}
+      <View style={styles.bottom}>
         <View style={styles.progressBg} accessibilityElementsHidden>
           <Animated.View style={[styles.progressFill, progressAnimatedStyle]} />
         </View>
-
-        <Text style={styles.hint}>{t('diagnosis.aiHint')}</Text>
+        <Text style={styles.stepCounter} accessibilityElementsHidden>
+          {`${step + 1} / ${STEPS.length}`}
+        </Text>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  center: { alignItems: 'center', paddingHorizontal: 40 },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  root: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  heroTop: {
+    flex: 1,
+    justifyContent: 'center',
+    // Hero already has bottom rounded corners (xl)
+  },
+  heroInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  leafCircle: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
-  status: {
-    fontSize: FontSize.title3,
-    fontWeight: '600',
+  sparkle: {
+    position: 'absolute',
+    top: 8,
+    right: 6,
+  },
+  // 22/700 white per spec
+  title: {
+    fontSize: FontSize.title2, // 22
+    fontWeight: FontWeight.bold,
     color: '#FFF',
     textAlign: 'center',
-    marginBottom: 24,
+    letterSpacing: -0.4,
+    marginBottom: 8,
+  },
+  // 15 white@0.85 per spec
+  subtitle: {
+    fontSize: FontSize.subheadline, // 15
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+  },
+  bottom: {
+    paddingHorizontal: 32,
+    paddingTop: 24,
+    paddingBottom: 40,
+    alignItems: 'center',
   },
   progressBg: {
-    width: 200,
+    width: '100%',
+    maxWidth: 240,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: Colors.systemGray5,
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#FFF' },
-  hint: { fontSize: FontSize.caption, color: 'rgba(255,255,255,0.6)', marginTop: 20 },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: Colors.accent,
+  },
+  stepCounter: {
+    marginTop: 12,
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary,
+    letterSpacing: 0.4,
+    fontVariant: ['tabular-nums'],
+  },
 });

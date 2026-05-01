@@ -147,7 +147,14 @@ function RootLayoutNav() {
 
   useEffect(() => {
     let mounted = true;
-    AsyncStorage.getItem(ONBOARDING_KEY)
+    // 8s watchdog: if AsyncStorage hangs (rare but observed on cold start
+    // under memory pressure / iOS 26 native bridge stalls) we MUST resolve
+    // these flags so the splash hides and the user can proceed. Treat
+    // timeout as null/false to keep the safe default flow.
+    Promise.race([
+      AsyncStorage.getItem(ONBOARDING_KEY),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
       .then((value) => {
         if (mounted) setHasSeenOnboarding(value === 'true');
       })
@@ -156,7 +163,10 @@ function RootLayoutNav() {
         if (mounted) setHasSeenOnboarding(false);
       });
     // P0-3 (LGPD): Read whether the user has already seen the location consent screen
-    AsyncStorage.getItem(LOCATION_CONSENT_SHOWN_KEY)
+    Promise.race([
+      AsyncStorage.getItem(LOCATION_CONSENT_SHOWN_KEY),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
       .then((value) => {
         if (mounted) setHasSeenLocationConsent(value === 'true');
       })
@@ -183,7 +193,7 @@ function RootLayoutNav() {
     const inOnboarding = segments[0] === 'onboarding';
     const inConsentLocation = segments[0] === 'consent-location';
 
-    if (!hasSeenOnboarding && !inOnboarding) {
+    if (!hasSeenOnboarding && !inOnboarding && !inAuthGroup) {
       router.replace('/onboarding');
     } else if (!isAuthenticated && !inAuthGroup && hasSeenOnboarding) {
       router.replace('/(auth)/login');

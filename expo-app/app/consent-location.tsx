@@ -8,13 +8,13 @@ import {
   SafeAreaView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import * as Sentry from '@sentry/react-native';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
 import { setLocationConsent } from '../services/userPreferences';
@@ -54,9 +54,16 @@ export default function ConsentLocationScreen() {
     try {
       await setLocationConsent(user.id, true, CONSENT_PURPOSE_PT);
       await finish();
-    } catch {
-      setIsSaving(false);
-      Alert.alert(t('common.error'), t('consent.location.saveError'), [{ text: t('common.ok') }]);
+    } catch (e) {
+      // Symmetric fallback: if save fails, log to Sentry but never trap the
+      // user on this screen. They can revisit the choice later from Settings.
+      if (__DEV__) console.warn('[consent-location] accept save failed:', e);
+      try {
+        Sentry.captureException(e, { tags: { feature: 'consent-location', action: 'accept' } });
+      } catch {
+        /* never crash on Sentry */
+      }
+      await finish();
     }
   };
 
@@ -72,6 +79,11 @@ export default function ConsentLocationScreen() {
     } catch (e) {
       // Even if save fails, treat as declined and move on — default is no consent
       if (__DEV__) console.warn('[consent-location] decline save failed:', e);
+      try {
+        Sentry.captureException(e, { tags: { feature: 'consent-location', action: 'decline' } });
+      } catch {
+        /* never crash on Sentry */
+      }
       await finish();
     }
   };

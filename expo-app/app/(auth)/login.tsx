@@ -11,27 +11,22 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
-import {
-  Colors,
-  Spacing,
-  BorderRadius,
-  FontSize,
-  FontWeight,
-  Gradients,
-} from '../../constants/theme';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
+import { Hero, Input, Button } from '../../components/ui';
+
 type AuthMode = 'login' | 'signup';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
   const { signIn, signUp, resetPassword, isLoading, error, clearError } = useAuthContext();
+  const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -41,6 +36,11 @@ export default function LoginScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+
+  // Inline validation errors (display in addition to existing Alert.alert)
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [nameError, setNameError] = useState('');
 
   const passwordRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -61,22 +61,31 @@ export default function LoginScreen() {
   };
 
   const handleSubmit = async () => {
+    setEmailError('');
+    setPasswordError('');
+    setNameError('');
+
     if (!email.trim() || !password.trim()) {
+      if (!email.trim()) setEmailError(t('auth.fillAllFields'));
+      if (!password.trim()) setPasswordError(t('auth.fillAllFields'));
       Alert.alert('', t('auth.fillAllFields'));
       return;
     }
 
     if (!isValidEmail(email.trim())) {
+      setEmailError(t('auth.invalidEmail'));
       Alert.alert('', t('auth.invalidEmail'));
       return;
     }
 
     if (mode === 'signup' && !isStrongPassword(password)) {
+      setPasswordError(t('auth.weakPassword'));
       Alert.alert('', t('auth.weakPassword'));
       return;
     }
 
     if (mode === 'signup' && !fullName.trim()) {
+      setNameError(t('auth.enterFullName'));
       Alert.alert('', t('auth.enterFullName'));
       return;
     }
@@ -96,6 +105,7 @@ export default function LoginScreen() {
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
+      setEmailError(t('auth.enterEmail'));
       Alert.alert('', t('auth.enterEmail'));
       return;
     }
@@ -111,6 +121,9 @@ export default function LoginScreen() {
     clearError();
     setMode(newMode);
     setAcceptedTerms(false);
+    setEmailError('');
+    setPasswordError('');
+    setNameError('');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -132,8 +145,10 @@ export default function LoginScreen() {
     }
   };
 
+  const submitDisabled = isLoading || (mode === 'signup' && !acceptedTerms);
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -142,25 +157,25 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           bounces={false}
+          showsVerticalScrollIndicator={false}
         >
-          {/* Hero gradient header */}
-          <LinearGradient
-            colors={Gradients.hero as [string, string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
+          {/* Hero gradient header — top 40-50% of screen */}
+          <Hero topInset={insets.top} style={styles.heroOverride}>
             <View style={styles.heroContent}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="leaf" size={40} color={Colors.white} />
+              <View style={styles.logoCircle}>
+                <Ionicons name="leaf" size={44} color={Colors.white} />
               </View>
-              <Text style={styles.heroTitle}>{t('auth.appName')}</Text>
-              <Text style={styles.heroSubtitle}>{t('auth.appTagline')}</Text>
+              <Text style={styles.heroTitle} maxFontSizeMultiplier={1.2}>
+                {t('auth.appName')}
+              </Text>
+              <Text style={styles.heroSubtitle} maxFontSizeMultiplier={1.3}>
+                {t('auth.appTagline')}
+              </Text>
             </View>
-          </LinearGradient>
+          </Hero>
 
-          {/* Form card */}
-          <View style={styles.formCard}>
+          {/* White sheet — overlap hero by -16 to "lift off" */}
+          <View style={styles.sheet}>
             {/* Segmented control */}
             <View style={styles.segmentedControl}>
               <TouchableOpacity
@@ -187,7 +202,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Error message */}
+            {/* Server error message */}
             {error ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
@@ -196,97 +211,66 @@ export default function LoginScreen() {
 
             {/* Name field (signup only) */}
             {mode === 'signup' ? (
-              <View style={styles.inputGroup}>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="person-outline"
-                    size={20}
-                    color={Colors.systemGray}
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('auth.fullNamePlaceholder')}
-                    placeholderTextColor={Colors.systemGray2}
-                    value={fullName}
-                    onChangeText={setFullName}
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                    onSubmitEditing={() => emailRef.current?.focus()}
-                    accessibilityLabel={t('auth.fullNameA11y')}
-                    accessibilityRole="text"
-                  />
-                </View>
-              </View>
+              <Input
+                label={t('auth.fullNamePlaceholder')}
+                leftIcon="person-outline"
+                placeholder={t('auth.fullNamePlaceholder')}
+                value={fullName}
+                onChangeText={(v) => {
+                  setFullName(v);
+                  if (nameError) setNameError('');
+                }}
+                error={nameError || undefined}
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                accessibilityLabel={t('auth.fullNameA11y')}
+                containerStyle={styles.fieldGap}
+              />
             ) : null}
 
             {/* Email field */}
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color={Colors.systemGray}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  ref={emailRef}
-                  style={styles.input}
-                  placeholder={t('auth.emailPlaceholder')}
-                  placeholderTextColor={Colors.systemGray2}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  accessibilityLabel={t('auth.emailA11y')}
-                  accessibilityRole="text"
-                />
-              </View>
-            </View>
+            <Input
+              ref={emailRef}
+              label={t('auth.emailPlaceholder')}
+              leftIcon="mail-outline"
+              placeholder={t('auth.emailPlaceholder')}
+              value={email}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (emailError) setEmailError('');
+              }}
+              error={emailError || undefined}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              accessibilityLabel={t('auth.emailA11y')}
+              containerStyle={styles.fieldGap}
+            />
 
             {/* Password field */}
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={Colors.systemGray}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  ref={passwordRef}
-                  style={[styles.input, styles.passwordInput]}
-                  placeholder={t('auth.passwordPlaceholder')}
-                  placeholderTextColor={Colors.systemGray2}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSubmit}
-                  accessibilityLabel={t('auth.passwordA11y')}
-                  accessibilityRole="text"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityLabel={
-                    showPassword ? t('auth.hidePassword') : t('auth.showPassword')
-                  }
-                  accessibilityRole="button"
-                >
-                  {showPassword ? (
-                    <Ionicons name="eye-off-outline" size={20} color={Colors.systemGray} />
-                  ) : (
-                    <Ionicons name="eye-outline" size={20} color={Colors.systemGray} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Input
+              ref={passwordRef}
+              label={t('auth.passwordPlaceholder')}
+              leftIcon="lock-closed-outline"
+              rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              onRightIconPress={() => setShowPassword(!showPassword)}
+              placeholder={t('auth.passwordPlaceholder')}
+              value={password}
+              onChangeText={(v) => {
+                setPassword(v);
+                if (passwordError) setPasswordError('');
+              }}
+              error={passwordError || undefined}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+              accessibilityLabel={t('auth.passwordA11y')}
+              containerStyle={styles.fieldGap}
+            />
 
             {/* Forgot password */}
             {mode === 'login' ? (
@@ -329,53 +313,33 @@ export default function LoginScreen() {
               </View>
             ) : null}
 
-            {/* Submit button */}
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                (isLoading || (mode === 'signup' && !acceptedTerms)) && styles.submitButtonDisabled,
-              ]}
+            {/* Primary submit — UI primitive Button (block, with haptic) */}
+            <Button
+              block
+              size="lg"
               onPress={handleSubmit}
-              disabled={isLoading || (mode === 'signup' && !acceptedTerms)}
-              activeOpacity={0.8}
+              disabled={submitDisabled}
+              loading={isLoading}
+              haptic
               accessibilityLabel={mode === 'login' ? t('auth.loginA11y') : t('auth.signupA11y')}
-              accessibilityRole="button"
-              accessibilityState={{
-                disabled: isLoading || (mode === 'signup' && !acceptedTerms),
-                busy: isLoading,
-              }}
+              style={styles.submitSpacing}
             >
-              <LinearGradient
-                colors={[Colors.accent, Colors.accentDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.submitGradient}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <Text style={styles.submitText} maxFontSizeMultiplier={1.2}>
-                    {mode === 'login' ? t('auth.login') : t('auth.signup')}
-                  </Text>
-                )}
-              </LinearGradient>
+              {mode === 'login' ? t('auth.login') : t('auth.signup')}
+            </Button>
+
+            {/* Toggle link — switch between login/signup */}
+            <TouchableOpacity
+              onPress={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+              style={styles.toggleButton}
+              accessibilityRole="button"
+              accessibilityLabel={mode === 'login' ? t('auth.signupA11y') : t('auth.loginA11y')}
+            >
+              <Text style={styles.toggleText}>
+                {mode === 'login' ? t('auth.signup') : t('auth.login')}
+              </Text>
             </TouchableOpacity>
 
-            {/* Terms (login mode only — signup has explicit LGPD consent above) */}
-            {mode === 'login' ? (
-              <Text style={styles.termsText}>
-                {t('auth.acceptTerms')}{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/terms')}>
-                  {t('auth.termsOfUse')}
-                </Text>{' '}
-                {t('auth.and')}{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/privacy')}>
-                  {t('auth.privacyPolicy')}
-                </Text>
-              </Text>
-            ) : null}
-
-            {/* Social sign-in divider & Apple Sign In */}
+            {/* Apple Sign In (preserved black bg + white text + logo-apple) */}
             {appleAvailable && (
               <>
                 <View style={styles.dividerRow}>
@@ -396,13 +360,25 @@ export default function LoginScreen() {
                     <ActivityIndicator color="#FFF" />
                   ) : (
                     <>
-                      <Ionicons name="logo-apple" size={20} color="#FFF" />
+                      <Ionicons name="logo-apple" size={18} color="#FFF" />
                       <Text style={styles.appleButtonText}>{t('auth.signInWithApple')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
               </>
             )}
+
+            {/* Footer fine print — Termos + Política de Privacidade inline */}
+            <Text style={styles.footerFinePrint}>
+              {t('auth.acceptTerms')}{' '}
+              <Text style={styles.footerLink} onPress={() => router.push('/terms')}>
+                {t('auth.termsOfUse')}
+              </Text>{' '}
+              {t('auth.and')}{' '}
+              <Text style={styles.footerLink} onPress={() => router.push('/privacy')}>
+                {t('auth.privacyPolicy')}
+              </Text>
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -417,49 +393,55 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    backgroundColor: Colors.background,
   },
-  hero: {
-    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+  heroOverride: {
     paddingBottom: 48,
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
   },
   heroContent: {
     alignItems: 'center',
+    paddingTop: Spacing.xxl,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  logoCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
   heroTitle: {
-    fontSize: FontSize.largeTitle,
+    fontSize: 28,
     fontWeight: FontWeight.bold,
     color: Colors.white,
-    marginBottom: Spacing.sm,
+    letterSpacing: -0.42, // ~-0.015em on 28px
+    textAlign: 'center',
+    marginBottom: Spacing.xs,
   },
   heroSubtitle: {
-    fontSize: FontSize.subheadline,
+    fontSize: 15,
     color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
-    paddingHorizontal: Spacing.xxxl,
-  },
-  formCard: {
-    flex: 1,
     paddingHorizontal: Spacing.xxl,
-    paddingTop: Spacing.xxxl,
+    fontWeight: FontWeight.medium,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xxl,
     paddingBottom: Spacing.xxxl,
+    marginTop: -Spacing.lg, // -16: card lifts off hero
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
   },
   segmentedControl: {
     flexDirection: 'row',
     backgroundColor: Colors.systemGray6,
     borderRadius: BorderRadius.sm,
     padding: 3,
-    marginBottom: Spacing.xxl,
+    marginBottom: Spacing.xl,
   },
   segment: {
     flex: 1,
@@ -469,23 +451,23 @@ const styles = StyleSheet.create({
   },
   segmentActive: {
     backgroundColor: Colors.white,
-    shadowColor: Colors.black,
+    shadowColor: '#0F1A14',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 2,
   },
   segmentText: {
     fontSize: FontSize.subheadline,
     fontWeight: FontWeight.medium,
-    color: Colors.systemGray,
+    color: Colors.textSecondary,
   },
   segmentTextActive: {
     color: Colors.accent,
     fontWeight: FontWeight.semibold,
   },
   errorContainer: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#F8E6E0', // warm coral tint, LGPD warm palette
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
     marginBottom: Spacing.lg,
@@ -495,76 +477,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.footnote,
     textAlign: 'center',
   },
-  inputGroup: {
+  fieldGap: {
     marginBottom: Spacing.lg,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.systemGray6,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.lg,
-    height: 52,
-  },
-  inputIcon: {
-    marginRight: Spacing.md,
-  },
-  input: {
-    flex: 1,
-    fontSize: FontSize.body,
-    color: Colors.text,
-    height: '100%',
-  },
-  passwordInput: {
-    paddingRight: 40,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: Spacing.lg,
   },
   forgotButton: {
     alignSelf: 'flex-end',
-    marginBottom: Spacing.xxl,
-    marginTop: -Spacing.sm,
+    marginBottom: Spacing.lg,
+    marginTop: -Spacing.xs,
   },
   forgotText: {
     fontSize: FontSize.footnote,
     color: Colors.accent,
-    fontWeight: FontWeight.medium,
-  },
-  submitButton: {
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-    marginBottom: Spacing.xxl,
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitGradient: {
-    paddingVertical: Spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: BorderRadius.md,
-  },
-  submitText: {
-    fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
-    color: Colors.white,
-  },
-  termsText: {
-    fontSize: FontSize.caption,
-    color: Colors.systemGray,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  termsLink: {
-    color: Colors.accent,
-    fontWeight: FontWeight.medium,
   },
   consentRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
     gap: Spacing.md,
   },
   checkbox: {
@@ -591,20 +520,34 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     fontWeight: FontWeight.semibold,
   },
+  submitSpacing: {
+    marginBottom: Spacing.md,
+  },
+  toggleButton: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  toggleText: {
+    fontSize: FontSize.footnote,
+    color: Colors.accent,
+    fontWeight: FontWeight.semibold,
+    textAlign: 'center',
+  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.xl,
+    marginVertical: Spacing.lg,
     gap: Spacing.md,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.systemGray4,
+    backgroundColor: Colors.separator,
   },
   dividerText: {
     fontSize: FontSize.footnote,
-    color: Colors.systemGray,
+    color: Colors.textTertiary,
     fontWeight: FontWeight.medium,
   },
   appleButton: {
@@ -613,7 +556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#000',
     borderRadius: BorderRadius.md,
-    paddingVertical: 14,
+    height: 52,
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
@@ -621,5 +564,16 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
     color: '#FFF',
+  },
+  footerFinePrint: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: Spacing.sm,
+  },
+  footerLink: {
+    color: Colors.accent,
+    fontWeight: FontWeight.medium,
   },
 });

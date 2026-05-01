@@ -1,35 +1,25 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import { AppBar, IconButton } from '../components/ui';
 
 export default function PrivacyScreen() {
   const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityRole="button"
-          accessibilityLabel={t('privacy.backA11y')}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={24}
-            color={Colors.accent}
-            accessibilityElementsHidden
-            importantForAccessibility="no"
+      <AppBar
+        title={t('privacy.headerTitle')}
+        leading={
+          <IconButton
+            iconName="arrow-back"
+            accessibilityLabel={t('privacy.backA11y')}
+            onPress={() => router.back()}
           />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header">
-          {t('privacy.headerTitle')}
-        </Text>
-        <View style={styles.backButton} />
-      </View>
+        }
+      />
 
       <ScrollView
         style={styles.content}
@@ -305,32 +295,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.card,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.separator,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: FontSize.headline,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
-  },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
   },
   lastUpdated: {
     fontSize: FontSize.caption,
@@ -344,11 +315,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: FontSize.body,
+    fontSize: FontSize.headline,
     fontWeight: FontWeight.bold,
     color: Colors.text,
     marginTop: Spacing.xxl,
     marginBottom: Spacing.md,
+    letterSpacing: -0.26,
   },
   paragraph: {
     fontSize: FontSize.subheadline,
@@ -358,13 +330,13 @@ const styles = StyleSheet.create({
   },
   importantBox: {
     fontSize: FontSize.subheadline,
-    color: Colors.techBlue,
+    color: Colors.accentDark,
     lineHeight: 22,
-    backgroundColor: '#EEF4FF',
+    backgroundColor: Colors.accent + '0D',
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderLeftWidth: 4,
-    borderLeftColor: Colors.techBlue,
+    borderLeftColor: Colors.accent,
     marginBottom: Spacing.md,
     fontWeight: FontWeight.medium,
     overflow: 'hidden',
