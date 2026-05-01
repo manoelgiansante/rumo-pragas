@@ -2,7 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
+  SectionList,
   TouchableOpacity,
   Alert,
   StyleSheet,
@@ -17,13 +18,26 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { DiagnosisCard } from '../../components/DiagnosisCard';
 import type { DiagnosisResult } from '../../types/diagnosis';
-import { SearchInput } from '../../components/SearchInput';
 import { supabase } from '../../services/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { HistorySkeleton } from '../../components/HistorySkeleton';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
 import * as Haptics from 'expo-haptics';
+import { AppBar, IconButton, Input, Chip, SectionHeader } from '../../components/ui';
+
+const ALL_CROPS = '__all__';
+
+type Section = {
+  title: string;
+  data: DiagnosisResult[];
+};
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
@@ -35,6 +49,7 @@ export default function HistoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
+  const [cropFilter, setCropFilter] = useState<string>(ALL_CROPS);
 
   const loadDiagnoses = async () => {
     if (!session?.access_token || !user?.id) return;
@@ -94,16 +109,60 @@ export default function HistoryScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session]);
 
+  // Crop chips derived from current dataset (preserve original casing from data).
+  const cropOptions = useMemo(() => {
+    const map = new Map<string, string>(); // key=lower, value=display
+    for (const d of diagnoses) {
+      const c = (d.crop || '').trim();
+      if (!c) continue;
+      const k = c.toLowerCase();
+      if (!map.has(k)) map.set(k, c);
+    }
+    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+  }, [diagnoses]);
+
   const filtered = useMemo(
     () =>
-      diagnoses.filter(
-        (d) =>
+      diagnoses.filter((d) => {
+        const matchesSearch =
           !search ||
           (d.pest_name || '').toLowerCase().includes(search.toLowerCase()) ||
-          (d.crop || '').toLowerCase().includes(search.toLowerCase()),
-      ),
-    [diagnoses, search],
+          (d.crop || '').toLowerCase().includes(search.toLowerCase());
+        const matchesCrop = cropFilter === ALL_CROPS || (d.crop || '').toLowerCase() === cropFilter;
+        return matchesSearch && matchesCrop;
+      }),
+    [diagnoses, search, cropFilter],
   );
+
+  // Group by date bucket (Hoje / Esta semana / Anteriores). Order preserved within each.
+  const sections = useMemo<Section[]>(() => {
+    if (filtered.length === 0) return [];
+    const now = new Date();
+    const today = startOfDay(now);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - 7);
+
+    const today$: DiagnosisResult[] = [];
+    const week$: DiagnosisResult[] = [];
+    const older$: DiagnosisResult[] = [];
+
+    for (const d of filtered) {
+      const t0 = new Date(d.created_at).getTime();
+      if (Number.isNaN(t0)) {
+        older$.push(d);
+        continue;
+      }
+      if (t0 >= today.getTime()) today$.push(d);
+      else if (t0 >= weekStart.getTime()) week$.push(d);
+      else older$.push(d);
+    }
+
+    const out: Section[] = [];
+    if (today$.length) out.push({ title: 'Hoje', data: today$ });
+    if (week$.length) out.push({ title: 'Esta semana', data: week$ });
+    if (older$.length) out.push({ title: 'Anteriores', data: older$ });
+    return out;
+  }, [filtered]);
 
   const keyExtractor = useCallback((item: DiagnosisResult) => item.id, []);
 
@@ -113,51 +172,108 @@ export default function HistoryScreen() {
 
   if (error && diagnoses.length === 0) {
     return (
-      <View style={[styles.center, isDark && styles.containerDark]}>
-        <Ionicons name="cloud-offline-outline" size={48} color={Colors.coral} />
-        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
-          {t('history.errorLoading')}
-        </Text>
-        <Text style={styles.emptyDesc}>{t('history.errorLoading')}</Text>
-        <TouchableOpacity
-          onPress={loadDiagnoses}
-          activeOpacity={0.7}
-          style={styles.retryButton}
-          accessibilityLabel={t('history.retryA11y')}
-          accessibilityRole="button"
-        >
-          <Ionicons name="refresh" size={18} color={Colors.white} accessibilityElementsHidden />
-          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
-        </TouchableOpacity>
+      <View style={[styles.container, isDark && styles.containerDark]}>
+        <AppBar
+          title={t('history.title') || 'Histórico'}
+          trailing={
+            <IconButton
+              iconName="filter-outline"
+              accessibilityLabel={t('library.filterByCrop', { crop: '' }) || 'Filtrar'}
+              onPress={loadDiagnoses}
+            />
+          }
+        />
+        <View style={styles.center}>
+          <Ionicons name="cloud-offline-outline" size={48} color={Colors.coral} />
+          <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
+            {t('history.errorLoading')}
+          </Text>
+          <Text style={styles.emptyDesc}>{t('history.errorLoading')}</Text>
+          <TouchableOpacity
+            onPress={loadDiagnoses}
+            activeOpacity={0.7}
+            style={styles.retryButton}
+            accessibilityLabel={t('history.retryA11y')}
+            accessibilityRole="button"
+          >
+            <Ionicons name="refresh" size={18} color={Colors.white} accessibilityElementsHidden />
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
+
+  const tabletWidth = isTablet
+    ? { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' as const }
+    : null;
 
   return (
     <KeyboardAvoidingView
       style={[styles.container, isDark && styles.containerDark]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View
-        style={[
-          styles.searchRow,
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
-      >
-        <SearchInput
+      <AppBar
+        title={t('history.title') || 'Histórico'}
+        trailing={
+          <IconButton
+            iconName="filter-outline"
+            accessibilityLabel={t('library.filterByCrop', { crop: '' }) || 'Filtrar'}
+            onPress={() => {
+              // Toggle through "all" — leaves the chip row as the primary filter UI.
+              setCropFilter(ALL_CROPS);
+            }}
+          />
+        }
+      />
+
+      <View style={[styles.searchRow, tabletWidth]}>
+        <Input
           value={search}
           onChangeText={setSearch}
           placeholder={t('history.searchPlaceholder')}
+          leftIcon="search-outline"
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+          accessibilityLabel={t('history.searchPlaceholder')}
         />
       </View>
 
-      <FlatList
-        data={filtered}
+      {cropOptions.length > 0 ? (
+        <View style={tabletWidth}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.chipRow}
+          >
+            <Chip
+              selected={cropFilter === ALL_CROPS}
+              onPress={() => setCropFilter(ALL_CROPS)}
+              accessibilityLabel={t('library.allCropsA11y')}
+            >
+              {t('library.allCrops')}
+            </Chip>
+            {cropOptions.map((c) => (
+              <Chip
+                key={c.key}
+                selected={cropFilter === c.key}
+                onPress={() => setCropFilter(c.key)}
+                accessibilityLabel={t('library.filterByCrop', { crop: c.label })}
+              >
+                {c.label}
+              </Chip>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      <SectionList<DiagnosisResult, Section>
+        sections={sections}
         keyExtractor={keyExtractor}
-        contentContainerStyle={[
-          { padding: Spacing.lg, paddingBottom: 100 },
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={[{ padding: Spacing.lg, paddingBottom: 100 }, tabletWidth]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -227,6 +343,9 @@ export default function HistoryScreen() {
             {t('history.diagnosisCount', { count: filtered.length })}
           </Text>
         }
+        renderSectionHeader={({ section }) => (
+          <SectionHeader title={section.title} style={styles.sectionHeader} />
+        )}
         renderItem={({ item }) => (
           <TouchableOpacity
             onLongPress={() => deleteDiagnosis(item.id)}
@@ -251,7 +370,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
-  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
+  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm },
+  chipRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  sectionHeader: {
+    paddingHorizontal: 0,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
+  },
   count: { fontSize: FontSize.subheadline, fontWeight: '600', marginBottom: Spacing.md },
   loadingText: { fontSize: FontSize.subheadline, color: Colors.textSecondary, marginTop: 12 },
   emptyTitle: { fontSize: FontSize.title3, fontWeight: '700', marginTop: 16 },

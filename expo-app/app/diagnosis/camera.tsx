@@ -1,24 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  Alert,
-  ActivityIndicator,
-  useColorScheme,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
-import { PremiumCard } from '../../components/PremiumCard';
+import { Colors, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
+import { IconButton } from '../../components/ui';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 
 const MAX_DIMENSION = 1024;
@@ -26,8 +17,7 @@ const JPEG_QUALITY = 0.75;
 
 export default function CameraScreen() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
   const [processing, setProcessing] = useState(false);
   const { setImage } = useDiagnosis();
 
@@ -107,130 +97,67 @@ export default function CameraScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.closeBtn}
-          accessibilityLabel={t('diagnosis.closeA11y')}
-          accessibilityRole="button"
-          accessibilityHint={t('diagnosis.closeHint')}
-        >
-          <Ionicons name="close" size={22} color={isDark ? Colors.textDark : Colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerTitle}>
-          <Ionicons name="camera" size={16} color={Colors.accent} />
-          <Text style={[styles.headerText, isDark && styles.textDark]}>
-            {t('home.diagnosePest')}
-          </Text>
+    <View style={styles.container}>
+      {/* Full-screen camera-like backdrop with corner framing guides.
+          Live <CameraView> is launched by ImagePicker on shutter; this screen
+          is the entry/overlay surface that stays consistent with the design. */}
+      <View style={styles.viewport} pointerEvents="none">
+        {/* Corner framing brackets — "frame the leaf in the center" */}
+        <View style={styles.frame}>
+          <View style={[styles.frameCorner, styles.frameCornerTL]} />
+          <View style={[styles.frameCorner, styles.frameCornerTR]} />
+          <View style={[styles.frameCorner, styles.frameCornerBL]} />
+          <View style={[styles.frameCorner, styles.frameCornerBR]} />
         </View>
-        <View style={{ width: 36 }} />
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <View style={[styles.iconRing, { width: 150, height: 150 }]}>
-            <View
-              style={[
-                styles.iconRing,
-                { width: 120, height: 120, borderColor: Colors.accent + '33' },
-              ]}
+      {/* Top overlay: close button + guidance copy */}
+      <View style={[styles.topOverlay, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.topRow}>
+          <IconButton
+            iconName="close"
+            tone="onHero"
+            accessibilityLabel={t('diagnosis.closeA11y')}
+            accessibilityHint={t('diagnosis.closeHint')}
+            onPress={() => router.back()}
+          />
+          <View style={{ width: 40 }} />
+        </View>
+        <Text style={styles.guidance} accessibilityRole="text" maxFontSizeMultiplier={1.4}>
+          {t('diagnosis.frameLeafGuide')}
+        </Text>
+      </View>
+
+      {/* Bottom overlay: shutter (primary) + Galeria (ghost white) */}
+      <View style={[styles.bottomOverlay, { paddingBottom: insets.bottom + 24 }]}>
+        <View style={styles.controlsRow}>
+          {/* Spacer left to keep shutter centred */}
+          <View style={styles.galleryWrap}>
+            <Pressable
+              onPress={() => pickImage(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t('diagnosis.chooseGalleryA11y')}
+              accessibilityHint={t('diagnosis.chooseGalleryHint')}
+              style={({ pressed }) => [styles.galleryBtn, pressed && { opacity: 0.7 }]}
+              hitSlop={8}
             >
-              <Ionicons name="camera" size={48} color={Colors.accent} />
-            </View>
-            {/* Corner brackets: subtle framing guide — "frame the leaf in the center" */}
-            <View style={[styles.frameCorner, styles.frameCornerTL]} pointerEvents="none" />
-            <View style={[styles.frameCorner, styles.frameCornerTR]} pointerEvents="none" />
-            <View style={[styles.frameCorner, styles.frameCornerBL]} pointerEvents="none" />
-            <View style={[styles.frameCorner, styles.frameCornerBR]} pointerEvents="none" />
+              <Ionicons name="images-outline" size={18} color="#FFF" />
+              <Text style={styles.galleryText}>{t('diagnosis.chooseGallery')}</Text>
+            </Pressable>
           </View>
-        </View>
 
-        <Text style={[styles.title, isDark && styles.textDark]}>{t('diagnosis.aiTitle')}</Text>
-        <Text style={styles.subtitle}>{t('diagnosis.aiSubtitle')}</Text>
-
-        <View style={styles.frameGuide} accessible accessibilityRole="text">
-          <Ionicons name="scan-outline" size={16} color={Colors.accent} />
-          <Text style={styles.frameGuideText}>{t('diagnosis.frameLeafGuide')}</Text>
-          <Text style={styles.frameGuideDot}>·</Text>
-          <Ionicons name="sunny-outline" size={14} color={Colors.warmAmber} />
-          <Text style={styles.frameGuideHint}>{t('diagnosis.frameLeafHint')}</Text>
-        </View>
-
-        <View style={styles.buttons}>
-          <TouchableOpacity
+          <Pressable
             onPress={() => pickImage(true)}
-            activeOpacity={0.8}
+            accessibilityRole="button"
             accessibilityLabel={t('diagnosis.takePhotoA11y')}
-            accessibilityRole="button"
             accessibilityHint={t('diagnosis.takePhotoHint')}
+            style={({ pressed }) => [styles.shutterOuter, pressed && { opacity: 0.85 }]}
           >
-            <PremiumCard>
-              <View style={styles.btnRow}>
-                <LinearGradient colors={Gradients.hero} style={styles.btnIcon}>
-                  <Ionicons name="camera" size={24} color="#FFF" accessibilityElementsHidden />
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.btnTitle}>{t('diagnosis.takePhoto')}</Text>
-                  <Text style={styles.btnSub}>{t('diagnosis.takePhotoSub')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.systemGray3} />
-              </View>
-            </PremiumCard>
-          </TouchableOpacity>
+            <View style={styles.shutterInner} />
+          </Pressable>
 
-          <TouchableOpacity
-            onPress={() => pickImage(false)}
-            activeOpacity={0.8}
-            accessibilityLabel={t('diagnosis.chooseGalleryA11y')}
-            accessibilityRole="button"
-            accessibilityHint={t('diagnosis.chooseGalleryHint')}
-          >
-            <PremiumCard>
-              <View style={styles.btnRow}>
-                <LinearGradient
-                  colors={[Colors.techBlue, Colors.techBlue + 'CC']}
-                  style={styles.btnIcon}
-                >
-                  <Ionicons name="images" size={24} color="#FFF" accessibilityElementsHidden />
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.btnTitle}>{t('diagnosis.chooseGallery')}</Text>
-                  <Text style={styles.btnSub}>{t('diagnosis.chooseGallerySub')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.systemGray3} />
-              </View>
-            </PremiumCard>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.tips}>
-          <View style={styles.tipsHeader}>
-            <Ionicons name="bulb" size={16} color={Colors.warmAmber} />
-            <Text style={styles.tipsTitle}>{t('diagnosis.tipsTitle')}</Text>
-          </View>
-          <PremiumCard>
-            {[
-              { icon: 'sunny', color: '#FFD600', text: t('diagnosis.tipLight') },
-              { icon: 'expand', color: '#00BCD4', text: t('diagnosis.tipFocus') },
-              {
-                icon: 'leaf',
-                color: Colors.accent,
-                text: t('diagnosis.tipInclude'),
-              },
-              { icon: 'image', color: Colors.techIndigo, text: t('diagnosis.tipSharp') },
-            ].map((tip, i) => (
-              <View key={i} style={styles.tipRow} accessible accessibilityLabel={tip.text}>
-                <Ionicons
-                  name={tip.icon as keyof typeof Ionicons.glyphMap}
-                  size={16}
-                  color={tip.color}
-                  accessibilityElementsHidden
-                />
-                <Text style={styles.tipText}>{tip.text}</Text>
-              </View>
-            ))}
-          </PremiumCard>
+          {/* Right-side spacer (matches gallery width to keep shutter centred) */}
+          <View style={styles.galleryWrap} pointerEvents="none" />
         </View>
       </View>
 
@@ -247,121 +174,144 @@ export default function CameraScreen() {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
+const FRAME_INSET = 28;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  containerDark: { backgroundColor: Colors.backgroundDark },
-  textDark: { color: Colors.textDark },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+  container: {
+    flex: 1,
+    // Deep matte backdrop — evokes camera viewport without requiring a live feed
+    backgroundColor: '#0A130F',
   },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.systemGray6,
+  // Full-bleed viewport "view" — the camera surface is full-screen
+  viewport: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerText: { fontSize: FontSize.headline, fontWeight: '700' },
-  content: { flex: 1, paddingHorizontal: Spacing.lg, alignItems: 'center' },
-  iconContainer: { marginTop: 20, marginBottom: 20 },
-  iconRing: {
-    borderWidth: 2,
-    borderColor: Colors.accent + '1A',
-    borderRadius: 999,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: { fontSize: FontSize.title, fontWeight: '700', marginBottom: 8 },
-  subtitle: {
-    fontSize: FontSize.subheadline,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+  frame: {
+    position: 'absolute',
+    top: '22%',
+    bottom: '28%',
+    left: FRAME_INSET,
+    right: FRAME_INSET,
   },
   frameCorner: {
     position: 'absolute',
-    width: 22,
-    height: 22,
-    borderColor: Colors.accent,
+    width: 36,
+    height: 36,
+    borderColor: 'rgba(255,255,255,0.85)',
   },
-  frameCornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 8 },
+  frameCornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: 12,
+  },
   frameCornerTR: {
     top: 0,
     right: 0,
     borderTopWidth: 3,
     borderRightWidth: 3,
-    borderTopRightRadius: 8,
+    borderTopRightRadius: 12,
   },
   frameCornerBL: {
     bottom: 0,
     left: 0,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
-    borderBottomLeftRadius: 8,
+    borderBottomLeftRadius: 12,
   },
   frameCornerBR: {
     bottom: 0,
     right: 0,
     borderBottomWidth: 3,
     borderRightWidth: 3,
-    borderBottomRightRadius: 8,
+    borderBottomRightRadius: 12,
   },
-  frameGuide: {
+  topOverlay: {
+    paddingHorizontal: 20,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  // Spec: "Aponte a câmera para a folha afetada" 15/600 white
+  guidance: {
+    fontSize: FontSize.subheadline, // 15
+    fontWeight: FontWeight.semibold, // 600
+    color: '#FFF',
+    textAlign: 'center',
+    letterSpacing: -0.1,
+    paddingHorizontal: 12,
+  },
+  bottomOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 24,
+  },
+  controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.accent + '10',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  frameGuideText: {
-    fontSize: FontSize.caption,
-    color: Colors.accent,
-    fontWeight: '600',
-  },
-  frameGuideDot: {
-    fontSize: FontSize.caption,
-    color: Colors.systemGray3,
-    fontWeight: '700',
-  },
-  frameGuideHint: {
-    fontSize: FontSize.caption,
-    color: Colors.textSecondary,
-  },
-  buttons: { width: '100%', gap: 12 },
-  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  btnIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 14,
+  // Spec: shutter 72×72 white circle
+  shutterOuter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.45)',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    elevation: 8,
   },
-  btnTitle: { fontSize: FontSize.headline, fontWeight: '600' },
-  btnSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
-  tips: { width: '100%', marginTop: 24 },
-  tipsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  tipsTitle: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.warmAmber },
-  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  tipText: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
+  shutterInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  galleryWrap: {
+    width: 110,
+    alignItems: 'flex-start',
+  },
+  // Spec: "Galeria" ghost white button
+  galleryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  galleryText: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: '#FFF',
+  },
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -369,9 +319,14 @@ const styles = StyleSheet.create({
   processingCard: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
+    paddingHorizontal: 28,
+    paddingVertical: 24,
     alignItems: 'center',
     gap: 12,
   },
-  processingText: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
+  processingText: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
 });

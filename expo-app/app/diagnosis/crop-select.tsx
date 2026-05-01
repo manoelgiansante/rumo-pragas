@@ -8,16 +8,16 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { CROPS, CropType } from '../../constants/crops';
 import { SearchInput } from '../../components/SearchInput';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useTranslation } from 'react-i18next';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
+import { AppBar, IconButton, Button } from '../../components/ui';
 
 export default function CropSelectScreen() {
   const { t } = useTranslation();
@@ -50,20 +50,23 @@ export default function CropSelectScreen() {
     }, 2000);
   };
 
+  // 2-col grid on phone (or whatever useResponsive returns for tablet).
+  // Spec: 2-col grid of crop tiles (16px radius, 1.5px border separator,
+  // selected = 2px accent border + 5% accent tint background).
+  const gridColumns = isTablet ? numColumns : 2;
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          accessibilityLabel={t('cropSelect.back')}
-          accessibilityRole="button"
-        >
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>{t('cropSelect.title')}</Text>
-        <View style={{ width: 36 }} />
-      </View>
+      <AppBar
+        title={t('cropSelect.title')}
+        leading={
+          <IconButton
+            iconName="arrow-back"
+            accessibilityLabel={t('cropSelect.back')}
+            onPress={() => router.back()}
+          />
+        }
+      />
 
       {imageUri && (
         <View style={styles.preview} accessible accessibilityLabel={t('cropSelect.imageA11y')}>
@@ -98,14 +101,14 @@ export default function CropSelectScreen() {
 
       <FlatList
         data={filtered}
-        numColumns={numColumns}
-        key={isTablet ? 'tablet' : 'phone'}
+        numColumns={gridColumns}
+        key={`grid-${gridColumns}`}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
-          { paddingHorizontal: Spacing.lg },
+          { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
           isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
         ]}
-        columnWrapperStyle={{ gap: 8, marginBottom: 8 }}
+        columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
@@ -113,41 +116,59 @@ export default function CropSelectScreen() {
             <Text style={styles.emptyDesc}>{t('cropSelect.noCropsHint')}</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.cropItem, selected.id === item.id && styles.cropItemSelected]}
-            onPress={() => handleSelect(item)}
-            activeOpacity={0.7}
-            accessibilityLabel={`${item.displayName}${selected.id === item.id ? `, ${t('cropSelect.cropSelected', { crop: '' })}` : ''}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: selected.id === item.id }}
-          >
-            <Text style={styles.cropEmoji} accessibilityElementsHidden>
-              {item.icon}
-            </Text>
-            <Text
-              style={[styles.cropName, selected.id === item.id && styles.cropNameSelected]}
-              numberOfLines={1}
+        renderItem={({ item }) => {
+          const isSelected = selected.id === item.id;
+          return (
+            <TouchableOpacity
+              style={[
+                styles.cropTile,
+                isSelected && {
+                  borderWidth: 2,
+                  borderColor: Colors.accent,
+                  // 5% accent tint per spec (0x0D ≈ 5.1%)
+                  backgroundColor: Colors.accent + '0D',
+                },
+              ]}
+              onPress={() => handleSelect(item)}
+              activeOpacity={0.7}
+              accessibilityLabel={`${item.displayName}${isSelected ? `, ${t('cropSelect.cropSelected', { crop: '' })}` : ''}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
             >
-              {item.displayName}
-            </Text>
-          </TouchableOpacity>
-        )}
+              <Text style={styles.cropEmoji} accessibilityElementsHidden>
+                {item.icon}
+              </Text>
+              <Text
+                style={[styles.cropName, isSelected && { color: Colors.accent }]}
+                numberOfLines={1}
+              >
+                {item.displayName}
+              </Text>
+              {/* Brand-color underline (per spec): each crop has its own colour */}
+              <View
+                style={[
+                  styles.cropUnderline,
+                  { backgroundColor: item.color },
+                  isSelected && { height: 3, opacity: 1 },
+                ]}
+              />
+            </TouchableOpacity>
+          );
+        }}
       />
 
       <View style={styles.footer}>
-        <TouchableOpacity
+        <Button
+          variant="primary"
+          size="lg"
+          block
+          iconName="arrow-forward"
           onPress={startDiagnosis}
-          activeOpacity={0.8}
           accessibilityLabel={t('cropSelect.startA11y', { crop: selected.displayName })}
-          accessibilityRole="button"
           accessibilityHint={t('cropSelect.startHint')}
         >
-          <LinearGradient colors={Gradients.hero} style={styles.startBtn}>
-            <Text style={styles.startBtnText}>{t('cropSelect.startDiagnosis')}</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFF" />
-          </LinearGradient>
-        </TouchableOpacity>
+          {t('cropSelect.startDiagnosis')}
+        </Button>
       </View>
     </SafeAreaView>
   );
@@ -155,71 +176,66 @@ export default function CropSelectScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.systemGray6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerText: { fontSize: FontSize.headline, fontWeight: '700' },
   preview: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     marginHorizontal: Spacing.lg,
     padding: Spacing.lg,
-    backgroundColor: Colors.systemGray6,
+    backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.separator,
   },
   previewImage: { width: 56, height: 56, borderRadius: 12 },
-  previewTitle: { fontSize: FontSize.subheadline, fontWeight: '600' },
+  previewTitle: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
   previewSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
   searchRow: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md },
   question: {
     fontSize: FontSize.title3,
-    fontWeight: '700',
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
+    letterSpacing: -0.3,
   },
-  cropItem: {
+  // Crop tile per spec: vertical layout, 1.5px separator border, radius 16, padding 16.
+  cropTile: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.systemGray6,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  cropItemSelected: { borderColor: Colors.accent, backgroundColor: Colors.accent + '15' },
-  cropEmoji: { fontSize: 28 },
-  cropName: {
-    fontSize: FontSize.caption2,
-    fontWeight: '600',
-    marginTop: 4,
-    color: Colors.textSecondary,
-  },
-  cropNameSelected: { color: Colors.accent },
-  emptyContainer: { alignItems: 'center', paddingTop: 40, gap: 8 },
-  emptyTitle: { fontSize: FontSize.title3, fontWeight: '700', color: Colors.text },
-  emptyDesc: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
-  footer: { padding: Spacing.lg, paddingBottom: 32 },
-  startBtn: {
-    flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    height: 56,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.card,
+    borderWidth: 1.5,
+    borderColor: Colors.separator,
+    minHeight: 110,
   },
-  startBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
+  cropEmoji: { fontSize: 32, marginBottom: 8 },
+  cropName: {
+    fontSize: FontSize.subheadline, // 15
+    fontWeight: FontWeight.semibold, // 600
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  cropUnderline: {
+    width: 32,
+    height: 2,
+    borderRadius: 999,
+    opacity: 0.85,
+  },
+  emptyContainer: { alignItems: 'center', paddingTop: 40, gap: 8 },
+  emptyTitle: {
+    fontSize: FontSize.title3,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  emptyDesc: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
+  footer: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
 });
