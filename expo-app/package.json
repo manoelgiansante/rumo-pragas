@@ -15,7 +15,6 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "typecheck": "node --stack-size=16000 ./node_modules/.bin/tsc --noEmit",
-    "tsc": "node --stack-size=8000 ./node_modules/typescript/bin/tsc --noEmit",
     "prepare": "cd .. && husky"
   },
   "overrides": {
