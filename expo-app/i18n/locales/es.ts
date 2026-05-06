@@ -74,6 +74,19 @@ export default {
     appName: 'Rumo Praga',
     appTagline: 'Diagnóstico inteligente de plagas agrícolas',
     loginError: 'Error al iniciar sesión. Intente de nuevo.',
+    invalidCredentials:
+      'Email o contraseña incorrectos. Intente de nuevo o recupere su contraseña.',
+    networkError: 'Sin conexión. Verifique su internet e intente de nuevo.',
+    serverError: 'Estamos con inestabilidad. Intente de nuevo en unos segundos.',
+    emailNotConfirmed: 'Confirme su email antes de entrar. Revise su bandeja de entrada.',
+    tooManyAttempts: 'Demasiados intentos. Espere un momento e intente de nuevo.',
+    userNotFound: 'Usuario no encontrado. Verifique el email o cree una cuenta.',
+    appleUnavailable:
+      'Para entrar con Apple, active su Apple ID en Configuración → Apple ID. También puede usar email y contraseña arriba.',
+    appleNotConfigured:
+      'Sign in with Apple no está configurado en este dispositivo. Use email y contraseña arriba.',
+    appleNetworkError: 'Error de conexión con Apple. Intente de nuevo en unos segundos.',
+    appleInvalidResponse: 'Respuesta inválida de Apple. Intente de nuevo.',
     hidePassword: 'Ocultar contraseña',
     showPassword: 'Mostrar contraseña',
     appleSignInError: 'Error al iniciar sesión con Apple. Inténtelo de nuevo.',

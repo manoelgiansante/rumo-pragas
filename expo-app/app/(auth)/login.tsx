@@ -18,6 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import { friendlyAppleAuthError } from '../../services/authErrors';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { Hero, Input, Button } from '../../components/ui';
 
@@ -132,11 +133,12 @@ export default function LoginScreen() {
       setAppleLoading(true);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // Runtime gate: if the native module is missing or iCloud is not configured
-      // on this device, fail fast with a friendly, translated message.
-      // Mirrors the lazy require pattern in services/appleAuth.ts and is the
-      // user-facing complement to the iOS 26 / iPad reviewer hardening.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // iPad iOS 26 reviewer hardening (2026-05-06): Apple's review device
+      // does NOT have iCloud signed in. `isAvailableAsync()` may still return
+      // `true` (entitlement is present) but `signInAsync()` then throws with
+      // ERR_REQUEST_NOT_HANDLED / ERR_REQUEST_NOT_INTERACTIVE. We surface a
+      // friendly, actionable PT-BR message instead of a raw English error.
+       
       const Apple = await (async () => {
         try {
           return require('expo-apple-authentication');
@@ -145,18 +147,12 @@ export default function LoginScreen() {
         }
       })();
       if (!Apple) {
-        Alert.alert(
-          t('common.error'),
-          'Sign in with Apple não está disponível neste dispositivo.',
-        );
+        Alert.alert(t('common.error'), t('auth.appleNotConfigured'));
         return;
       }
       const isAvailable = await Apple.isAvailableAsync().catch(() => false);
       if (!isAvailable) {
-        Alert.alert(
-          t('common.error'),
-          'Sign in with Apple requer iCloud configurado neste dispositivo.',
-        );
+        Alert.alert(t('common.error'), t('auth.appleUnavailable'));
         return;
       }
 
@@ -167,18 +163,11 @@ export default function LoginScreen() {
       }
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const code =
-        err && typeof err === 'object' && 'code' in err
-          ? (err as { code?: string }).code
-          : undefined;
-      // User canceled — silent, do not show alert.
-      if (code === 'ERR_REQUEST_CANCELED') {
-        return;
-      }
-      let message = err instanceof Error ? err.message : t('auth.loginError');
-      if (code === 'ERR_REQUEST_FAILED') {
-        message = 'Falha de conexão. Tente novamente em instantes.';
-      }
+      // Centralized mapper: handles ERR_REQUEST_CANCELED (silent),
+      // ERR_REQUEST_NOT_HANDLED, ERR_REQUEST_FAILED, ERR_REQUEST_NOT_INTERACTIVE,
+      // ERR_INVALID_RESPONSE, ERR_REQUEST_UNKNOWN, plus Supabase ID-token errors.
+      const message = friendlyAppleAuthError(err);
+      if (!message) return; // user cancelled — silent
       Alert.alert(t('common.error'), message);
     } finally {
       setAppleLoading(false);

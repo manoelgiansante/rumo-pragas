@@ -77,6 +77,18 @@ export default {
     appName: 'Rumo Praga',
     appTagline: 'Diagnóstico inteligente de pragas agrícolas',
     loginError: 'Erro ao entrar. Tente novamente.',
+    invalidCredentials: 'Email ou senha incorretos. Tente novamente ou recupere sua senha.',
+    networkError: 'Sem conexão. Verifique sua internet e tente novamente.',
+    serverError: 'Estamos com instabilidade. Tente novamente em alguns segundos.',
+    emailNotConfirmed: 'Confirme seu email antes de entrar. Verifique sua caixa de entrada.',
+    tooManyAttempts: 'Muitas tentativas. Aguarde um instante e tente novamente.',
+    userNotFound: 'Usuário não encontrado. Verifique o email ou crie uma conta.',
+    appleUnavailable:
+      'Para entrar com Apple, ative seu Apple ID nas Configurações do iPad → Apple ID. Você também pode usar email e senha acima.',
+    appleNotConfigured:
+      'Sign in with Apple não está configurado neste dispositivo. Use email e senha acima.',
+    appleNetworkError: 'Falha de conexão com a Apple. Tente novamente em alguns segundos.',
+    appleInvalidResponse: 'Resposta inválida da Apple. Tente novamente.',
     hidePassword: 'Ocultar senha',
     showPassword: 'Mostrar senha',
     appleSignInError: 'Erro ao entrar com Apple. Tente novamente.',

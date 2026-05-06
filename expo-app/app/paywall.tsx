@@ -22,6 +22,7 @@ import {
   purchasePackage,
   restorePurchases,
 } from '../services/purchases';
+import { PAYWALL_LITE_MODE, isApprovedIapId } from '../constants/iap';
 
 export default function PaywallScreen() {
   const { t } = useTranslation();
@@ -90,10 +91,15 @@ export default function PaywallScreen() {
   // Store real prices from RevenueCat
   const [realPrices, setRealPrices] = useState<Record<string, string>>({});
 
-  // Fetch RevenueCat offerings on mount
+  // Fetch RevenueCat offerings on mount.
+  // PAYWALL LITE MODE: filter packages down to approved-only IAP ids on the
+  // FIRST submission. See constants/iap.ts.
   useEffect(() => {
     if (!configured) return;
-    getOfferings().then((pkgs) => {
+    getOfferings().then((rawPkgs) => {
+      const pkgs = PAYWALL_LITE_MODE
+        ? rawPkgs.filter((pkg) => isApprovedIapId(pkg.product?.identifier))
+        : rawPkgs;
       setPackages(pkgs);
       // Collect real store prices (without mutating PLANS)
       const prices: Record<string, string> = {};
@@ -108,12 +114,39 @@ export default function PaywallScreen() {
   }, [configured]);
 
   // Merge real prices with plan definitions (immutable)
-  const plansWithPrices = useMemo(
+  const plansWithPricesAll = useMemo(
     () => PLANS.map((p) => (realPrices[p.id] ? { ...p, price: realPrices[p.id] } : p)),
     [PLANS, realPrices],
   );
 
-  const plan = plansWithPrices.find((p) => p.id === selected)!;
+  // PAYWALL LITE MODE: hide plan cards that have no purchasable IAP backing them.
+  // 'free' is always kept so users always have an exit. After RC packages load,
+  // only plans whose `findPackageForPlan` resolves to an approved IAP are shown.
+  const plansWithPrices = useMemo(() => {
+    if (!PAYWALL_LITE_MODE) return plansWithPricesAll;
+    if (!configured) return plansWithPricesAll;
+    if (packages.length === 0) {
+      // Offerings not loaded yet — keep all visible to avoid empty flash.
+      return plansWithPricesAll;
+    }
+    const purchasablePlanIds = new Set<string>();
+    packages.forEach((pkg) => {
+      const id = mapPackageToPlan(pkg);
+      if (id) purchasablePlanIds.add(id);
+    });
+    return plansWithPricesAll.filter((p) => p.id === 'free' || purchasablePlanIds.has(p.id));
+  }, [plansWithPricesAll, configured, packages]);
+
+  // Keep `selected` in sync with the visible plan list — if the previously
+  // selected plan got hidden by lite mode, fall back to the first visible one.
+  useEffect(() => {
+    if (!plansWithPrices.find((p) => p.id === selected)) {
+      const fallback = plansWithPrices[0]?.id;
+      if (fallback) setSelected(fallback);
+    }
+  }, [plansWithPrices, selected]);
+
+  const plan = plansWithPrices.find((p) => p.id === selected) ?? plansWithPrices[0];
 
   const findPackageForPlan = useCallback(
     (planId: string): PurchasesPackage | undefined => {
@@ -191,6 +224,35 @@ export default function PaywallScreen() {
       setRestoring(false);
     }
   }, [t, configured]);
+
+  // Defensive guard: if NO plans are visible (lite-mode misconfig OR offerings
+  // empty), render a friendly empty state instead of a blank screen.
+  if (plansWithPrices.length === 0 || !plan) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View
+          style={[
+            styles.scrollContent,
+            { padding: Spacing.xl, alignItems: 'center', justifyContent: 'center', flex: 1 },
+          ]}
+        >
+          <Ionicons name="hourglass-outline" size={48} color={Colors.textSecondary} />
+          <Text style={[styles.featuresTitle, { textAlign: 'center', marginTop: Spacing.lg }]}>
+            {t('paywall.comingSoonTitle')}
+          </Text>
+          <Text style={[styles.cancelNote, { marginTop: Spacing.sm }]}>
+            {t('paywall.comingSoonMsg')}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.restoreBtn, { marginTop: Spacing.lg }]}
+          >
+            <Text style={styles.restoreText}>{t('paywall.closeA11y')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
