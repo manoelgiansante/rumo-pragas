@@ -19,6 +19,37 @@ interface MaybeAuthError {
 }
 
 /**
+ * Apple Guideline 2.1(a) defense (2026-05-07, v1.0.6 bn32 reject):
+ * Apple's reviewer attempted login with the wrong password BEFORE entering the
+ * correct one. Our friendly PT-BR toast for "Email ou senha incorretos"
+ * was flagged as a "bug / error message displayed upon logging in" even though
+ * the subsequent correct-password attempt succeeded
+ * (Supabase last_sign_in_at confirmed for reviewer@agrorumo.com).
+ *
+ * Decision: for invalid_credentials specifically, the UI must SILENT-FAIL.
+ * No toast, no banner, no inline error, no Alert.alert. The form sits silent;
+ * the user simply tries again. Visual cue is delegated to the screen
+ * (1× subtle shake on the password field).
+ *
+ * All OTHER auth errors (network, 5xx, email_not_confirmed, locked, rate
+ * limit, unknown) continue to surface a friendly translated message — those
+ * are not the "wrong password" case Apple flagged.
+ */
+export function isInvalidCredentialsError(err: unknown): boolean {
+  const e: MaybeAuthError = err && typeof err === 'object' ? (err as MaybeAuthError) : {};
+  const raw = (e.message || '').toLowerCase();
+  const code = (e.code || '').toLowerCase();
+  return (
+    raw.includes('invalid login credentials') ||
+    raw.includes('invalid_credentials') ||
+    raw.includes('invalid email or password') ||
+    raw.includes('invalid_grant') ||
+    code === 'invalid_credentials' ||
+    code === 'invalid_grant'
+  );
+}
+
+/**
  * Returns a friendly, localized auth error message from any Supabase / network /
  * unknown error. Never returns the raw English string; always falls back to the
  * generic loginError message if no specific match is found.

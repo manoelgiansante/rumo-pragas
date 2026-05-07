@@ -10,6 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -18,7 +20,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
-import { friendlyAppleAuthError } from '../../services/authErrors';
+import { friendlyAppleAuthError, isInvalidCredentialsError } from '../../services/authErrors';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { Hero, Input, Button } from '../../components/ui';
 
@@ -45,6 +47,47 @@ export default function LoginScreen() {
 
   const passwordRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
+
+  // Apple 2.1(a) silent-fail (2026-05-07, v1.0.6): wrong password = subtle 1×
+  // horizontal shake on the password field wrapper. NO text shown anywhere.
+  // Animated.Value driven; reset before each attempt.
+  const passwordShake = useRef(new Animated.Value(0)).current;
+
+  const triggerInvalidCredsShake = () => {
+    passwordShake.setValue(0);
+    Animated.sequence([
+      Animated.timing(passwordShake, {
+        toValue: 8,
+        duration: 50,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(passwordShake, {
+        toValue: -8,
+        duration: 50,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(passwordShake, {
+        toValue: 6,
+        duration: 50,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(passwordShake, {
+        toValue: -6,
+        duration: 50,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(passwordShake, {
+        toValue: 0,
+        duration: 50,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   // Check Apple Sign In availability on mount
   useEffect(() => {
@@ -99,7 +142,14 @@ export default function LoginScreen() {
         await signUp(email.trim(), password, fullName.trim());
         Alert.alert('', t('auth.checkEmail'));
       }
-    } catch {
+    } catch (err: unknown) {
+      // Apple 2.1(a) silent-fail (2026-05-07, v1.0.6): when login fails with
+      // invalid credentials specifically, do NOT display any toast/banner —
+      // useAuth already cleared the inline error string. Just shake the
+      // password field as the only visual cue.
+      if (mode === 'login' && isInvalidCredentialsError(err)) {
+        triggerInvalidCredsShake();
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
@@ -138,7 +188,7 @@ export default function LoginScreen() {
       // `true` (entitlement is present) but `signInAsync()` then throws with
       // ERR_REQUEST_NOT_HANDLED / ERR_REQUEST_NOT_INTERACTIVE. We surface a
       // friendly, actionable PT-BR message instead of a raw English error.
-       
+
       const Apple = await (async () => {
         try {
           return require('expo-apple-authentication');
@@ -279,27 +329,30 @@ export default function LoginScreen() {
               containerStyle={styles.fieldGap}
             />
 
-            {/* Password field */}
-            <Input
-              ref={passwordRef}
-              label={t('auth.passwordPlaceholder')}
-              leftIcon="lock-closed-outline"
-              rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
-              onRightIconPress={() => setShowPassword(!showPassword)}
-              placeholder={t('auth.passwordPlaceholder')}
-              value={password}
-              onChangeText={(v) => {
-                setPassword(v);
-                if (passwordError) setPasswordError('');
-              }}
-              error={passwordError || undefined}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              returnKeyType="done"
-              onSubmitEditing={handleSubmit}
-              accessibilityLabel={t('auth.passwordA11y')}
-              containerStyle={styles.fieldGap}
-            />
+            {/* Password field — wrapped in Animated.View for Apple 2.1(a)
+                silent-fail shake on invalid credentials (no text error shown). */}
+            <Animated.View style={{ transform: [{ translateX: passwordShake }] }}>
+              <Input
+                ref={passwordRef}
+                label={t('auth.passwordPlaceholder')}
+                leftIcon="lock-closed-outline"
+                rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                onRightIconPress={() => setShowPassword(!showPassword)}
+                placeholder={t('auth.passwordPlaceholder')}
+                value={password}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  if (passwordError) setPasswordError('');
+                }}
+                error={passwordError || undefined}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
+                accessibilityLabel={t('auth.passwordA11y')}
+                containerStyle={styles.fieldGap}
+              />
+            </Animated.View>
 
             {/* Forgot password */}
             {mode === 'login' ? (
