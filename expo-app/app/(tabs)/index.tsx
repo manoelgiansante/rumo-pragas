@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   RefreshControl,
   StyleSheet,
   useColorScheme,
@@ -11,11 +12,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { WeatherCard } from '../../components/WeatherCard';
 import { AlertCard } from '../../components/AlertCard';
 import { HomeScreenSkeleton } from '../../components/HomeScreenSkeleton';
+import { Hero, IconButton, PrimaryAmberButton, SectionHeader, StatTile } from '../../components/ui';
 import { supabase } from '../../services/supabase';
 import { fetchWeather } from '../../services/weather';
 import type { WeatherData } from '../../services/weather';
@@ -84,6 +86,17 @@ export default function HomeScreen() {
     if (hour < 18) return t('home.goodAfternoon');
     return t('home.goodEvening');
   }, [t]);
+
+  const firstName = useMemo(() => {
+    const full = user?.user_metadata?.full_name as string | undefined;
+    if (full && typeof full === 'string') {
+      const trimmed = full.trim();
+      if (trimmed.length > 0) return trimmed.split(/\s+/)[0];
+    }
+    return t('home.defaultUser');
+  }, [user, t]);
+
+  const hasUnreadAlerts = alerts.some((a) => a.severity === 'high');
 
   const loadData = useCallback(async () => {
     // Run all data fetches in parallel for faster loading
@@ -200,7 +213,7 @@ export default function HomeScreen() {
   };
 
   const riskLevelText = useMemo(() => {
-    if (!weather) return '\u2014';
+    if (!weather) return '—';
     if (weather.humidity > 80 || weather.temperature > 35) return t('home.riskHigh');
     if (weather.humidity > 60 || weather.temperature > 30) return t('home.riskMedium');
     return t('home.riskLow');
@@ -210,7 +223,7 @@ export default function HomeScreen() {
     () => [
       {
         icon: 'document-text',
-        value: diagnosisError ? '!' : diagnosisCount > 0 ? `${diagnosisCount}` : '\u2014',
+        value: diagnosisError ? '!' : diagnosisCount > 0 ? `${diagnosisCount}` : '—',
         label: diagnosisError ? t('common.error') : t('home.diagnoses'),
         color: diagnosisError ? Colors.coral : Colors.accent,
       },
@@ -236,12 +249,7 @@ export default function HomeScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
       }
     >
-      <LinearGradient
-        colors={Gradients.hero}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
+      <Hero style={styles.hero}>
         {/* Subtle bottom fade to blend hero into content */}
         <LinearGradient
           colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)']}
@@ -250,13 +258,90 @@ export default function HomeScreen() {
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-        <View style={styles.heroContent}>
-          <Text style={styles.greeting}>{greetingText}</Text>
-          <Text style={styles.userName}>
-            {user?.user_metadata?.full_name || t('home.defaultUser')}
-          </Text>
+
+        {/* Top row: greeting + meta · bell */}
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroGreetingCol}>
+            <Text style={styles.heroGreeting} numberOfLines={1} accessibilityRole="header">
+              {greetingText}, {firstName}
+            </Text>
+            {cityName ? (
+              <View style={styles.heroMetaRow} accessible accessibilityLabel={cityName}>
+                <Ionicons
+                  name="location"
+                  size={12}
+                  color="rgba(255,255,255,0.78)"
+                  accessibilityElementsHidden
+                />
+                <Text style={styles.heroMetaText} numberOfLines={1}>
+                  {cityName}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.bellWrap}>
+            <IconButton
+              iconName="notifications"
+              tone="onHero"
+              size={18}
+              accessibilityLabel={t('home.regionalAlerts')}
+              onPress={() => {
+                if (alerts.length > 0) {
+                  // Already on this screen — alerts are below; simply scroll-affordance via haptic.
+                  // Keep no-op navigation to avoid invented routes.
+                }
+              }}
+            />
+            {hasUnreadAlerts ? <View style={styles.bellDot} pointerEvents="none" /> : null}
+          </View>
         </View>
-      </LinearGradient>
+
+        {/* h1 + subtitle */}
+        <Text style={styles.heroTitle} accessibilityRole="header">
+          {t('home.diagnosePest')}
+        </Text>
+        <Text style={styles.heroSubtitle}>{t('home.photoOrGallery')}</Text>
+
+        {/* Primary amber CTA */}
+        <PrimaryAmberButton
+          size="lg"
+          block
+          iconName="camera"
+          onPress={() => router.push('/diagnosis/camera')}
+          accessibilityLabel={t('home.diagnosePestA11y')}
+          accessibilityHint={t('home.diagnosePestHint')}
+          style={styles.primaryCta}
+        >
+          {t('diagnosis.takePhoto')}
+        </PrimaryAmberButton>
+
+        {/* Two translucent secondary buttons */}
+        <View style={styles.secondaryRow}>
+          <Pressable
+            onPress={() => router.push('/diagnosis/camera')}
+            accessibilityRole="button"
+            accessibilityLabel={t('diagnosis.chooseGalleryA11y')}
+            accessibilityHint={t('diagnosis.chooseGalleryHint')}
+            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}
+          >
+            <Ionicons name="image" size={16} color={Colors.white} />
+            <Text style={styles.secondaryBtnText} numberOfLines={1}>
+              {t('diagnosis.chooseGallery')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(tabs)/ai-chat')}
+            accessibilityRole="button"
+            accessibilityLabel={t('tabs.aiChatA11y')}
+            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}
+          >
+            <Ionicons name="sparkles" size={16} color={Colors.white} />
+            <Text style={styles.secondaryBtnText} numberOfLines={1}>
+              {t('tabs.aiChat')}
+            </Text>
+          </Pressable>
+        </View>
+      </Hero>
 
       <View
         style={[
@@ -294,33 +379,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : null}
         {weather && <WeatherCard weather={weather} />}
-
-        <TouchableOpacity
-          onPress={() => router.push('/diagnosis/camera')}
-          activeOpacity={0.88}
-          accessibilityLabel={t('home.diagnosePestA11y')}
-          accessibilityRole="button"
-          accessibilityHint={t('home.diagnosePestHint')}
-          style={styles.ctaShadow}
-        >
-          <LinearGradient
-            colors={Gradients.hero}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ctaContainer}
-          >
-            <View style={styles.ctaIconCircle}>
-              <Ionicons name="camera" size={30} color="#FFF" accessibilityElementsHidden />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.ctaTitle}>{t('home.diagnoseNow')}</Text>
-              <Text style={styles.ctaSub}>{t('home.scanCtaHint')}</Text>
-            </View>
-            <View style={styles.ctaArrow}>
-              <Ionicons name="arrow-forward" size={20} color="#FFF" accessibilityElementsHidden />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
 
         {isFreePlan &&
           !diagnosisError &&
@@ -380,54 +438,44 @@ export default function HomeScreen() {
 
         <View style={styles.statsRow}>
           {statsData.map((stat, i) => (
-            <PremiumCard key={i} style={{ flex: 1 }}>
-              <View
-                style={styles.statCard}
-                accessible
-                accessibilityLabel={`${stat.label}: ${stat.value}`}
-                accessibilityRole="summary"
-              >
-                <Ionicons
-                  name={stat.icon as keyof typeof Ionicons.glyphMap}
-                  size={22}
-                  color={stat.color}
-                  accessibilityElementsHidden
-                />
-                <Text style={[styles.statValue, isDark && styles.textDark]}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            </PremiumCard>
+            <StatTile
+              key={i}
+              value={
+                <View style={styles.statTileValueRow}>
+                  <Ionicons
+                    name={stat.icon as keyof typeof Ionicons.glyphMap}
+                    size={20}
+                    color={stat.color}
+                    accessibilityElementsHidden
+                  />
+                  <Text style={[styles.statTileValueText, { color: stat.color }]} numberOfLines={1}>
+                    {stat.value}
+                  </Text>
+                </View>
+              }
+              label={stat.label}
+            />
           ))}
         </View>
 
         {alerts.length > 0 && (
           <>
-            <View style={styles.alertsHeader}>
-              <View style={styles.alertsTitleRow}>
-                <Ionicons name="notifications" size={20} color={Colors.coral} />
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isDark && styles.textDark,
-                    { marginTop: 0, marginBottom: 0 },
-                  ]}
-                >
-                  {t('home.regionalAlerts')}
-                </Text>
-              </View>
-              <View style={styles.alertsBadge}>
-                <Text style={styles.alertsBadgeText}>{alerts.length}</Text>
-              </View>
-            </View>
+            <SectionHeader
+              title={t('home.regionalAlerts')}
+              style={styles.sectionHeaderInline}
+              titleStyle={isDark ? styles.textDark : undefined}
+            />
             {alerts.map((alert) => (
               <AlertCard key={alert.id} alert={alert} />
             ))}
           </>
         )}
 
-        <Text style={[styles.sectionTitle, isDark && styles.textDark]}>
-          {t('home.bestPractices')}
-        </Text>
+        <SectionHeader
+          title={t('home.bestPractices')}
+          style={styles.sectionHeaderInline}
+          titleStyle={isDark ? styles.textDark : undefined}
+        />
         {TIP_KEYS.map((tip, i) => (
           <PremiumCard key={i} style={{ marginBottom: Spacing.sm }}>
             <View
@@ -459,64 +507,109 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
-  hero: { height: 190, justifyContent: 'flex-end' },
-  heroContent: { padding: 20, paddingBottom: 24 },
-  greeting: { fontSize: FontSize.subheadline, color: 'rgba(255,255,255,0.9)' },
-  userName: { fontSize: FontSize.title, fontWeight: '700', color: '#FFF' },
-  content: { padding: Spacing.lg, marginTop: -16 },
-  scanRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  scanIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
+  hero: {
+    paddingTop: 24,
+    paddingBottom: 32,
   },
-  scanTitle: { fontSize: FontSize.title3, fontWeight: '700' },
-  scanSub: { fontSize: FontSize.subheadline, color: Colors.textSecondary, marginTop: 2 },
-  ctaShadow: {
-    shadowColor: Colors.accentDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 8,
-    borderRadius: BorderRadius.lg,
-  },
-  ctaContainer: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  ctaIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    justifyContent: 'center',
+  heroGreetingCol: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  heroGreeting: {
+    fontSize: 14,
+    fontWeight: FontWeight.medium,
+    color: 'rgba(255,255,255,0.92)',
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
   },
-  ctaTitle: { fontSize: FontSize.title3, fontWeight: '700', color: '#FFF' },
-  ctaSub: {
-    fontSize: FontSize.subheadline,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
+  heroMetaText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.78)',
+    flexShrink: 1,
   },
-  ctaArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    justifyContent: 'center',
+  bellWrap: {
+    position: 'relative',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.warmAmber,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: FontWeight.bold,
+    letterSpacing: -0.56, // ~-0.02em at 28
+    color: Colors.white,
+    marginBottom: 6,
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    fontWeight: FontWeight.medium,
+    color: 'rgba(255,255,255,0.92)',
+    marginBottom: 20,
+  },
+  primaryCta: {
+    // Override built-in amber shadow to match mock spec
+    shadowColor: Colors.warmAmber,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 44,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+  },
+  secondaryBtnPressed: {
+    opacity: 0.85,
+  },
+  secondaryBtnText: {
+    fontSize: 14,
+    fontWeight: FontWeight.semibold,
+    color: Colors.white,
+    flexShrink: 1,
+  },
+  content: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 16,
+    marginTop: -16,
+    gap: Spacing.md,
   },
   trialCounter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     alignSelf: 'flex-start',
-    marginTop: Spacing.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,
@@ -533,15 +626,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flexShrink: 1,
   },
-  statsRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
-  statCard: { alignItems: 'center', gap: 6 },
-  statValue: { fontSize: FontSize.subheadline, fontWeight: '700' },
-  statLabel: { fontSize: FontSize.caption2, color: Colors.textSecondary },
-  sectionTitle: {
-    fontSize: FontSize.title3,
-    fontWeight: '700',
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.md,
+  statsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  statTileValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statTileValueText: {
+    fontSize: FontSize.title3, // 20
+    fontWeight: FontWeight.bold,
+    letterSpacing: -0.3,
+  },
+  sectionHeaderInline: {
+    paddingHorizontal: 0,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xs,
   },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   tipIcon: {
@@ -554,38 +657,12 @@ const styles = StyleSheet.create({
   tipTitle: { fontSize: FontSize.subheadline, fontWeight: '600' },
   tipDesc: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
   textDark: { color: Colors.textDark },
-  alertsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.md,
-  },
-  alertsTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  alertsBadge: {
-    backgroundColor: Colors.coral,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alertsBadgeText: {
-    color: '#FFF',
-    fontSize: FontSize.caption2,
-    fontWeight: '700',
-  },
   errorCard: {
     backgroundColor: Colors.coral + '14',
     borderRadius: BorderRadius.md,
     padding: Spacing.lg,
     alignItems: 'center',
     gap: Spacing.xs,
-    marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.coral + '33',
   },
@@ -606,7 +683,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
-    marginTop: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.warmAmber + '33',
   },

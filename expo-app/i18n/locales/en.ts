@@ -74,6 +74,18 @@ export default {
     appName: 'Rumo Praga',
     appTagline: 'Intelligent diagnosis of agricultural pests',
     loginError: 'Login failed. Please try again.',
+    invalidCredentials: 'Incorrect email or password. Try again or recover your password.',
+    networkError: 'No connection. Check your internet and try again.',
+    serverError: 'We are experiencing instability. Please try again in a few seconds.',
+    emailNotConfirmed: 'Please confirm your email before signing in. Check your inbox.',
+    tooManyAttempts: 'Too many attempts. Please wait a moment and try again.',
+    userNotFound: 'User not found. Check the email or create an account.',
+    appleUnavailable:
+      'To sign in with Apple, enable your Apple ID in Settings → Apple ID. You can also use email and password above.',
+    appleNotConfigured:
+      'Sign in with Apple is not configured on this device. Please use email and password above.',
+    appleNetworkError: 'Connection error with Apple. Please try again in a few seconds.',
+    appleInvalidResponse: 'Invalid response from Apple. Please try again.',
     hidePassword: 'Hide password',
     showPassword: 'Show password',
     appleSignInError: 'Apple sign in failed. Please try again.',

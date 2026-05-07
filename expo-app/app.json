@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rumo Pragas",
     "slug": "rumo-pragas",
-    "version": "1.0.0",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -13,9 +13,9 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.agrorumo.rumopragas",
-      "buildNumber": "21",
+      "buildNumber": "31",
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:pragas.agrorumo.com"],
       "requireFullScreen": true,
@@ -52,7 +52,7 @@
       }
     },
     "android": {
-      "versionCode": 24,
+      "versionCode": 28,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF",

@@ -11,10 +11,40 @@
  *    drift between RevenueCat and Supabase.
  *  - Consumers should refetch the `subscriptions` row from Supabase
  *    (populated by the webhook) whenever they need authoritative state.
+ *
+ * iOS 26 iPad Reviewer Trap (Apple 2.1(a)) defense:
+ * `react-native-purchases` is loaded LAZILY (require()). Top-level imports
+ * of native modules can fail bundle eval on iPad iOS 26 reviewer devices
+ * before the splash hides, triggering rejection. Each function checks the
+ * lazy module and degrades silently when unavailable.
  */
+/* eslint-disable @typescript-eslint/no-var-requires */
 
-import Purchases, { CustomerInfo } from 'react-native-purchases';
+import type { CustomerInfo } from 'react-native-purchases';
 import { isRevenueCatConfigured } from './purchases';
+
+// Loose type for the lazy-required Purchases module — see services/purchases.ts
+// for the rationale (TypeScript recursive instantiation on the package's own
+// type graph when we use `typeof import(...).default`).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PurchasesModule = any;
+
+let cachedPurchases: PurchasesModule | null = null;
+let triedPurchases = false;
+
+function getPurchases(): PurchasesModule | null {
+  if (cachedPurchases) return cachedPurchases;
+  if (triedPurchases) return null;
+  triedPurchases = true;
+  try {
+    const mod = require('react-native-purchases');
+    cachedPurchases = (mod && mod.default ? mod.default : mod) as PurchasesModule;
+    return cachedPurchases;
+  } catch (e) {
+    if (__DEV__) console.warn('[SubscriptionSync] Purchases require failed (non-fatal):', e);
+    return null;
+  }
+}
 
 type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
@@ -68,6 +98,8 @@ function deriveSubscriptionInfo(customerInfo: CustomerInfo): {
  */
 export async function syncSubscriptionToSupabase(_userId: string): Promise<void> {
   if (!isRevenueCatConfigured()) return;
+  const Purchases = getPurchases();
+  if (!Purchases) return;
 
   try {
     const customerInfo = await Purchases.getCustomerInfo();
@@ -96,6 +128,8 @@ export async function syncSubscriptionToSupabase(_userId: string): Promise<void>
 export function startSubscriptionListener(_userId: string): void {
   if (!isRevenueCatConfigured()) return;
   if (listenerRegistered) return;
+  const Purchases = getPurchases();
+  if (!Purchases) return;
 
   Purchases.addCustomerInfoUpdateListener((customerInfo: CustomerInfo) => {
     if (__DEV__) {

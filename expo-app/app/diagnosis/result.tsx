@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   useColorScheme,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,24 +18,33 @@ import * as Linking from 'expo-linking';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useTranslation } from 'react-i18next';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  useAnimatedReaction,
-  withTiming,
-  Easing,
-  runOnJS,
-} from 'react-native-reanimated';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
-import { PremiumCard } from '../../components/PremiumCard';
-import { CollapsibleSection } from '../../components/CollapsibleSection';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  Gradients,
+} from '../../constants/theme';
+import {
+  AppBar,
+  IconButton,
+  Button,
+  Card,
+  SectionHeader,
+  SeverityBadge,
+  type SeverityLevel,
+} from '../../components/ui';
+import { ConfidenceBar } from '../../components/ConfidenceBar';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
+import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import type { AgrioEnrichment } from '../../types/diagnosis';
 
 export default function ResultScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { imageUri } = useDiagnosis();
   const { data, error, queued } = useLocalSearchParams<{
     data?: string;
     error?: string;
@@ -74,17 +84,17 @@ export default function ResultScreen() {
     }
   }, [result]);
 
-  const getSeverityColor = () => {
-    const severity = enrichment?.severity;
-    if (severity === 'critical') return '#D32F2F';
-    if (severity === 'high') return Colors.coral;
-    if (severity === 'medium') return Colors.warmAmber;
-    if (severity === 'low' || severity === 'none' || isHealthy) return Colors.accent;
-    if (confidence > 0.7) return Colors.coral;
-    if (confidence > 0.4) return Colors.warmAmber;
-    return Colors.accent;
-  };
-  const severityColor = getSeverityColor();
+  // Map enrichment severity → SeverityBadge level (typed). Fallback by confidence.
+  const severityForBadge: SeverityLevel = useMemo(() => {
+    const s = enrichment?.severity;
+    if (s === 'critical') return 'critical';
+    if (s === 'high') return 'high';
+    if (s === 'medium') return 'medium';
+    if (s === 'low' || s === 'none' || isHealthy) return 'low';
+    if (confidence > 0.7) return 'high';
+    if (confidence > 0.4) return 'medium';
+    return 'low';
+  }, [enrichment, isHealthy, confidence]);
 
   const severityLabel = useCallback(() => {
     const s = enrichment?.severity;
@@ -95,34 +105,6 @@ export default function ResultScreen() {
     if (s === 'none' || isHealthy) return t('severity.none');
     return t('severity.undefined');
   }, [enrichment, isHealthy, t]);
-
-  // Animated confidence bar: count up from 0% → confidence% in ~1s on mount.
-  // Uses Reanimated worklet so the animation runs entirely on the UI thread.
-  const confidenceProgress = useSharedValue(0);
-  const [displayConfidence, setDisplayConfidence] = useState(0);
-
-  useEffect(() => {
-    if (!error && !queued && result.pest_id) {
-      confidenceProgress.value = 0;
-      confidenceProgress.value = withTiming(confidence, {
-        duration: 1000,
-        easing: Easing.out(Easing.cubic),
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confidence, error, queued, result.pest_id]);
-
-  // Mirror shared value → React state so the numeric % ticks up in sync
-  useAnimatedReaction(
-    () => confidenceProgress.value,
-    (value) => {
-      runOnJS(setDisplayConfidence)(Math.round(value * 100));
-    },
-  );
-
-  const confidenceBarStyle = useAnimatedStyle(() => ({
-    width: `${confidenceProgress.value * 100}%`,
-  }));
 
   // Track successful diagnosis for store review prompt
   // Hook is called unconditionally (React rules of hooks) but logic is guarded
@@ -289,23 +271,23 @@ export default function ResultScreen() {
 <meta charset="utf-8">
 <style>
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 32px; color: #1a1a1a; line-height: 1.6; }
-  .header { background: linear-gradient(135deg, #0F6B4D, #1A966B); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+  .header { background: linear-gradient(135deg, #06281D, #0B3D2E); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
   .header h1 { margin: 0 0 4px 0; font-size: 22px; }
   .header .date { font-size: 13px; opacity: 0.85; }
   .summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
-  .summary-item { flex: 1; min-width: 140px; background: #f5f5f5; border-radius: 10px; padding: 14px; }
-  .summary-item .label { font-size: 11px; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .summary-item { flex: 1; min-width: 140px; background: #F7F3EC; border-radius: 10px; padding: 14px; }
+  .summary-item .label { font-size: 11px; color: #8A8373; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
   .summary-item .value { font-size: 16px; font-weight: 700; }
-  .confidence-bar { height: 8px; background: #E5E5EA; border-radius: 4px; margin-top: 8px; overflow: hidden; }
-  .confidence-fill { height: 100%; background: #1A966B; border-radius: 4px; }
-  h2 { color: #1A966B; font-size: 16px; border-bottom: 2px solid #1A966B20; padding-bottom: 6px; margin-top: 28px; }
+  .confidence-bar { height: 8px; background: #E5DECD; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+  .confidence-fill { height: 100%; background: #0B3D2E; border-radius: 4px; }
+  h2 { color: #0B3D2E; font-size: 16px; border-bottom: 2px solid #0B3D2E20; padding-bottom: 6px; margin-top: 28px; }
   ul { padding-left: 20px; }
   li { margin-bottom: 6px; }
-  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5E5EA; font-size: 11px; color: #8E8E93; text-align: center; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5DECD; font-size: 11px; color: #8A8373; text-align: center; }
   .severity-critical { color: #D32F2F; }
-  .severity-high { color: #F06652; }
-  .severity-medium { color: #EBB026; }
-  .severity-low { color: #1A966B; }
+  .severity-high { color: #B3462E; }
+  .severity-medium { color: #C89B3C; }
+  .severity-low { color: #0B3D2E; }
 </style>
 </head>
 <body>
@@ -318,7 +300,7 @@ export default function ResultScreen() {
     <div class="summary-item">
       <div class="label">${t('diagnosis.pdfPestIdentified')}</div>
       <div class="value">${safePestName}</div>
-      ${safeScientificName ? `<div style="font-size:12px;color:#8E8E93;font-style:italic;">${safeScientificName}</div>` : ''}
+      ${safeScientificName ? `<div style="font-size:12px;color:#8A8373;font-style:italic;">${safeScientificName}</div>` : ''}
     </div>
     <div class="summary-item">
       <div class="label">${t('diagnosis.confidence')}</div>
@@ -366,6 +348,16 @@ export default function ResultScreen() {
   if (queued === 'true') {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+        <AppBar
+          title={t('diagnosis.queued')}
+          leading={
+            <IconButton
+              iconName="arrow-back"
+              accessibilityLabel={t('diagnosis.backToHomeA11y')}
+              onPress={() => router.dismissAll()}
+            />
+          }
+        />
         <View style={styles.errorCenter}>
           <View style={[styles.errorIcon, { backgroundColor: Colors.warmAmber + '1F' }]}>
             <Ionicons name="cloud-upload-outline" size={44} color={Colors.warmAmber} />
@@ -374,14 +366,15 @@ export default function ResultScreen() {
             {t('diagnosis.queued')}
           </Text>
           <Text style={styles.errorMsg}>{t('diagnosis.queuedMessage')}</Text>
-          <TouchableOpacity
-            style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
+          <Button
+            variant="primary"
+            size="lg"
+            block
             onPress={() => router.dismissAll()}
             accessibilityLabel={t('diagnosis.backToHomeA11y')}
-            accessibilityRole="button"
           >
-            <Text style={styles.closeBtnText}>{t('diagnosis.backToHome')}</Text>
-          </TouchableOpacity>
+            {t('diagnosis.backToHome')}
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -390,6 +383,16 @@ export default function ResultScreen() {
   if (error) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+        <AppBar
+          title={t('diagnosis.error')}
+          leading={
+            <IconButton
+              iconName="arrow-back"
+              accessibilityLabel={t('diagnosis.closeDiagnosisA11y')}
+              onPress={() => router.dismissAll()}
+            />
+          }
+        />
         <View style={styles.errorCenter}>
           <View style={[styles.errorIcon, { backgroundColor: Colors.coral + '1F' }]}>
             <Ionicons
@@ -402,14 +405,15 @@ export default function ResultScreen() {
           </View>
           <Text style={[styles.errorTitle, isDark && styles.textDark]}>{t('diagnosis.error')}</Text>
           <Text style={styles.errorMsg}>{error}</Text>
-          <TouchableOpacity
-            style={styles.closeBtn}
+          <Button
+            variant="primary"
+            size="lg"
+            block
             onPress={() => router.dismissAll()}
             accessibilityLabel={t('diagnosis.closeDiagnosisA11y')}
-            accessibilityRole="button"
           >
-            <Text style={styles.closeBtnText}>{t('diagnosis.close')}</Text>
-          </TouchableOpacity>
+            {t('diagnosis.close')}
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -419,6 +423,16 @@ export default function ResultScreen() {
   if (isInvalidImage) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+        <AppBar
+          title={t('diagnosis.invalidImageTitle')}
+          leading={
+            <IconButton
+              iconName="arrow-back"
+              accessibilityLabel={t('diagnosis.tryAgainA11y')}
+              onPress={() => router.replace('/diagnosis/camera')}
+            />
+          }
+        />
         <View style={styles.errorCenter}>
           <View style={[styles.errorIcon, { backgroundColor: Colors.warmAmber + '1F' }]}>
             <Ionicons name="image-outline" size={44} color={Colors.warmAmber} />
@@ -438,14 +452,15 @@ export default function ResultScreen() {
                   })()
                 : t('diagnosis.invalidImageMsg'))}
           </Text>
-          <TouchableOpacity
-            style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
+          <Button
+            variant="primary"
+            size="lg"
+            block
             onPress={() => router.replace('/diagnosis/camera')}
             accessibilityLabel={t('diagnosis.tryAgainA11y')}
-            accessibilityRole="button"
           >
-            <Text style={styles.closeBtnText}>{t('diagnosis.tryAgain')}</Text>
-          </TouchableOpacity>
+            {t('diagnosis.tryAgain')}
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -455,6 +470,16 @@ export default function ResultScreen() {
   if (!data || (!result.pest_name && !result.pest_id)) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+        <AppBar
+          title={t('diagnosis.noData')}
+          leading={
+            <IconButton
+              iconName="arrow-back"
+              accessibilityLabel={t('diagnosis.newDiagnosis')}
+              onPress={() => router.replace('/diagnosis/camera')}
+            />
+          }
+        />
         <View style={styles.errorCenter}>
           <View style={[styles.errorIcon, { backgroundColor: Colors.systemGray5 }]}>
             <Ionicons name="document-text-outline" size={44} color={Colors.systemGray} />
@@ -463,137 +488,99 @@ export default function ResultScreen() {
             {t('diagnosis.noData')}
           </Text>
           <Text style={styles.errorMsg}>{t('diagnosis.noDataMsg')}</Text>
-          <TouchableOpacity
-            style={styles.closeBtn}
+          <Button
+            variant="primary"
+            size="lg"
+            block
             onPress={() => router.replace('/diagnosis/camera')}
             accessibilityLabel={t('diagnosis.newDiagnosis')}
-            accessibilityRole="button"
           >
-            <Text style={styles.closeBtnText}>{t('diagnosis.newDiagnosis')}</Text>
-          </TouchableOpacity>
+            {t('diagnosis.newDiagnosis')}
+          </Button>
         </View>
       </SafeAreaView>
     );
   }
 
+  const pestDisplayName = isHealthy
+    ? t('diagnosis.healthy')
+    : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected');
+
   return (
     <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView>
-        <LinearGradient
-          colors={
-            isHealthy
-              ? Gradients.hero
-              : ([severityColor + '25', severityColor + '08'] as [string, string])
-          }
-          style={styles.header}
-        >
-          <View style={styles.headerTopRow}>
-            <TouchableOpacity
-              onPress={() => router.dismissAll()}
-              style={styles.backBtn}
-              accessibilityLabel={t('diagnosis.closeResult')}
-              accessibilityRole="button"
-            >
-              <Ionicons name="close" size={22} color={isHealthy ? '#FFF' : Colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleWhatsAppShare}
-              style={styles.backBtn}
-              accessibilityLabel={t('diagnosis.shareDiagnosis')}
-              accessibilityRole="button"
-              accessibilityHint={t('diagnosis.shareHint')}
-            >
-              <Ionicons name="share-outline" size={22} color={isHealthy ? '#FFF' : Colors.text} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.headerContent}>
-            <View
-              style={[
-                styles.headerIcon,
-                { backgroundColor: isHealthy ? 'rgba(255,255,255,0.2)' : severityColor + '25' },
-              ]}
-            >
+      {/* AppBar with share-outline trailing icon (per spec) */}
+      <AppBar
+        title={t('diagnosis.diagnosisTitle', { defaultValue: 'Diagnóstico' })}
+        leading={
+          <IconButton
+            iconName="arrow-back"
+            accessibilityLabel={t('diagnosis.closeResult')}
+            onPress={() => router.dismissAll()}
+          />
+        }
+        trailing={
+          <IconButton
+            iconName="share-outline"
+            accessibilityLabel={t('diagnosis.shareDiagnosis')}
+            accessibilityHint={t('diagnosis.shareHint')}
+            onPress={handleWhatsAppShare}
+          />
+        }
+      />
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Hero photo of leaf — 200h, image taken by user */}
+        <View style={styles.heroPhotoWrap}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.heroPhoto}
+              contentFit="cover"
+              transition={200}
+              accessibilityLabel={t('cropSelect.photoA11y')}
+            />
+          ) : (
+            <LinearGradient colors={Gradients.hero} style={styles.heroPhoto}>
               <Ionicons
-                name={isHealthy ? 'checkmark-circle' : 'warning'}
-                size={32}
-                color={isHealthy ? '#FFF' : severityColor}
+                name={isHealthy ? 'checkmark-circle' : 'leaf'}
+                size={56}
+                color="rgba(255,255,255,0.85)"
+                accessibilityElementsHidden
               />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.pestName,
-                  isHealthy && { color: '#FFF' },
-                  !isHealthy && isDark && styles.textDark,
-                ]}
-              >
-                {isHealthy
-                  ? t('diagnosis.healthy')
-                  : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected')}
-              </Text>
-              {!isHealthy && (
-                <Text style={styles.scientific}>{enrichment.scientific_name || ''}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Animated confidence bar — counts up from 0% to final value in 1s */}
-          <View style={styles.confidenceWrap}>
-            <View style={styles.confidenceLabelRow}>
-              <Text
-                style={[
-                  styles.confidenceLabel,
-                  { color: isHealthy ? 'rgba(255,255,255,0.9)' : Colors.textSecondary },
-                ]}
-              >
-                {t('diagnosis.confidence')}
-              </Text>
-              <Text style={[styles.confidenceValue, { color: isHealthy ? '#FFF' : severityColor }]}>
-                {displayConfidence}%
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.confidenceTrack,
-                {
-                  backgroundColor: isHealthy ? 'rgba(255,255,255,0.2)' : Colors.systemGray5,
-                },
-              ]}
-            >
-              <Animated.View
-                style={[
-                  styles.confidenceFill,
-                  confidenceBarStyle,
-                  { backgroundColor: isHealthy ? '#FFF' : severityColor },
-                ]}
-              />
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.badges}>
-          <View style={[styles.badge, { backgroundColor: severityColor + '1F' }]}>
-            <Ionicons name="speedometer" size={10} color={severityColor} />
-            <Text style={[styles.badgeText, { color: severityColor }]}>
-              {confidence > 0.7
-                ? t('diagnosis.confidenceHigh')
-                : confidence > 0.4
-                  ? t('diagnosis.confidenceMedium')
-                  : t('diagnosis.confidenceLow')}
-            </Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: Colors.techBlue + '1F' }]}>
-            <Ionicons name="analytics" size={10} color={Colors.techBlue} />
-            <Text style={[styles.badgeText, { color: Colors.techBlue }]}>
-              {t('diagnosis.confidence')}: {Math.round(confidence * 100)}%
-            </Text>
-          </View>
-          {result.crop && (
-            <View style={[styles.badge, { backgroundColor: Colors.accent + '1F' }]}>
-              <Ionicons name="leaf" size={10} color={Colors.accent} />
-              <Text style={[styles.badgeText, { color: Colors.accent }]}>{result.crop}</Text>
-            </View>
+            </LinearGradient>
           )}
+        </View>
+
+        {/* Pest header: name + scientific + severity */}
+        <View style={styles.headerBlock}>
+          <Text
+            style={[styles.pestName, isDark && styles.textDark]}
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.4}
+          >
+            {pestDisplayName}
+          </Text>
+          {!isHealthy && enrichment.scientific_name ? (
+            <Text style={styles.scientific} maxFontSizeMultiplier={1.4}>
+              {enrichment.scientific_name}
+            </Text>
+          ) : null}
+
+          <View style={styles.metaRow}>
+            <SeverityBadge level={severityForBadge}>{severityLabel()}</SeverityBadge>
+            {result.crop ? (
+              <View style={styles.cropPill}>
+                <Ionicons name="leaf" size={12} color={Colors.accent} />
+                <Text style={styles.cropPillText}>{result.crop}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Confidence bar — uses existing primitive */}
+          <View style={styles.confidenceRow}>
+            <Text style={styles.confidenceLabel}>{t('diagnosis.confidence')}</Text>
+            <ConfidenceBar value={confidence} />
+          </View>
         </View>
 
         {/* P0-1: Low confidence warning banner — confidence < 70% */}
@@ -604,199 +591,170 @@ export default function ResultScreen() {
             accessibilityRole="alert"
             accessibilityLabel={t('diagnosis.lowConfidenceBanner')}
           >
-            <Ionicons name="warning" size={20} color="#B45309" />
+            <Ionicons name="warning" size={18} color={Colors.warmAmber} />
             <Text style={styles.lowConfidenceText}>{t('diagnosis.lowConfidenceBanner')}</Text>
           </View>
         )}
 
-        <View style={styles.sections}>
-          {enrichment.description && (
-            <CollapsibleSection
-              title={t('diagnosis.description')}
-              icon="document-text"
-              iconColor={Colors.accent}
-              defaultExpanded
-            >
-              <Text style={[styles.sectionText, isDark && styles.textDark]}>
+        {/* Sections: Sintomas, Tratamento (MIP), Boas Práticas — each via SectionHeader + Card */}
+        {enrichment.description ? (
+          <>
+            <SectionHeader title={t('diagnosis.description')} />
+            <Card style={styles.sectionCard}>
+              <Text style={[styles.bodyText, isDark && styles.textDark]}>
                 {enrichment.description}
               </Text>
-            </CollapsibleSection>
-          )}
-          {(enrichment.symptoms?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.symptoms')}
-              icon="eye"
-              iconColor={Colors.coral}
-              defaultExpanded
-            >
+            </Card>
+          </>
+        ) : null}
+
+        {(enrichment.symptoms?.length ?? 0) > 0 && (
+          <>
+            <SectionHeader title={t('diagnosis.symptoms')} />
+            <Card style={styles.sectionCard}>
               {enrichment.symptoms!.map((s: string, i: number) => (
                 <View key={i} style={styles.bulletRow}>
                   <View style={[styles.bullet, { backgroundColor: Colors.accent }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+                  <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
                 </View>
               ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.causes?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.causes')}
-              icon="alert-circle"
-              iconColor={Colors.warmAmber}
-            >
+            </Card>
+          </>
+        )}
+
+        {(enrichment.causes?.length ?? 0) > 0 && (
+          <>
+            <SectionHeader title={t('diagnosis.causes')} />
+            <Card style={styles.sectionCard}>
               {enrichment.causes!.map((s: string, i: number) => (
                 <View key={i} style={styles.bulletRow}>
                   <View style={[styles.bullet, { backgroundColor: Colors.warmAmber }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+                  <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
                 </View>
               ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.cultural_treatment?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.culturalControl')}
-              icon="hand-left"
-              iconColor={Colors.accent}
-            >
-              {enrichment.cultural_treatment!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: Colors.accent }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+            </Card>
+          </>
+        )}
+
+        {/* Tratamento (MIP) — combines cultural / chemical / biological under one umbrella */}
+        {((enrichment.cultural_treatment?.length ?? 0) > 0 ||
+          (enrichment.chemical_treatment?.length ?? 0) > 0 ||
+          (enrichment.biological_treatment?.length ?? 0) > 0 ||
+          enrichment.mip_strategy) && (
+          <>
+            <SectionHeader title={t('diagnosis.mipTitle', { defaultValue: 'Tratamento (MIP)' })} />
+            <Card style={styles.sectionCard}>
+              {enrichment.mip_strategy ? (
+                <Text style={[styles.bodyText, isDark && styles.textDark, { marginBottom: 10 }]}>
+                  {enrichment.mip_strategy}
+                </Text>
+              ) : null}
+
+              {(enrichment.cultural_treatment?.length ?? 0) > 0 && (
+                <View style={styles.subSection}>
+                  <Text style={styles.subSectionTitle}>{t('diagnosis.culturalControl')}</Text>
+                  {enrichment.cultural_treatment!.map((s: string, i: number) => (
+                    <View key={`cul-${i}`} style={styles.bulletRow}>
+                      <View style={[styles.bullet, { backgroundColor: Colors.accent }]} />
+                      <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.chemical_treatment?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.chemicalControl')}
-              icon="flask"
-              iconColor={Colors.techBlue}
-            >
-              <View style={styles.warning}>
-                <Ionicons name="warning" size={14} color={Colors.warmAmber} />
-                <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
-              </View>
-              {enrichment.chemical_treatment!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: Colors.techBlue }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+              )}
+
+              {(enrichment.chemical_treatment?.length ?? 0) > 0 && (
+                <View style={styles.subSection}>
+                  <Text style={styles.subSectionTitle}>{t('diagnosis.chemicalControl')}</Text>
+                  <View style={styles.warning}>
+                    <Ionicons name="warning" size={14} color={Colors.warmAmber} />
+                    <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
+                  </View>
+                  {enrichment.chemical_treatment!.map((s: string, i: number) => (
+                    <View key={`chm-${i}`} style={styles.bulletRow}>
+                      <View style={[styles.bullet, { backgroundColor: Colors.warmAmber }]} />
+                      <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.biological_treatment?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.biologicalControl')}
-              icon="bug"
-              iconColor="#4CAF50"
-            >
-              {enrichment.biological_treatment!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: '#4CAF50' }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+              )}
+
+              {(enrichment.biological_treatment?.length ?? 0) > 0 && (
+                <View style={styles.subSection}>
+                  <Text style={styles.subSectionTitle}>{t('diagnosis.biologicalControl')}</Text>
+                  {enrichment.biological_treatment!.map((s: string, i: number) => (
+                    <View key={`bio-${i}`} style={styles.bulletRow}>
+                      <View style={[styles.bullet, { backgroundColor: Colors.accent }]} />
+                      <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.prevention?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.prevention')}
-              icon="shield-checkmark"
-              iconColor="#00BCD4"
-            >
-              {enrichment.prevention!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: '#00BCD4' }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+              )}
+            </Card>
+          </>
+        )}
+
+        {/* Boas Práticas — prevention + monitoring + favorable conditions */}
+        {((enrichment.prevention?.length ?? 0) > 0 ||
+          (enrichment.monitoring?.length ?? 0) > 0 ||
+          (enrichment.favorable_conditions?.length ?? 0) > 0) && (
+          <>
+            <SectionHeader
+              title={t('diagnosis.bestPractices', { defaultValue: 'Boas Práticas' })}
+            />
+            <Card style={styles.sectionCard}>
+              {(enrichment.prevention?.length ?? 0) > 0 && (
+                <View style={styles.subSection}>
+                  <Text style={styles.subSectionTitle}>{t('diagnosis.prevention')}</Text>
+                  {enrichment.prevention!.map((s: string, i: number) => (
+                    <View key={`prv-${i}`} style={styles.bulletRow}>
+                      <View style={[styles.bullet, { backgroundColor: Colors.accent }]} />
+                      <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.monitoring?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.monitoring')}
-              icon="eye"
-              iconColor={Colors.techBlue}
-            >
-              {enrichment.monitoring!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: Colors.techBlue }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+              )}
+
+              {(enrichment.monitoring?.length ?? 0) > 0 && (
+                <View style={styles.subSection}>
+                  <Text style={styles.subSectionTitle}>{t('diagnosis.monitoring')}</Text>
+                  {enrichment.monitoring!.map((s: string, i: number) => (
+                    <View key={`mon-${i}`} style={styles.bulletRow}>
+                      <View style={[styles.bullet, { backgroundColor: Colors.techBlue }]} />
+                      <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.favorable_conditions?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.favorableConditions')}
-              icon="thermometer"
-              iconColor={Colors.warmAmber}
-            >
-              {enrichment.favorable_conditions!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: Colors.warmAmber }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
+              )}
+
+              {(enrichment.favorable_conditions?.length ?? 0) > 0 && (
+                <View style={styles.subSection}>
+                  <Text style={styles.subSectionTitle}>{t('diagnosis.favorableConditions')}</Text>
+                  {enrichment.favorable_conditions!.map((s: string, i: number) => (
+                    <View key={`fav-${i}`} style={styles.bulletRow}>
+                      <View style={[styles.bullet, { backgroundColor: Colors.warmAmber }]} />
+                      <Text style={[styles.bodyText, isDark && styles.textDark]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {enrichment.economic_impact && (
-            <CollapsibleSection
-              title={t('diagnosis.economicImpact')}
-              icon="trending-down"
-              iconColor={Colors.coral}
-            >
-              <Text style={[styles.sectionText, isDark && styles.textDark]}>
+              )}
+            </Card>
+          </>
+        )}
+
+        {enrichment.economic_impact ? (
+          <>
+            <SectionHeader title={t('diagnosis.economicImpact')} />
+            <Card style={styles.sectionCard}>
+              <Text style={[styles.bodyText, isDark && styles.textDark]}>
                 {enrichment.economic_impact}
               </Text>
-            </CollapsibleSection>
-          )}
-          {enrichment.mip_strategy && (
-            <CollapsibleSection
-              title={t('diagnosis.mipStrategy')}
-              icon="leaf"
-              iconColor={Colors.accent}
-            >
-              <Text style={[styles.sectionText, isDark && styles.textDark]}>
-                {enrichment.mip_strategy}
-              </Text>
-            </CollapsibleSection>
-          )}
-        </View>
+            </Card>
+          </>
+        ) : null}
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.whatsappBtn}
-            onPress={handleWhatsAppShare}
-            activeOpacity={0.75}
-            accessibilityLabel={t('diagnosis.shareWhatsApp')}
-            accessibilityRole="button"
-            accessibilityHint={t('diagnosis.shareHint')}
-          >
-            <Ionicons name="logo-whatsapp" size={20} color="#FFF" accessibilityElementsHidden />
-            <Text style={styles.actionBtnText}>{t('diagnosis.shareWhatsApp')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.pdfBtn}
-            onPress={handlePdfExport}
-            activeOpacity={0.75}
-            accessibilityLabel={t('diagnosis.exportPdfA11y')}
-            accessibilityRole="button"
-            accessibilityHint={t('diagnosis.exportPdfHint')}
-          >
-            <Ionicons
-              name="document-text"
-              size={20}
-              color={Colors.accent}
-              accessibilityElementsHidden
-            />
-            <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
-              {t('diagnosis.exportPdf')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <PremiumCard style={{ marginHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
-          <Text style={styles.detailTitle}>{t('diagnosis.analysisDetails')}</Text>
+        {/* Analysis details — kept as a small info card (preserves the existing data row) */}
+        <SectionHeader title={t('diagnosis.analysisDetails')} />
+        <Card style={styles.sectionCard}>
           {[
             [t('diagnosis.selectedCrop'), result.crop],
             [t('diagnosis.confidence'), `${Math.round(confidence * 100)}%`],
@@ -810,23 +768,57 @@ export default function ResultScreen() {
                 <Text style={[styles.detailValue, isDark && styles.textDark]}>{value}</Text>
               </View>
             ))}
-        </PremiumCard>
+        </Card>
 
-        {/* P0-1: Mandatory CREA legal disclaimer (Lei 7.802/89) on every diagnosis */}
-        <View
+        {/* Tertiary inline link — preserves PDF export API call */}
+        <TouchableOpacity
+          onPress={handlePdfExport}
+          accessibilityRole="button"
+          accessibilityLabel={t('diagnosis.exportPdfA11y')}
+          accessibilityHint={t('diagnosis.exportPdfHint')}
+          style={styles.pdfLink}
+          activeOpacity={0.6}
+        >
+          <Ionicons name="document-text-outline" size={16} color={Colors.accent} />
+          <Text style={styles.pdfLinkText}>{t('diagnosis.exportPdf')}</Text>
+        </TouchableOpacity>
+
+        {/* CTAs at bottom — primary "Salvar no Histórico" + secondary "Compartilhar" */}
+        <View style={styles.ctaRow}>
+          <Button
+            variant="primary"
+            size="lg"
+            block
+            iconName="bookmark"
+            onPress={() => router.dismissAll()}
+            accessibilityLabel={t('diagnosis.saveToHistory', {
+              defaultValue: 'Salvar no Histórico',
+            })}
+          >
+            {t('diagnosis.saveToHistory', { defaultValue: 'Salvar no Histórico' })}
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            block
+            iconName="share-outline"
+            onPress={handleWhatsAppShare}
+            accessibilityLabel={t('diagnosis.shareDiagnosis')}
+            accessibilityHint={t('diagnosis.shareHint')}
+            style={{ marginTop: Spacing.sm }}
+          >
+            {t('diagnosis.shareLabel', { defaultValue: 'Compartilhar' })}
+          </Button>
+        </View>
+
+        {/* P0-1: Mandatory CREA legal disclaimer (Lei 7.802/89) — verbatim, italic, 12pt */}
+        <Text
           style={styles.legalDisclaimer}
-          accessible
           accessibilityRole="text"
           accessibilityLabel={t('diagnosis.legalDisclaimer')}
         >
-          <Ionicons
-            name="information-circle"
-            size={16}
-            color={Colors.textSecondary}
-            accessibilityElementsHidden
-          />
-          <Text style={styles.legalDisclaimerText}>{t('diagnosis.legalDisclaimer')}</Text>
-        </View>
+          {t('diagnosis.legalDisclaimer')}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -836,66 +828,116 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
   textDark: { color: Colors.textDark },
-  header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+  scrollContent: { paddingBottom: Spacing.xxxl },
+
+  heroPhotoWrap: {
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: Colors.systemGray5,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+  heroPhoto: {
+    width: '100%',
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  headerBlock: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
-  pestName: { fontSize: FontSize.title2, fontWeight: '700' },
+  // 22/700 per spec
+  pestName: {
+    fontSize: FontSize.title2, // 22
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    letterSpacing: -0.4,
+  },
+  // 14 italic textSecondary per spec
   scientific: {
-    fontSize: FontSize.subheadline,
-    color: Colors.textSecondary,
+    fontSize: 14,
     fontStyle: 'italic',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
-  confidenceWrap: { marginTop: 16 },
-  confidenceLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 6,
-  },
-  confidenceLabel: { fontSize: FontSize.caption, fontWeight: '600', letterSpacing: 0.2 },
-  confidenceValue: { fontSize: FontSize.headline, fontWeight: '700' },
-  confidenceTrack: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  confidenceFill: { height: '100%', borderRadius: 4 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: Spacing.lg },
-  badge: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    gap: 8,
+    marginTop: Spacing.md,
+    flexWrap: 'wrap',
   },
-  badgeText: { fontSize: FontSize.caption, fontWeight: '600' },
-  sections: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
-  sectionText: { fontSize: FontSize.subheadline, lineHeight: 22, flex: 1, color: Colors.text },
-  sectionTextDark: { color: Colors.textDark },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 6 },
-  bullet: { width: 6, height: 6, borderRadius: 3, marginTop: 8 },
+  cropPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.accent + '14',
+    borderWidth: 1,
+    borderColor: Colors.accent + '4D',
+  },
+  cropPillText: {
+    fontSize: FontSize.caption2,
+    fontWeight: FontWeight.semibold,
+    color: Colors.accent,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  confidenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: Spacing.md,
+  },
+  confidenceLabel: {
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+
+  sectionCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  bodyText: {
+    fontSize: FontSize.subheadline,
+    lineHeight: 22,
+    color: Colors.text,
+    flex: 1,
+  },
+
+  subSection: {
+    marginBottom: Spacing.md,
+  },
+  subSectionTitle: {
+    fontSize: FontSize.footnote,
+    fontWeight: FontWeight.bold,
+    color: Colors.accent,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 8,
+  },
+  bullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 9,
+  },
+
   warning: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -905,110 +947,104 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  warningText: { fontSize: FontSize.caption, color: Colors.warmAmber, flex: 1 },
-  detailTitle: {
-    fontSize: FontSize.subheadline,
-    fontWeight: '700',
-    color: Colors.accent,
-    marginBottom: 10,
+  warningText: {
+    fontSize: FontSize.caption,
+    color: Colors.warmAmber,
+    flex: 1,
+    fontWeight: FontWeight.semibold,
   },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
   detailLabel: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
-  detailValue: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
-  errorCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  detailValue: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+
+  pdfLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: Spacing.md,
+    marginHorizontal: Spacing.lg,
+    paddingVertical: 10,
+  },
+  pdfLinkText: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: Colors.accent,
+  },
+
+  ctaRow: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+
+  // Legal disclaimer: 12 textTertiary italic per spec — verbatim from i18n
+  legalDisclaimer: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    fontStyle: 'italic',
+    lineHeight: 17,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
+    textAlign: 'center',
+  },
+
+  // P0-1: Low confidence warning banner (confidence < 70%) — kept inline above sections
+  lowConfidenceBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    padding: 14,
+    backgroundColor: Colors.warmAmber + '1F',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.warmAmber,
+    borderRadius: BorderRadius.md,
+  },
+  lowConfidenceText: {
+    flex: 1,
+    fontSize: FontSize.caption,
+    color: Colors.text,
+    lineHeight: 18,
+    fontWeight: FontWeight.semibold,
+  },
+
+  // Error / queued / invalid / empty states
+  errorCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xxxl,
+    paddingBottom: Spacing.xxxl,
+  },
   errorIcon: {
     width: 100,
     height: 100,
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: Spacing.xl,
   },
-  errorTitle: { fontSize: FontSize.title2, fontWeight: '700', marginBottom: 8, color: Colors.text },
+  errorTitle: {
+    fontSize: FontSize.title2,
+    fontWeight: FontWeight.bold,
+    marginBottom: 8,
+    color: Colors.text,
+  },
   errorMsg: {
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
-  },
-  closeBtn: {
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 48,
-    paddingVertical: 16,
-    borderRadius: BorderRadius.lg,
-  },
-  closeBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  whatsappBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#25D366',
-    paddingVertical: 14,
-    borderRadius: BorderRadius.md,
-    shadowColor: '#25D366',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pdfBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.accent + '14',
-    paddingVertical: 14,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.accent + '40',
-  },
-  actionBtnText: { fontSize: FontSize.caption, fontWeight: '700', color: '#FFF' },
-  // P0-1: Low confidence warning banner (confidence < 70%)
-  lowConfidenceBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-    padding: 14,
-    backgroundColor: '#FEF3C7', // amber-100
-    borderLeftWidth: 4,
-    borderLeftColor: '#D97706', // amber-600
-    borderRadius: BorderRadius.md,
-  },
-  lowConfidenceText: {
-    flex: 1,
-    fontSize: FontSize.caption,
-    color: '#78350F', // amber-900
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  // P0-1: Legal disclaimer (Lei 7.802/89) — mandatory CREA warning
-  legalDisclaimer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginHorizontal: Spacing.lg,
-    marginBottom: 32,
-    padding: 12,
-    backgroundColor: Colors.systemGray5,
-    borderRadius: BorderRadius.sm,
-  },
-  legalDisclaimerText: {
-    flex: 1,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    lineHeight: 16,
-    fontStyle: 'italic',
+    marginBottom: Spacing.xxxl,
   },
 });

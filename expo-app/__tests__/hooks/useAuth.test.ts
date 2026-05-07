@@ -85,9 +85,11 @@ describe('useAuth', () => {
     expect(mockSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
   });
 
-  it('signIn sets error state on failure', async () => {
+  it('signIn sets friendly translated error on Supabase invalid_credentials', async () => {
+    // iPad iOS 26 reviewer fix (2026-05-06): raw English Supabase errors are
+    // mapped to friendly localized strings via services/authErrors.ts.
     setupDefaultMocks(null);
-    mockSignIn.mockRejectedValueOnce(new Error('Invalid credentials'));
+    mockSignIn.mockRejectedValueOnce(new Error('Invalid login credentials'));
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -102,7 +104,9 @@ describe('useAuth', () => {
       }
     });
 
-    expect(result.current.error).toBe('Invalid credentials');
+    expect(result.current.error).toBe(
+      'Email ou senha incorretos. Tente novamente ou recupere sua senha.',
+    );
   });
 
   it('signOut calls auth service', async () => {
@@ -123,7 +127,9 @@ describe('useAuth', () => {
 
   it('clearError resets the error state', async () => {
     setupDefaultMocks(null);
-    mockSignIn.mockRejectedValueOnce(new Error('Fail'));
+    // Use a message that won't match any friendly mapper branch, so it falls
+    // back to the generic auth.loginError translation.
+    mockSignIn.mockRejectedValueOnce(new Error('Some unexpected failure'));
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -138,7 +144,7 @@ describe('useAuth', () => {
       }
     });
 
-    expect(result.current.error).toBe('Fail');
+    expect(result.current.error).toBe('Erro ao entrar. Tente novamente.');
 
     act(() => {
       result.current.clearError();
@@ -199,7 +205,8 @@ describe('useAuth', () => {
     expect(mockSignUp).toHaveBeenCalledWith('new@example.com', 'pass123', 'John Doe');
   });
 
-  it('signUp sets error state on failure', async () => {
+  it('signUp sets friendly translated error on failure', async () => {
+    // Unknown English message → falls back to translated auth.signUpError.
     setupDefaultMocks(null);
     mockSignUp.mockRejectedValueOnce(new Error('User already exists'));
     const { result } = renderHook(() => useAuth());
@@ -216,7 +223,7 @@ describe('useAuth', () => {
       }
     });
 
-    expect(result.current.error).toBe('User already exists');
+    expect(result.current.error).toBe('Erro ao criar conta');
   });
 
   it('resetPassword calls auth service', async () => {
@@ -235,9 +242,9 @@ describe('useAuth', () => {
     expect(mockResetPassword).toHaveBeenCalledWith('user@example.com');
   });
 
-  it('resetPassword sets error state on failure', async () => {
+  it('resetPassword maps rate-limit error to friendly localized message', async () => {
     setupDefaultMocks(null);
-    mockResetPassword.mockRejectedValueOnce(new Error('Rate limit'));
+    mockResetPassword.mockRejectedValueOnce(new Error('Rate limit exceeded'));
     const { result } = renderHook(() => useAuth());
 
     await waitFor(() => {
@@ -252,10 +259,12 @@ describe('useAuth', () => {
       }
     });
 
-    expect(result.current.error).toBe('Rate limit');
+    expect(result.current.error).toBe('Muitas tentativas. Aguarde um instante e tente novamente.');
   });
 
   it('signOut sets error state on failure but does not throw', async () => {
+    // signOut intentionally keeps raw err.message (only sign-out, no UX impact
+    // for the iPad reviewer flow — the user is already signed in here).
     setupDefaultMocks(mockSession);
     mockSignOut.mockRejectedValueOnce(new Error('Network error'));
     const { result } = renderHook(() => useAuth());

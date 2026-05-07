@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import {
@@ -8,14 +9,20 @@ import {
 } from '../services/notifications';
 import { supabase } from '../services/supabase';
 
-// iOS 26 TurboModule crash fix: do NOT call configureNotificationHandler() at
-// module-load time. It is now lazy+idempotent (see services/notifications.ts)
-// and is invoked the first time the hook mounts or registerForPushNotificationsAsync
-// is called.
+// iOS 26 + iPad Reviewer (Apple 2.1(a)) defense:
+// 1) configureNotificationHandler() is lazy + idempotent (services/notifications.ts).
+// 2) `expo-notifications` itself is loaded via a LAZY require() inside
+//    useEffect (post-mount, after the first paint). Top-level imports of native
+//    modules can stall bundle eval on the iPad reviewer device and trap the
+//    splash screen — by deferring the require until after mount, a hung native
+//    init at most stalls the listener registration (silently degrades) instead
+//    of preventing the app from rendering. require() also avoids the
+//    `--experimental-vm-modules` requirement that dynamic import() imposes on
+//    jest, keeping the test suite simple.
 
 interface UseNotificationsReturn {
   expoPushToken: string | null;
-  notification: Notifications.Notification | null;
+  notification: NotificationsType.Notification | null;
   registerForNotifications: () => Promise<string | null>;
 }
 
@@ -27,9 +34,9 @@ interface UseNotificationsReturn {
  */
 export function useNotifications(shouldRegister: boolean = false): UseNotificationsReturn {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const [notification, setNotification] = useState<Notifications.Notification | null>(null);
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const [notification, setNotification] = useState<NotificationsType.Notification | null>(null);
+  const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
+  const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
 
   const syncTokenToSupabase = useCallback(async (token: string) => {
     try {
@@ -61,15 +68,28 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
     }
 
     // Lazy, idempotent handler init. Wrapped in try/catch by the service.
-    configureNotificationHandler();
+    try {
+      configureNotificationHandler();
+    } catch (e) {
+      if (__DEV__) console.warn('[notifications] configureNotificationHandler threw:', e);
+    }
 
     if (shouldRegister) {
       registerForNotifications();
     }
 
+    let Notifications: typeof NotificationsType | null = null;
+    try {
+      const mod = require('expo-notifications');
+      Notifications = (mod && mod.default ? mod.default : mod) as typeof NotificationsType;
+    } catch (e) {
+      if (__DEV__) console.warn('[notifications] require failed (non-fatal):', e);
+      return;
+    }
+
+    if (!Notifications) return;
+
     // Listen for notifications received while app is in foreground.
-    // Wrapped in try/catch because on iOS 26 the TurboModule init may throw;
-    // in that case we degrade to no-op listeners instead of crashing the app.
     try {
       notificationListener.current = Notifications.addNotificationReceivedListener(
         (receivedNotification) => {

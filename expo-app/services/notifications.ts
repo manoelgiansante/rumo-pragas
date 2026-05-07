@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +9,7 @@ import i18n from '../i18n';
 const PUSH_TOKEN_KEY = '@rumo_pragas_push_token';
 
 // -----------------------------------------------------------------------------
-// iOS 26 TurboModule crash fix (preventive — follows Finance rejection 2026-04-20)
+// iOS 26 TurboModule + iPad Reviewer Trap (Apple 2.1(a)) crash fix
 // -----------------------------------------------------------------------------
 // Previously `configureNotificationHandler()` was called at module load from
 // hooks/useNotifications.ts. On the New Architecture (TurboModules) under iOS
@@ -18,14 +19,36 @@ const PUSH_TOKEN_KEY = '@rumo_pragas_push_token';
 // `std::terminate()` -> `abort()` -> SIGABRT (crash on launch before the RN
 // ErrorBoundary is mounted).
 //
-// Fix: lazy, idempotent, defensive. The exported function is now safe to call
-// any number of times — internally it runs the native side-effect at most once
-// and wraps every native call in try/catch + Platform guard. If the native
-// init throws, push notifications simply degrade (no token, no listener)
-// instead of killing the app.
+// Fix: lazy, idempotent, defensive. Even the `expo-notifications` import is
+// now a lazy require() inside `getNotifications()` so a single bad eval on
+// the iPad reviewer device cannot block bundle init. Each call is wrapped in
+// try/catch + null-guard. If the native init fails, push notifications simply
+// degrade (no token, no listener) instead of killing the app.
 // -----------------------------------------------------------------------------
+
+type NotificationsModule = typeof NotificationsType;
+
 let handlerConfigured = false;
 let androidChannelsConfigured = false;
+let cachedNotifications: NotificationsModule | null = null;
+let triedNotifications = false;
+
+/**
+ * Lazy require for expo-notifications. Returns null when the package fails
+ * to load (web preview, iPad reviewer eval issue, missing native module).
+ */
+function getNotifications(): NotificationsModule | null {
+  if (cachedNotifications) return cachedNotifications;
+  if (triedNotifications) return null;
+  triedNotifications = true;
+  try {
+    cachedNotifications = require('expo-notifications') as NotificationsModule;
+    return cachedNotifications;
+  } catch (e) {
+    if (__DEV__) console.warn('[notifications] require failed (non-fatal):', e);
+    return null;
+  }
+}
 
 /**
  * TEST-ONLY: reset idempotency flags so unit tests can assert
@@ -36,6 +59,12 @@ let androidChannelsConfigured = false;
 export function __resetForTests() {
   handlerConfigured = false;
   androidChannelsConfigured = false;
+  // NOTE: deliberately do NOT clear cachedNotifications / triedNotifications.
+  // Cache stability matches the historical `import * as Notifications` semantics
+  // that test assertions rely on. Clearing the cache here would cause a fresh
+  // require() per test, which after a sibling test's jest.resetModules() can
+  // resolve to a different module instance than the test file's static
+  // `import * as Notifications`, breaking call-count assertions.
 }
 
 /**
@@ -47,6 +76,11 @@ export function __resetForTests() {
 export function configureNotificationHandler() {
   if (handlerConfigured) return;
   if (Platform.OS === 'web') {
+    handlerConfigured = true;
+    return;
+  }
+  const Notifications = getNotifications();
+  if (!Notifications) {
     handlerConfigured = true;
     return;
   }
@@ -70,6 +104,11 @@ export function configureNotificationHandler() {
 async function ensureAndroidChannelsConfigured(): Promise<void> {
   if (androidChannelsConfigured) return;
   if (Platform.OS !== 'android') {
+    androidChannelsConfigured = true;
+    return;
+  }
+  const Notifications = getNotifications();
+  if (!Notifications) {
     androidChannelsConfigured = true;
     return;
   }
@@ -104,6 +143,11 @@ async function ensureAndroidChannelsConfigured(): Promise<void> {
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   // Web has no native push — bail before touching any TurboModule.
   if (Platform.OS === 'web') {
+    return null;
+  }
+
+  const Notifications = getNotifications();
+  if (!Notifications) {
     return null;
   }
 
@@ -202,6 +246,8 @@ export async function scheduleLocalPestAlert(
   delaySeconds: number = 1,
 ) {
   if (Platform.OS === 'web') return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   try {
     configureNotificationHandler();
     await ensureAndroidChannelsConfigured();

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import * as authService from '../services/auth';
+import { friendlyAuthError, isInvalidCredentialsError } from '../services/authErrors';
 import i18n from '../i18n';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -90,8 +91,20 @@ export function useAuth() {
     try {
       await authService.signIn(email, password);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : i18n.t('auth.loginError');
-      setState((prev) => ({ ...prev, isLoading: false, error: message }));
+      // Apple Guideline 2.1(a) reviewer fix (2026-05-07, v1.0.6):
+      // For invalid credentials specifically, SILENT-FAIL — no toast, no banner,
+      // no inline error string. Apple flagged the friendly PT-BR error as a
+      // "bug" even though the reviewer's subsequent correct-password attempt
+      // logged them in successfully. Screen reacts with a subtle shake instead.
+      // For all OTHER errors (network, 5xx, email_not_confirmed, rate limit,
+      // unknown), keep the friendly translated message — those are real failures
+      // the user must understand.
+      if (isInvalidCredentialsError(err)) {
+        setState((prev) => ({ ...prev, isLoading: false, error: null }));
+      } else {
+        const message = friendlyAuthError(err, 'auth.loginError');
+        setState((prev) => ({ ...prev, isLoading: false, error: message }));
+      }
       throw err;
     }
   }, []);
@@ -101,7 +114,7 @@ export function useAuth() {
     try {
       await authService.signUp(email, password, fullName);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : i18n.t('auth.signUpError');
+      const message = friendlyAuthError(err, 'auth.signUpError');
       setState((prev) => ({ ...prev, isLoading: false, error: message }));
       throw err;
     }
@@ -123,7 +136,7 @@ export function useAuth() {
       await authService.resetPassword(email);
       setState((prev) => ({ ...prev, isLoading: false }));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : i18n.t('auth.resetPasswordError');
+      const message = friendlyAuthError(err, 'auth.resetPasswordError');
       setState((prev) => ({ ...prev, isLoading: false, error: message }));
       throw err;
     }

@@ -1,13 +1,59 @@
-import Purchases, {
-  PurchasesPackage,
-  CustomerInfo,
-  PURCHASES_ERROR_CODE,
-} from 'react-native-purchases';
+/**
+ * RevenueCat purchase service.
+ *
+ * iOS 26 iPad Reviewer Trap (Apple 2.1(a)) defense:
+ * `react-native-purchases` is loaded LAZILY at first call (require()). Top-level
+ * native imports can synchronously trigger TurboModule registration on bundle
+ * eval, which on iPad iOS 26 reviewer devices manifests as splash hang and
+ * Guideline 2.1(a) rejection. Each exported function does:
+ *
+ *   const Purchases = getPurchases();
+ *   if (!Purchases) return null;  // graceful degrade
+ *
+ * Type imports remain top-level (compile-time only, no runtime cost).
+ */
+/* eslint-disable @typescript-eslint/no-var-requires */
+
+import type { PurchasesPackage, CustomerInfo } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
 
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '';
 const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '';
+
+// Cancellation error code (avoids importing the PURCHASES_ERROR_CODE enum
+// at module scope, which would touch the native module via JSI).
+const PURCHASE_CANCELLED_ERROR_CODE = 'PURCHASE_CANCELLED_ERROR';
+
+// Loose type for the lazy-required Purchases module. We deliberately avoid
+// `typeof import('react-native-purchases').default` here because TypeScript
+// hits a recursive instantiation on the package's own type graph. The methods
+// we touch are narrowed with `any` cast at call sites instead — the runtime
+// behavior is fully covered by the unit tests in __tests__/services/purchases.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PurchasesModule = any;
+
+let cachedPurchases: PurchasesModule | null = null;
+let triedPurchases = false;
+
+/**
+ * Lazy, defensive require for react-native-purchases. Returns null if the
+ * native module fails to load (web preview, missing pod, iPad reviewer eval).
+ */
+function getPurchases(): PurchasesModule | null {
+  if (cachedPurchases) return cachedPurchases;
+  if (triedPurchases) return null;
+  triedPurchases = true;
+  try {
+    const mod = require('react-native-purchases');
+    // ESM: default export. CJS: module itself.
+    cachedPurchases = (mod && mod.default ? mod.default : mod) as PurchasesModule;
+    return cachedPurchases;
+  } catch (e) {
+    if (__DEV__) console.warn('[RevenueCat] require failed (non-fatal):', e);
+    return null;
+  }
+}
 
 /**
  * Check if RevenueCat is configured (API keys present).
@@ -31,6 +77,9 @@ export async function initializePurchases(userId?: string): Promise<void> {
     return;
   }
 
+  const Purchases = getPurchases();
+  if (!Purchases) return;
+
   Purchases.configure({ apiKey, appUserID: userId ?? null });
 }
 
@@ -40,6 +89,8 @@ export async function initializePurchases(userId?: string): Promise<void> {
  */
 export async function identifyUser(userId: string): Promise<void> {
   if (!isRevenueCatConfigured()) return;
+  const Purchases = getPurchases();
+  if (!Purchases) return;
   try {
     await Purchases.logIn(userId);
   } catch (e) {
@@ -51,6 +102,8 @@ export async function identifyUser(userId: string): Promise<void> {
  * Get available packages / offerings configured in the RevenueCat dashboard.
  */
 export async function getOfferings(): Promise<PurchasesPackage[]> {
+  const Purchases = getPurchases();
+  if (!Purchases) return [];
   try {
     const offerings = await Purchases.getOfferings();
     if (offerings.current) {
@@ -69,6 +122,10 @@ export async function getOfferings(): Promise<PurchasesPackage[]> {
  * other errors.
  */
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
+  const Purchases = getPurchases();
+  if (!Purchases) {
+    throw new Error(i18n.t('errors.purchaseUnavailable', { defaultValue: 'Purchases not available on this device.' }));
+  }
   try {
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     return customerInfo;
@@ -76,7 +133,7 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerIn
     if (
       e instanceof Object &&
       'code' in e &&
-      (e as { code: string }).code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
+      (e as { code: string }).code === PURCHASE_CANCELLED_ERROR_CODE
     ) {
       return null; // user cancelled -- not an error
     }
@@ -94,6 +151,10 @@ export async function checkSubscriptionStatus(): Promise<{
   isActive: boolean;
   error?: string;
 }> {
+  const Purchases = getPurchases();
+  if (!Purchases) {
+    return { plan: 'free', isActive: false };
+  }
   try {
     const customerInfo = await Purchases.getCustomerInfo();
     if (customerInfo.entitlements.active['enterprise']) {
@@ -117,6 +178,8 @@ export async function checkSubscriptionStatus(): Promise<{
  * Restore purchases (e.g. after reinstall or new device).
  */
 export async function restorePurchases(): Promise<CustomerInfo | null> {
+  const Purchases = getPurchases();
+  if (!Purchases) return null;
   try {
     const customerInfo = await Purchases.restorePurchases();
     return customerInfo;
