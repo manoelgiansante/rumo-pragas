@@ -188,8 +188,17 @@ export default function PaywallScreen() {
       }
       // customerInfo === null means user cancelled -- do nothing
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : t('paywall.purchaseErrorMsg');
-      Alert.alert(t('paywall.purchaseError'), message);
+      // Apple iPad reviewer hardening (2026-05-07): never surface raw
+      // RevenueCat English (e.g. "There was a problem with the App Store")
+      // — reviewer counts that as Guideline 2.1(a) "error message". Map all
+      // failure paths to the localized purchaseErrorMsg.
+      const code = (e as { userCancelled?: boolean; code?: string } | null)?.code;
+      const userCancelled = (e as { userCancelled?: boolean } | null)?.userCancelled;
+      if (userCancelled || code === 'PURCHASE_CANCELLED') {
+        // user backed out — silent, no error toast
+      } else {
+        Alert.alert(t('paywall.purchaseError'), t('paywall.purchaseErrorMsg'));
+      }
     } finally {
       setPurchasing(false);
     }
