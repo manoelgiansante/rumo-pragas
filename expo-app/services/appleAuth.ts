@@ -16,7 +16,6 @@
  * devices, causing splash hangs and immediate rejection. Lazy require + null
  * guard degrades gracefully (button disabled / friendly Alert) instead of crashing.
  */
-/* eslint-disable @typescript-eslint/no-var-requires */
 
 import type * as AppleAuthenticationTypes from 'expo-apple-authentication';
 import { supabase } from './supabase';

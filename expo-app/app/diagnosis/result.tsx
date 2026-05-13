@@ -37,6 +37,7 @@ import {
 } from '../../components/ui';
 import { ConfidenceBar } from '../../components/ConfidenceBar';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
+import { trackEvent } from '../../services/analytics';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import type { AgrioEnrichment } from '../../types/diagnosis';
 
@@ -106,11 +107,15 @@ export default function ResultScreen() {
     return t('severity.undefined');
   }, [enrichment, isHealthy, t]);
 
-  // Track successful diagnosis for store review prompt
-  // Hook is called unconditionally (React rules of hooks) but logic is guarded
+  // Track successful diagnosis for store review prompt + analytics funnel.
+  // Hook is called unconditionally (React rules of hooks) but logic is guarded.
   useEffect(() => {
     if (!error && !queued && result.pest_name) {
       trackSuccessfulDiagnosis();
+      trackEvent('diagnose_result_shown', {
+        pest_name: result.pest_name,
+        confidence,
+      });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -173,6 +178,7 @@ export default function ResultScreen() {
     const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
     const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
+      trackEvent('diagnose_share', { method: 'whatsapp' });
       await Linking.openURL(url);
     } else {
       Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
@@ -331,9 +337,11 @@ export default function ResultScreen() {
       const html = buildPdfHtml();
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (Platform.OS === 'web') {
+        trackEvent('diagnose_share', { method: 'pdf' });
         await Print.printAsync({ html });
         return;
       }
+      trackEvent('diagnose_share', { method: 'pdf' });
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
         dialogTitle: t('diagnosis.exportPdfDialogTitle'),

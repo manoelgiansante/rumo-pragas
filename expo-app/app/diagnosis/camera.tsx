@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { IconButton } from '../../components/ui';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
+import { trackEvent } from '../../services/analytics';
 
 const MAX_DIMENSION = 1024;
 const JPEG_QUALITY = 0.75;
@@ -82,6 +83,8 @@ export default function CameraScreen() {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
 
+      trackEvent('diagnose_image_captured', { source: useCamera ? 'camera' : 'library' });
+
       setProcessing(true);
       try {
         const compressed = await compressImage(asset.uri);
@@ -140,6 +143,7 @@ export default function CameraScreen() {
               accessibilityHint={t('diagnosis.chooseGalleryHint')}
               style={({ pressed }) => [styles.galleryBtn, pressed && { opacity: 0.7 }]}
               hitSlop={8}
+              testID="camera.gallery"
             >
               <Ionicons name="images-outline" size={18} color="#FFF" />
               <Text style={styles.galleryText}>{t('diagnosis.chooseGallery')}</Text>
@@ -152,6 +156,7 @@ export default function CameraScreen() {
             accessibilityLabel={t('diagnosis.takePhotoA11y')}
             accessibilityHint={t('diagnosis.takePhotoHint')}
             style={({ pressed }) => [styles.shutterOuter, pressed && { opacity: 0.85 }]}
+            testID="camera.shutter"
           >
             <View style={styles.shutterInner} />
           </Pressable>

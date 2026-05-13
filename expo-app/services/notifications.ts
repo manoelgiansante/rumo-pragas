@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { Platform } from 'react-native';
 import type * as NotificationsType from 'expo-notifications';
 import * as Device from 'expo-device';

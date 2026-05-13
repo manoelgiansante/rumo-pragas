@@ -85,9 +85,14 @@ describe('useAuth', () => {
     expect(mockSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
   });
 
-  it('signIn sets friendly translated error on Supabase invalid_credentials', async () => {
-    // iPad iOS 26 reviewer fix (2026-05-06): raw English Supabase errors are
-    // mapped to friendly localized strings via services/authErrors.ts.
+  it('silent-fails on invalid_credentials per Apple 2.1(a) hardening', async () => {
+    // Apple 2.1(a) reviewer hardening (2026-05-07, v1.0.6) — useAuth.ts:102:
+    // For Supabase invalid_credentials specifically, the hook SILENT-FAILS:
+    // error is cleared (null) and the login screen reacts with a subtle shake
+    // instead. Reviewer counted the friendly PT-BR error as a "bug" even though
+    // the next correct-password attempt logged in successfully.
+    // For all OTHER errors (covered by the next clearError test), the friendly
+    // translated message is still surfaced.
     setupDefaultMocks(null);
     mockSignIn.mockRejectedValueOnce(new Error('Invalid login credentials'));
     const { result } = renderHook(() => useAuth());
@@ -104,9 +109,7 @@ describe('useAuth', () => {
       }
     });
 
-    expect(result.current.error).toBe(
-      'Email ou senha incorretos. Tente novamente ou recupere sua senha.',
-    );
+    expect(result.current.error).toBe(null);
   });
 
   it('signOut calls auth service', async () => {

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import {
   restorePurchases,
 } from '../services/purchases';
 import { PAYWALL_LITE_MODE, isApprovedIapId } from '../constants/iap';
+import { trackEvent } from '../services/analytics';
 
 export default function PaywallScreen() {
   const { t } = useTranslation();
@@ -77,6 +79,11 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
 
   const configured = isRevenueCatConfigured();
+
+  // Analytics: paywall viewed (mount, fire-and-forget)
+  useEffect(() => {
+    trackEvent('paywall_viewed', { source: 'unknown' });
+  }, []);
 
   /**
    * Try to match a RevenueCat package to one of our local plan ids.
@@ -178,10 +185,12 @@ export default function PaywallScreen() {
     }
 
     setPurchasing(true);
+    trackEvent('paywall_purchase_started', { plan_id: selected });
     try {
       const customerInfo = await purchasePackage(pkg);
       if (customerInfo) {
         // Purchase succeeded
+        trackEvent('paywall_purchase_success', { plan_id: selected, provider: Platform.OS });
         Alert.alert(t('paywall.subscriptionActivated'), t('paywall.enjoyFeatures'), [
           { text: 'OK', onPress: () => router.back() },
         ]);
@@ -196,7 +205,12 @@ export default function PaywallScreen() {
       const userCancelled = (e as { userCancelled?: boolean } | null)?.userCancelled;
       if (userCancelled || code === 'PURCHASE_CANCELLED') {
         // user backed out — silent, no error toast
+        trackEvent('paywall_purchase_failed', { plan_id: selected, error_code: 'user_cancelled' });
       } else {
+        trackEvent('paywall_purchase_failed', {
+          plan_id: selected,
+          error_code: code ?? 'unknown',
+        });
         Alert.alert(t('paywall.purchaseError'), t('paywall.purchaseErrorMsg'));
       }
     } finally {
@@ -276,6 +290,7 @@ export default function PaywallScreen() {
               size={22}
               accessibilityLabel={t('paywall.closeA11y')}
               onPress={() => router.back()}
+              testID="paywall.close"
             />
           </View>
 
@@ -313,12 +328,21 @@ export default function PaywallScreen() {
           <View style={styles.plansBlock}>
             {plansWithPrices.map((p) => {
               const isSelected = selected === p.id;
+              // testID per plan id — mapped from RC product mapping so Maestro
+              // can target both monthly/annual when both are visible.
+              const testID =
+                p.id === 'pro'
+                  ? 'paywall.plan-monthly'
+                  : p.id === 'enterprise'
+                    ? 'paywall.plan-annual'
+                    : `paywall.plan-${p.id}`;
               return (
                 <TouchableOpacity
                   key={p.id}
                   onPress={() => {
                     Haptics.selectionAsync();
                     setSelected(p.id);
+                    trackEvent('paywall_plan_selected', { plan_id: p.id });
                   }}
                   activeOpacity={0.85}
                   accessibilityLabel={t('paywall.planA11y', {
@@ -331,6 +355,7 @@ export default function PaywallScreen() {
                   })}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
+                  testID={testID}
                 >
                   <Card
                     padding={Spacing.lg}
@@ -375,6 +400,7 @@ export default function PaywallScreen() {
                 : t('paywall.subscribePlanA11y', { name: plan.name, price: plan.price })
             }
             style={styles.subscribeBtn}
+            testID="paywall.subscribe"
           >
             {selected === 'free'
               ? t('paywall.continueFree')
@@ -423,6 +449,7 @@ export default function PaywallScreen() {
             accessibilityRole="button"
             accessibilityState={{ disabled: restoring, busy: restoring }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            testID="paywall.restore"
           >
             {restoring ? (
               <ActivityIndicator size="small" color={Colors.textSecondary} />

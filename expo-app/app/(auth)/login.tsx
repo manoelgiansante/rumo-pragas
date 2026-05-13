@@ -21,6 +21,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
 import { friendlyAppleAuthError, isInvalidCredentialsError } from '../../services/authErrors';
+import { trackEvent } from '../../services/analytics';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { Hero, Input, Button } from '../../components/ui';
 
@@ -138,8 +139,10 @@ export default function LoginScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (mode === 'login') {
         await signIn(email.trim(), password);
+        trackEvent('login_success', { method: 'email' });
       } else {
         await signUp(email.trim(), password, fullName.trim());
+        trackEvent('login_success', { method: 'email_signup' });
         Alert.alert('', t('auth.checkEmail'));
       }
     } catch (err: unknown) {
@@ -149,6 +152,12 @@ export default function LoginScreen() {
       // password field as the only visual cue.
       if (mode === 'login' && isInvalidCredentialsError(err)) {
         triggerInvalidCredsShake();
+        trackEvent('login_failed', { method: 'email', error: 'invalid_credentials' });
+      } else {
+        trackEvent('login_failed', {
+          method: mode === 'login' ? 'email' : 'email_signup',
+          error: err instanceof Error ? err.message.slice(0, 200) : 'unknown',
+        });
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
@@ -211,6 +220,7 @@ export default function LoginScreen() {
         // User cancelled
         return;
       }
+      trackEvent('login_success', { method: 'apple' });
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       // Centralized mapper: handles ERR_REQUEST_CANCELED (silent),
@@ -218,6 +228,10 @@ export default function LoginScreen() {
       // ERR_INVALID_RESPONSE, ERR_REQUEST_UNKNOWN, plus Supabase ID-token errors.
       const message = friendlyAppleAuthError(err);
       if (!message) return; // user cancelled — silent
+      trackEvent('login_failed', {
+        method: 'apple',
+        error: err instanceof Error ? err.message.slice(0, 200) : 'unknown',
+      });
       Alert.alert(t('common.error'), message);
     } finally {
       setAppleLoading(false);
@@ -263,6 +277,7 @@ export default function LoginScreen() {
                 accessibilityLabel={t('auth.loginA11y')}
                 accessibilityRole="button"
                 accessibilityState={{ selected: mode === 'login' }}
+                testID="auth.toggle-login"
               >
                 <Text style={[styles.segmentText, mode === 'login' && styles.segmentTextActive]}>
                   {t('auth.login')}
@@ -274,6 +289,7 @@ export default function LoginScreen() {
                 accessibilityLabel={t('auth.signupA11y')}
                 accessibilityRole="button"
                 accessibilityState={{ selected: mode === 'signup' }}
+                testID="auth.toggle-signup"
               >
                 <Text style={[styles.segmentText, mode === 'signup' && styles.segmentTextActive]}>
                   {t('auth.signup')}
@@ -327,6 +343,7 @@ export default function LoginScreen() {
               onSubmitEditing={() => passwordRef.current?.focus()}
               accessibilityLabel={t('auth.emailA11y')}
               containerStyle={styles.fieldGap}
+              testID="auth.email-input"
             />
 
             {/* Password field — wrapped in Animated.View for Apple 2.1(a)
@@ -351,6 +368,7 @@ export default function LoginScreen() {
                 onSubmitEditing={handleSubmit}
                 accessibilityLabel={t('auth.passwordA11y')}
                 containerStyle={styles.fieldGap}
+                testID="auth.password-input"
               />
             </Animated.View>
 
@@ -405,6 +423,7 @@ export default function LoginScreen() {
               haptic
               accessibilityLabel={mode === 'login' ? t('auth.loginA11y') : t('auth.signupA11y')}
               style={styles.submitSpacing}
+              testID="auth.submit"
             >
               {mode === 'login' ? t('auth.login') : t('auth.signup')}
             </Button>
@@ -437,6 +456,7 @@ export default function LoginScreen() {
                   activeOpacity={0.8}
                   accessibilityLabel={t('auth.appleA11y')}
                   accessibilityRole="button"
+                  testID="auth.apple-signin"
                 >
                   {appleLoading ? (
                     <ActivityIndicator color="#FFF" />

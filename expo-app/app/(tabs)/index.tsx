@@ -311,6 +311,7 @@ export default function HomeScreen() {
           accessibilityLabel={t('home.diagnosePestA11y')}
           accessibilityHint={t('home.diagnosePestHint')}
           style={styles.primaryCta}
+          testID="home.diagnose-cta"
         >
           {t('diagnosis.takePhoto')}
         </PrimaryAmberButton>
@@ -399,6 +400,7 @@ export default function HomeScreen() {
                         total: FREE_MONTHLY_DIAGNOSES,
                       })
                 }
+                testID="home.upgrade-card"
               >
                 <Ionicons
                   name={exhausted ? 'alert-circle' : 'sparkles'}

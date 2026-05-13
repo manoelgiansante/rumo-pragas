@@ -12,7 +12,6 @@
  *
  * Type imports remain top-level (compile-time only, no runtime cost).
  */
-/* eslint-disable @typescript-eslint/no-var-requires */
 
 import type { PurchasesPackage, CustomerInfo } from 'react-native-purchases';
 import { Platform } from 'react-native';
@@ -30,7 +29,7 @@ const PURCHASE_CANCELLED_ERROR_CODE = 'PURCHASE_CANCELLED_ERROR';
 // hits a recursive instantiation on the package's own type graph. The methods
 // we touch are narrowed with `any` cast at call sites instead — the runtime
 // behavior is fully covered by the unit tests in __tests__/services/purchases.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type PurchasesModule = any;
 
 let cachedPurchases: PurchasesModule | null = null;
@@ -124,7 +123,11 @@ export async function getOfferings(): Promise<PurchasesPackage[]> {
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
   const Purchases = getPurchases();
   if (!Purchases) {
-    throw new Error(i18n.t('errors.purchaseUnavailable', { defaultValue: 'Purchases not available on this device.' }));
+    throw new Error(
+      i18n.t('errors.purchaseUnavailable', {
+        defaultValue: 'Purchases not available on this device.',
+      }),
+    );
   }
   try {
     const { customerInfo } = await Purchases.purchasePackage(pkg);

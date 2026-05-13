@@ -1,9 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import * as authService from '../services/auth';
 import { friendlyAuthError, isInvalidCredentialsError } from '../services/authErrors';
 import i18n from '../i18n';
 import type { Session, User } from '@supabase/supabase-js';
+
+// Local AsyncStorage keys cleared on logout to prevent cross-account bleed
+// (P0 mega audit 2026-05-13). Keep this list in sync with consumers.
+const LOGOUT_ASYNC_STORAGE_KEYS = [
+  '@rumo_pragas_push_enabled',
+  '@rumo_pragas_onboarding_seen',
+  '@rumo_pragas_location_consent_shown',
+  '@rumo_pragas_push_token',
+  '@rumo_pragas_chat_history',
+];
 
 interface AuthState {
   user: User | null;
@@ -123,6 +134,29 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
+      // P0 (mega audit 2026-05-13): cross-account bleed prevention.
+      // RevenueCat anonymizes the customer id on logOut so the next signed-in
+      // user gets a fresh state instead of inheriting the previous user's
+      // entitlements/customer info. Wrapped in try/catch so a missing /
+      // unconfigured RC module never blocks Supabase sign out.
+      try {
+        const Purchases = require('react-native-purchases').default;
+        if (Purchases?.logOut) {
+          await Purchases.logOut();
+        }
+      } catch (rcErr) {
+        if (__DEV__) console.warn('[useAuth] Purchases.logOut failed (non-fatal):', rcErr);
+      }
+
+      // Best-effort wipe of app-level AsyncStorage keys that persist user
+      // preferences/state. Auth tokens live in SecureStore (Supabase client),
+      // those are handled by `authService.signOut()` below.
+      try {
+        await AsyncStorage.multiRemove(LOGOUT_ASYNC_STORAGE_KEYS);
+      } catch (asErr) {
+        if (__DEV__) console.warn('[useAuth] AsyncStorage cleanup failed (non-fatal):', asErr);
+      }
+
       await authService.signOut();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : i18n.t('auth.signOutError');

@@ -26,7 +26,7 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Ultima atualizacao: 26 de marco de 2026</Text>
+        <Text style={styles.lastUpdated}>Ultima atualizacao: 16 de abril de 2026</Text>
 
         <Text style={styles.intro}>
           A AgroRumo ("nos") se compromete a proteger a privacidade dos usuarios do aplicativo Rumo
@@ -149,6 +149,16 @@ export default function PrivacyScreen() {
           umidade, precipitacao). O Open-Meteo e um servico de dados climaticos abertos que nao
           requer autenticacao e nao armazena dados pessoais dos usuarios. Nenhuma informacao que
           identifique o usuario e transmitida junto com as coordenadas.
+        </Text>
+        <Text style={styles.importantBox}>
+          Para garantir estabilidade e qualidade do servico, o App utiliza:{'\n\n'}- Sentry
+          (sentry.io) para capturar relatorios anonimos de erro/crash do aplicativo. Nao enviamos
+          email, nome de usuario ou IP. Apenas o ID interno do usuario (UUID) e a versao do app sao
+          incluidos.{'\n'}- Analytics interno: registramos eventos de uso (telas visitadas, acoes
+          principais) para identificar problemas e melhorar o produto. Esses eventos sao agregados e
+          nao contem conteudo de fotos ou de diagnosticos.{'\n\n'}
+          Operacao baseada no art. 9 da LGPD (legitimo interesse para manutencao do servico). Voce
+          pode solicitar a remocao desses dados a qualquer momento via dpo@agrorumo.com.br.
         </Text>
         <Text style={styles.paragraph}>
           Nao vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros para fins de

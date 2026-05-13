@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { useEffect, useState } from 'react';
 
 export interface NetworkStatus {
@@ -43,7 +42,7 @@ export function useNetworkStatus(): NetworkStatus {
     let cancelled = false;
     let unsub: (() => void) | undefined;
 
-    let mod: NetInfoModule | null = null;
+    let mod: NetInfoModule | null;
     try {
       mod = require('@react-native-community/netinfo') as NetInfoModule;
     } catch (e) {

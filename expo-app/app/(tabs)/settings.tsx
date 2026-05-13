@@ -32,6 +32,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
 import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
+import { trackEvent } from '../../services/analytics';
 import { AppBar, Chip, SectionHeader } from '../../components/ui';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
@@ -64,9 +65,10 @@ interface RowProps {
   isFirst?: boolean;
   danger?: boolean;
   isDark: boolean;
+  testID?: string;
 }
 
-function Row({ icon, label, value, onPress, trailing, isFirst, danger, isDark }: RowProps) {
+function Row({ icon, label, value, onPress, trailing, isFirst, danger, isDark, testID }: RowProps) {
   const labelColor = danger ? Colors.coral : Colors.text;
   const iconColor = danger ? Colors.coral : Colors.textSecondary;
 
@@ -84,6 +86,7 @@ function Row({ icon, label, value, onPress, trailing, isFirst, danger, isDark }:
       accessibilityLabel={label}
       accessibilityRole={onPress ? 'button' : 'none'}
       accessibilityValue={value ? { text: value } : undefined}
+      testID={testID}
     >
       <Ionicons name={icon} size={24} color={iconColor} style={styles.rowIcon} />
       <Text style={[styles.rowLabel, { color: labelColor }, isDark && !danger && styles.textDark]}>
@@ -119,6 +122,7 @@ export default function SettingsScreen() {
   const [subError, setSubError] = useState(false);
   const subLoadingRef = useRef(false);
   const [restoring, setRestoring] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const { isChecking, checkForUpdate } = useOTAUpdate();
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
@@ -261,12 +265,24 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
+    // P0 (mega audit 2026-05-13):
+    // - Copy now lists exactly what is erased (photos, diagnoses, profile, subscription row).
+    // - Adds Apple disclosure: store subscription billing is NOT auto-canceled.
+    // - Removed obsolete "15 days" copy in deletionReceivedMessage (backend does
+    //   hard delete via the delete-user-account edge fn immediately).
+    // - Adds in-flight loading state so the destructive button does not look
+    //   frozen during the Edge Function round trip.
     Alert.alert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       {
         text: t('settings.delete'),
         style: 'destructive',
         onPress: async () => {
+          if (deletingAccount) return;
+          setDeletingAccount(true);
+          // Analytics fired BEFORE the call so we don't lose it if the user
+          // signs out / closes the app before the round trip resolves.
+          trackEvent('account_deleted', {});
           try {
             // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
             // Must pass the user's JWT so the Edge Function can verify identity
@@ -295,6 +311,8 @@ export default function SettingsScreen() {
           } catch (e) {
             if (__DEV__) console.error('handleDeleteAccount exception:', e);
             Alert.alert(t('common.error'), t('settings.deletionError'));
+          } finally {
+            setDeletingAccount(false);
           }
         },
       },
@@ -453,6 +471,7 @@ export default function SettingsScreen() {
                   icon="card-outline"
                   label={t('settings.manageSubscription')}
                   onPress={openManageSubscription}
+                  testID="settings.manage-subscription"
                 />
               )}
             </>
@@ -545,13 +564,18 @@ export default function SettingsScreen() {
             icon="log-out-outline"
             label={t('settings.signOut')}
             onPress={handleSignOut}
+            testID="settings.logout"
           />
           <Row
             isDark={isDark}
             danger
             icon="trash-outline"
-            label={t('settings.deleteAccount')}
-            onPress={handleDeleteAccount}
+            label={deletingAccount ? t('settings.deletingAccount') : t('settings.deleteAccount')}
+            onPress={deletingAccount ? undefined : handleDeleteAccount}
+            trailing={
+              deletingAccount ? <ActivityIndicator size="small" color={Colors.coral} /> : undefined
+            }
+            testID="settings.delete-account"
           />
         </SettingsGroup>
 

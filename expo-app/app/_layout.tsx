@@ -29,12 +29,17 @@ import { Colors } from '../constants/theme';
 try {
   setTimeout(() => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const SS = require('expo-splash-screen');
-      SS?.hideAsync?.()?.catch?.(() => {});
-    } catch {}
+      SS?.hideAsync?.()?.catch?.(() => {
+        /* swallow: splash hide failure is non-fatal */
+      });
+    } catch {
+      /* swallow: missing native module on web/test — non-fatal */
+    }
   }, 12000);
-} catch {}
+} catch {
+  /* swallow: setTimeout itself shouldn't throw, but guard for paranoia */
+}
 
 // Sentry lazy init — NEVER call Sentry.init() at module scope.
 // On iOS 26 New Architecture (TurboModules), native module calls during JS
@@ -281,8 +286,15 @@ function RootLayout() {
   );
 }
 
-// Wrap with Sentry for automatic error boundary and performance tracking
-export default Sentry.wrap(RootLayout);
+// P0 (mega audit 2026-05-13): Sentry.wrap removed.
+// Wrapping at module scope evaluates Sentry HOC during JS bundle eval — exactly
+// the iOS 26 New Architecture crash pattern that motivated the lazy
+// `initSentryOnce()` deferred to RootLayout's first useEffect (lines 39-44).
+// ErrorBoundary (components/ErrorBoundary.tsx) already wraps the tree; Sentry
+// captures unhandled errors via `enableNative + attachStacktrace` once init has
+// fired in the first render. No automatic error boundary is lost — we trade it
+// for guaranteed cold-start safety on iPad iOS 26 reviewer devices.
+export default RootLayout;
 
 const styles = StyleSheet.create({
   loading: {

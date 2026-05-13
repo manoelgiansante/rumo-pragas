@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type * as NotificationsType from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -78,7 +77,7 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
       registerForNotifications();
     }
 
-    let Notifications: typeof NotificationsType | null = null;
+    let Notifications: typeof NotificationsType | null;
     try {
       const mod = require('expo-notifications');
       Notifications = (mod && mod.default ? mod.default : mod) as typeof NotificationsType;

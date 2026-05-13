@@ -18,7 +18,6 @@
  * before the splash hides, triggering rejection. Each function checks the
  * lazy module and degrades silently when unavailable.
  */
-/* eslint-disable @typescript-eslint/no-var-requires */
 
 import type { CustomerInfo } from 'react-native-purchases';
 import { isRevenueCatConfigured } from './purchases';
@@ -26,7 +25,7 @@ import { isRevenueCatConfigured } from './purchases';
 // Loose type for the lazy-required Purchases module — see services/purchases.ts
 // for the rationale (TypeScript recursive instantiation on the package's own
 // type graph when we use `typeof import(...).default`).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type PurchasesModule = any;
 
 let cachedPurchases: PurchasesModule | null = null;
@@ -49,6 +48,12 @@ function getPurchases(): PurchasesModule | null {
 type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 
+// Hold a reference to the registered callback so we can pass the exact same
+// function back to `removeCustomerInfoUpdateListener` on logout. Without this,
+// the RevenueCat SDK keeps the listener wired to the previous user_id and we
+// leak memory + cross-account subscription pings on user switch.
+
+let listenerCallbackRef: ((customerInfo: any) => void) | null = null;
 let listenerRegistered = false;
 
 /**
@@ -131,7 +136,10 @@ export function startSubscriptionListener(_userId: string): void {
   const Purchases = getPurchases();
   if (!Purchases) return;
 
-  Purchases.addCustomerInfoUpdateListener((customerInfo: CustomerInfo) => {
+  // Build callback once and keep the reference so we can remove the EXACT same
+  // function from the SDK later. RN purchases SDK identifies listeners by
+  // reference equality.
+  const callback = (customerInfo: CustomerInfo) => {
     if (__DEV__) {
       const info = deriveSubscriptionInfo(customerInfo);
       console.warn(
@@ -140,15 +148,37 @@ export function startSubscriptionListener(_userId: string): void {
         info.status,
       );
     }
-  });
+  };
 
+  Purchases.addCustomerInfoUpdateListener(callback);
+  listenerCallbackRef = callback;
   listenerRegistered = true;
   if (__DEV__) console.warn('[SubscriptionSync] Listener registered (read-only)');
 }
 
 /**
  * Stop subscription listener. Call on logout.
+ *
+ * P0 fix (2026-05-13 mega audit): previously this only flipped the
+ * `listenerRegistered` flag, so the actual RevenueCat callback stayed wired
+ * to the SDK forever — leaking memory + receiving CustomerInfo for the
+ * previously-logged-out user when the next user signed in. We now also call
+ * `removeCustomerInfoUpdateListener` with the exact same callback reference
+ * captured on registration.
  */
 export function stopSubscriptionListener(): void {
-  listenerRegistered = false;
+  try {
+    if (listenerCallbackRef) {
+      const Purchases = getPurchases();
+      if (Purchases?.removeCustomerInfoUpdateListener) {
+        Purchases.removeCustomerInfoUpdateListener(listenerCallbackRef);
+      }
+    }
+  } catch (err) {
+    if (__DEV__)
+      console.warn('[SubscriptionSync] removeCustomerInfoUpdateListener failed (non-fatal):', err);
+  } finally {
+    listenerCallbackRef = null;
+    listenerRegistered = false;
+  }
 }

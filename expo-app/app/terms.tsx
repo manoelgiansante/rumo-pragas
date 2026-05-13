@@ -25,7 +25,7 @@ export default function TermsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Ultima atualizacao: 25 de marco de 2026</Text>
+        <Text style={styles.lastUpdated}>Ultima atualizacao: 16 de abril de 2026</Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           1. Aceitacao dos Termos
