@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureError } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: delete-user-account
@@ -351,6 +352,7 @@ Deno.serve(async (req: Request) => {
       },
     );
   } catch (err) {
+    await captureError(err, { tags: { fn: "delete-user-account", op: "handler" } });
     logJson("delete-user-account", requestId, "ERROR", "Unexpected error", {
       error: String(err),
     });

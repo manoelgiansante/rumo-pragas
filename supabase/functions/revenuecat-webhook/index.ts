@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureError } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: revenuecat-webhook
@@ -115,6 +116,7 @@ type RevenueCatEventType =
   | "NON_RENEWING_PURCHASE";
 
 interface RevenueCatEvent {
+  id?: string; // RC sends a unique event id on every webhook (used for persistent dedup)
   type: RevenueCatEventType;
   app_user_id: string;
   aliases?: string[];
@@ -324,9 +326,56 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Idempotency check
-  const eventKey = `${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
-  if (deduplicateEvent(eventKey)) {
+  // Init supabase client early — needed for persistent idempotency
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // ── Persistent idempotency via webhook_events table ──
+  // RC sends event.id; fall back to composite key for legacy payloads.
+  const eventId =
+    event.id ??
+    `rc_${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
+
+  {
+    const { error: insertErr } = await supabase
+      .from("webhook_events")
+      .insert({
+        event_id: eventId,
+        source: "revenuecat",
+        event_type: event.type,
+        payload_summary: {
+          environment: event.environment,
+          store: event.store,
+          app_user_id: event.app_user_id,
+          product_id: event.product_id,
+        },
+      });
+
+    if (insertErr) {
+      const code = (insertErr as { code?: string }).code;
+      if (code === "23505") {
+        // duplicate → already processed
+        logJson("revenuecat-webhook", requestId, "INFO", "Duplicate event — already received", { eventId });
+        return new Response(
+          JSON.stringify({ received: true, deduplicated: true, requestId }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      await captureError(insertErr, {
+        tags: { fn: "revenuecat-webhook", op: "webhook_events_insert" },
+        extra: { eventId, eventType: event.type },
+      });
+      logJson("revenuecat-webhook", requestId, "ERROR", "webhook_events insert failed", { error: insertErr.message });
+      // Continue processing — prefer double-process over drop.
+    }
+  }
+
+  // Fallback in-memory dedup retained as second-layer guard against rapid retries
+  // hitting the same warm instance before the row commit lands.
+  const memKey = `${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
+  if (deduplicateEvent(memKey)) {
     return new Response(
       JSON.stringify({ received: true, deduplicated: true, requestId }),
       {
@@ -336,8 +385,12 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Skip non-subscription events
+  // Skip non-subscription events (still recorded in webhook_events)
   if (!SUBSCRIPTION_EVENTS.has(event.type)) {
+    await supabase
+      .from("webhook_events")
+      .update({ processed_at: new Date().toISOString() })
+      .eq("event_id", eventId);
     logJson("revenuecat-webhook", requestId, "INFO", "Skipping non-subscription event", { eventType: event.type });
     return new Response(
       JSON.stringify({ received: true, skipped: true, requestId }),
@@ -347,8 +400,6 @@ Deno.serve(async (req: Request) => {
       },
     );
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
     const userId = event.app_user_id;
@@ -386,6 +437,11 @@ Deno.serve(async (req: Request) => {
       );
 
     if (upsertError) {
+      await captureError(upsertError, {
+        tags: { fn: "revenuecat-webhook", op: "subscriptions_upsert" },
+        extra: { eventType: event.type, plan, status, store: event.store },
+        user_id: userId,
+      });
       logJson("revenuecat-webhook", requestId, "ERROR", "Upsert error", { userId, error: upsertError.message });
       return new Response(
         JSON.stringify({ error: "Failed to update subscription", requestId }),
@@ -395,6 +451,12 @@ Deno.serve(async (req: Request) => {
         },
       );
     }
+
+    // Mark as processed
+    await supabase
+      .from("webhook_events")
+      .update({ processed_at: new Date().toISOString() })
+      .eq("event_id", eventId);
 
     logJson("revenuecat-webhook", requestId, "INFO", "Event processed", {
       eventType: event.type,
@@ -414,6 +476,10 @@ Deno.serve(async (req: Request) => {
       },
     );
   } catch (err) {
+    await captureError(err, {
+      tags: { fn: "revenuecat-webhook", op: "handler" },
+      extra: { eventId, eventType: event.type },
+    });
     logJson("revenuecat-webhook", requestId, "ERROR", "Unexpected error", { error: String(err) });
     return new Response(
       JSON.stringify({ error: "Internal server error", requestId }),

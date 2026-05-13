@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureError } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -720,6 +721,11 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (dbError) {
+      await captureError(dbError, {
+        tags: { fn: "diagnose", op: "diagnoses_insert" },
+        extra: { userId: user.id, cropId },
+        user_id: user.id,
+      });
       logJson("diagnose", requestId, "ERROR", "DB insert error", { error: dbError.message });
       return new Response(
         JSON.stringify({ error: "Erro ao salvar diagnostico", requestId }),
@@ -738,6 +744,7 @@ Deno.serve(async (req: Request) => {
       },
     );
   } catch (error) {
+    await captureError(error, { tags: { fn: "diagnose", op: "handler" } });
     // Never leak stack traces to client
     logJson("diagnose", requestId, "ERROR", "Unexpected error", { error: String(error) });
     return new Response(

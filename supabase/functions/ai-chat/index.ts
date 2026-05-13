@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureError } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -384,6 +385,7 @@ Deno.serve(async (req: Request) => {
       },
     );
   } catch (err) {
+    await captureError(err, { tags: { fn: "ai-chat", op: "handler" } });
     // Never leak stack traces
     logJson("ai-chat", requestId, "ERROR", "Unexpected error", { error: String(err) });
     return new Response(

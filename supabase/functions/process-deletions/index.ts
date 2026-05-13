@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureError } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: process-deletions
@@ -194,6 +195,7 @@ Deno.serve(async (req: Request) => {
           results.push({ success: true });
         }
       } catch (err) {
+        await captureError(err, { tags: { fn: "process-deletions", op: "per_user" } });
         logJson("process-deletions", requestId, "ERROR", "Processing error for user", { error: String(err) });
         results.push({
           success: false,
@@ -221,6 +223,7 @@ Deno.serve(async (req: Request) => {
       },
     );
   } catch (err) {
+    await captureError(err, { tags: { fn: "process-deletions", op: "handler" } });
     logJson("process-deletions", requestId, "ERROR", "Unexpected error", { error: String(err) });
     return new Response(
       JSON.stringify({ error: "Internal server error", requestId }),

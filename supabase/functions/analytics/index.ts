@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureError, withSentry } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: analytics
@@ -155,7 +156,7 @@ function rateLimitHeaders(remaining: number, resetAt: number): Record<string, st
   };
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withSentry(async (req: Request) => {
   const requestId = generateRequestId();
   const corsHeaders = getCorsHeaders(req);
 
@@ -303,6 +304,11 @@ Deno.serve(async (req: Request) => {
     .insert(rows);
 
   if (insertError) {
+    await captureError(insertError, {
+      tags: { fn: "analytics", op: "events_insert" },
+      extra: { count: rows.length },
+      user_id: authenticatedUserId,
+    });
     logJson("analytics", requestId, "ERROR", "Insert error", { error: insertError.message });
     return new Response(
       JSON.stringify({ error: "Failed to store events", requestId }),
@@ -320,4 +326,4 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
     },
   );
-});
+}, "analytics"));
