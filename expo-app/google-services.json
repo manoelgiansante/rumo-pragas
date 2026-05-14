@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "233078564584",
+    "project_id": "rumo-pragas",
+    "storage_bucket": "rumo-pragas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:233078564584:android:e8337d48e477deeda64b5d",
+        "android_client_info": {
+          "package_name": "com.agrorumo.rumopragas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEjI5tn8-qb1z0BqoEMXm1EyPXmTQu2qE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
