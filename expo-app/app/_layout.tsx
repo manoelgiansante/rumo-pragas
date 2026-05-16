@@ -127,8 +127,11 @@ function RootLayoutNav() {
   // Auto-sync queued offline diagnoses when connectivity returns
   useDiagnosisSync();
 
-  // Check for OTA updates on app launch (only in production builds)
-  useOTAUpdate();
+  // Check for OTA updates ONLY after auth + onboarding gates clear.
+  // Apple 2.1(a) iPad reviewer fix (2026-05-16, bn37): cold-launch OTA Alert
+  // was being misread as a login error by the reviewer. Now deferred so the
+  // login screen is never interrupted by a system dialog.
+  useOTAUpdate(isAuthenticated && hasSeenOnboarding === true);
 
   // ATT (App Tracking Transparency) intentionally removed — Apple guideline 5.1.2:
   // the app does not integrate any ad SDK and does not perform cross-app tracking,

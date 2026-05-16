@@ -102,6 +102,11 @@ export default {
     forgotHint: 'Envía un email para restablecer su contraseña',
     termsA11y: 'Aceptar términos de uso y política de privacidad',
     appleA11y: 'Iniciar sesión con Apple',
+    // Apple 2.1(a) bn37 — claves inline (reemplazan los Alert.alert eliminados).
+    required: 'Obligatorio',
+    passwordTooShort: 'La contraseña debe tener al menos 8 caracteres.',
+    signupSuccessInline: 'Cuenta creada — confirma tu email para iniciar sesión.',
+    resetEmailSent: 'Email de recuperación enviado — revisa tu bandeja de entrada.',
   },
   diagnosis: {
     defaultName: 'Diagnóstico',

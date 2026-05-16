@@ -101,6 +101,11 @@ export default {
     forgotHint: 'Sends an email to reset your password',
     termsA11y: 'Accept terms of use and privacy policy',
     appleA11y: 'Sign in with Apple',
+    // Apple 2.1(a) bn37 inline-error keys (replace removed Alert.alert dialogs).
+    required: 'Required',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    signupSuccessInline: 'Account created — confirm your email to sign in.',
+    resetEmailSent: 'Password reset email sent — check your inbox.',
   },
   diagnosis: {
     defaultName: 'Diagnosis',

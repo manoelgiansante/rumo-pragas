@@ -104,6 +104,11 @@ export default {
     forgotHint: 'Envia um email para redefinir sua senha',
     termsA11y: 'Aceitar termos de uso e política de privacidade',
     appleA11y: 'Entrar com Apple',
+    // Apple 2.1(a) bn37 — chaves inline (substituem os Alert.alert removidos).
+    required: 'Obrigatório',
+    passwordTooShort: 'A senha deve ter no mínimo 8 caracteres.',
+    signupSuccessInline: 'Conta criada — confirme seu email para entrar.',
+    resetEmailSent: 'Email de recuperação enviado — verifique sua caixa de entrada.',
   },
   // Diagnosis
   diagnosis: {

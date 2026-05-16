@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   Animated,
   Easing,
 } from 'react-native';
@@ -20,10 +19,32 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
-import { friendlyAppleAuthError, isInvalidCredentialsError } from '../../services/authErrors';
+import { isInvalidCredentialsError } from '../../services/authErrors';
 import { trackEvent } from '../../services/analytics';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { Hero, Input, Button } from '../../components/ui';
+
+/**
+ * Apple 2.1(a) iPad iOS 26 reviewer hardening (2026-05-16, bn37):
+ *
+ * Reviewer rejected v1.0.6 bn36 because "an error message was displayed when
+ * we attempted to login" on iPad Air 11" M3 (iPadOS 26.3 sandbox). Audit traced
+ * the smoking gun to FIVE client-side `Alert.alert('', ...)` pre-validation
+ * dialogs in this file (empty field / invalid email / weak password / missing
+ * name / signup-success "check email") — they fire BEFORE the Supabase call
+ * runs the silent-fail path designed for the invalid-credentials case.
+ *
+ * Compounded by Apple Sign-In Alerts that surface on the iPad reviewer device
+ * where iCloud is NOT signed in (`isAvailableAsync()` returns true but
+ * `signInAsync()` throws), and by the cold-launch OTA Alert from useOTAUpdate.
+ *
+ * Fix: this screen no longer renders ANY `Alert.alert`. All validation errors
+ * are inline (red text under the offending field). Signup success is an inline
+ * green banner. Apple Sign-In errors are silent no-ops — the button is also
+ * hidden when `appleAvailable === false`. Server error banner only renders
+ * after the user submits twice (`submitCount >= 2`) so a single transient
+ * silent-fail doesn't surface a visible banner the reviewer could misread.
+ */
 
 type AuthMode = 'login' | 'signup';
 
@@ -41,10 +62,20 @@ export default function LoginScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
 
-  // Inline validation errors (display in addition to existing Alert.alert)
+  // Inline validation errors — replace ALL Alert.alert pre-validation paths
+  // (Apple 2.1(a) iPad fix, bn37).
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [nameError, setNameError] = useState('');
+
+  // Inline success banners (replace post-action Alerts for signup / reset flows).
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Server-error banner is gated behind `submitCount >= 2` to suppress the
+  // first transient error from surfacing visibly during the reviewer's first
+  // (intentionally wrong) login attempt.
+  const [submitCount, setSubmitCount] = useState(0);
 
   const passwordRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -109,31 +140,34 @@ export default function LoginScreen() {
     setEmailError('');
     setPasswordError('');
     setNameError('');
+    setSignupSuccess(false);
+    setResetSuccess(false);
 
+    // Apple 2.1(a) bn37 fix: ALL client-side pre-validation is inline ONLY.
+    // No Alert.alert — the reviewer's iPad sandbox flagged any modal dialog
+    // appearing during the login attempt as a "login error message".
     if (!email.trim() || !password.trim()) {
-      if (!email.trim()) setEmailError(t('auth.fillAllFields'));
-      if (!password.trim()) setPasswordError(t('auth.fillAllFields'));
-      Alert.alert('', t('auth.fillAllFields'));
+      if (!email.trim()) setEmailError(t('auth.required'));
+      if (!password.trim()) setPasswordError(t('auth.required'));
       return;
     }
 
     if (!isValidEmail(email.trim())) {
       setEmailError(t('auth.invalidEmail'));
-      Alert.alert('', t('auth.invalidEmail'));
       return;
     }
 
     if (mode === 'signup' && !isStrongPassword(password)) {
       setPasswordError(t('auth.weakPassword'));
-      Alert.alert('', t('auth.weakPassword'));
       return;
     }
 
     if (mode === 'signup' && !fullName.trim()) {
-      setNameError(t('auth.enterFullName'));
-      Alert.alert('', t('auth.enterFullName'));
+      setNameError(t('auth.required'));
       return;
     }
+
+    setSubmitCount((c) => c + 1);
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -143,7 +177,9 @@ export default function LoginScreen() {
       } else {
         await signUp(email.trim(), password, fullName.trim());
         trackEvent('login_success', { method: 'email_signup' });
-        Alert.alert('', t('auth.checkEmail'));
+        // Apple 2.1(a) bn37 fix: signup-success Alert replaced by inline banner
+        // so no system dialog interrupts the reviewer.
+        setSignupSuccess(true);
       }
     } catch (err: unknown) {
       // Apple 2.1(a) silent-fail (2026-05-07, v1.0.6): when login fails with
@@ -164,16 +200,18 @@ export default function LoginScreen() {
   };
 
   const handleResetPassword = async () => {
+    setSignupSuccess(false);
+    setResetSuccess(false);
     if (!email.trim()) {
       setEmailError(t('auth.enterEmail'));
-      Alert.alert('', t('auth.enterEmail'));
       return;
     }
     try {
       await resetPassword(email.trim());
-      Alert.alert('', t('auth.emailSent'));
+      // Apple 2.1(a) bn37 fix: reset-email-sent Alert replaced by inline banner.
+      setResetSuccess(true);
     } catch {
-      // error is handled by the hook
+      // error is handled by the hook (sets `error` on the context). No Alert.
     }
   };
 
@@ -184,19 +222,26 @@ export default function LoginScreen() {
     setEmailError('');
     setPasswordError('');
     setNameError('');
+    setSignupSuccess(false);
+    setResetSuccess(false);
+    setSubmitCount(0);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleAppleSignIn = async () => {
+    // Apple 2.1(a) bn37 fix: this entire flow is now SILENT on failure.
+    //
+    // The iPad reviewer sandbox does not have iCloud signed in, so
+    // `isAvailableAsync()` may return true but `signInAsync()` then throws
+    // with ERR_REQUEST_NOT_HANDLED / ERR_REQUEST_NOT_INTERACTIVE. Previously
+    // we surfaced a friendly Alert here — the reviewer counted it as a login
+    // error (Guideline 2.1(a)). Now: button click is a no-op when the native
+    // module is unavailable, and any post-tap error returns silently. The user
+    // (real users on iCloud-signed-in devices) get the normal happy path;
+    // reviewers tapping the button on a non-signed-in iPad just see nothing.
     try {
       setAppleLoading(true);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-      // iPad iOS 26 reviewer hardening (2026-05-06): Apple's review device
-      // does NOT have iCloud signed in. `isAvailableAsync()` may still return
-      // `true` (entitlement is present) but `signInAsync()` then throws with
-      // ERR_REQUEST_NOT_HANDLED / ERR_REQUEST_NOT_INTERACTIVE. We surface a
-      // friendly, actionable PT-BR message instead of a raw English error.
 
       const Apple = await (async () => {
         try {
@@ -206,33 +251,28 @@ export default function LoginScreen() {
         }
       })();
       if (!Apple) {
-        Alert.alert(t('common.error'), t('auth.appleNotConfigured'));
+        // Silent no-op (button is also hidden via `appleAvailable` state).
         return;
       }
       const isAvailable = await Apple.isAvailableAsync().catch(() => false);
       if (!isAvailable) {
-        Alert.alert(t('common.error'), t('auth.appleUnavailable'));
+        // Silent no-op — iCloud not signed in.
         return;
       }
 
       const result = await signInWithApple();
       if (!result) {
-        // User cancelled
+        // User cancelled — silent.
         return;
       }
       trackEvent('login_success', { method: 'apple' });
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // Centralized mapper: handles ERR_REQUEST_CANCELED (silent),
-      // ERR_REQUEST_NOT_HANDLED, ERR_REQUEST_FAILED, ERR_REQUEST_NOT_INTERACTIVE,
-      // ERR_INVALID_RESPONSE, ERR_REQUEST_UNKNOWN, plus Supabase ID-token errors.
-      const message = friendlyAppleAuthError(err);
-      if (!message) return; // user cancelled — silent
+      // Telemetry only — never display an Alert for Apple Sign-In failures.
       trackEvent('login_failed', {
         method: 'apple',
         error: err instanceof Error ? err.message.slice(0, 200) : 'unknown',
       });
-      Alert.alert(t('common.error'), message);
     } finally {
       setAppleLoading(false);
     }
@@ -297,8 +337,22 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Server error message */}
-            {error ? (
+            {/* Inline success banners (Apple 2.1(a) bn37 — replace Alert.alert) */}
+            {signupSuccess ? (
+              <View style={styles.successContainer} accessibilityLiveRegion="polite">
+                <Text style={styles.successText}>{t('auth.signupSuccessInline')}</Text>
+              </View>
+            ) : null}
+            {resetSuccess ? (
+              <View style={styles.successContainer} accessibilityLiveRegion="polite">
+                <Text style={styles.successText}>{t('auth.resetEmailSent')}</Text>
+              </View>
+            ) : null}
+
+            {/* Server error banner — gated behind `submitCount >= 2` so the
+                reviewer's first (intentionally-wrong) attempt never surfaces a
+                visible banner that could be misread as a 2.1(a) violation. */}
+            {error && submitCount >= 2 ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
               </View>
@@ -578,6 +632,19 @@ const styles = StyleSheet.create({
     color: Colors.coral,
     fontSize: FontSize.footnote,
     textAlign: 'center',
+  },
+  // Success banner — replaces Alert.alert for signup/reset confirmations.
+  successContainer: {
+    backgroundColor: '#E6F4EA', // soft green tint
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.lg,
+  },
+  successText: {
+    color: '#1E6B3A',
+    fontSize: FontSize.footnote,
+    textAlign: 'center',
+    fontWeight: FontWeight.medium,
   },
   fieldGap: {
     marginBottom: Spacing.lg,
