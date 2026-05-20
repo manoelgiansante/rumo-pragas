@@ -754,10 +754,11 @@ export default {
       benefit3: 'Recomendaciones de MIP regionales',
       lgpdNotice:
         'Conforme a la LGPD brasileña (Ley 13.709/2018): tu ubicación solo se envía al agrónomo IA con tu consentimiento explícito. Puedes revocarlo en cualquier momento en Ajustes.',
-      accept: 'Permitir ubicación',
-      acceptA11y: 'Permitir compartir ubicación',
-      decline: 'Ahora no',
-      declineA11y: 'Rechazar compartir ubicación',
+      // Apple 5.1.1(iv) bn40: single CTA must use "Continuar"/"Continue"/"Next"
+      // and there is NO dismiss button — the native iOS permission dialog
+      // (fired later when location is actually needed) is the user's opt-out.
+      continueLabel: 'Continuar',
+      continueA11y: 'Continuar al siguiente paso',
       footnote: 'Puedes cambiar esta elección en Ajustes > Privacidad.',
       saveError: 'No se pudo guardar tu preferencia. Inténtalo de nuevo.',
     },

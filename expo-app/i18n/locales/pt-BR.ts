@@ -768,10 +768,11 @@ export default {
       benefit3: 'Recomendações regionais de MIP',
       lgpdNotice:
         'Em conformidade com a LGPD (Lei 13.709/2018): seus dados de localização só serão enviados ao agrônomo IA com sua autorização explícita. Você pode revogar a qualquer momento em Ajustes.',
-      accept: 'Permitir localização',
-      acceptA11y: 'Permitir compartilhamento de localização',
-      decline: 'Agora não',
-      declineA11y: 'Recusar compartilhamento de localização',
+      // Apple 5.1.1(iv) bn40: single CTA must use "Continuar"/"Continue"/"Next"
+      // and there is NO dismiss button — the native iOS permission dialog
+      // (fired later when location is actually needed) is the user's opt-out.
+      continueLabel: 'Continuar',
+      continueA11y: 'Continuar para o próximo passo',
       footnote: 'Você poderá alterar essa escolha a qualquer momento em Ajustes > Privacidade.',
       saveError: 'Não foi possível salvar sua preferência. Tente novamente.',
     },

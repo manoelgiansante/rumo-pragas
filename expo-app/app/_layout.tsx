@@ -5,7 +5,14 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Sentry from '@sentry/react-native';
+// Apple 2.1(a) iPad iOS 26.5 bn40 fix: NO top-level `import * as Sentry`.
+// Top-level package-namespace import evaluates `@sentry/react-native`'s
+// index at JS bundle eval time, which on iPad iOS 26 + New Architecture
+// (TurboModules) can synchronously register native modules BEFORE the
+// React Native bridge is fully warm → SIGABRT / "indefinite loading screen"
+// observed by Apple reviewer on iPad Air 11" M3 iPadOS 26.5 (rejected bn38).
+// Same vector that rejected Rumo Finance build 22 (2026-04-27).
+// All Sentry calls now go through `safeSentry` below (lazy require + try/catch).
 import Constants from 'expo-constants';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { DiagnosisProvider } from '../contexts/DiagnosisContext';
@@ -41,16 +48,60 @@ try {
   /* swallow: setTimeout itself shouldn't throw, but guard for paranoia */
 }
 
-// Sentry lazy init — NEVER call Sentry.init() at module scope.
-// On iOS 26 New Architecture (TurboModules), native module calls during JS
-// bundle evaluation can raise ObjC exceptions before the RN bridge is ready,
-// causing SIGABRT / crash on launch. Init is deferred to the first useEffect
-// inside RootLayout, and wrapped in try/catch so a Sentry failure never
-// brings down the app. Pattern adopted from Campo Vivo (2026-04-25).
+// Sentry lazy module loader — iPad iOS 26.5 TurboModule warmup defense.
+//
+// Why we use require() instead of `import * as Sentry from ...`:
+// On iPad iOS 26.5 + New Architecture, the package-namespace import is
+// evaluated at JS bundle eval time and synchronously touches TurboModule
+// registration → SIGABRT / unresponsive splash before the RN bridge is
+// fully warm (Apple Guideline 2.1(a) reject vector, reproduced on iPad
+// Air 11" M3 / iPadOS 26.5, bn38). Lazy require() defers the touch to
+// AFTER first useEffect, when the bridge is guaranteed ready.
+//
+// Memoization keeps every call cheap; null on failure degrades silently.
+type SentryModule = typeof import('@sentry/react-native');
+let cachedSentry: SentryModule | null = null;
+let triedSentry = false;
+function getSentry(): SentryModule | null {
+  if (cachedSentry) return cachedSentry;
+  if (triedSentry) return null;
+  triedSentry = true;
+  try {
+    cachedSentry = require('@sentry/react-native') as SentryModule;
+    return cachedSentry;
+  } catch {
+    return null;
+  }
+}
+
+// Safe wrappers — every Sentry call swallows errors. Never crash the app on
+// Sentry failure. Module load is lazy (first call only).
+const safeSentry = {
+  setUser(user: { id: string } | null): void {
+    try {
+      getSentry()?.setUser(user);
+    } catch {
+      /* swallow */
+    }
+  },
+  setTag(key: string, value: string): void {
+    try {
+      getSentry()?.setTag(key, value);
+    } catch {
+      /* swallow */
+    }
+  },
+};
+
 let sentryInitialized = false;
 function initSentryOnce() {
   if (sentryInitialized) return;
   try {
+    const Sentry = getSentry();
+    if (!Sentry) {
+      sentryInitialized = true;
+      return;
+    }
     const expoConfig = Constants.expoConfig;
     const appVersion = expoConfig?.version ?? '0.0.0';
     const iosBuildNumber = expoConfig?.ios?.buildNumber;
@@ -156,13 +207,14 @@ function RootLayoutNav() {
       startSubscriptionListener(user.id);
       // Set Sentry user context for crash reports — ID ONLY, no PII (no email).
       // beforeSend strips email defensively, but we also avoid passing it here.
-      Sentry.setUser({ id: user.id });
-      Sentry.setTag('app.platform', Platform.OS);
-      Sentry.setTag('app.version', Constants.expoConfig?.version ?? 'unknown');
+      // Uses safeSentry wrapper (lazy require + try/catch) — never blocks auth flow.
+      safeSentry.setUser({ id: user.id });
+      safeSentry.setTag('app.platform', Platform.OS);
+      safeSentry.setTag('app.version', Constants.expoConfig?.version ?? 'unknown');
     } else {
       resetAnalytics();
       stopSubscriptionListener();
-      Sentry.setUser(null);
+      safeSentry.setUser(null);
     }
   }, [user?.id, user?.email]);
 

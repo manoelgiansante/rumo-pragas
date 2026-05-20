@@ -744,10 +744,11 @@ export default {
       benefit3: 'Region-specific IPM recommendations',
       lgpdNotice:
         'Per Brazilian LGPD (Law 13.709/2018): your location is only sent to the AI agronomist with your explicit consent. You can revoke this anytime in Settings.',
-      accept: 'Allow location',
-      acceptA11y: 'Allow location sharing',
-      decline: 'Not now',
-      declineA11y: 'Decline location sharing',
+      // Apple 5.1.1(iv) bn40: single CTA must use "Continue"/"Next" and
+      // there is NO dismiss button — the native iOS permission dialog
+      // (fired later when location is actually needed) is the user's opt-out.
+      continueLabel: 'Continue',
+      continueA11y: 'Continue to the next step',
       footnote: 'You can change this choice anytime in Settings > Privacy.',
       saveError: 'Could not save your preference. Please try again.',
     },

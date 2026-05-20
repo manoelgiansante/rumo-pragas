@@ -20,13 +20,26 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { setLocationConsent } from '../services/userPreferences';
 
 /**
- * P0-3 (LGPD) — Location consent screen.
+ * P0-3 (LGPD) — Location informational screen.
  *
- * Shown once per user after first login. Records an explicit opt-in or opt-out
- * decision in `public.user_preferences` (see migration 20260414000000).
- * The user can later change this choice from Settings.
+ * Shown once per user after first login. Records an LGPD opt-in in
+ * `public.user_preferences` (see migration 20260414000000) when the user
+ * taps "Continuar". The user can later revoke this choice from Settings >
+ * Privacidade.
  *
- * Default when the user skips or fails to reach this screen: no consent.
+ * Apple Guideline 5.1.1(iv) compliance (2026-05-20, bn40 resubmit):
+ * This screen used to render TWO buttons — "Permitir localização" (accept)
+ * + "Agora não" (decline). Apple flagged BOTH labels:
+ *   - "Allow Location" button copy must be "Continue" / "Next" instead.
+ *   - "Not Now" dismiss button violates the rule that pre-prompts must
+ *     ALWAYS proceed to the system permission request.
+ * Now: single "Continuar" CTA. The native iOS location dialog (triggered
+ * later by features like region-aware diagnosis / weather alerts when the
+ * user explicitly uses them) is the user's real opt-out path — denying
+ * there is fully honored. LGPD revocation path remains in Settings.
+ *
+ * Default when the user fails to reach this screen: no consent (column
+ * default in `user_preferences`).
  */
 
 export const LOCATION_CONSENT_SHOWN_KEY = '@rumo_pragas_location_consent_shown';
@@ -45,7 +58,11 @@ export default function ConsentLocationScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleAccept = async () => {
+  // Apple 5.1.1(iv) bn40 fix: single CTA "Continuar". Records LGPD consent
+  // = true so subsequent location features can request the native iOS
+  // permission. The OS dialog is the actual opt-out — denying there is
+  // honored. Save failures NEVER trap the user on this screen.
+  const handleContinue = async () => {
     if (!user?.id) {
       await finish();
       return;
@@ -55,32 +72,9 @@ export default function ConsentLocationScreen() {
       await setLocationConsent(user.id, true, CONSENT_PURPOSE_PT);
       await finish();
     } catch (e) {
-      // Symmetric fallback: if save fails, log to Sentry but never trap the
-      // user on this screen. They can revisit the choice later from Settings.
-      if (__DEV__) console.warn('[consent-location] accept save failed:', e);
+      if (__DEV__) console.warn('[consent-location] continue save failed:', e);
       try {
-        captureException(e, { tags: { feature: 'consent-location', action: 'accept' } });
-      } catch {
-        /* never crash on Sentry */
-      }
-      await finish();
-    }
-  };
-
-  const handleDecline = async () => {
-    if (!user?.id) {
-      await finish();
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await setLocationConsent(user.id, false, CONSENT_PURPOSE_PT);
-      await finish();
-    } catch (e) {
-      // Even if save fails, treat as declined and move on — default is no consent
-      if (__DEV__) console.warn('[consent-location] decline save failed:', e);
-      try {
-        captureException(e, { tags: { feature: 'consent-location', action: 'decline' } });
+        captureException(e, { tags: { feature: 'consent-location', action: 'continue' } });
       } catch {
         /* never crash on Sentry */
       }
@@ -115,30 +109,22 @@ export default function ConsentLocationScreen() {
         </View>
 
         <View style={styles.actions}>
+          {/* Apple 5.1.1(iv) bn40: SINGLE "Continuar" CTA. Decline button
+              removed entirely — the native iOS permission dialog (fired later
+              when location is actually needed) is the user's real opt-out. */}
           <TouchableOpacity
             style={styles.acceptBtn}
-            onPress={handleAccept}
+            onPress={handleContinue}
             activeOpacity={0.8}
             disabled={isSaving}
             accessibilityRole="button"
-            accessibilityLabel={t('consent.location.acceptA11y')}
+            accessibilityLabel={t('consent.location.continueA11y')}
           >
             {isSaving ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.acceptText}>{t('consent.location.accept')}</Text>
+              <Text style={styles.acceptText}>{t('consent.location.continueLabel')}</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.declineBtn}
-            onPress={handleDecline}
-            activeOpacity={0.7}
-            disabled={isSaving}
-            accessibilityRole="button"
-            accessibilityLabel={t('consent.location.declineA11y')}
-          >
-            <Text style={styles.declineText}>{t('consent.location.decline')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -255,19 +241,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.headline,
     fontWeight: FontWeight.bold,
     color: '#FFF',
-  },
-  declineBtn: {
-    backgroundColor: 'transparent',
-    paddingVertical: 16,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.systemGray5,
-  },
-  declineText: {
-    fontSize: FontSize.headline,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textSecondary,
   },
   footnote: {
     fontSize: FontSize.caption,
