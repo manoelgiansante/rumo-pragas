@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const auth = await authenticate(req);
-  if (!auth.ok) {
+  if (auth.ok === false) {
     logEvent('auth_failed', { reason: auth.error });
     return res.status(401).json(mcpErr(auth.error));
   }
