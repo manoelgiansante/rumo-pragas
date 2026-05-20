@@ -17,12 +17,18 @@ export function err(msg: string): MCPResponse {
 
 /**
  * Per-request, post-auth context handed to every tool handler.
- * - `userId`: verified Supabase user id (from JWT). NEVER trust a userId from
- *   the tool input — always use this.
- * - `supabase`: client bound to the caller's JWT. RLS is active.
+ *
+ * - `mode`: 'user' (JWT) or 'hub' (shared token, server-to-server).
+ * - `userId`: verified Supabase user id (from JWT) in user mode; null in hub
+ *   mode. NEVER trust a userId from the tool input -- always use this.
+ * - `supabase`: in user mode, JWT-bound client (RLS active). In hub mode,
+ *   service_role client (RLS bypassed) -- tools that read per-user data MUST
+ *   either require `userId` in input AND explicitly filter `.eq('user_id', x)`,
+ *   or refuse to run in hub mode.
  */
 export interface ToolContext {
-  userId: string;
+  mode: 'user' | 'hub';
+  userId: string | null;
   supabase: SupabaseClient;
 }
 

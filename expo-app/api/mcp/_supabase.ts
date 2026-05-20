@@ -2,19 +2,19 @@
  * Supabase clients — rumo-pragas MCP server
  * Projeto: jxcnfyeemdltdfqtgbcl (shared)
  *
- * SECURITY: This server NO LONGER uses the service_role key.
- * - `getAuthClient()` — anon key, used to validate the caller's JWT (auth.getUser).
- * - `getUserClient(jwt)` — anon key + caller's Authorization header so PostgREST
- *   forwards the JWT and Row-Level Security policies enforce per-user isolation.
- *
- * Every tool MUST query through `getUserClient(jwt)` so RLS is active. The
- * authenticated `userId` (derived from the JWT) is also passed explicitly to
- * each handler as defense-in-depth — queries `.eq('user_id', userId)` even
- * though RLS would already filter the rows.
+ * Dois modos de cliente:
+ * - `getAuthClient()` — anon key, usado APENAS para validar JWT do usuário
+ *   (auth.getUser).
+ * - `getUserClient(jwt)` — anon key + Authorization header do caller, para
+ *   queries do modo USER. RLS é enforced.
+ * - `getServiceClient()` — service_role key, usado APENAS no modo HUB
+ *   (server-to-server via shared token). Bypassa RLS — só pode ser invocado
+ *   após `authenticate()` retornar `mode: 'hub'` com sucesso. Singleton.
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let _authClient: SupabaseClient | null = null;
+let _serviceClient: SupabaseClient | null = null;
 
 function getUrl(): string {
   return process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
@@ -22,6 +22,10 @@ function getUrl(): string {
 
 function getAnonKey(): string {
   return process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+}
+
+function getServiceRoleKey(): string {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 }
 
 /**
@@ -63,4 +67,26 @@ export function getUserClient(jwt: string): SupabaseClient {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   });
+}
+
+/**
+ * Service-role client — RLS bypassed. ONLY used in hub mode (shared token,
+ * server-to-server). Tools are responsible for explicit ownership filters
+ * when needed (e.g. `.eq('user_id', x)`). In hub mode, `userId` is null and
+ * the hub orchestrates which rows it wants — caller is trusted.
+ *
+ * Singleton. Throws if SUPABASE_SERVICE_ROLE_KEY missing so misconfigured
+ * deploys fail loud rather than silently leaking via anon RLS.
+ */
+export function getServiceClient(): SupabaseClient {
+  if (_serviceClient) return _serviceClient;
+  const url = getUrl();
+  const key = getServiceRoleKey();
+  if (!url || !key) {
+    throw new Error('Service-role credentials missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
+  }
+  _serviceClient = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
+  return _serviceClient;
 }
