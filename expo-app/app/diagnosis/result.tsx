@@ -14,10 +14,10 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Linking from 'expo-linking';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useTranslation } from 'react-i18next';
+import { shareToWhatsApp } from '../../services/share';
 import {
   Colors,
   Spacing,
@@ -175,12 +175,11 @@ export default function ResultScreen() {
 
   const handleWhatsAppShare = useCallback(async () => {
     const text = buildShareText();
-    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      trackEvent('diagnose_share', { method: 'whatsapp' });
-      await Linking.openURL(url);
-    } else {
+    // Optimistically track once (the util tries native → wa.me fallback;
+    // either path is a successful share intent from the user's POV).
+    trackEvent('diagnose_share', { method: 'whatsapp' });
+    const result = await shareToWhatsApp({ text });
+    if (!result.ok) {
       Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
     }
   }, [buildShareText, t]);

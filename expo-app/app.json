@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.agrorumo.rumopragas",
-      "buildNumber": "39",
+      "buildNumber": "40",
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:pragas.agrorumo.com"],
       "requireFullScreen": true,
@@ -24,6 +24,7 @@
         "NSPhotoLibraryUsageDescription": "O Rumo Pragas usa sua galeria para que você selecione fotos de plantas, folhas ou frutos afetados (feitas anteriormente na lavoura) e envie ao diagnóstico por IA agrícola, incluindo registros de infestações, sintomas de doenças e comparações de tratamento.",
         "NSLocationWhenInUseUsageDescription": "O Rumo Pragas usa sua localização (apenas quando o app está em uso) para enriquecer o diagnóstico com dados de clima regional (temperatura, umidade, precipitação) que influenciam o ciclo das pragas, e para enviar alertas de infestações próximas à sua lavoura. É opcional — o app funciona normalmente sem localização.",
         "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["whatsapp"],
         "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
         "UISupportedInterfaceOrientations~ipad": [
           "UIInterfaceOrientationPortrait",
@@ -52,7 +53,6 @@
       }
     },
     "android": {
-      "versionCode": 30,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF",
