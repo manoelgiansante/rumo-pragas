@@ -29,6 +29,12 @@ const SUPABASE_SERVICE_ROLE_KEY =
 const REVENUECAT_WEBHOOK_SECRET =
   Deno.env.get("REVENUECAT_WEBHOOK_SECRET") ?? "";
 
+// ── Security: Environment check for sandbox enforcement ──
+// Mirrors stripe-webhook livemode check. Prevents attackers with a leaked
+// webhook secret from emitting SANDBOX events that would upsert active
+// subscriptions, granting free lifetime Pro to arbitrary user_ids.
+const IS_PRODUCTION = (Deno.env.get("ENVIRONMENT") ?? Deno.env.get("DENO_ENV") ?? "production").toLowerCase() === "production";
+
 // ── Security: CORS — whitelist fallback instead of wildcard ──
 // Webhooks from RevenueCat are server-to-server so CORS origin is less relevant,
 // but we keep a fallback whitelist to handle any dashboard/testing scenarios.
@@ -321,6 +327,26 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ error: "Invalid user ID format", requestId }),
       {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  // ── Security: Reject SANDBOX events in production (mirrors stripe-webhook livemode check) ──
+  // Without this, an attacker with the webhook secret could craft sandbox payloads that
+  // upsert subscriptions.active rows, granting free lifetime Pro to arbitrary user_ids.
+  // In staging/dev (ENVIRONMENT != "production") sandbox events are still processed for testing.
+  if (IS_PRODUCTION && event.environment === "SANDBOX") {
+    const eventIdForLog = event.id ?? `rc_${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
+    logJson("revenuecat-webhook", requestId, "WARN", "Rejected sandbox event in production", {
+      eventId: eventIdForLog,
+      eventType: event.type,
+      app_user_id: event.app_user_id,
+    });
+    return new Response(
+      JSON.stringify({ error: "Sandbox events not accepted in production", requestId }),
+      {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
