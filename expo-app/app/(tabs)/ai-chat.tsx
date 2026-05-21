@@ -211,6 +211,7 @@ export default function AIChatScreen() {
           {SUGGESTIONS.map((s, i) => (
             <TouchableOpacity
               key={i}
+              testID={`aichat-suggestion-${i}`}
               style={[styles.suggestion, isDark && styles.suggestionDark]}
               onPress={() => handleSuggestionPress(s)}
               accessibilityLabel={`${t('chat.suggestionA11y')}: ${s}`}
@@ -231,6 +232,7 @@ export default function AIChatScreen() {
               {t('chat.title')}
             </Text>
             <TouchableOpacity
+              testID="aichat-clear"
               onPress={clearChat}
               style={styles.clearChatBtn}
               accessibilityLabel={t('chat.clearChat')}
@@ -277,6 +279,7 @@ export default function AIChatScreen() {
         ]}
       >
         <TextInput
+          testID="aichat-input"
           style={[styles.textInput, isDark && styles.textInputDark]}
           placeholder={t('chat.placeholder')}
           placeholderTextColor={Colors.textSecondary}
@@ -289,12 +292,13 @@ export default function AIChatScreen() {
           accessibilityHint={t('chat.inputHint')}
         />
         <TouchableOpacity
+          testID="aichat-send"
           onPress={() => send()}
           disabled={!input.trim() || sending}
           style={[styles.sendBtn, input.trim() && !sending ? styles.sendBtnActive : null]}
           accessibilityLabel={t('chat.sendA11y')}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !input.trim() || sending }}
+          accessibilityState={{ disabled: !input.trim() || sending, busy: sending }}
         >
           <Ionicons
             name="arrow-up"

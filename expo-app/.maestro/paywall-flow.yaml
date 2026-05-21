@@ -1,6 +1,7 @@
-# Paywall flow — opens the paywall and verifies plans are shown.
-# Two entry points tried: (1) direct navigation via settings upgrade link,
-# (2) via diagnosis limit (requires exceeding free tier — not guaranteed deterministic).
+# Paywall flow — opens the paywall from Settings, verifies plans + restore visible.
+# Uses testIDs (2026-05-20 QA audit). Apple Guideline 3.1.1: Restore Purchases
+# MUST be reachable. Apple 3.1.2: subscription management link required when on
+# a paid plan.
 appId: com.agrorumo.rumopragas
 tags:
   - paywall
@@ -9,50 +10,75 @@ tags:
 - runFlow: auth-flow.yaml
 
 - extendedWaitUntil:
-    visible: "Diagnosticar Praga"
+    visible:
+      id: "home-cta-diagnose"
     timeout: 15000
 
-# Primary path: Settings → Upgrade de Plano (opens paywall directly)
-- tapOn: "Ajustes"
-
-- extendedWaitUntil:
-    visible: "Assinatura"
-    timeout: 10000
-
-# Try to tap the upgrade action
+# Primary entry: Settings tab → Upgrade row → paywall opens as modal
 - tapOn:
-    text: "Upgrade de Plano"
-    optional: true
+    id: "tab-settings"
 
-# Alternative: tap the subscription row (some builds show "Rumo Praga Pro" here)
-- tapOn:
-    text: "Rumo Praga Pro"
-    optional: true
-
-# Paywall should be visible now
 - extendedWaitUntil:
     visible:
-      text: "(Rumo Praga Pro|Desbloqueie|Recursos incluídos|Assinar)"
+      id: "settings-row-current-plan"
+    timeout: 10000
+
+# Try direct upgrade row (free users only). If not free, tap restore — opens RC restore.
+- runFlow:
+    when:
+      visible:
+        id: "settings-upgrade-plan"
+    commands:
+      - tapOn:
+          id: "settings-upgrade-plan"
+
+# Paywall should be visible — at least the close button is rendered
+- extendedWaitUntil:
+    visible:
+      id: "paywall-close"
     timeout: 15000
 
 - assertVisible:
-    text: "(Gratuito|Pro|Enterprise)"
+    id: "paywall-close"
+- assertVisible:
+    id: "paywall-plan-free"
+- assertVisible:
+    id: "paywall-plan-pro"
+- assertVisible:
+    id: "paywall-plan-enterprise"
+- assertVisible:
+    id: "paywall-cta-subscribe"
+# Apple Guideline 3.1.1: Restore Purchases must always be visible
+- assertVisible:
+    id: "paywall-restore-purchases"
+- assertVisible:
+    id: "paywall-legal-privacy"
+- assertVisible:
+    id: "paywall-legal-terms"
 
 - takeScreenshot: paywall-plans
 
-# Validate popular badge / pricing strings
+# Switch plans to validate selection state
+- tapOn:
+    id: "paywall-plan-pro"
 - assertVisible:
-    text: "Popular"
-    optional: true
-- assertVisible:
-    text: "/mês"
-    optional: true
+    id: "paywall-cta-subscribe"
 
-# Close the paywall
 - tapOn:
-    text: "Fechar paywall"
-    optional: true
+    id: "paywall-plan-enterprise"
+- assertVisible:
+    id: "paywall-cta-subscribe"
+
+# Validate legal text fragment
+- assertVisible:
+    text: "(Pop|Recursos|Assinar|Continuar)"
+
+# Close paywall
 - tapOn:
-    text: "Continuar Gratuito"
-    optional: true
-- back
+    id: "paywall-close"
+
+# Back on settings — ensure we returned
+- extendedWaitUntil:
+    visible:
+      id: "settings-row-current-plan"
+    timeout: 10000

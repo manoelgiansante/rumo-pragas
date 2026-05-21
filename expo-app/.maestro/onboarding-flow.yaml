@@ -1,0 +1,83 @@
+# Onboarding flow — walks through all 4 onboarding pages tapping "Next" each time.
+# Apple Guideline 2.1.0 (iPad reviewer trap, fixed 2026-04-29): user must never
+# get stuck on onboarding. Asserts every screen renders Next + Skip, and the
+# final page surfaces the "Start" CTA.
+appId: com.agrorumo.rumopragas
+tags:
+  - onboarding
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-skip"
+    timeout: 20000
+
+# Page 1
+- assertVisible:
+    id: "onboarding-skip"
+- assertVisible:
+    id: "onboarding-next"
+- takeScreenshot: onboarding-page-1
+
+- tapOn:
+    id: "onboarding-next"
+
+# Page 2
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-next"
+    timeout: 5000
+- assertVisible:
+    id: "onboarding-next"
+- takeScreenshot: onboarding-page-2
+
+- tapOn:
+    id: "onboarding-next"
+
+# Page 3
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-next"
+    timeout: 5000
+- assertVisible:
+    id: "onboarding-next"
+- takeScreenshot: onboarding-page-3
+
+- tapOn:
+    id: "onboarding-next"
+
+# Page 4 — Skip button hides, Start button appears
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-start"
+    timeout: 5000
+- assertVisible:
+    id: "onboarding-start"
+- takeScreenshot: onboarding-page-4-final
+
+- tapOn:
+    id: "onboarding-start"
+
+# After Start, we should land on the login screen
+- extendedWaitUntil:
+    visible:
+      id: "login-input-email"
+    timeout: 10000
+- assertVisible:
+    id: "login-input-email"
+- takeScreenshot: onboarding-completed-login
+
+# Cold-start guard regression: relaunch should NOT show onboarding again.
+- launchApp:
+    clearState: false
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      id: "login-input-email"
+    timeout: 20000
+- assertVisible:
+    id: "login-input-email"

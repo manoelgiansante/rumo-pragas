@@ -8,9 +8,10 @@ interface SearchInputProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  testID?: string;
 }
 
-export function SearchInput({ value, onChangeText, placeholder }: SearchInputProps) {
+export function SearchInput({ value, onChangeText, placeholder, testID }: SearchInputProps) {
   const isDark = useColorScheme() === 'dark';
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder || t('common.searchDefault');
@@ -19,6 +20,7 @@ export function SearchInput({ value, onChangeText, placeholder }: SearchInputPro
     <View style={[styles.container, isDark && styles.containerDark]} accessibilityRole="search">
       <Ionicons name="search" size={18} color={Colors.textSecondary} />
       <TextInput
+        testID={testID ? `${testID}-input` : 'search-input'}
         style={[styles.input, isDark && styles.inputDark]}
         placeholder={resolvedPlaceholder}
         placeholderTextColor={Colors.textSecondary}
@@ -30,6 +32,7 @@ export function SearchInput({ value, onChangeText, placeholder }: SearchInputPro
       />
       {value.length > 0 && (
         <TouchableOpacity
+          testID={testID ? `${testID}-clear` : 'search-clear'}
           onPress={() => onChangeText('')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={t('common.clearSearchA11y')}

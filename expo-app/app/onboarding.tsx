@@ -181,6 +181,7 @@ export default function OnboardingScreen() {
           {!isLastPage ? (
             <>
               <TouchableOpacity
+                testID="onboarding-skip"
                 onPress={finishOnboarding}
                 style={styles.skipButton}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -190,6 +191,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                testID="onboarding-next"
                 onPress={goToNext}
                 style={styles.nextButton}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -205,6 +207,7 @@ export default function OnboardingScreen() {
             </>
           ) : (
             <TouchableOpacity
+              testID="onboarding-start"
               onPress={finishOnboarding}
               style={styles.startButton}
               activeOpacity={0.8}

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { PurchasesPackage } from 'react-native-purchases';
+import * as Sentry from '@sentry/react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../constants/theme';
 import {
@@ -123,6 +124,8 @@ export default function PaywallScreen() {
   );
 
   const handleSubscribe = useCallback(async () => {
+    // Idempotency guard: never let a second tap fire mid-purchase.
+    if (purchasing) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (selected === 'free') {
@@ -140,15 +143,31 @@ export default function PaywallScreen() {
 
     const pkg = findPackageForPlan(selected);
     if (!pkg) {
+      Sentry.captureMessage('paywall.subscribe.no_package', {
+        level: 'warning',
+        tags: { feature: 'paywall', action: 'subscribe', plan: selected },
+      });
       Alert.alert(t('paywall.planUnavailableTitle'), t('paywall.planUnavailableMsg'));
       return;
     }
 
     setPurchasing(true);
+    Sentry.addBreadcrumb({
+      category: 'subscription',
+      message: 'paywall.subscribe.start',
+      level: 'info',
+      data: { plan: selected, package: pkg.identifier },
+    });
     try {
       const customerInfo = await purchasePackage(pkg);
       if (customerInfo) {
         // Purchase succeeded
+        Sentry.addBreadcrumb({
+          category: 'subscription',
+          message: 'paywall.subscribe.success',
+          level: 'info',
+          data: { plan: selected },
+        });
         Alert.alert(t('paywall.subscriptionActivated'), t('paywall.enjoyFeatures'), [
           { text: 'OK', onPress: () => router.back() },
         ]);
@@ -156,13 +175,18 @@ export default function PaywallScreen() {
       // customerInfo === null means user cancelled -- do nothing
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : t('paywall.purchaseErrorMsg');
+      Sentry.captureException(e, {
+        tags: { feature: 'paywall', action: 'subscribe', plan: selected },
+      });
       Alert.alert(t('paywall.purchaseError'), message);
     } finally {
       setPurchasing(false);
     }
-  }, [selected, configured, findPackageForPlan, t]);
+  }, [selected, configured, findPackageForPlan, t, purchasing]);
 
   const handleRestore = useCallback(async () => {
+    // Idempotency: never let a second tap re-enter restore mid-flight.
+    if (restoring) return;
     // If RC is not configured (missing key), surface a graceful error instead
     // of crashing — keeps the Restore button always tappable for reviewers.
     if (!configured) {
@@ -170,6 +194,11 @@ export default function PaywallScreen() {
       return;
     }
     setRestoring(true);
+    Sentry.addBreadcrumb({
+      category: 'subscription',
+      message: 'paywall.restore.start',
+      level: 'info',
+    });
     try {
       const customerInfo = await restorePurchases();
       if (customerInfo) {
@@ -185,18 +214,22 @@ export default function PaywallScreen() {
       } else {
         Alert.alert(t('common.error'), t('paywall.restoreError'));
       }
-    } catch {
+    } catch (e) {
+      Sentry.captureException(e, {
+        tags: { feature: 'paywall', action: 'restore' },
+      });
       Alert.alert(t('common.error'), t('paywall.restoreError'));
     } finally {
       setRestoring(false);
     }
-  }, [t, configured]);
+  }, [t, configured, restoring]);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <LinearGradient colors={Gradients.hero} style={styles.header}>
           <TouchableOpacity
+            testID="paywall-close"
             onPress={() => router.back()}
             style={styles.closeBtn}
             accessibilityLabel={t('paywall.closeA11y')}
@@ -213,6 +246,7 @@ export default function PaywallScreen() {
           {plansWithPrices.map((p) => (
             <TouchableOpacity
               key={p.id}
+              testID={`paywall-plan-${p.id}`}
               style={[styles.planCard, selected === p.id && styles.planCardSelected]}
               onPress={() => {
                 Haptics.selectionAsync();
@@ -266,6 +300,7 @@ export default function PaywallScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
+          testID="paywall-cta-subscribe"
           onPress={handleSubscribe}
           activeOpacity={0.8}
           disabled={purchasing}
@@ -307,6 +342,7 @@ export default function PaywallScreen() {
           accessibilityRole="none"
         >
           <TouchableOpacity
+            testID="paywall-legal-privacy"
             onPress={() => router.push('/privacy')}
             accessibilityRole="link"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -315,6 +351,7 @@ export default function PaywallScreen() {
           </TouchableOpacity>
           <Text style={styles.legalLinkSeparator}>·</Text>
           <TouchableOpacity
+            testID="paywall-legal-terms"
             onPress={() => router.push('/terms')}
             accessibilityRole="link"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -327,6 +364,7 @@ export default function PaywallScreen() {
             users on the paywall, regardless of RC config state. If RC isn't
             configured we still render the button and surface a graceful error. */}
         <TouchableOpacity
+          testID="paywall-restore-purchases"
           onPress={handleRestore}
           disabled={restoring}
           style={styles.restoreBtn}

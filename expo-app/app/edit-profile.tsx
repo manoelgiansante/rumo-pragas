@@ -169,6 +169,7 @@ export default function EditProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
+            testID="edit-profile-back"
             onPress={() => router.back()}
             style={styles.backBtn}
             accessibilityRole="button"
@@ -186,6 +187,7 @@ export default function EditProfileScreen() {
             {t('settings.editProfile')}
           </Text>
           <TouchableOpacity
+            testID="edit-profile-save"
             onPress={handleSave}
             disabled={saving}
             style={styles.saveBtn}
@@ -207,6 +209,7 @@ export default function EditProfileScreen() {
             {t('settings.fullName')}
           </Text>
           <TextInput
+            testID="edit-profile-input-fullname"
             style={[styles.input, isDark && styles.inputDark]}
             value={profile.full_name}
             onChangeText={(text) => setProfile((p) => ({ ...p, full_name: text }))}
@@ -224,6 +227,7 @@ export default function EditProfileScreen() {
         <View style={styles.fieldGroup}>
           <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>{t('settings.city')}</Text>
           <TextInput
+            testID="edit-profile-input-city"
             style={[styles.input, isDark && styles.inputDark]}
             value={profile.city}
             onChangeText={(text) => setProfile((p) => ({ ...p, city: text }))}
@@ -244,6 +248,7 @@ export default function EditProfileScreen() {
             {BRAZILIAN_STATES.map((st) => (
               <TouchableOpacity
                 key={st}
+                testID={`edit-profile-state-${st}`}
                 style={[styles.stateChip, profile.state === st && styles.stateChipActive]}
                 onPress={() => setProfile((p) => ({ ...p, state: p.state === st ? '' : st }))}
                 accessibilityRole="button"
@@ -269,6 +274,7 @@ export default function EditProfileScreen() {
               return (
                 <TouchableOpacity
                   key={crop.id}
+                  testID={`edit-profile-crop-${crop.id}`}
                   style={[
                     styles.cropChip,
                     selected && { backgroundColor: crop.color + '30', borderColor: crop.color },

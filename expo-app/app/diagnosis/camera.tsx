@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
+import * as Sentry from '@sentry/react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
@@ -44,7 +45,14 @@ export default function CameraScreen() {
   };
 
   const pickImage = async (useCamera: boolean) => {
+    // Idempotency guard: never let processing overlap with re-entry.
+    if (processing) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Sentry.addBreadcrumb({
+      category: 'diagnosis',
+      message: `camera.pickImage.${useCamera ? 'camera' : 'gallery'}.start`,
+      level: 'info',
+    });
 
     // P0: when permission denied (especially canAskAgain=false), give the user a
     // direct "Open Settings" CTA instead of a dead-end Alert. Apple reviewer that
@@ -99,6 +107,9 @@ export default function CameraScreen() {
         router.push('/diagnosis/crop-select');
       } catch (error) {
         if (__DEV__) console.error('Image compression failed:', error);
+        Sentry.captureException(error, {
+          tags: { feature: 'diagnosis', action: 'image_compression' },
+        });
         Alert.alert(t('diagnosis.imageError'), t('diagnosis.imageErrorMsg'));
       } finally {
         setProcessing(false);
@@ -110,6 +121,7 @@ export default function CameraScreen() {
     <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
       <View style={styles.header}>
         <TouchableOpacity
+          testID="diagnosis-camera-close"
           onPress={() => router.back()}
           style={styles.closeBtn}
           accessibilityLabel={t('diagnosis.closeA11y')}
@@ -159,11 +171,14 @@ export default function CameraScreen() {
 
         <View style={styles.buttons}>
           <TouchableOpacity
+            testID="diagnosis-camera-capture"
             onPress={() => pickImage(true)}
+            disabled={processing}
             activeOpacity={0.8}
             accessibilityLabel={t('diagnosis.takePhotoA11y')}
             accessibilityRole="button"
             accessibilityHint={t('diagnosis.takePhotoHint')}
+            accessibilityState={{ disabled: processing, busy: processing }}
           >
             <PremiumCard>
               <View style={styles.btnRow}>
@@ -180,11 +195,14 @@ export default function CameraScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="diagnosis-camera-gallery"
             onPress={() => pickImage(false)}
+            disabled={processing}
             activeOpacity={0.8}
             accessibilityLabel={t('diagnosis.chooseGalleryA11y')}
             accessibilityRole="button"
             accessibilityHint={t('diagnosis.chooseGalleryHint')}
+            accessibilityState={{ disabled: processing, busy: processing }}
           >
             <PremiumCard>
               <View style={styles.btnRow}>

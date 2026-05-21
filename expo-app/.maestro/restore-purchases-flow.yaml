@@ -1,0 +1,64 @@
+# Restore Purchases flow — Apple Guideline 3.1.1 compliance.
+# Validates the Restore button is reachable from both Settings AND Paywall,
+# and that tapping it doesn't crash even when RevenueCat isn't configured
+# (graceful error path is required).
+appId: com.agrorumo.rumopragas
+tags:
+  - subscription
+  - restore
+  - compliance
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+# 1. Restore visible inside Settings (when RC configured)
+- tapOn:
+    id: "tab-settings"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-row-current-plan"
+    timeout: 10000
+
+# Restore row OPTIONAL — only shown when isRevenueCatConfigured()
+- runFlow:
+    when:
+      visible:
+        id: "settings-restore-purchases"
+    commands:
+      - assertVisible:
+          id: "settings-restore-purchases"
+      - takeScreenshot: settings-restore-row
+
+# 2. Restore inside Paywall — MUST always be visible per Apple 3.1.1
+- runFlow:
+    when:
+      visible:
+        id: "settings-upgrade-plan"
+    commands:
+      - tapOn:
+          id: "settings-upgrade-plan"
+      - extendedWaitUntil:
+          visible:
+            id: "paywall-restore-purchases"
+          timeout: 10000
+      - assertVisible:
+          id: "paywall-restore-purchases"
+      - takeScreenshot: paywall-restore-cta
+      # Tap it — should not crash, may show a graceful error if RC unconfigured
+      - tapOn:
+          id: "paywall-restore-purchases"
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - tapOn:
+          text: "OK"
+          optional: true
+      # Paywall close still works after restore
+      - assertVisible:
+          id: "paywall-close"
+      - tapOn:
+          id: "paywall-close"

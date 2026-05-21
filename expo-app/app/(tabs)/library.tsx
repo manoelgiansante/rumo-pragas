@@ -223,6 +223,7 @@ export default function LibraryScreen() {
         ]}
       >
         <SearchInput
+          testID="library-search"
           value={search}
           onChangeText={setSearch}
           placeholder={t('library.searchPlaceholder')}
@@ -235,6 +236,7 @@ export default function LibraryScreen() {
         contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: 8, paddingBottom: 8 }}
       >
         <TouchableOpacity
+          testID="library-chip-all"
           style={[styles.chip, !selectedCrop && styles.chipActive]}
           onPress={() => setSelectedCrop(null)}
           accessibilityLabel={t('library.allCropsA11y')}
@@ -248,6 +250,7 @@ export default function LibraryScreen() {
         {CROPS.filter((c) => PESTS_BY_CROP[c.id]).map((crop) => (
           <TouchableOpacity
             key={crop.id}
+            testID={`library-chip-${crop.id}`}
             style={[styles.chip, selectedCrop === crop.id && styles.chipActive]}
             onPress={() => setSelectedCrop(crop.id === selectedCrop ? null : crop.id)}
             accessibilityLabel={t('library.filterByCrop', { crop: crop.displayName })}
@@ -284,18 +287,22 @@ export default function LibraryScreen() {
             <Text style={styles.emptyDesc}>{t('library.emptyHint')}</Text>
             {(search || selectedCrop) && (
               <TouchableOpacity
+                testID="library-clear-filter"
                 style={styles.clearFilterBtn}
                 onPress={() => {
                   setSearch('');
                   setSelectedCrop(null);
                 }}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('library.clearFilters')}
               >
                 <Ionicons name="close-circle" size={16} color={Colors.accent} />
                 <Text style={styles.clearFilterText}>{t('library.clearFilters')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
+              testID="library-empty-cta-diagnose"
               onPress={() => router.push('/diagnosis/camera')}
               activeOpacity={0.85}
               style={styles.emptyCtaShadow}

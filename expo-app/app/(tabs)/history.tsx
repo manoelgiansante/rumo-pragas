@@ -120,6 +120,7 @@ export default function HistoryScreen() {
         </Text>
         <Text style={styles.emptyDesc}>{t('history.errorLoading')}</Text>
         <TouchableOpacity
+          testID="history-retry"
           onPress={loadDiagnoses}
           activeOpacity={0.7}
           style={styles.retryButton}
@@ -145,6 +146,7 @@ export default function HistoryScreen() {
         ]}
       >
         <SearchInput
+          testID="history-search"
           value={search}
           onChangeText={setSearch}
           placeholder={t('history.searchPlaceholder')}
@@ -195,6 +197,7 @@ export default function HistoryScreen() {
               </Text>
               <Text style={styles.emptyDesc}>{t('diagnosis.emptyHistoryDesc')}</Text>
               <TouchableOpacity
+                testID="history-empty-cta-start"
                 onPress={() => router.push('/diagnosis/camera')}
                 activeOpacity={0.85}
                 style={styles.emptyCtaShadow}
@@ -229,6 +232,7 @@ export default function HistoryScreen() {
         }
         renderItem={({ item }) => (
           <TouchableOpacity
+            testID={`history-item-${item.id}`}
             onLongPress={() => deleteDiagnosis(item.id)}
             activeOpacity={0.8}
             accessibilityLabel={t('history.itemA11y', {

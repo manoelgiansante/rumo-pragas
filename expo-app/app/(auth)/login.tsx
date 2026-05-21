@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as Sentry from '@sentry/react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -41,6 +42,10 @@ export default function LoginScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  // Guards against rapid double-tap submitting the same form twice. The
+  // network request might be in-flight before isLoading flips, so we use a
+  // local ref to short-circuit re-entry within the same tick.
+  const submitGuardRef = useRef(false);
 
   const passwordRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -61,6 +66,9 @@ export default function LoginScreen() {
   };
 
   const handleSubmit = async () => {
+    // Idempotency guard — prevents double-submit on rapid tap.
+    if (submitGuardRef.current || isLoading) return;
+
     if (!email.trim() || !password.trim()) {
       Alert.alert('', t('auth.fillAllFields'));
       return;
@@ -81,6 +89,12 @@ export default function LoginScreen() {
       return;
     }
 
+    submitGuardRef.current = true;
+    Sentry.addBreadcrumb({
+      category: 'auth',
+      message: `login.submit.${mode}`,
+      level: 'info',
+    });
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (mode === 'login') {
@@ -89,8 +103,22 @@ export default function LoginScreen() {
         await signUp(email.trim(), password, fullName.trim());
         Alert.alert('', t('auth.checkEmail'));
       }
-    } catch {
+    } catch (err) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // We swallow the surface message (the hook owns the error banner), but
+      // we want Sentry to know which failure happened for prod debugging.
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: `login.submit.${mode}.failed`,
+        level: 'warning',
+        data: { message: err instanceof Error ? err.message : 'unknown' },
+      });
+    } finally {
+      // Release the guard after one tick so the screen has a chance to
+      // unmount on success; on failure we want the user to retry immediately.
+      setTimeout(() => {
+        submitGuardRef.current = false;
+      }, 500);
     }
   };
 
@@ -115,17 +143,34 @@ export default function LoginScreen() {
   };
 
   const handleAppleSignIn = async () => {
+    if (appleLoading) return;
     try {
       setAppleLoading(true);
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'login.apple.start',
+        level: 'info',
+      });
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const result = await signInWithApple();
       if (!result) {
         // User cancelled
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'login.apple.cancelled',
+          level: 'info',
+        });
         return;
       }
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'login.apple.success',
+        level: 'info',
+      });
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : t('auth.loginError');
+      Sentry.captureException(err, { tags: { feature: 'auth', action: 'apple_signin' } });
       Alert.alert(t('common.error'), message);
     } finally {
       setAppleLoading(false);
@@ -164,6 +209,7 @@ export default function LoginScreen() {
             {/* Segmented control */}
             <View style={styles.segmentedControl}>
               <TouchableOpacity
+                testID="login-segment-login"
                 style={[styles.segment, mode === 'login' && styles.segmentActive]}
                 onPress={() => switchMode('login')}
                 accessibilityLabel={t('auth.loginA11y')}
@@ -175,6 +221,7 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
+                testID="login-segment-signup"
                 style={[styles.segment, mode === 'signup' && styles.segmentActive]}
                 onPress={() => switchMode('signup')}
                 accessibilityLabel={t('auth.signupA11y')}
@@ -205,6 +252,7 @@ export default function LoginScreen() {
                     style={styles.inputIcon}
                   />
                   <TextInput
+                    testID="login-input-fullname"
                     style={styles.input}
                     placeholder={t('auth.fullNamePlaceholder')}
                     placeholderTextColor={Colors.systemGray2}
@@ -230,6 +278,7 @@ export default function LoginScreen() {
                   style={styles.inputIcon}
                 />
                 <TextInput
+                  testID="login-input-email"
                   ref={emailRef}
                   style={styles.input}
                   placeholder={t('auth.emailPlaceholder')}
@@ -257,6 +306,7 @@ export default function LoginScreen() {
                   style={styles.inputIcon}
                 />
                 <TextInput
+                  testID="login-input-password"
                   ref={passwordRef}
                   style={[styles.input, styles.passwordInput]}
                   placeholder={t('auth.passwordPlaceholder')}
@@ -271,6 +321,7 @@ export default function LoginScreen() {
                   accessibilityRole="text"
                 />
                 <TouchableOpacity
+                  testID="login-toggle-password-visibility"
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -291,6 +342,7 @@ export default function LoginScreen() {
             {/* Forgot password */}
             {mode === 'login' ? (
               <TouchableOpacity
+                testID="login-forgot-password"
                 onPress={handleResetPassword}
                 style={styles.forgotButton}
                 accessibilityLabel={t('auth.forgotA11y')}
@@ -305,6 +357,7 @@ export default function LoginScreen() {
             {mode === 'signup' ? (
               <View style={styles.consentRow}>
                 <TouchableOpacity
+                  testID="login-checkbox-terms"
                   style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
                   onPress={() => setAcceptedTerms(!acceptedTerms)}
                   activeOpacity={0.7}
@@ -331,6 +384,7 @@ export default function LoginScreen() {
 
             {/* Submit button */}
             <TouchableOpacity
+              testID="login-submit"
               style={[
                 styles.submitButton,
                 (isLoading || (mode === 'signup' && !acceptedTerms)) && styles.submitButtonDisabled,
@@ -385,12 +439,14 @@ export default function LoginScreen() {
                 </View>
 
                 <TouchableOpacity
+                  testID="login-apple-signin"
                   style={styles.appleButton}
                   onPress={handleAppleSignIn}
                   disabled={appleLoading}
                   activeOpacity={0.8}
                   accessibilityLabel={t('auth.appleA11y')}
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: appleLoading, busy: appleLoading }}
                 >
                   {appleLoading ? (
                     <ActivityIndicator color="#FFF" />
