@@ -10,12 +10,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Gradients } from '../constants/theme';
 import { CROPS } from '../constants/crops';
+import { getCropIconSource } from '../assets/crops';
 import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import { AppBar, IconButton, Input, Button, Chip } from '../components/ui';
@@ -302,13 +304,28 @@ export default function EditProfileScreen() {
                     accessibilityLabel={t('editProfile.cropToggleA11y', { crop: crop.displayName })}
                     accessibilityState={{ selected }}
                   >
-                    <Text
-                      style={styles.cropIcon}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no"
-                    >
-                      {crop.icon}
-                    </Text>
+                    {(() => {
+                      const realistic = getCropIconSource(crop.id);
+                      if (realistic) {
+                        return (
+                          <Image
+                            source={realistic}
+                            style={styles.cropImage}
+                            accessibilityElementsHidden
+                            importantForAccessibility="no"
+                          />
+                        );
+                      }
+                      return (
+                        <Text
+                          style={styles.cropIcon}
+                          accessibilityElementsHidden
+                          importantForAccessibility="no"
+                        >
+                          {crop.icon}
+                        </Text>
+                      );
+                    })()}
                     <Text
                       style={[
                         styles.cropName,
@@ -422,6 +439,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cropIcon: { fontSize: 16 },
+  cropImage: { width: 18, height: 18, resizeMode: 'contain' },
   cropName: {
     fontSize: FontSize.caption,
     color: Colors.textSecondary,

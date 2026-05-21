@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { BorderRadius, Colors, FontSize, FontWeight } from '../constants/theme';
+import { getCropIconSource } from '../assets/crops';
 import type { DiagnosisResult } from '../types/diagnosis';
 
 export interface DiagnosisItem {
@@ -180,7 +181,13 @@ export const DiagnosisCard = React.memo(function DiagnosisCard({
         <View style={styles.metaRow}>
           {diagnosis.crop ? (
             <View style={styles.cropBadge}>
-              <Text style={styles.cropEmoji}>{getCropEmoji(diagnosis.crop)}</Text>
+              {(() => {
+                const realistic = getCropIconSource(diagnosis.crop);
+                if (realistic) {
+                  return <Image source={realistic} style={styles.cropImage} />;
+                }
+                return <Text style={styles.cropEmoji}>{getCropEmoji(diagnosis.crop)}</Text>;
+              })()}
               <Text style={styles.cropText}>{getCropName(diagnosis.crop)}</Text>
             </View>
           ) : null}
@@ -240,6 +247,12 @@ const styles = StyleSheet.create({
   },
   cropEmoji: {
     fontSize: 10,
+  },
+  cropImage: {
+    width: 12,
+    height: 12,
+    marginRight: 3,
+    resizeMode: 'contain',
   },
   cropText: {
     fontSize: FontSize.caption2,

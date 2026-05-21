@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { CROPS, CropType } from '../../constants/crops';
+import { getCropIconSource } from '../../assets/crops';
 import { SearchInput } from '../../components/SearchInput';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useTranslation } from 'react-i18next';
@@ -135,9 +136,24 @@ export default function CropSelectScreen() {
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected }}
             >
-              <Text style={styles.cropEmoji} accessibilityElementsHidden>
-                {item.icon}
-              </Text>
+              {(() => {
+                const realistic = getCropIconSource(item.id);
+                if (realistic) {
+                  return (
+                    <Image
+                      source={realistic}
+                      style={styles.cropImage}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                    />
+                  );
+                }
+                return (
+                  <Text style={styles.cropEmoji} accessibilityElementsHidden>
+                    {item.icon}
+                  </Text>
+                );
+              })()}
               <Text
                 style={[styles.cropName, isSelected && { color: Colors.accent }]}
                 numberOfLines={1}
@@ -218,6 +234,7 @@ const styles = StyleSheet.create({
     minHeight: 110,
   },
   cropEmoji: { fontSize: 32, marginBottom: 8 },
+  cropImage: { width: 56, height: 56, marginBottom: 8, resizeMode: 'contain' },
   cropName: {
     fontSize: FontSize.subheadline, // 15
     fontWeight: FontWeight.semibold, // 600

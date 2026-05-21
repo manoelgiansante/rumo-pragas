@@ -9,12 +9,14 @@ import {
   useColorScheme,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { CROPS } from '../../constants/crops';
+import { getCropIconSource } from '../../assets/crops';
 import { AppBar, Card, Chip, Input, SeverityBadge, type SeverityLevel } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -249,16 +251,35 @@ export default function LibraryScreen() {
         >
           {t('library.allCrops')}
         </Chip>
-        {CROPS.filter((c) => PESTS_BY_CROP[c.id]).map((crop) => (
-          <Chip
-            key={crop.id}
-            selected={selectedCrop === crop.id}
-            onPress={() => setSelectedCrop(crop.id === selectedCrop ? null : crop.id)}
-            accessibilityLabel={t('library.filterByCrop', { crop: crop.displayName })}
-          >
-            {`${crop.icon} ${crop.displayName}`}
-          </Chip>
-        ))}
+        {CROPS.filter((c) => PESTS_BY_CROP[c.id]).map((crop) => {
+          const realistic = getCropIconSource(crop.id);
+          const isSelected = selectedCrop === crop.id;
+          return (
+            <Chip
+              key={crop.id}
+              selected={isSelected}
+              onPress={() => setSelectedCrop(crop.id === selectedCrop ? null : crop.id)}
+              accessibilityLabel={t('library.filterByCrop', { crop: crop.displayName })}
+            >
+              {realistic ? (
+                <View style={styles.chipContent}>
+                  <Image source={realistic} style={styles.chipImage} />
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: isSelected ? Colors.white : Colors.accent },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {crop.displayName}
+                  </Text>
+                </View>
+              ) : (
+                `${crop.icon} ${crop.displayName}`
+              )}
+            </Chip>
+          );
+        })}
       </ScrollView>
 
       <FlatList
@@ -323,6 +344,9 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', paddingTop: 60 },
   searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: Spacing.sm },
   chipRow: { paddingHorizontal: Spacing.lg, gap: 8, paddingBottom: 8 },
+  chipContent: { flexDirection: 'row', alignItems: 'center' },
+  chipImage: { width: 16, height: 16, marginRight: 6, resizeMode: 'contain' },
+  chipText: { fontSize: FontSize.footnote, fontWeight: '600' },
   listContent: { padding: Spacing.lg, paddingBottom: 100, gap: Spacing.sm },
   pestCard: { marginBottom: Spacing.sm },
   pestRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
