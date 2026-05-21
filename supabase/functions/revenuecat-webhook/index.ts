@@ -28,6 +28,12 @@ const SUPABASE_SERVICE_ROLE_KEY =
 const REVENUECAT_WEBHOOK_SECRET =
   Deno.env.get("REVENUECAT_WEBHOOK_SECRET") ?? "";
 
+// ── Security: Environment check for sandbox enforcement ──
+// Mirrors stripe-webhook livemode check. Prevents attackers with a leaked
+// webhook secret from emitting SANDBOX events that would upsert active
+// subscriptions, granting free lifetime Pro to arbitrary user_ids.
+const IS_PRODUCTION = (Deno.env.get("ENVIRONMENT") ?? Deno.env.get("DENO_ENV") ?? "production").toLowerCase() === "production";
+
 // ── Security: CORS — whitelist fallback instead of wildcard ──
 // Webhooks from RevenueCat are server-to-server so CORS origin is less relevant,
 // but we keep a fallback whitelist to handle any dashboard/testing scenarios.
@@ -324,9 +330,76 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Idempotency check
-  const eventKey = `${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
-  if (deduplicateEvent(eventKey)) {
+  // ── Security: Reject SANDBOX events in production (mirrors stripe-webhook livemode check) ──
+  // Without this, an attacker with the webhook secret could craft sandbox payloads that
+  // upsert subscriptions.active rows, granting free lifetime Pro to arbitrary user_ids.
+  // In staging/dev (ENVIRONMENT != "production") sandbox events are still processed for testing.
+  if (IS_PRODUCTION && event.environment === "SANDBOX") {
+    const eventIdForLog = event.id ?? `rc_${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
+    logJson("revenuecat-webhook", requestId, "WARN", "Rejected sandbox event in production", {
+      eventId: eventIdForLog,
+      eventType: event.type,
+      app_user_id: event.app_user_id,
+    });
+    return new Response(
+      JSON.stringify({ error: "Sandbox events not accepted in production", requestId }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  // Init supabase client early — needed for persistent idempotency
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // ── Persistent idempotency via webhook_events table ──
+  // RC sends event.id; fall back to composite key for legacy payloads.
+  const eventId =
+    event.id ??
+    `rc_${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
+
+  {
+    const { error: insertErr } = await supabase
+      .from("webhook_events")
+      .insert({
+        event_id: eventId,
+        source: "revenuecat",
+        event_type: event.type,
+        payload_summary: {
+          environment: event.environment,
+          store: event.store,
+          app_user_id: event.app_user_id,
+          product_id: event.product_id,
+        },
+      });
+
+    if (insertErr) {
+      const code = (insertErr as { code?: string }).code;
+      if (code === "23505") {
+        // duplicate → already processed
+        logJson("revenuecat-webhook", requestId, "INFO", "Duplicate event — already received", { eventId });
+        return new Response(
+          JSON.stringify({ received: true, deduplicated: true, requestId }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      await captureError(insertErr, {
+        tags: { fn: "revenuecat-webhook", op: "webhook_events_insert" },
+        extra: { eventId, eventType: event.type },
+      });
+      logJson("revenuecat-webhook", requestId, "ERROR", "webhook_events insert failed", { error: insertErr.message });
+      // Continue processing — prefer double-process over drop.
+    }
+  }
+
+  // Fallback in-memory dedup retained as second-layer guard against rapid retries
+  // hitting the same warm instance before the row commit lands.
+  const memKey = `${event.app_user_id}_${event.type}_${event.purchased_at_ms}`;
+  if (deduplicateEvent(memKey)) {
     return new Response(
       JSON.stringify({ received: true, deduplicated: true, requestId }),
       {
@@ -347,8 +420,6 @@ Deno.serve(async (req: Request) => {
       },
     );
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
     const userId = event.app_user_id;
