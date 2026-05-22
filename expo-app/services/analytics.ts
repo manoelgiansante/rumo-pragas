@@ -156,6 +156,21 @@ export function trackSubscriptionPurchased(plan: string, provider: string): void
   trackEvent('subscription_purchased', { plan, provider });
 }
 
+export function trackPestDetailViewed(
+  pestId: string,
+  source: 'result' | 'history' | 'deeplink',
+): void {
+  trackEvent('pest_detail_viewed', { pestId, source });
+}
+
+export function trackProGateShown(feature: 'alternatives' | 'pdf' | 'history' | 'details'): void {
+  trackEvent('pro_gate_shown', { feature });
+}
+
+export function trackProGateTapped(feature: 'alternatives' | 'pdf' | 'history' | 'details'): void {
+  trackEvent('pro_gate_tapped', { feature });
+}
+
 export function trackShareDiagnosis(method: 'whatsapp' | 'pdf'): void {
   trackEvent('share_diagnosis', { method });
 }
