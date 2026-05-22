@@ -17,20 +17,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
-import { LANGUAGE_KEY } from '../../i18n';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import * as Sentry from '@sentry/react-native';
+import { LANGUAGE_KEY } from '../../i18n';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  Gradients,
+} from '../../constants/theme';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
 import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
-import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
-  loadNotificationPreferences,
-  saveNotificationPreferences,
-  type NotificationPreferences,
-} from '../../services/notificationPreferences';
+import { Avatar } from '../../components/Avatar';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
 
@@ -52,75 +55,215 @@ const LANGUAGE_DISPLAY: Record<string, string> = {
   es: 'Español',
 };
 
+// ============================================================================
+// Section primitives (premium native-feel layout)
+// ============================================================================
+
 interface SectionProps {
   title: string;
   children: React.ReactNode;
   isDark: boolean;
+  footer?: string;
 }
 
-function Section({ title, children, isDark }: SectionProps) {
+function Section({ title, children, isDark, footer }: SectionProps) {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, isDark && styles.textMuted]}>{title}</Text>
       <View style={[styles.sectionContent, isDark && styles.sectionContentDark]}>{children}</View>
+      {footer ? (
+        <Text style={[styles.sectionFooter, isDark && styles.textMuted]}>{footer}</Text>
+      ) : null}
     </View>
   );
 }
 
 interface RowProps {
   icon: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
   label: string;
   value?: string;
   onPress?: () => void;
   trailing?: React.ReactNode;
   isDark: boolean;
+  destructive?: boolean;
+  isLast?: boolean;
   testID?: string;
+  accessibilityHint?: string;
 }
 
-function Row({ icon, label, value, onPress, trailing, isDark, testID }: RowProps) {
+function Row({
+  icon,
+  iconColor,
+  label,
+  value,
+  onPress,
+  trailing,
+  isDark,
+  destructive,
+  isLast,
+  testID,
+  accessibilityHint,
+}: RowProps) {
+  const isInteractive = !!onPress;
   return (
     <TouchableOpacity
-      testID={testID}
-      style={styles.row}
+      style={[styles.row, isLast && styles.rowLast]}
       onPress={onPress}
       disabled={!onPress && !trailing}
-      activeOpacity={0.7}
+      activeOpacity={0.6}
       accessibilityLabel={label}
-      accessibilityRole={onPress ? 'button' : 'none'}
+      accessibilityRole={isInteractive ? 'button' : 'none'}
       accessibilityValue={value ? { text: value } : undefined}
+      accessibilityHint={accessibilityHint}
+      testID={testID}
     >
-      <Ionicons name={icon} size={20} color={Colors.accent} style={{ width: 28 }} />
-      <Text style={[styles.rowLabel, isDark && styles.textDark]}>{label}</Text>
-      {value && <Text style={styles.rowValue}>{value}</Text>}
+      <View style={[styles.rowIconWrap, { backgroundColor: (iconColor ?? Colors.accent) + '14' }]}>
+        <Ionicons
+          name={icon}
+          size={17}
+          color={destructive ? Colors.coral : (iconColor ?? Colors.accent)}
+        />
+      </View>
+      <Text
+        style={[
+          styles.rowLabel,
+          isDark && styles.textDark,
+          destructive && styles.rowLabelDestructive,
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      {value ? (
+        <Text style={[styles.rowValue, isDark && styles.rowValueDark]} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
       {trailing}
-      {onPress && <Ionicons name="chevron-forward" size={16} color={Colors.systemGray3} />}
+      {isInteractive && !trailing ? (
+        <Ionicons name="chevron-forward" size={16} color={Colors.systemGray3} />
+      ) : null}
     </TouchableOpacity>
   );
 }
+
+// ============================================================================
+// Subscription hero card (top of Settings)
+// ============================================================================
+
+interface SubCardProps {
+  plan: string;
+  planLabel: string;
+  used: number;
+  limit: number;
+  loading: boolean;
+  error: boolean;
+  onUpgrade: () => void;
+  onRetry: () => void;
+}
+
+function SubscriptionCard({
+  plan,
+  planLabel,
+  used,
+  limit,
+  loading,
+  error,
+  onUpgrade,
+  onRetry,
+}: SubCardProps) {
+  const { t } = useTranslation();
+  const isPro = plan !== 'free';
+  const remaining = limit === -1 ? Infinity : Math.max(0, limit - used);
+
+  if (error && !loading) {
+    return (
+      <TouchableOpacity style={styles.subErrorCard} onPress={onRetry} activeOpacity={0.7}>
+        <Ionicons name="cloud-offline-outline" size={22} color={Colors.coral} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.subErrorTitle}>{t('settings.subLoadError')}</Text>
+          <Text style={styles.subErrorSub}>{t('settings.subLoadRetry')}</Text>
+        </View>
+        <Ionicons name="refresh" size={20} color={Colors.coral} />
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={Gradients.hero}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.subCard}
+    >
+      <View style={styles.subCardHeader}>
+        <View style={styles.subBadge}>
+          <Ionicons
+            name={isPro ? 'diamond' : 'leaf-outline'}
+            size={14}
+            color={isPro ? Colors.warmAmber : '#FFF'}
+          />
+          <Text style={styles.subBadgeText}>{planLabel}</Text>
+        </View>
+        {loading ? (
+          <ActivityIndicator size="small" color="#FFF" />
+        ) : (
+          <Text style={styles.subUsage}>
+            {limit === -1
+              ? t('settings.diagnosticsCountUnlimited', { used })
+              : t('settings.diagnosticsCountLimited', { used, limit })}
+          </Text>
+        )}
+      </View>
+
+      {limit !== -1 && !loading ? (
+        <View style={styles.usageBarTrack}>
+          <View
+            style={[styles.usageBarFill, { width: `${Math.min(100, (used / limit) * 100)}%` }]}
+          />
+        </View>
+      ) : null}
+
+      <Text style={styles.subTagline}>
+        {isPro ? t('settings.subTaglinePro') : t('settings.subTaglineFree')}
+      </Text>
+
+      {!isPro && !loading ? (
+        <TouchableOpacity
+          style={styles.subCta}
+          onPress={onUpgrade}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.upgradePlan')}
+          testID="settings-upgrade-cta"
+        >
+          <Text style={styles.subCtaText}>{t('settings.upgradePlan')}</Text>
+          <Ionicons name="arrow-forward" size={16} color={Colors.accent} />
+        </TouchableOpacity>
+      ) : null}
+
+      {isPro && remaining !== Infinity ? (
+        <Text style={styles.subRemaining}>{t('settings.diagnosticsRemaining', { remaining })}</Text>
+      ) : null}
+    </LinearGradient>
+  );
+}
+
+// ============================================================================
+// Settings screen
+// ============================================================================
 
 export default function SettingsScreen() {
   const isDark = useColorScheme() === 'dark';
   const { user, signOut } = useAuthContext();
   const { t, i18n } = useTranslation();
-  // Dark mode follows system preference (no manual toggle)
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(
-    DEFAULT_NOTIFICATION_PREFERENCES,
-  );
-  const [notifPrefsLoading, setNotifPrefsLoading] = useState(true);
-  // Per-key inflight flags so toggling one switch never blocks the others.
-  const [notifPrefsSaving, setNotifPrefsSaving] = useState<
-    Record<keyof NotificationPreferences, boolean>
-  >({
-    outbreaks_regional: false,
-    daily_reminder: false,
-    news: false,
-    marketing: false,
-  });
   const [plan, setPlan] = useState<string>('free');
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
   const [subLoading, setSubLoading] = useState(true);
   const [subError, setSubError] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const subLoadingRef = useRef(false);
   const [restoring, setRestoring] = useState(false);
   const { isChecking, checkForUpdate } = useOTAUpdate();
@@ -149,51 +292,32 @@ export default function SettingsScreen() {
     };
   }, []);
 
-  const handlePushToggle = useCallback((value: boolean) => {
-    setPushEnabled(value);
-    AsyncStorage.setItem(PUSH_ENABLED_KEY, String(value));
-  }, []);
-
-  // Load notification preferences from server (with AsyncStorage cache fallback)
+  // Load avatar URL alongside subscription data (single round trip optimisation)
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
-    setNotifPrefsLoading(true);
-    loadNotificationPreferences(user.id)
-      .then((prefs) => {
-        if (mounted) setNotifPrefs(prefs);
-      })
-      .catch((err: unknown) => {
-        if (__DEV__) console.warn('[settings] loadNotificationPreferences failed:', err);
-      })
-      .finally(() => {
-        if (mounted) setNotifPrefsLoading(false);
-      });
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('pragas_profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (mounted && data?.avatar_url) setAvatarUrl(data.avatar_url);
+      } catch {
+        // Non-fatal: fall back to initial-letter avatar
+      }
+    })();
     return () => {
       mounted = false;
     };
   }, [user?.id]);
 
-  const handleNotifPrefToggle = useCallback(
-    (key: keyof NotificationPreferences) => async (value: boolean) => {
-      if (!user?.id) return;
-      // Optimistic: flip UI immediately, then persist.
-      const previous = notifPrefs;
-      const next = { ...previous, [key]: value };
-      setNotifPrefs(next);
-      setNotifPrefsSaving((s) => ({ ...s, [key]: true }));
-      try {
-        await saveNotificationPreferences(user.id, { [key]: value });
-      } catch {
-        // rollback UI on failure (service already rolled back cache + reported to Sentry)
-        setNotifPrefs(previous);
-        Alert.alert(t('common.error'), t('settings.notifPrefs.saveError'));
-      } finally {
-        setNotifPrefsSaving((s) => ({ ...s, [key]: false }));
-      }
-    },
-    [user?.id, notifPrefs, t],
-  );
+  const handlePushToggle = useCallback((value: boolean) => {
+    setPushEnabled(value);
+    AsyncStorage.setItem(PUSH_ENABLED_KEY, String(value));
+    Haptics.selectionAsync().catch(() => {});
+  }, []);
 
   const handleLanguageChange = useCallback(() => {
     const options = LANGUAGE_OPTIONS.map((opt) => opt.label);
@@ -214,7 +338,6 @@ export default function SettingsScreen() {
         },
       );
     } else {
-      // Android: use Alert with buttons
       Alert.alert(t('settings.languageTitle'), undefined, [
         ...LANGUAGE_OPTIONS.map((opt) => ({
           text: opt.label,
@@ -251,6 +374,7 @@ export default function SettingsScreen() {
       setUsedThisMonth(countResult.count ?? 0);
     } catch (e) {
       if (__DEV__) console.error('Failed to load subscription data:', e);
+      Sentry.captureException(e, { tags: { feature: 'settings.subscription' } });
       setSubError(true);
     } finally {
       subLoadingRef.current = false;
@@ -262,8 +386,7 @@ export default function SettingsScreen() {
     loadSubscriptionData();
   }, [loadSubscriptionData]);
 
-  // Apple Guideline 3.1.2 / Google Play policy: paying users must be able to
-  // manage/cancel their subscription from inside the app.
+  // Apple 3.1.2 / Google Play: deep link to store-managed subscription
   const openManageSubscription = useCallback(() => {
     const url =
       Platform.OS === 'ios'
@@ -275,13 +398,9 @@ export default function SettingsScreen() {
   }, [t]);
 
   const handleRestorePurchases = useCallback(async () => {
-    if (!isRevenueCatConfigured() || restoring) return;
+    if (!isRevenueCatConfigured()) return;
     setRestoring(true);
-    Sentry.addBreadcrumb({
-      category: 'subscription',
-      message: 'settings.restorePurchases.start',
-      level: 'info',
-    });
+    Haptics.selectionAsync().catch(() => {});
     try {
       const customerInfo = await restorePurchases();
       if (customerInfo) {
@@ -295,50 +414,35 @@ export default function SettingsScreen() {
           Alert.alert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
         }
       }
-    } catch (err) {
-      Sentry.captureException(err, {
-        tags: { feature: 'subscription', action: 'restore_settings' },
-      });
+    } catch (e) {
+      Sentry.captureException(e, { tags: { feature: 'settings.restorePurchases' } });
       Alert.alert(t('common.error'), t('paywall.restoreError'));
     } finally {
       setRestoring(false);
     }
-  }, [t, loadSubscriptionData, restoring]);
+  }, [t, loadSubscriptionData]);
 
   const handleSignOut = () => {
-    Alert.alert(t('settings.signOut'), t('settings.signOut') + '?', [
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    Alert.alert(t('settings.signOutConfirmTitle'), t('settings.signOutConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       { text: t('settings.signOut'), style: 'destructive', onPress: signOut },
     ]);
   };
 
   const handleDeleteAccount = () => {
-    Sentry.addBreadcrumb({
-      category: 'account',
-      message: 'settings.deleteAccount.confirmShown',
-      level: 'info',
-    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     Alert.alert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       {
         text: t('settings.delete'),
         style: 'destructive',
         onPress: async () => {
-          Sentry.addBreadcrumb({
-            category: 'account',
-            message: 'settings.deleteAccount.confirmed',
-            level: 'warning',
-          });
           try {
             // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
-            // Must pass the user's JWT so the Edge Function can verify identity
-            // before permanently wiping data and auth record.
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError || !sessionData?.session?.access_token) {
-              Sentry.captureException(sessionError ?? new Error('No active session'), {
-                tags: { feature: 'account', action: 'delete_get_session' },
-              });
               Alert.alert(t('common.error'), t('settings.deletionError'));
               return;
             }
@@ -351,9 +455,9 @@ export default function SettingsScreen() {
 
             if (error || !data?.ok) {
               if (__DEV__) console.error('delete-user-account failed:', error, data);
-              Sentry.captureException(error ?? new Error('delete-user-account returned !ok'), {
-                tags: { feature: 'account', action: 'delete_invoke' },
-                extra: { response: data },
+              Sentry.captureMessage('delete-user-account failed', {
+                level: 'error',
+                tags: { feature: 'settings.deleteAccount' },
               });
               Alert.alert(t('common.error'), t('settings.deletionError'));
               return;
@@ -363,9 +467,7 @@ export default function SettingsScreen() {
             Alert.alert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
           } catch (e) {
             if (__DEV__) console.error('handleDeleteAccount exception:', e);
-            Sentry.captureException(e, {
-              tags: { feature: 'account', action: 'delete_exception' },
-            });
+            Sentry.captureException(e, { tags: { feature: 'settings.deleteAccount' } });
             Alert.alert(t('common.error'), t('settings.deletionError'));
           }
         },
@@ -373,327 +475,374 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const openMail = () => {
+    import('expo-linking').then(({ openURL }) =>
+      openURL(
+        `mailto:suporte@agrorumo.com.br?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
+      ),
+    );
+  };
+
   return (
-    <ScrollView style={[styles.container, isDark && styles.containerDark]}>
-      <Section isDark={isDark} title={t('settings.profile')}>
-        <View style={styles.profileRow}>
-          <LinearGradient colors={Gradients.hero} style={styles.avatar}>
-            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.profileName, isDark && styles.textDark]}>{userName}</Text>
-            <Text style={styles.profileEmail}>{userEmail}</Text>
-            <View style={styles.roleBadge}>
-              <Ionicons name="shield-checkmark" size={10} color={Colors.accent} />
-              <Text style={styles.roleText}>{t('settings.farmerRole')}</Text>
-            </View>
+    <ScrollView
+      style={[styles.container, isDark && styles.containerDark]}
+      contentInsetAdjustmentBehavior="automatic"
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, isDark && styles.textDark]} accessibilityRole="header">
+          {t('settings.headerTitle')}
+        </Text>
+      </View>
+
+      {/* Profile card */}
+      <View style={[styles.profileCard, isDark && styles.profileCardDark]}>
+        <Avatar uri={avatarUrl} name={userName} size={64} />
+        <View style={styles.profileInfo}>
+          <Text style={[styles.profileName, isDark && styles.textDark]} numberOfLines={1}>
+            {userName}
+          </Text>
+          <Text style={styles.profileEmail} numberOfLines={1}>
+            {userEmail}
+          </Text>
+          <View style={styles.roleBadge}>
+            <Ionicons name="shield-checkmark" size={11} color={Colors.accent} />
+            <Text style={styles.roleText}>{t('settings.farmerRole')}</Text>
           </View>
         </View>
         <TouchableOpacity
-          testID="settings-edit-profile"
-          style={styles.editProfileBtn}
           onPress={() => router.push('/edit-profile')}
-          activeOpacity={0.7}
+          style={styles.editProfileIcon}
           accessibilityRole="button"
           accessibilityLabel={t('settings.editProfile')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          testID="settings-edit-profile"
         >
-          <Ionicons name="create-outline" size={16} color={Colors.accent} />
-          <Text style={styles.editProfileText}>{t('settings.editProfile')}</Text>
+          <Ionicons name="create-outline" size={20} color={Colors.accent} />
         </TouchableOpacity>
-      </Section>
+      </View>
 
-      <Section isDark={isDark} title={t('settings.subscription')}>
-        {subError && !subLoading ? (
-          <TouchableOpacity
-            testID="settings-sub-retry"
-            style={styles.subErrorRow}
-            onPress={loadSubscriptionData}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.subLoadRetry')}
-          >
-            <Ionicons name="cloud-offline-outline" size={20} color={Colors.coral} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.rowLabel, isDark && styles.textDark]}>
-                {t('settings.subLoadError')}
-              </Text>
-              <Text style={{ fontSize: FontSize.caption, color: Colors.textSecondary }}>
-                {t('settings.subLoadRetry')}
-              </Text>
-            </View>
-            <Ionicons name="refresh" size={18} color={Colors.coral} />
-          </TouchableOpacity>
-        ) : (
-          <>
-            <Row
-              testID="settings-row-current-plan"
-              isDark={isDark}
-              icon="diamond"
-              label={t('settings.currentPlan')}
-              value={subLoading ? undefined : PLAN_LABELS[plan] || plan}
-              trailing={
-                subLoading ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
-              }
-            />
-            <Row
-              testID="settings-row-monthly-usage"
-              isDark={isDark}
-              icon="analytics"
-              label={t('settings.monthlyUsage')}
-              value={
-                subLoading
-                  ? undefined
-                  : PLAN_LIMITS[plan] === -1
-                    ? t('settings.diagnosticsCountUnlimited', { used: usedThisMonth })
-                    : t('settings.diagnosticsCountLimited', {
-                        used: usedThisMonth,
-                        limit: PLAN_LIMITS[plan],
-                      })
-              }
-              trailing={
-                subLoading ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
-              }
-            />
-            {plan === 'free' && (
-              <Row
-                testID="settings-upgrade-plan"
-                isDark={isDark}
-                icon="arrow-up-circle"
-                label={t('settings.upgradePlan')}
-                onPress={() => router.push('/paywall')}
-              />
-            )}
-            {isRevenueCatConfigured() && (
-              <Row
-                testID="settings-restore-purchases"
-                isDark={isDark}
-                icon="refresh-circle"
-                label={restoring ? t('common.loading') : t('paywall.restorePurchases')}
-                onPress={restoring ? undefined : handleRestorePurchases}
-                trailing={
-                  restoring ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
-                }
-              />
-            )}
-            {/* Apple Guideline 3.1.2: native subscription management link. */}
-            {!subLoading && plan !== 'free' && (
-              <Row
-                testID="settings-manage-subscription"
-                isDark={isDark}
-                icon="card-outline"
-                label={t('settings.manageSubscription')}
-                onPress={openManageSubscription}
-              />
-            )}
-          </>
+      {/* Subscription hero */}
+      <View style={styles.subCardWrap}>
+        <SubscriptionCard
+          plan={plan}
+          planLabel={PLAN_LABELS[plan] || plan}
+          used={usedThisMonth}
+          limit={PLAN_LIMITS[plan] ?? 0}
+          loading={subLoading}
+          error={subError}
+          onRetry={loadSubscriptionData}
+          onUpgrade={() => router.push('/paywall')}
+        />
+      </View>
+
+      {/* ACCOUNT */}
+      <Section isDark={isDark} title={t('settings.sectionAccount')}>
+        <Row
+          isDark={isDark}
+          icon="person-circle-outline"
+          label={t('settings.editProfile')}
+          onPress={() => router.push('/edit-profile')}
+          testID="settings-row-edit-profile"
+        />
+        {isRevenueCatConfigured() && (
+          <Row
+            isDark={isDark}
+            icon="refresh-circle-outline"
+            label={restoring ? t('common.loading') : t('paywall.restorePurchases')}
+            onPress={restoring ? undefined : handleRestorePurchases}
+            trailing={
+              restoring ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
+            }
+            testID="settings-row-restore"
+          />
+        )}
+        {!subLoading && plan !== 'free' && (
+          <Row
+            isDark={isDark}
+            icon="card-outline"
+            label={t('settings.manageSubscription')}
+            onPress={openManageSubscription}
+            isLast
+            testID="settings-row-manage-sub"
+          />
         )}
       </Section>
 
-      <Section isDark={isDark} title={t('settings.appearance')}>
+      {/* PREFERENCES */}
+      <Section isDark={isDark} title={t('settings.sectionPreferences')}>
         <Row
-          testID="settings-row-dark-mode"
           isDark={isDark}
-          icon="moon"
+          icon="moon-outline"
           label={t('settings.darkMode')}
           value={isDark ? t('settings.darkModeActive') : t('settings.darkModeInactive')}
         />
         <Row
-          testID="settings-row-language"
           isDark={isDark}
-          icon="globe"
+          icon="globe-outline"
           label={t('settings.language')}
           value={LANGUAGE_DISPLAY[i18n.language] || i18n.language}
           onPress={handleLanguageChange}
+          isLast
+          testID="settings-row-language"
         />
+      </Section>
+
+      {/* NOTIFICATIONS */}
+      <Section isDark={isDark} title={t('settings.sectionNotifications')}>
         <Row
-          testID="settings-row-notifications"
           isDark={isDark}
-          icon="notifications"
-          label={t('settings.notifications')}
+          icon="notifications-outline"
+          label={t('settings.pushNotifications')}
           trailing={
             <Switch
-              testID="settings-switch-push"
               value={pushEnabled}
               onValueChange={handlePushToggle}
-              trackColor={{ true: Colors.accent }}
+              trackColor={{ true: Colors.accent, false: Colors.systemGray4 }}
+              ios_backgroundColor={Colors.systemGray4}
               accessibilityLabel={t('settings.pushNotifA11y')}
               accessibilityRole="switch"
               accessibilityState={{ checked: pushEnabled }}
+              testID="settings-switch-push"
             />
           }
+          isLast
         />
       </Section>
 
-      <Section isDark={isDark} title={t('settings.notifPrefs.sectionTitle')}>
-        {notifPrefsLoading ? (
-          <View style={styles.row}>
-            <Ionicons
-              name="notifications-outline"
-              size={20}
-              color={Colors.accent}
-              style={{ width: 28 }}
-            />
-            <Text style={[styles.rowLabel, isDark && styles.textDark]}>{t('common.loading')}</Text>
-            <ActivityIndicator size="small" color={Colors.accent} />
-          </View>
-        ) : (
-          <>
-            <Row
-              isDark={isDark}
-              icon="warning-outline"
-              label={t('settings.notifPrefs.outbreaks')}
-              trailing={
-                <Switch
-                  value={notifPrefs.outbreaks_regional}
-                  onValueChange={handleNotifPrefToggle('outbreaks_regional')}
-                  disabled={!pushEnabled || notifPrefsSaving.outbreaks_regional}
-                  trackColor={{ true: Colors.accent }}
-                  accessibilityLabel={t('settings.notifPrefs.outbreaksA11y')}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: notifPrefs.outbreaks_regional }}
-                />
-              }
-            />
-            <Row
-              isDark={isDark}
-              icon="alarm-outline"
-              label={t('settings.notifPrefs.dailyReminder')}
-              trailing={
-                <Switch
-                  value={notifPrefs.daily_reminder}
-                  onValueChange={handleNotifPrefToggle('daily_reminder')}
-                  disabled={!pushEnabled || notifPrefsSaving.daily_reminder}
-                  trackColor={{ true: Colors.accent }}
-                  accessibilityLabel={t('settings.notifPrefs.dailyReminderA11y')}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: notifPrefs.daily_reminder }}
-                />
-              }
-            />
-            <Row
-              isDark={isDark}
-              icon="newspaper-outline"
-              label={t('settings.notifPrefs.news')}
-              trailing={
-                <Switch
-                  value={notifPrefs.news}
-                  onValueChange={handleNotifPrefToggle('news')}
-                  disabled={!pushEnabled || notifPrefsSaving.news}
-                  trackColor={{ true: Colors.accent }}
-                  accessibilityLabel={t('settings.notifPrefs.newsA11y')}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: notifPrefs.news }}
-                />
-              }
-            />
-            <Row
-              isDark={isDark}
-              icon="megaphone-outline"
-              label={t('settings.notifPrefs.marketing')}
-              trailing={
-                <Switch
-                  value={notifPrefs.marketing}
-                  onValueChange={handleNotifPrefToggle('marketing')}
-                  disabled={!pushEnabled || notifPrefsSaving.marketing}
-                  trackColor={{ true: Colors.accent }}
-                  accessibilityLabel={t('settings.notifPrefs.marketingA11y')}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: notifPrefs.marketing }}
-                />
-              }
-            />
-          </>
-        )}
-      </Section>
-
-      <Section isDark={isDark} title={t('settings.about')}>
+      {/* PRIVACY */}
+      <Section
+        isDark={isDark}
+        title={t('settings.sectionPrivacy')}
+        footer={t('settings.privacyFooter')}
+      >
         <Row
-          testID="settings-row-privacy"
           isDark={isDark}
-          icon="hand-left"
+          icon="lock-closed-outline"
           label={t('auth.privacyPolicy')}
           onPress={() => router.push('/privacy')}
         />
         <Row
-          testID="settings-row-terms"
           isDark={isDark}
-          icon="document-text"
+          icon="document-text-outline"
           label={t('auth.termsOfUse')}
           onPress={() => router.push('/terms')}
+          isLast
         />
+      </Section>
+
+      {/* ABOUT */}
+      <Section isDark={isDark} title={t('settings.sectionAbout')}>
         <Row
-          testID="settings-row-check-updates"
           isDark={isDark}
           icon="refresh-outline"
           label={isChecking ? t('settings.checking') : t('settings.checkUpdates')}
           onPress={checkForUpdate}
         />
         <Row
-          testID="settings-row-version"
-          isDark={isDark}
-          icon="information-circle"
-          label={t('settings.version')}
-          value="1.0.0"
-        />
-        <Row
-          testID="settings-row-contact-support"
           isDark={isDark}
           icon="mail-outline"
           label={t('settings.contactSupport')}
-          onPress={() => {
-            import('expo-linking').then(({ openURL }) =>
-              openURL(
-                `mailto:suporte@agrorumo.com.br?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
-              ),
-            );
-          }}
+          onPress={openMail}
+        />
+        <Row
+          isDark={isDark}
+          icon="information-circle-outline"
+          label={t('settings.version')}
+          value="1.0.0"
+          isLast
         />
       </Section>
 
-      <TouchableOpacity
-        testID="settings-signout"
-        style={styles.signOutBtn}
-        onPress={handleSignOut}
-        accessibilityLabel={t('settings.signOutA11y')}
-        accessibilityRole="button"
-      >
-        <Ionicons
-          name="log-out-outline"
-          size={18}
-          color={Colors.coral}
-          accessibilityElementsHidden
-        />
-        <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
-      </TouchableOpacity>
+      {/* DESTRUCTIVE — Sign out + Delete account */}
+      <View style={styles.dangerZone}>
+        <TouchableOpacity
+          style={[styles.signOutBtn, isDark && styles.signOutBtnDark]}
+          onPress={handleSignOut}
+          accessibilityLabel={t('settings.signOutA11y')}
+          accessibilityRole="button"
+          activeOpacity={0.7}
+          testID="settings-sign-out"
+        >
+          <Ionicons name="log-out-outline" size={18} color={Colors.coral} />
+          <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        testID="settings-delete-account"
-        style={styles.deleteAccountBtn}
-        onPress={handleDeleteAccount}
-        accessibilityLabel={t('settings.deleteAccountA11y')}
-        accessibilityRole="button"
-        accessibilityHint={t('settings.deleteAccountHint')}
-      >
-        <Ionicons name="trash-outline" size={18} color="#FFF" accessibilityElementsHidden />
-        <Text style={styles.deleteAccountText}>{t('settings.deleteAccount')}</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteAccountBtn}
+          onPress={handleDeleteAccount}
+          accessibilityLabel={t('settings.deleteAccountA11y')}
+          accessibilityRole="button"
+          accessibilityHint={t('settings.deleteAccountHint')}
+          activeOpacity={0.85}
+          testID="settings-delete-account"
+        >
+          <Ionicons name="trash-outline" size={16} color={Colors.coral} />
+          <Text style={styles.deleteAccountText}>{t('settings.deleteAccount')}</Text>
+        </TouchableOpacity>
+      </View>
 
-      <View style={{ height: 50 }} />
+      <View style={{ height: 64 }} />
     </ScrollView>
   );
 }
 
+// ============================================================================
+// Styles
+// ============================================================================
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
-  section: { marginTop: Spacing.xl },
+  header: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xxl,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    fontSize: FontSize.largeTitle,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+
+  // Profile card
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginHorizontal: Spacing.lg,
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+  },
+  profileCardDark: { backgroundColor: '#1C1C1E' },
+  profileInfo: { flex: 1, minWidth: 0 },
+  profileName: { fontSize: FontSize.headline, fontWeight: FontWeight.semibold, color: Colors.text },
+  profileEmail: {
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.accent + '14',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  roleText: {
+    fontSize: FontSize.caption2,
+    fontWeight: FontWeight.semibold,
+    color: Colors.accent,
+  },
+  editProfileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.accent + '14',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Subscription hero
+  subCardWrap: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
+  subCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    gap: 12,
+  },
+  subCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  subBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  subBadgeText: {
+    color: '#FFF',
+    fontSize: FontSize.footnote,
+    fontWeight: FontWeight.semibold,
+  },
+  subUsage: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: FontSize.footnote,
+    fontWeight: FontWeight.medium,
+  },
+  usageBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    overflow: 'hidden',
+  },
+  usageBarFill: {
+    height: '100%',
+    backgroundColor: Colors.warmAmber,
+    borderRadius: 3,
+  },
+  subTagline: {
+    color: '#FFF',
+    fontSize: FontSize.subheadline,
+    lineHeight: 20,
+    opacity: 0.95,
+  },
+  subRemaining: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: FontSize.footnote,
+  },
+  subCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFF',
+    paddingVertical: 12,
+    borderRadius: BorderRadius.full,
+    marginTop: 4,
+  },
+  subCtaText: {
+    color: Colors.accent,
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.bold,
+  },
+  subErrorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.coral + '40',
+  },
+  subErrorTitle: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  subErrorSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
+
+  // Sections
+  section: { marginTop: Spacing.xxl },
   sectionTitle: {
     fontSize: FontSize.caption,
-    fontWeight: '600',
+    fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
-    paddingHorizontal: Spacing.xl,
-    marginBottom: 6,
+    letterSpacing: 0.4,
+    paddingHorizontal: Spacing.xxl,
+    marginBottom: 8,
   },
   sectionContent: {
     backgroundColor: Colors.card,
@@ -702,73 +851,70 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionContentDark: { backgroundColor: '#1C1C1E' },
-  profileRow: { flexDirection: 'row', alignItems: 'center', padding: Spacing.lg, gap: 16 },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+  sectionFooter: {
+    fontSize: FontSize.caption,
+    color: Colors.textTertiary,
+    paddingHorizontal: Spacing.xxl,
+    marginTop: 8,
+    lineHeight: 16,
   },
-  avatarText: { fontSize: FontSize.title2, fontWeight: '700', color: '#FFF' },
-  profileName: { fontSize: FontSize.headline, fontWeight: '600' },
-  profileEmail: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
-  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  roleText: { fontSize: FontSize.caption2, fontWeight: '600', color: Colors.accent },
-  editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: Spacing.md,
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.separator,
-  },
-  editProfileText: {
-    fontSize: FontSize.subheadline,
-    fontWeight: '600',
-    color: Colors.accent,
-  },
+
+  // Row
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
-    gap: 10,
-    borderBottomWidth: 0.5,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.separator,
+    minHeight: 52,
   },
-  rowLabel: { flex: 1, fontSize: FontSize.body },
-  rowValue: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
+  rowLast: { borderBottomWidth: 0 },
+  rowIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowLabel: { flex: 1, fontSize: FontSize.body, color: Colors.text },
+  rowLabelDestructive: { color: Colors.coral, fontWeight: FontWeight.semibold },
+  rowValue: { fontSize: FontSize.subheadline, color: Colors.textSecondary, maxWidth: 160 },
+  rowValueDark: { color: Colors.systemGray2 },
+
+  // Destructive
+  dangerZone: { marginTop: Spacing.xxl, paddingHorizontal: Spacing.lg, gap: 10 },
   signOutBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    marginTop: Spacing.xxl,
-    marginHorizontal: Spacing.lg,
     padding: Spacing.lg,
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
+    minHeight: 52,
   },
-  signOutText: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.coral },
+  signOutBtnDark: { backgroundColor: '#1C1C1E' },
+  signOutText: {
+    fontSize: FontSize.subheadline,
+    fontWeight: FontWeight.semibold,
+    color: Colors.coral,
+  },
   deleteAccountBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginTop: Spacing.lg,
-    marginHorizontal: Spacing.lg,
-    padding: Spacing.lg,
-    backgroundColor: Colors.coral,
+    gap: 6,
+    paddingVertical: 12,
     borderRadius: BorderRadius.lg,
   },
-  deleteAccountText: { fontSize: FontSize.subheadline, fontWeight: '600', color: '#FFF' },
+  deleteAccountText: {
+    fontSize: FontSize.footnote,
+    fontWeight: FontWeight.medium,
+    color: Colors.coral,
+    textDecorationLine: 'underline',
+  },
   textDark: { color: Colors.textDark },
   textMuted: { color: Colors.systemGray },
-  subErrorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    gap: 10,
-  },
 });

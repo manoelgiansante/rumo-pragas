@@ -265,7 +265,10 @@ export default {
     subLoadError: 'Failed to load subscription',
     subLoadRetry: 'Tap to try again',
     pushNotifA11y: 'Push notifications',
+    pushNotifications: 'Push notifications',
     signOutA11y: 'Sign out',
+    signOutConfirmTitle: 'Sign out?',
+    signOutConfirmMessage: 'You can come back anytime by signing in again.',
     deleteAccountA11y: 'Delete account permanently',
     deleteAccountHint:
       'Requests the deletion of all your data in compliance with privacy regulations',
@@ -281,6 +284,17 @@ export default {
       marketingA11y: 'Promotional offers and discounts',
       saveError: 'Could not save preference. Please try again.',
     },
+    // Premium polish — 2026-05-21
+    headerTitle: 'Settings',
+    sectionAccount: 'Account',
+    sectionPreferences: 'Preferences',
+    sectionNotifications: 'Notifications',
+    sectionPrivacy: 'Privacy',
+    sectionAbout: 'About',
+    privacyFooter: 'GDPR / LGPD compliant. You can revoke permissions at any time.',
+    subTaglineFree: 'Upgrade for unlimited diagnoses and priority support.',
+    subTaglinePro: 'You have full access to the AI agronomist. Thanks for supporting Rumo Pragas.',
+    diagnosticsRemaining: '{{remaining}} diagnoses left this month',
   },
   common: {
     offlineBanner: 'You are currently offline',
@@ -654,10 +668,24 @@ export default {
     backA11y: 'Back',
     saveA11y: 'Save profile changes',
     fullNameA11y: 'Full name',
+    fullNamePlaceholder: 'How you’d like to be called',
     cityA11y: 'City',
+    cityPlaceholder: 'e.g., Sorriso',
     stateSelectA11y: 'Select state {{state}}',
     cropToggleA11y: 'Toggle crop {{crop}}',
     emailReadOnlyA11y: 'Email (read only)',
+    // Premium polish — 2026-05-21
+    phone: 'Phone',
+    phoneA11y: 'Phone (optional)',
+    avatarHint: 'Tap the photo to change',
+    avatarChangeA11y: 'Change profile photo',
+    avatarSheetTitle: 'Profile photo',
+    avatarTakePhoto: 'Take photo',
+    avatarChooseLibrary: 'Choose from library',
+    avatarUploadError: 'Could not update photo. Please try again.',
+    permissionDeniedTitle: 'Permission denied',
+    permissionDeniedMsg:
+      'Grant camera or photo permission in Settings to change your profile photo.',
   },
   // Pest common names (standardized in Portuguese for Brazilian agriculture)
   pests: {

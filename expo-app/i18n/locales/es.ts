@@ -268,7 +268,10 @@ export default {
     subLoadError: 'Error al cargar suscripción',
     subLoadRetry: 'Toque para intentar de nuevo',
     pushNotifA11y: 'Notificaciones push',
+    pushNotifications: 'Notificaciones push',
     signOutA11y: 'Cerrar sesión',
+    signOutConfirmTitle: '¿Cerrar sesión?',
+    signOutConfirmMessage: 'Puedes volver en cualquier momento iniciando sesión otra vez.',
     deleteAccountA11y: 'Eliminar cuenta permanentemente',
     deleteAccountHint:
       'Solicita la eliminación de todos sus datos conforme a las regulaciones de privacidad',
@@ -284,6 +287,17 @@ export default {
       marketingA11y: 'Ofertas promocionales y descuentos',
       saveError: 'No se pudo guardar la preferencia. Inténtelo de nuevo.',
     },
+    // Premium polish — 2026-05-21
+    headerTitle: 'Ajustes',
+    sectionAccount: 'Cuenta',
+    sectionPreferences: 'Preferencias',
+    sectionNotifications: 'Notificaciones',
+    sectionPrivacy: 'Privacidad',
+    sectionAbout: 'Acerca de',
+    privacyFooter: 'Conforme a la LGPD / GDPR. Puedes revocar permisos en cualquier momento.',
+    subTaglineFree: 'Mejora a Pro para diagnósticos ilimitados y soporte prioritario.',
+    subTaglinePro: 'Tienes acceso completo al agrónomo IA. Gracias por apoyar Rumo Pragas.',
+    diagnosticsRemaining: '{{remaining}} diagnósticos restantes este mes',
   },
   common: {
     offlineBanner: 'Estás sin conexión a internet',
@@ -663,10 +677,24 @@ export default {
     backA11y: 'Volver',
     saveA11y: 'Guardar cambios del perfil',
     fullNameA11y: 'Nombre completo',
+    fullNamePlaceholder: 'Cómo prefieres que te llamen',
     cityA11y: 'Ciudad',
+    cityPlaceholder: 'Ej.: Sorriso',
     stateSelectA11y: 'Seleccionar estado {{state}}',
     cropToggleA11y: 'Alternar cultivo {{crop}}',
     emailReadOnlyA11y: 'Correo electrónico (solo lectura)',
+    // Premium polish — 2026-05-21
+    phone: 'Teléfono',
+    phoneA11y: 'Teléfono (opcional)',
+    avatarHint: 'Toca la foto para cambiarla',
+    avatarChangeA11y: 'Cambiar foto de perfil',
+    avatarSheetTitle: 'Foto de perfil',
+    avatarTakePhoto: 'Tomar foto',
+    avatarChooseLibrary: 'Elegir de la biblioteca',
+    avatarUploadError: 'No se pudo actualizar la foto. Inténtalo de nuevo.',
+    permissionDeniedTitle: 'Permiso denegado',
+    permissionDeniedMsg:
+      'Concede permiso de cámara o fotos en Ajustes para cambiar tu foto de perfil.',
   },
   // Nombres comunes de plagas (estandarizados en portugués para agricultura brasileña)
   pests: {
