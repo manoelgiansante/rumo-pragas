@@ -31,19 +31,21 @@ import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../consta
 import { PremiumCard } from '../../components/PremiumCard';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { MipCard } from '../../components/MipCard';
+import { TopAlternatives } from '../../components/TopAlternatives';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
 import {
   trackShareDiagnosis,
   trackPestDetailViewed,
   trackProGateShown,
   trackProGateTapped,
+  trackEvent,
 } from '../../services/analytics';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { savePestToCache } from '../../services/pestRegistry';
 import { checkSubscriptionStatus, isRevenueCatConfigured } from '../../services/purchases';
-import { trackEvent } from '../../services/analytics';
 import { useMipKnowledge, type SubscriptionTier } from '../../hooks/useMipKnowledge';
+import { addBreadcrumb } from '../../services/sentry-shim';
 import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
 
 // --- Free vs Pro gate ------------------------------------------------------
@@ -99,6 +101,7 @@ export default function ResultScreen() {
   }, [result]);
 
   // Alternative predictions surfaced by the AI (top 3 candidates besides the winner).
+  // Used by both the legacy alternative-diagnoses panel and the new TopAlternatives card.
   const alternatives = useMemo((): AgrioPrediction[] => {
     try {
       const notes =
@@ -181,6 +184,17 @@ export default function ResultScreen() {
           alternatives,
         });
       }
+      addBreadcrumb({
+        category: 'diagnosis.result',
+        message: 'result_rendered',
+        level: 'info',
+        data: {
+          pestId: result.pest_id ?? 'unknown',
+          confidence: result.confidence ?? 0,
+          severity: enrichment?.severity ?? 'undefined',
+          alternativeCount: alternatives.length,
+        },
+      });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -847,6 +861,13 @@ export default function ResultScreen() {
 
         {/* Full collapsible sections (existing — kept for full content view) */}
         <View style={styles.sections}>
+          {/* Top alternatives — second-guess card.
+              Rendered ABOVE the description so the user can self-correct fast
+              if the hero pick doesn't look like the leaf in front of them. */}
+          {!isHealthy && (
+            <TopAlternatives predictions={alternatives} primaryId={result.pest_id} max={3} />
+          )}
+
           {enrichment.description && (
             <CollapsibleSection
               title={t('diagnosis.description')}

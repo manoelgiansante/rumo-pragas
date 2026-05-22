@@ -16,11 +16,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
-import * as Sentry from '@sentry/react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
+import { UsageCounter } from '../../components/UsageCounter';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
+import { addBreadcrumb, captureException } from '../../services/sentry-shim';
 
 const MAX_DIMENSION = 1024;
 const JPEG_QUALITY = 0.75;
@@ -47,10 +48,15 @@ export default function CameraScreen() {
   const pickImage = async (useCamera: boolean) => {
     // Idempotency guard: never let processing overlap with re-entry.
     if (processing) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Sentry.addBreadcrumb({
-      category: 'diagnosis',
-      message: `camera.pickImage.${useCamera ? 'camera' : 'gallery'}.start`,
+    // Medium impact on the capture path (camera) gives a more "premium" tactile
+    // feedback than the previous Light. Gallery selection keeps Light because
+    // the user expects a quieter affordance for "pick existing photo".
+    Haptics.impactAsync(
+      useCamera ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
+    );
+    addBreadcrumb({
+      category: 'diagnosis.camera',
+      message: useCamera ? 'open_camera_tapped' : 'open_gallery_tapped',
       level: 'info',
     });
 
@@ -75,12 +81,22 @@ export default function CameraScreen() {
     if (useCamera) {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
+        addBreadcrumb({
+          category: 'diagnosis.camera',
+          message: 'camera_permission_denied',
+          level: 'warning',
+        });
         showPermissionAlert(t('diagnosis.cameraPermissionMsg'));
         return;
       }
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
+        addBreadcrumb({
+          category: 'diagnosis.camera',
+          message: 'gallery_permission_denied',
+          level: 'warning',
+        });
         showPermissionAlert(t('diagnosis.galleryPermissionMsg'));
         return;
       }
@@ -103,17 +119,36 @@ export default function CameraScreen() {
       setProcessing(true);
       try {
         const compressed = await compressImage(asset.uri);
+        addBreadcrumb({
+          category: 'diagnosis.camera',
+          message: 'image_compressed',
+          level: 'info',
+          data: {
+            base64Length: compressed.base64.length,
+            estimatedBytes: Math.ceil((compressed.base64.length * 3) / 4),
+          },
+        });
+        // Success haptic so the user knows the heavy lift is done and we're
+        // moving to the next step.
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         setImage(compressed.uri, compressed.base64);
         router.push('/diagnosis/crop-select');
       } catch (error) {
         if (__DEV__) console.error('Image compression failed:', error);
-        Sentry.captureException(error, {
-          tags: { feature: 'diagnosis', action: 'image_compression' },
+        captureException(error, {
+          tags: { feature: 'diagnosis', action: 'image_compression', stage: 'image_compression' },
         });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         Alert.alert(t('diagnosis.imageError'), t('diagnosis.imageErrorMsg'));
       } finally {
         setProcessing(false);
       }
+    } else {
+      addBreadcrumb({
+        category: 'diagnosis.camera',
+        message: 'picker_cancelled',
+        level: 'info',
+      });
     }
   };
 
@@ -168,6 +203,9 @@ export default function CameraScreen() {
           <Ionicons name="sunny-outline" size={14} color={Colors.warmAmber} />
           <Text style={styles.frameGuideHint}>{t('diagnosis.frameLeafHint')}</Text>
         </View>
+
+        {/* Premium gate: monthly usage pill (free=3/mo, pro=30/mo, enterprise=hidden) */}
+        <UsageCounter />
 
         <View style={styles.buttons}>
           <TouchableOpacity

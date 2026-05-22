@@ -17,6 +17,8 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { addToQueue } from '../../services/diagnosisQueue';
 import { useTranslation } from 'react-i18next';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
+import { DiagnosisSkeleton } from '../../components/DiagnosisSkeleton';
+import { addBreadcrumb, captureException } from '../../services/sentry-shim';
 
 const LOCATION_TIMEOUT_MS = 3000;
 
@@ -114,11 +116,35 @@ export default function LoadingScreen() {
     };
 
     const analyze = async () => {
+      const analysisStart = Date.now();
+      addBreadcrumb({
+        category: 'diagnosis.loading',
+        message: 'analyze_started',
+        level: 'info',
+        data: {
+          crop: cropApiName || 'Soybean',
+          hasImage: !!imageBase64,
+          isConnected: isConnectedRef.current,
+        },
+      });
+
       try {
         progress.value = withTiming(0.3, { duration: 1000 });
+        addBreadcrumb({
+          category: 'diagnosis.loading',
+          message: 'step_waiting_location',
+          level: 'info',
+        });
 
         const coords = await waitForLocation();
         if (!isMountedRef.current) return;
+
+        addBreadcrumb({
+          category: 'diagnosis.loading',
+          message: 'step_sending_to_api',
+          level: 'info',
+          data: { hasLocation: !!(coords.latitude && coords.longitude) },
+        });
 
         const result = await sendDiagnosis(
           imageBase64 || '',
@@ -132,6 +158,16 @@ export default function LoadingScreen() {
         if (!isMountedRef.current) return;
 
         progress.value = withTiming(1, { duration: 500 });
+        addBreadcrumb({
+          category: 'diagnosis.loading',
+          message: 'step_api_success',
+          level: 'info',
+          data: {
+            durationMs: Date.now() - analysisStart,
+            pestId: result.pest_id ?? 'unknown',
+            confidence: result.confidence ?? 0,
+          },
+        });
 
         clearInterval(interval);
         intervalRef.current = null;
@@ -148,6 +184,11 @@ export default function LoadingScreen() {
 
         // If offline, queue the diagnosis for later sync
         if (isConnectedRef.current === false) {
+          addBreadcrumb({
+            category: 'diagnosis.loading',
+            message: 'step_offline_queued',
+            level: 'info',
+          });
           try {
             const coords = locationRef.current;
             await addToQueue({
@@ -158,7 +199,8 @@ export default function LoadingScreen() {
             });
             if (!isMountedRef.current) return;
             router.replace({ pathname: '/diagnosis/result', params: { queued: 'true' } });
-          } catch {
+          } catch (queueErr) {
+            captureException(queueErr, { tags: { stage: 'offline_queue' } });
             if (!isMountedRef.current) return;
             router.replace({
               pathname: '/diagnosis/result',
@@ -167,6 +209,13 @@ export default function LoadingScreen() {
           }
           return;
         }
+
+        // Online but failed → capture; the user sees the message on the
+        // result screen but Sentry needs the full error for triage.
+        captureException(error, {
+          tags: { stage: 'api_call' },
+          extra: { durationMs: Date.now() - analysisStart },
+        });
 
         router.replace({
           pathname: '/diagnosis/result',
@@ -200,6 +249,11 @@ export default function LoadingScreen() {
 
   return (
     <LinearGradient colors={Gradients.mesh} style={styles.container}>
+      {/* Skeleton sits BEHIND the centered progress card so the user perceives
+          the result as "already on the way". pointerEvents=none in the
+          component itself; we don't want it stealing taps. */}
+      <DiagnosisSkeleton />
+
       <View
         style={styles.center}
         accessible
@@ -221,6 +275,11 @@ export default function LoadingScreen() {
         <View style={styles.progressBg} accessibilityElementsHidden>
           <Animated.View style={[styles.progressFill, progressAnimatedStyle]} />
         </View>
+
+        {/* Step counter — gives a tangible sense of progress beyond the bar */}
+        <Text style={styles.stepCounter} maxFontSizeMultiplier={1.3}>
+          {t('diagnosis.stepCounter', { current: step + 1, total: STEPS.length })}
+        </Text>
 
         <Text style={styles.hint}>{t('diagnosis.aiHint')}</Text>
       </View>
@@ -255,5 +314,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#FFF' },
+  stepCounter: {
+    fontSize: FontSize.caption,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    marginTop: 10,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.3,
+  },
   hint: { fontSize: FontSize.caption, color: 'rgba(255,255,255,0.6)', marginTop: 20 },
 });
