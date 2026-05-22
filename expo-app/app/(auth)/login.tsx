@@ -84,10 +84,9 @@ export default function LoginScreen() {
       return;
     }
 
-    if (mode === 'signup' && !fullName.trim()) {
-      Alert.alert('', t('auth.enterFullName'));
-      return;
-    }
+    // QW-3 (W16-1, 2026-05-22): fullName is OPTIONAL on signup. -1 required
+    // field is worth ~8-12% conv lift on Android (where the soft keyboard
+    // covers the form). The user can fill it later in edit-profile.
 
     submitGuardRef.current = true;
     Sentry.addBreadcrumb({
@@ -100,7 +99,11 @@ export default function LoginScreen() {
       if (mode === 'login') {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password, fullName.trim());
+        // QW-3: pass undefined when empty so the backend stores NULL instead
+        // of an empty string in profiles.full_name. Avoids "" as a sentinel
+        // that downstream code might display as the user's name.
+        const trimmedName = fullName.trim();
+        await signUp(email.trim(), password, trimmedName ? trimmedName : undefined);
         Alert.alert('', t('auth.checkEmail'));
       }
     } catch (err) {
@@ -254,14 +257,14 @@ export default function LoginScreen() {
                   <TextInput
                     testID="login-input-fullname"
                     style={styles.input}
-                    placeholder={t('auth.fullNamePlaceholder')}
+                    placeholder={t('auth.fullNameOptionalPlaceholder')}
                     placeholderTextColor={Colors.systemGray2}
                     value={fullName}
                     onChangeText={setFullName}
                     autoCapitalize="words"
                     returnKeyType="next"
                     onSubmitEditing={() => emailRef.current?.focus()}
-                    accessibilityLabel={t('auth.fullNameA11y')}
+                    accessibilityLabel={t('auth.fullNameOptionalA11y')}
                     accessibilityRole="text"
                   />
                 </View>

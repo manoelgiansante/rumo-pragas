@@ -45,7 +45,14 @@ const TIP_KEYS = [
 export default function HomeScreen() {
   const { t } = useTranslation();
   const { user, session } = useAuthContext();
-  const { location, cityName, getCurrentLocation } = useLocation();
+  // QW-1 (W16-1, 2026-05-22): getCurrentLocation() is now triggered inside
+  // consent-location.tsx#handleAccept, AFTER the user opt-in. We only READ the
+  // location/cityName here. Triggering Location.requestForegroundPermissionsAsync()
+  // on Home mount caused the iOS/Android OS permission prompt to appear with no
+  // context (the LGPD consent screen was already gone by then). Now the OS
+  // prompt is chained right after the explicit accept tap, so the user has
+  // visual continuity.
+  const { location, cityName } = useLocation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isTablet, contentMaxWidth } = useResponsive();
@@ -180,9 +187,11 @@ export default function HomeScreen() {
     await Promise.all(promises);
   }, [location, cityName, session, user]);
 
-  useEffect(() => {
-    getCurrentLocation();
-  }, [getCurrentLocation]);
+  // QW-1 (W16-1, 2026-05-22): Location prompt moved to consent-location.tsx#handleAccept.
+  // Do NOT fire getCurrentLocation() here — it would re-prompt users who already
+  // declined LGPD consent (effectively bypassing their choice) and re-show the OS
+  // dialog every time Home remounts. The diagnosis flow (app/diagnosis/loading.tsx)
+  // still calls getCurrentLocation() at point-of-use which is the correct moment.
   useEffect(() => {
     let mounted = true;
     loadData().finally(() => {

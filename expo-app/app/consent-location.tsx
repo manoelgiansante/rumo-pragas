@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
 import { setLocationConsent } from '../services/userPreferences';
+import { useLocation } from '../hooks/useLocation';
+import { trackEvent } from '../services/analytics';
 
 /**
  * P0-3 (LGPD) — Location consent screen.
@@ -38,6 +40,7 @@ export default function ConsentLocationScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthContext();
+  const { getCurrentLocation } = useLocation();
   const [isSaving, setIsSaving] = useState(false);
 
   const finish = async () => {
@@ -53,6 +56,27 @@ export default function ConsentLocationScreen() {
     setIsSaving(true);
     try {
       await setLocationConsent(user.id, true, CONSENT_PURPOSE_PT);
+      trackEvent('location_consent_accepted');
+      // QW-1 (W16-1, 2026-05-22): chain the OS permission prompt + location fetch
+      // here so the user has visual continuity from "accept" tap -> native prompt.
+      // We deliberately don't await before navigating: the location fetch can
+      // take a few seconds (especially first cold fix) and we don't want to
+      // block the navigation to (tabs). Home reads from useLocation when it
+      // resolves. If the OS prompt is denied, useLocation() sets an error state
+      // and the dependent Home widgets (weather, alerts) degrade gracefully.
+      const fetchPromise = getCurrentLocation()
+        .then((coords) => {
+          trackEvent('location_first_fetch', {
+            success: !!coords,
+            source: 'consent_accept',
+          });
+        })
+        .catch((err) => {
+          if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
+          trackEvent('location_first_fetch', { success: false, source: 'consent_accept' });
+        });
+      // Fire-and-forget — never block navigation on this.
+      void fetchPromise;
       await finish();
     } catch {
       setIsSaving(false);
@@ -68,6 +92,7 @@ export default function ConsentLocationScreen() {
     setIsSaving(true);
     try {
       await setLocationConsent(user.id, false, CONSENT_PURPOSE_PT);
+      trackEvent('location_consent_declined');
       await finish();
     } catch (e) {
       // Even if save fails, treat as declined and move on — default is no consent

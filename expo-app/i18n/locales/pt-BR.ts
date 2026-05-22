@@ -84,6 +84,9 @@ export default {
     signupA11y: 'Criar nova conta',
     fullNamePlaceholder: 'Nome completo',
     fullNameA11y: 'Nome completo',
+    // QW-3 (W16-1, 2026-05-22): optional copy used on signup form
+    fullNameOptionalPlaceholder: 'Nome completo (opcional)',
+    fullNameOptionalA11y: 'Nome completo, opcional',
     emailPlaceholder: 'Email',
     emailA11y: 'Endereço de email',
     passwordPlaceholder: 'Senha',
