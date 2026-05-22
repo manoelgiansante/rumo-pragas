@@ -1,0 +1,46 @@
+# WhatsApp share flow — completes diagnosis then taps share-via-WhatsApp.
+# Validates the share button is tappable from BOTH header + bottom action row.
+# Tests the wa.me fallback path added in commit c936494.
+#
+# NOTE: WhatsApp app may not be installed on the test device — that's fine,
+# we just verify the button works and shows the "WhatsApp not installed" alert
+# OR opens the share sheet. Either is a valid pass state.
+appId: com.agrorumo.rumopragas
+tags:
+  - diagnosis
+  - share
+---
+- runFlow: diagnosis-flow.yaml
+
+# At this point we are on the result screen. Both share buttons should be visible.
+- runFlow:
+    when:
+      visible:
+        id: "diagnosis-result-share-header"
+    commands:
+      - assertVisible:
+          id: "diagnosis-result-share-header"
+      - assertVisible:
+          id: "diagnosis-result-share-whatsapp"
+      - assertVisible:
+          id: "diagnosis-result-export-pdf"
+      - takeScreenshot: result-share-buttons
+
+      - tapOn:
+          id: "diagnosis-result-share-whatsapp"
+
+      # Either system share sheet, WhatsApp deep link, or "not installed" Alert
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+      - tapOn:
+          text: "OK"
+          optional: true
+      - tapOn:
+          text: "Cancel"
+          optional: true
+      - tapOn:
+          text: "Cancelar"
+          optional: true
+
+      - takeScreenshot: result-after-share

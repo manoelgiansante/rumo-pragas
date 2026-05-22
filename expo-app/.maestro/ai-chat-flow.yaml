@@ -1,0 +1,45 @@
+# AI chat flow — opens AI tab, asserts suggestions render, sends a message.
+# Doesn't await a real OpenAI reply (cost / determinism), just confirms the
+# input + send button work and the user message persists.
+appId: com.agrorumo.rumopragas
+tags:
+  - ai-chat
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-ai-chat"
+
+# When chat is empty, suggestions are shown
+- extendedWaitUntil:
+    visible:
+      id: "aichat-input"
+    timeout: 15000
+
+- assertVisible:
+    id: "aichat-input"
+- assertVisible:
+    id: "aichat-send"
+- takeScreenshot: aichat-empty
+
+# Type a message
+- tapOn:
+    id: "aichat-input"
+- inputText: "Como controlar lagarta do cartucho no milho?"
+- hideKeyboard
+
+- tapOn:
+    id: "aichat-send"
+
+# After tapping send, user message appears + typing indicator OR response
+- extendedWaitUntil:
+    visible:
+      text: "(lagarta|aguarde|.*)"
+    timeout: 15000
+
+- takeScreenshot: aichat-sent

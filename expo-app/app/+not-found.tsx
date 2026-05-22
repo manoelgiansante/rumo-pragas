@@ -20,6 +20,7 @@ export default function NotFoundScreen() {
           {t('notFound.description')}
         </Text>
         <Pressable
+          testID="notfound-back-home"
           style={styles.button}
           onPress={() => router.replace('/')}
           accessibilityRole="button"

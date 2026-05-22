@@ -23,6 +23,7 @@ interface CollapsibleSectionProps {
   iconColor?: string;
   children: React.ReactNode;
   defaultExpanded?: boolean;
+  testID?: string;
 }
 
 export function CollapsibleSection({
@@ -31,6 +32,7 @@ export function CollapsibleSection({
   iconColor = Colors.accent,
   children,
   defaultExpanded = true,
+  testID,
 }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const isDark = useColorScheme() === 'dark';
@@ -44,6 +46,7 @@ export function CollapsibleSection({
   return (
     <View style={styles.wrapper}>
       <TouchableOpacity
+        testID={testID}
         onPress={toggle}
         activeOpacity={0.7}
         style={styles.header}

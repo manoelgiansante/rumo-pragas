@@ -1,0 +1,58 @@
+# Delete account flow — Apple Guideline 5.1.1(v) + LGPD Art. 18 V compliance.
+# IMPORTANT: this flow STOPS at the confirmation dialog. We do NOT actually
+# delete the test user. The "Excluir" destructive action should be tapped
+# manually by a QA when intentionally wiping the test account.
+appId: com.agrorumo.rumopragas
+tags:
+  - account
+  - delete
+  - compliance
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-settings"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-delete-account"
+    timeout: 10000
+
+- assertVisible:
+    id: "settings-delete-account"
+
+- takeScreenshot: pre-delete-account
+
+# Tap the Delete Account CTA — opens an Alert with Cancel + Delete buttons.
+- tapOn:
+    id: "settings-delete-account"
+
+# Confirmation alert MUST be visible — its presence is the Apple 5.1.1(v) gate
+- extendedWaitUntil:
+    visible:
+      text: "(Excluir|Delete|cancelar|Cancelar)"
+    timeout: 5000
+
+- assertVisible:
+    text: "(Excluir|Delete|Cancelar|cancelar)"
+
+- takeScreenshot: delete-account-confirmation
+
+# Safety: dismiss without confirming
+- tapOn:
+    text: "Cancelar"
+    optional: true
+- tapOn:
+    text: "Cancel"
+    optional: true
+
+# Back to settings
+- extendedWaitUntil:
+    visible:
+      id: "settings-delete-account"
+    timeout: 8000

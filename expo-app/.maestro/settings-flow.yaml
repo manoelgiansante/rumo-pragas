@@ -1,0 +1,93 @@
+# Settings flow — opens Settings tab, walks key rows that don't mutate state.
+# Apple Guideline 5.1.1(v) + 3.1.2: Delete Account and Manage Subscription
+# must be reachable from inside the app. We assert visibility, not invocation
+# (delete is destructive; subscription opens an external URL).
+appId: com.agrorumo.rumopragas
+tags:
+  - settings
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-settings"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-row-current-plan"
+    timeout: 10000
+
+# Assert core rows render
+- assertVisible:
+    id: "settings-edit-profile"
+- assertVisible:
+    id: "settings-row-current-plan"
+- assertVisible:
+    id: "settings-row-monthly-usage"
+- assertVisible:
+    id: "settings-row-dark-mode"
+- assertVisible:
+    id: "settings-row-language"
+- assertVisible:
+    id: "settings-row-notifications"
+- assertVisible:
+    id: "settings-switch-push"
+- assertVisible:
+    id: "settings-row-privacy"
+- assertVisible:
+    id: "settings-row-terms"
+- assertVisible:
+    id: "settings-row-check-updates"
+- assertVisible:
+    id: "settings-row-version"
+- assertVisible:
+    id: "settings-row-contact-support"
+- assertVisible:
+    id: "settings-signout"
+# Apple Guideline 5.1.1(v) — Delete Account MUST be in Settings
+- assertVisible:
+    id: "settings-delete-account"
+
+- takeScreenshot: settings-overview
+
+# Toggle push switch on/off and back on
+- tapOn:
+    id: "settings-switch-push"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "settings-switch-push"
+
+# Navigate to Privacy and back
+- tapOn:
+    id: "settings-row-privacy"
+- extendedWaitUntil:
+    visible:
+      id: "privacy-back"
+    timeout: 8000
+- tapOn:
+    id: "privacy-back"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-row-privacy"
+    timeout: 8000
+
+# Navigate to Terms and back
+- tapOn:
+    id: "settings-row-terms"
+- extendedWaitUntil:
+    visible:
+      id: "terms-back"
+    timeout: 8000
+- tapOn:
+    id: "terms-back"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-row-terms"
+    timeout: 8000

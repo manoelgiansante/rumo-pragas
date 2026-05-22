@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_KEY } from '../../i18n';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import * as Sentry from '@sentry/react-native';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
@@ -67,11 +68,13 @@ interface RowProps {
   onPress?: () => void;
   trailing?: React.ReactNode;
   isDark: boolean;
+  testID?: string;
 }
 
-function Row({ icon, label, value, onPress, trailing, isDark }: RowProps) {
+function Row({ icon, label, value, onPress, trailing, isDark, testID }: RowProps) {
   return (
     <TouchableOpacity
+      testID={testID}
       style={styles.row}
       onPress={onPress}
       disabled={!onPress && !trailing}
@@ -212,8 +215,13 @@ export default function SettingsScreen() {
   }, [t]);
 
   const handleRestorePurchases = useCallback(async () => {
-    if (!isRevenueCatConfigured()) return;
+    if (!isRevenueCatConfigured() || restoring) return;
     setRestoring(true);
+    Sentry.addBreadcrumb({
+      category: 'subscription',
+      message: 'settings.restorePurchases.start',
+      level: 'info',
+    });
     try {
       const customerInfo = await restorePurchases();
       if (customerInfo) {
@@ -227,12 +235,15 @@ export default function SettingsScreen() {
           Alert.alert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
         }
       }
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { feature: 'subscription', action: 'restore_settings' },
+      });
       Alert.alert(t('common.error'), t('paywall.restoreError'));
     } finally {
       setRestoring(false);
     }
-  }, [t, loadSubscriptionData]);
+  }, [t, loadSubscriptionData, restoring]);
 
   const handleSignOut = () => {
     Alert.alert(t('settings.signOut'), t('settings.signOut') + '?', [
@@ -242,12 +253,22 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
+    Sentry.addBreadcrumb({
+      category: 'account',
+      message: 'settings.deleteAccount.confirmShown',
+      level: 'info',
+    });
     Alert.alert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       {
         text: t('settings.delete'),
         style: 'destructive',
         onPress: async () => {
+          Sentry.addBreadcrumb({
+            category: 'account',
+            message: 'settings.deleteAccount.confirmed',
+            level: 'warning',
+          });
           try {
             // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
             // Must pass the user's JWT so the Edge Function can verify identity
@@ -255,6 +276,9 @@ export default function SettingsScreen() {
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError || !sessionData?.session?.access_token) {
+              Sentry.captureException(sessionError ?? new Error('No active session'), {
+                tags: { feature: 'account', action: 'delete_get_session' },
+              });
               Alert.alert(t('common.error'), t('settings.deletionError'));
               return;
             }
@@ -267,6 +291,10 @@ export default function SettingsScreen() {
 
             if (error || !data?.ok) {
               if (__DEV__) console.error('delete-user-account failed:', error, data);
+              Sentry.captureException(error ?? new Error('delete-user-account returned !ok'), {
+                tags: { feature: 'account', action: 'delete_invoke' },
+                extra: { response: data },
+              });
               Alert.alert(t('common.error'), t('settings.deletionError'));
               return;
             }
@@ -275,6 +303,9 @@ export default function SettingsScreen() {
             Alert.alert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
           } catch (e) {
             if (__DEV__) console.error('handleDeleteAccount exception:', e);
+            Sentry.captureException(e, {
+              tags: { feature: 'account', action: 'delete_exception' },
+            });
             Alert.alert(t('common.error'), t('settings.deletionError'));
           }
         },
@@ -299,9 +330,12 @@ export default function SettingsScreen() {
           </View>
         </View>
         <TouchableOpacity
+          testID="settings-edit-profile"
           style={styles.editProfileBtn}
           onPress={() => router.push('/edit-profile')}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('settings.editProfile')}
         >
           <Ionicons name="create-outline" size={16} color={Colors.accent} />
           <Text style={styles.editProfileText}>{t('settings.editProfile')}</Text>
@@ -311,9 +345,12 @@ export default function SettingsScreen() {
       <Section isDark={isDark} title={t('settings.subscription')}>
         {subError && !subLoading ? (
           <TouchableOpacity
+            testID="settings-sub-retry"
             style={styles.subErrorRow}
             onPress={loadSubscriptionData}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.subLoadRetry')}
           >
             <Ionicons name="cloud-offline-outline" size={20} color={Colors.coral} />
             <View style={{ flex: 1 }}>
@@ -329,6 +366,7 @@ export default function SettingsScreen() {
         ) : (
           <>
             <Row
+              testID="settings-row-current-plan"
               isDark={isDark}
               icon="diamond"
               label={t('settings.currentPlan')}
@@ -338,6 +376,7 @@ export default function SettingsScreen() {
               }
             />
             <Row
+              testID="settings-row-monthly-usage"
               isDark={isDark}
               icon="analytics"
               label={t('settings.monthlyUsage')}
@@ -357,6 +396,7 @@ export default function SettingsScreen() {
             />
             {plan === 'free' && (
               <Row
+                testID="settings-upgrade-plan"
                 isDark={isDark}
                 icon="arrow-up-circle"
                 label={t('settings.upgradePlan')}
@@ -365,6 +405,7 @@ export default function SettingsScreen() {
             )}
             {isRevenueCatConfigured() && (
               <Row
+                testID="settings-restore-purchases"
                 isDark={isDark}
                 icon="refresh-circle"
                 label={restoring ? t('common.loading') : t('paywall.restorePurchases')}
@@ -377,6 +418,7 @@ export default function SettingsScreen() {
             {/* Apple Guideline 3.1.2: native subscription management link. */}
             {!subLoading && plan !== 'free' && (
               <Row
+                testID="settings-manage-subscription"
                 isDark={isDark}
                 icon="card-outline"
                 label={t('settings.manageSubscription')}
@@ -389,12 +431,14 @@ export default function SettingsScreen() {
 
       <Section isDark={isDark} title={t('settings.appearance')}>
         <Row
+          testID="settings-row-dark-mode"
           isDark={isDark}
           icon="moon"
           label={t('settings.darkMode')}
           value={isDark ? t('settings.darkModeActive') : t('settings.darkModeInactive')}
         />
         <Row
+          testID="settings-row-language"
           isDark={isDark}
           icon="globe"
           label={t('settings.language')}
@@ -402,11 +446,13 @@ export default function SettingsScreen() {
           onPress={handleLanguageChange}
         />
         <Row
+          testID="settings-row-notifications"
           isDark={isDark}
           icon="notifications"
           label={t('settings.notifications')}
           trailing={
             <Switch
+              testID="settings-switch-push"
               value={pushEnabled}
               onValueChange={handlePushToggle}
               trackColor={{ true: Colors.accent }}
@@ -420,30 +466,35 @@ export default function SettingsScreen() {
 
       <Section isDark={isDark} title={t('settings.about')}>
         <Row
+          testID="settings-row-privacy"
           isDark={isDark}
           icon="hand-left"
           label={t('auth.privacyPolicy')}
           onPress={() => router.push('/privacy')}
         />
         <Row
+          testID="settings-row-terms"
           isDark={isDark}
           icon="document-text"
           label={t('auth.termsOfUse')}
           onPress={() => router.push('/terms')}
         />
         <Row
+          testID="settings-row-check-updates"
           isDark={isDark}
           icon="refresh-outline"
           label={isChecking ? t('settings.checking') : t('settings.checkUpdates')}
           onPress={checkForUpdate}
         />
         <Row
+          testID="settings-row-version"
           isDark={isDark}
           icon="information-circle"
           label={t('settings.version')}
           value="1.0.0"
         />
         <Row
+          testID="settings-row-contact-support"
           isDark={isDark}
           icon="mail-outline"
           label={t('settings.contactSupport')}
@@ -458,6 +509,7 @@ export default function SettingsScreen() {
       </Section>
 
       <TouchableOpacity
+        testID="settings-signout"
         style={styles.signOutBtn}
         onPress={handleSignOut}
         accessibilityLabel={t('settings.signOutA11y')}
@@ -473,6 +525,7 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        testID="settings-delete-account"
         style={styles.deleteAccountBtn}
         onPress={handleDeleteAccount}
         accessibilityLabel={t('settings.deleteAccountA11y')}

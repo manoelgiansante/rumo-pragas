@@ -1,4 +1,4 @@
-# Auth flow — logs in with test credentials.
+# Auth flow — logs in with test credentials using testIDs (post 2026-05-20 QA audit).
 # Skips onboarding if present, enters email+password, taps "Entrar".
 # Validates landing on the authenticated home screen.
 appId: com.agrorumo.rumopragas
@@ -17,26 +17,28 @@ env:
       text: ".*"
     timeout: 20000
 
-# Skip onboarding if visible
+# Skip onboarding if visible — uses dedicated testID added in QA audit
 - runFlow:
     when:
-      visible: "Pular"
+      visible:
+        id: "onboarding-skip"
     commands:
       - tapOn:
-          text: "Pular"
+          id: "onboarding-skip"
           optional: true
 
-# If already logged in, log out via settings — best-effort
+# If already logged in, log out via settings tab — best-effort
 - runFlow:
     when:
-      visible: "Diagnosticar Praga"
+      visible:
+        id: "home-cta-diagnose"
     commands:
       - tapOn:
-          text: "Ajustes"
+          id: "tab-settings"
           optional: true
       - scroll
       - tapOn:
-          text: "Sair da Conta"
+          id: "settings-signout"
           optional: true
       - tapOn:
           text: "Sair"
@@ -44,38 +46,37 @@ env:
 
 # Ensure we are on the login segmented control
 - extendedWaitUntil:
-    visible: "Entrar"
+    visible:
+      id: "login-segment-login"
     timeout: 10000
 
-- assertVisible: "Entrar"
+- assertVisible:
+    id: "login-segment-login"
 
-# Select "Entrar" segment (login tab) in case signup was last active
+# Force "Login" segment in case signup tab was last active
 - tapOn:
-    text: "Entrar"
-    index: 0
+    id: "login-segment-login"
     optional: true
 
-# Email field (placeholder "Email")
 - tapOn:
-    text: "Email"
+    id: "login-input-email"
 - inputText: ${TEST_EMAIL}
 - hideKeyboard
 
-# Password field (placeholder "Senha")
 - tapOn:
-    text: "Senha"
+    id: "login-input-password"
 - inputText: ${TEST_PASSWORD}
 - hideKeyboard
 
-# Submit — the bottom button also has text "Entrar". Use the last match.
 - tapOn:
-    text: "Entrar"
-    index: 1
+    id: "login-submit"
 
 # Wait for authenticated home to render
 - extendedWaitUntil:
-    visible: "Diagnosticar Praga"
+    visible:
+      id: "home-cta-diagnose"
     timeout: 30000
 
-- assertVisible: "Diagnosticar Praga"
+- assertVisible:
+    id: "home-cta-diagnose"
 - takeScreenshot: auth-logged-in

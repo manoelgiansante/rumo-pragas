@@ -270,6 +270,7 @@ export default function HomeScreen() {
       >
         {weatherError && diagnosisError && !weather ? (
           <TouchableOpacity
+            testID="home-retry-load-data"
             onPress={loadData}
             activeOpacity={0.7}
             style={styles.errorCard}
@@ -282,6 +283,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : weatherError && !weather ? (
           <TouchableOpacity
+            testID="home-retry-load-weather"
             onPress={loadData}
             activeOpacity={0.7}
             style={styles.errorCard}
@@ -296,6 +298,7 @@ export default function HomeScreen() {
         {weather && <WeatherCard weather={weather} />}
 
         <TouchableOpacity
+          testID="home-cta-diagnose"
           onPress={() => router.push('/diagnosis/camera')}
           activeOpacity={0.88}
           accessibilityLabel={t('home.diagnosePestA11y')}
@@ -329,6 +332,7 @@ export default function HomeScreen() {
             const exhausted = remaining === 0;
             return (
               <TouchableOpacity
+                testID={exhausted ? 'home-trial-exhausted' : 'home-trial-remaining'}
                 onPress={() => router.push('/paywall')}
                 activeOpacity={0.8}
                 style={[styles.trialCounter, exhausted && styles.trialCounterExhausted]}

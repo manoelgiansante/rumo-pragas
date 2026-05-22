@@ -54,6 +54,7 @@ export default function CropSelectScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
+          testID="cropselect-back"
           onPress={() => router.back()}
           style={styles.backBtn}
           accessibilityLabel={t('cropSelect.back')}
@@ -88,6 +89,7 @@ export default function CropSelectScreen() {
 
       <View style={styles.searchRow}>
         <SearchInput
+          testID="cropselect-search"
           value={search}
           onChangeText={setSearch}
           placeholder={t('cropSelect.searchPlaceholder')}
@@ -115,6 +117,7 @@ export default function CropSelectScreen() {
         }
         renderItem={({ item }) => (
           <TouchableOpacity
+            testID={`cropselect-crop-${item.id}`}
             style={[styles.cropItem, selected.id === item.id && styles.cropItemSelected]}
             onPress={() => handleSelect(item)}
             activeOpacity={0.7}
@@ -137,6 +140,7 @@ export default function CropSelectScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
+          testID="cropselect-start-diagnosis"
           onPress={startDiagnosis}
           activeOpacity={0.8}
           accessibilityLabel={t('cropSelect.startA11y', { crop: selected.displayName })}

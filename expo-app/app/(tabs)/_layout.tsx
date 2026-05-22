@@ -34,6 +34,7 @@ export default function TabsLayout() {
           options={{
             title: t('tabs.home'),
             tabBarAccessibilityLabel: t('tabs.homeA11y'),
+            tabBarButtonTestID: 'tab-home',
             tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <Ionicons name="home" size={size} color={color} />
             ),
@@ -44,6 +45,7 @@ export default function TabsLayout() {
           options={{
             title: t('tabs.history'),
             tabBarAccessibilityLabel: t('tabs.historyA11y'),
+            tabBarButtonTestID: 'tab-history',
             tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <Ionicons name="time" size={size} color={color} />
             ),
@@ -54,6 +56,7 @@ export default function TabsLayout() {
           options={{
             title: t('tabs.library'),
             tabBarAccessibilityLabel: t('tabs.libraryA11y'),
+            tabBarButtonTestID: 'tab-library',
             tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <Ionicons name="library" size={size} color={color} />
             ),
@@ -64,6 +67,7 @@ export default function TabsLayout() {
           options={{
             title: t('tabs.aiChat'),
             tabBarAccessibilityLabel: t('tabs.aiChatA11y'),
+            tabBarButtonTestID: 'tab-ai-chat',
             tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <Ionicons name="sparkles" size={size} color={color} />
             ),
@@ -74,6 +78,7 @@ export default function TabsLayout() {
           options={{
             title: t('tabs.settings'),
             tabBarAccessibilityLabel: t('tabs.settingsA11y'),
+            tabBarButtonTestID: 'tab-settings',
             tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <Ionicons name="settings" size={size} color={color} />
             ),

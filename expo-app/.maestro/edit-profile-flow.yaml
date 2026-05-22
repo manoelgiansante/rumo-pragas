@@ -1,0 +1,81 @@
+# Edit profile flow — opens Settings → Edit Profile, edits name, saves.
+appId: com.agrorumo.rumopragas
+tags:
+  - profile
+  - settings
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-settings"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-edit-profile"
+    timeout: 10000
+
+- tapOn:
+    id: "settings-edit-profile"
+
+- extendedWaitUntil:
+    visible:
+      id: "edit-profile-input-fullname"
+    timeout: 10000
+
+- assertVisible:
+    id: "edit-profile-back"
+- assertVisible:
+    id: "edit-profile-input-fullname"
+- assertVisible:
+    id: "edit-profile-input-city"
+- assertVisible:
+    id: "edit-profile-save"
+
+- takeScreenshot: edit-profile-initial
+
+# Edit city field — non-destructive
+- tapOn:
+    id: "edit-profile-input-city"
+- inputText: "Ribeirão Preto"
+- hideKeyboard
+
+# Pick a state chip
+- tapOn:
+    id: "edit-profile-state-SP"
+
+# Toggle a crop chip
+- tapOn:
+    id: "edit-profile-crop-soja"
+
+- takeScreenshot: edit-profile-filled
+
+# Save
+- tapOn:
+    id: "edit-profile-save"
+
+# Either "saved" Alert or back to settings
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+# Eventually return to settings — back button hit if Alert dismissed but didn't auto-pop
+- runFlow:
+    when:
+      visible:
+        id: "edit-profile-back"
+    commands:
+      - tapOn:
+          id: "edit-profile-back"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-edit-profile"
+    timeout: 10000

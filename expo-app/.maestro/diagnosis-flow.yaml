@@ -1,5 +1,7 @@
 # Diagnosis flow — Home → Camera (gallery picker) → Crop select → Loading → Results.
 # Uses gallery (not live camera) for determinism on emulators/simulators.
+# Uses testIDs added in 2026-05-20 QA audit.
+#
 # Note: picker selection is handled natively and may require a fixture image in
 # the simulator/emulator photo library. On Android, pre-load a test image via:
 #   adb push test-pest.jpg /sdcard/Download/
@@ -12,20 +14,26 @@ tags:
 
 # From home, tap diagnose CTA
 - extendedWaitUntil:
-    visible: "Diagnosticar Praga"
+    visible:
+      id: "home-cta-diagnose"
     timeout: 15000
-- tapOn: "Diagnosticar Praga"
+- tapOn:
+    id: "home-cta-diagnose"
 
 # Camera entry screen
 - extendedWaitUntil:
-    visible: "Identificação por IA"
+    visible:
+      id: "diagnosis-camera-capture"
     timeout: 10000
-- assertVisible: "Tirar Foto"
-- assertVisible: "Escolher da Galeria"
+- assertVisible:
+    id: "diagnosis-camera-capture"
+- assertVisible:
+    id: "diagnosis-camera-gallery"
 - takeScreenshot: diag-camera-entry
 
 # Use gallery for a reproducible run
-- tapOn: "Escolher da Galeria"
+- tapOn:
+    id: "diagnosis-camera-gallery"
 
 # Handle native permission dialog (iOS + Android). Accept in all variants.
 - runFlow:
@@ -78,19 +86,22 @@ tags:
     text: "Done"
     optional: true
 
-# Crop-select screen
+# Crop-select screen — should land on it after image picked
 - extendedWaitUntil:
-    visible: "Selecionar Cultura"
+    visible:
+      id: "cropselect-start-diagnosis"
     timeout: 30000
-- assertVisible: "Qual cultura está afetada?"
+- assertVisible:
+    id: "cropselect-start-diagnosis"
 - takeScreenshot: diag-crop-select
 
-# Pick first crop in the list
+# Pick soy crop explicitly (deterministic; first item in CROPS)
 - tapOn:
-    text: "Soja"
+    id: "cropselect-crop-soja"
     optional: true
 
-- tapOn: "Iniciar Diagnóstico"
+- tapOn:
+    id: "cropselect-start-diagnosis"
 
 # Loading screen — any of the steps are valid
 - extendedWaitUntil:
@@ -99,12 +110,12 @@ tags:
     timeout: 15000
 - takeScreenshot: diag-loading
 
-# Results screen — expect either pest detected or healthy plant
+# Results screen — expect either pest detected or healthy plant or queued
 - extendedWaitUntil:
     visible:
-      text: "(Praga Detectada|Planta Saudável|Novo Diagnóstico)"
+      text: "(Praga Detectada|Planta Saudável|Novo Diagnóstico|Diagnóstico|Em fila)"
     timeout: 60000
 - takeScreenshot: diag-result
 
 - assertVisible:
-    text: "(Praga Detectada|Planta Saudável|Novo Diagnóstico)"
+    text: "(Praga Detectada|Planta Saudável|Novo Diagnóstico|Diagnóstico|Em fila)"

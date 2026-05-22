@@ -1,0 +1,94 @@
+# Sign up flow — exercises signup tab + form validation guardrails.
+# Does NOT actually create a real account (uses an obviously-fake email so
+# Supabase signup may fail at email validation, which is fine — we're testing
+# UI states, not the backend).
+appId: com.agrorumo.rumopragas
+tags:
+  - auth
+  - signup
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 20000
+
+# Skip onboarding if visible
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    commands:
+      - tapOn:
+          id: "onboarding-skip"
+
+- extendedWaitUntil:
+    visible:
+      id: "login-segment-signup"
+    timeout: 10000
+
+# Switch to signup segment
+- tapOn:
+    id: "login-segment-signup"
+
+# Signup mode adds Name field + Terms checkbox + disabled submit
+- assertVisible:
+    id: "login-input-fullname"
+- assertVisible:
+    id: "login-input-email"
+- assertVisible:
+    id: "login-input-password"
+- assertVisible:
+    id: "login-checkbox-terms"
+- assertVisible:
+    id: "login-submit"
+
+- takeScreenshot: signup-empty
+
+# Fill the form
+- tapOn:
+    id: "login-input-fullname"
+- inputText: "QA Maestro Tester"
+- hideKeyboard
+
+- tapOn:
+    id: "login-input-email"
+- inputText: "maestro-qa+nonexistent-2026@example.com"
+- hideKeyboard
+
+- tapOn:
+    id: "login-input-password"
+- inputText: "StrongTest2026!"
+- hideKeyboard
+
+# Accept terms (required to enable submit)
+- tapOn:
+    id: "login-checkbox-terms"
+
+- takeScreenshot: signup-filled
+
+# Submit — best-effort; backend may reject, but UI must not freeze.
+- tapOn:
+    id: "login-submit"
+
+# Either we get success Alert "checkEmail", or backend error surface in errorContainer.
+# Either way, after dismissing, login submit must still be reachable (no infinite spinner).
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 15000
+
+- assertVisible:
+    id: "login-submit"
+
+- takeScreenshot: signup-result

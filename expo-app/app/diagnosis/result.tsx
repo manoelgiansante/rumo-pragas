@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as Sentry from '@sentry/react-native';
 import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue,
@@ -187,12 +188,32 @@ export default function ResultScreen() {
   }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handleWhatsAppShare = useCallback(async () => {
+    Sentry.addBreadcrumb({
+      category: 'diagnosis',
+      message: 'result.shareWhatsApp.tap',
+      level: 'info',
+    });
     const text = buildShareText();
     const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    } else {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        return;
+      }
+      // Fallback: open web wa.me link if app not installed but browser can
+      // handle the deep link. (commit c936494 reference)
+      const fallback = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      const canOpenFallback = await Linking.canOpenURL(fallback);
+      if (canOpenFallback) {
+        await Linking.openURL(fallback);
+        return;
+      }
+      Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
+    } catch (e) {
+      Sentry.captureException(e, {
+        tags: { feature: 'diagnosis', action: 'share_whatsapp' },
+      });
       Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
     }
   }, [buildShareText, t]);
@@ -345,6 +366,11 @@ export default function ResultScreen() {
   }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handlePdfExport = useCallback(async () => {
+    Sentry.addBreadcrumb({
+      category: 'diagnosis',
+      message: 'result.exportPdf.tap',
+      level: 'info',
+    });
     try {
       const html = buildPdfHtml();
       const { uri } = await Print.printToFileAsync({ html, base64: false });
@@ -357,7 +383,10 @@ export default function ResultScreen() {
         dialogTitle: t('diagnosis.exportPdfDialogTitle'),
         UTI: 'com.adobe.pdf',
       });
-    } catch {
+    } catch (e) {
+      Sentry.captureException(e, {
+        tags: { feature: 'diagnosis', action: 'export_pdf' },
+      });
       Alert.alert(t('common.error'), t('diagnosis.exportPdfError'));
     }
   }, [buildPdfHtml, t]);
@@ -375,6 +404,7 @@ export default function ResultScreen() {
           </Text>
           <Text style={styles.errorMsg}>{t('diagnosis.queuedMessage')}</Text>
           <TouchableOpacity
+            testID="diagnosis-result-back-home"
             style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
             onPress={() => router.dismissAll()}
             accessibilityLabel={t('diagnosis.backToHomeA11y')}
@@ -403,6 +433,7 @@ export default function ResultScreen() {
           <Text style={[styles.errorTitle, isDark && styles.textDark]}>{t('diagnosis.error')}</Text>
           <Text style={styles.errorMsg}>{error}</Text>
           <TouchableOpacity
+            testID="diagnosis-result-close-error"
             style={styles.closeBtn}
             onPress={() => router.dismissAll()}
             accessibilityLabel={t('diagnosis.closeDiagnosisA11y')}
@@ -439,6 +470,7 @@ export default function ResultScreen() {
                 : t('diagnosis.invalidImageMsg'))}
           </Text>
           <TouchableOpacity
+            testID="diagnosis-result-try-again"
             style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
             onPress={() => router.replace('/diagnosis/camera')}
             accessibilityLabel={t('diagnosis.tryAgainA11y')}
@@ -464,6 +496,7 @@ export default function ResultScreen() {
           </Text>
           <Text style={styles.errorMsg}>{t('diagnosis.noDataMsg')}</Text>
           <TouchableOpacity
+            testID="diagnosis-result-new"
             style={styles.closeBtn}
             onPress={() => router.replace('/diagnosis/camera')}
             accessibilityLabel={t('diagnosis.newDiagnosis')}
@@ -489,6 +522,7 @@ export default function ResultScreen() {
         >
           <View style={styles.headerTopRow}>
             <TouchableOpacity
+              testID="diagnosis-result-close"
               onPress={() => router.dismissAll()}
               style={styles.backBtn}
               accessibilityLabel={t('diagnosis.closeResult')}
@@ -497,6 +531,7 @@ export default function ResultScreen() {
               <Ionicons name="close" size={22} color={isHealthy ? '#FFF' : Colors.text} />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="diagnosis-result-share-header"
               onPress={handleWhatsAppShare}
               style={styles.backBtn}
               accessibilityLabel={t('diagnosis.shareDiagnosis')}
@@ -765,6 +800,7 @@ export default function ResultScreen() {
 
         <View style={styles.actionRow}>
           <TouchableOpacity
+            testID="diagnosis-result-share-whatsapp"
             style={styles.whatsappBtn}
             onPress={handleWhatsAppShare}
             activeOpacity={0.75}
@@ -776,6 +812,7 @@ export default function ResultScreen() {
             <Text style={styles.actionBtnText}>{t('diagnosis.shareWhatsApp')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            testID="diagnosis-result-export-pdf"
             style={styles.pdfBtn}
             onPress={handlePdfExport}
             activeOpacity={0.75}

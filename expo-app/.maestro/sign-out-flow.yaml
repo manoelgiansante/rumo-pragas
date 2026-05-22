@@ -1,0 +1,52 @@
+# Sign out flow — Settings → Sign out → Confirm → Login screen.
+appId: com.agrorumo.rumopragas
+tags:
+  - auth
+  - signout
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-settings"
+
+- extendedWaitUntil:
+    visible:
+      id: "settings-signout"
+    timeout: 10000
+
+- assertVisible:
+    id: "settings-signout"
+- takeScreenshot: pre-signout
+
+- tapOn:
+    id: "settings-signout"
+
+# Confirmation Alert
+- extendedWaitUntil:
+    visible:
+      text: "(Sair|Cancelar)"
+    timeout: 5000
+
+- takeScreenshot: signout-confirm
+
+# Confirm by tapping the destructive "Sair" button (the second one)
+- tapOn:
+    text: "Sair"
+
+# After sign out, we land on login screen
+- extendedWaitUntil:
+    visible:
+      id: "login-input-email"
+    timeout: 15000
+
+- assertVisible:
+    id: "login-input-email"
+- assertVisible:
+    id: "login-submit"
+
+- takeScreenshot: post-signout-login

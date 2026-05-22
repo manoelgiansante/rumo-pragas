@@ -1,5 +1,6 @@
 # Smoke test — launches the app and confirms the main UI renders.
-# Does NOT require auth: onboarding + login screens are valid targets.
+# Uses testIDs (added 2026-05-20 QA audit) for stable selectors.
+# Does NOT require auth: onboarding + login screens are valid landing targets.
 appId: com.agrorumo.rumopragas
 tags:
   - smoke
@@ -8,37 +9,51 @@ tags:
     clearState: true
     stopApp: true
 
-# Wait for splash/initial render
+# Wait for splash to clear and one of the landing screens to mount
 - extendedWaitUntil:
     visible:
       text: ".*"
     timeout: 20000
 
-# App should land on one of these screens — any match passes
+# Onboarding landing (most common cold start path)
 - runFlow:
     when:
-      visible: "Rumo Praga"
+      visible:
+        id: "onboarding-skip"
     commands:
-      - assertVisible: "Rumo Praga"
-
-# Fallback: onboarding screen
-- runFlow:
-    when:
-      visible: "Diagnóstico com IA"
-    commands:
-      - assertVisible: "Diagnóstico com IA"
-      - tapOn:
-          text: "Pular"
-          optional: true
-
-# Fallback: already authenticated, home tab
-- runFlow:
-    when:
-      visible: "Diagnosticar Praga"
-    commands:
-      - assertVisible: "Diagnosticar Praga"
       - assertVisible:
-          text: "Início"
-          optional: true
+          id: "onboarding-skip"
+      - assertVisible:
+          id: "onboarding-next"
+      - tapOn:
+          id: "onboarding-skip"
 
-- takeScreenshot: smoke-home-screen
+# Login landing (post-onboarding)
+- runFlow:
+    when:
+      visible:
+        id: "login-input-email"
+    commands:
+      - assertVisible:
+          id: "login-segment-login"
+      - assertVisible:
+          id: "login-segment-signup"
+      - assertVisible:
+          id: "login-input-email"
+      - assertVisible:
+          id: "login-input-password"
+      - assertVisible:
+          id: "login-submit"
+
+# Already-authenticated landing
+- runFlow:
+    when:
+      visible:
+        id: "home-cta-diagnose"
+    commands:
+      - assertVisible:
+          id: "home-cta-diagnose"
+      - assertVisible:
+          id: "tab-home"
+
+- takeScreenshot: smoke-launch

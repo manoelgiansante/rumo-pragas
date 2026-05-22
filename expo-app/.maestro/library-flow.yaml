@@ -1,0 +1,48 @@
+# Library flow — pest library tab with crop filter chips + search.
+appId: com.agrorumo.rumopragas
+tags:
+  - library
+---
+- runFlow: auth-flow.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "home-cta-diagnose"
+    timeout: 15000
+
+- tapOn:
+    id: "tab-library"
+
+- extendedWaitUntil:
+    visible:
+      id: "library-chip-all"
+    timeout: 10000
+
+- assertVisible:
+    id: "library-chip-all"
+- takeScreenshot: library-initial
+
+# Search via testID
+- tapOn:
+    id: "library-search-input"
+- inputText: "ferrugem"
+- hideKeyboard
+- takeScreenshot: library-search
+
+- tapOn:
+    id: "library-search-clear"
+    optional: true
+
+# Filter by Soy crop
+- tapOn:
+    id: "library-chip-soja"
+    optional: true
+
+- takeScreenshot: library-filtered-soja
+
+# Back to All
+- tapOn:
+    id: "library-chip-all"
+
+- assertVisible:
+    id: "library-chip-all"

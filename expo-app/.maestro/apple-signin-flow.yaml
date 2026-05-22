@@ -1,0 +1,50 @@
+# Apple Sign In flow — iOS only. Validates the SIWA button renders and is
+# tappable. Does NOT complete real Apple sign-in (requires real iCloud
+# credentials in the simulator — outside Maestro scope).
+appId: com.agrorumo.rumopragas
+tags:
+  - auth
+  - apple
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 20000
+
+# Skip onboarding
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    commands:
+      - tapOn:
+          id: "onboarding-skip"
+
+- extendedWaitUntil:
+    visible:
+      id: "login-input-email"
+    timeout: 10000
+
+# Apple Sign In button is OPTIONAL — only shown on iOS via isAppleSignInAvailable()
+- runFlow:
+    when:
+      visible:
+        id: "login-apple-signin"
+    commands:
+      - assertVisible:
+          id: "login-apple-signin"
+      - takeScreenshot: apple-signin-button-visible
+      # Tapping triggers native Apple sheet. We screenshot and abort
+      # before submitting (Apple UI cannot be driven by Maestro reliably).
+      - tapOn:
+          id: "login-apple-signin"
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - takeScreenshot: apple-signin-sheet-or-cancel
+
+# Either Apple sheet is shown (iOS) or nothing happens (Android — button not rendered).
+# Both outcomes are valid for this smoke test.

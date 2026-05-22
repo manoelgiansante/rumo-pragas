@@ -104,12 +104,14 @@ export default function ConsentLocationScreen() {
 
         <View style={styles.actions}>
           <TouchableOpacity
+            testID="consent-location-accept"
             style={styles.acceptBtn}
             onPress={handleAccept}
             activeOpacity={0.8}
             disabled={isSaving}
             accessibilityRole="button"
             accessibilityLabel={t('consent.location.acceptA11y')}
+            accessibilityState={{ disabled: isSaving, busy: isSaving }}
           >
             {isSaving ? (
               <ActivityIndicator color="#FFF" />
@@ -119,12 +121,14 @@ export default function ConsentLocationScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="consent-location-decline"
             style={styles.declineBtn}
             onPress={handleDecline}
             activeOpacity={0.7}
             disabled={isSaving}
             accessibilityRole="button"
             accessibilityLabel={t('consent.location.declineA11y')}
+            accessibilityState={{ disabled: isSaving, busy: isSaving }}
           >
             <Text style={styles.declineText}>{t('consent.location.decline')}</Text>
           </TouchableOpacity>

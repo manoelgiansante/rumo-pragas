@@ -5,6 +5,29 @@ import { ErrorBoundary } from '../../components/ErrorBoundary';
 import i18n from '../../i18n';
 
 const mockCaptureException = jest.fn();
+const mockWithScope = jest.fn();
+
+// ErrorBoundary uses the sentry-shim wrapper (services/sentry-shim) since
+// commit 40df561 (iOS 26 TurboModule crash defense). The shim lazy-requires
+// the real Sentry module on first call, so we mock the shim API directly.
+// Mock factory must avoid out-of-scope identifiers — only `mock*`-prefixed
+// vars are allowed by jest's hoist analysis.
+jest.mock('../../services/sentry-shim', () => {
+  const noop = () => {};
+  return {
+    captureException: (...args: unknown[]) => mockCaptureException(...args),
+    withScope: (
+      cb: (s: { setTag: typeof noop; setLevel: typeof noop; setContext: typeof noop }) => void,
+    ) => {
+      mockWithScope();
+      cb({ setTag: noop, setLevel: noop, setContext: noop });
+    },
+    captureMessage: noop,
+    addBreadcrumb: noop,
+  };
+});
+
+// Keep the @sentry/react-native mock too in case anything else imports it.
 jest.mock('@sentry/react-native', () => ({
   captureException: (...args: unknown[]) => mockCaptureException(...args),
 }));
@@ -103,16 +126,12 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     );
 
-    expect(mockCaptureException).toHaveBeenCalledWith(
-      expect.any(Error),
-      expect.objectContaining({
-        contexts: expect.objectContaining({
-          react: expect.objectContaining({
-            componentStack: expect.any(String),
-          }),
-        }),
-      }),
-    );
+    // ErrorBoundary uses withScope() to attach the React component stack as
+    // context, then calls captureException(error) WITHOUT a second context
+    // arg. So we assert (a) withScope ran, and (b) captureException was
+    // invoked with the thrown Error.
+    expect(mockWithScope).toHaveBeenCalled();
+    expect(mockCaptureException).toHaveBeenCalledWith(expect.any(Error));
   });
 
   it('does not call Sentry when no error occurs', () => {
