@@ -272,6 +272,18 @@ export default {
     deleteAccountA11y: 'Eliminar cuenta permanentemente',
     deleteAccountHint:
       'Solicita la eliminación de todos sus datos conforme a las regulaciones de privacidad',
+    notifPrefs: {
+      sectionTitle: 'Notificaciones',
+      outbreaks: 'Brotes regionales',
+      outbreaksA11y: 'Alertas sobre brotes de plagas en su región',
+      dailyReminder: 'Recordatorio diario',
+      dailyReminderA11y: 'Recordatorio diario para inspeccionar su cultivo',
+      news: 'Novedades de la app',
+      newsA11y: 'Avisos de nuevas funciones y mejoras',
+      marketing: 'Promociones y ofertas',
+      marketingA11y: 'Ofertas promocionales y descuentos',
+      saveError: 'No se pudo guardar la preferencia. Inténtelo de nuevo.',
+    },
   },
   common: {
     offlineBanner: 'Estás sin conexión a internet',

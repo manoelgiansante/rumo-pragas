@@ -269,6 +269,18 @@ export default {
     deleteAccountA11y: 'Delete account permanently',
     deleteAccountHint:
       'Requests the deletion of all your data in compliance with privacy regulations',
+    notifPrefs: {
+      sectionTitle: 'Notifications',
+      outbreaks: 'Regional outbreaks',
+      outbreaksA11y: 'Alerts about pest outbreaks in your region',
+      dailyReminder: 'Daily reminder',
+      dailyReminderA11y: 'Daily reminder to scout your fields',
+      news: 'App updates',
+      newsA11y: 'Announcements of new features and improvements',
+      marketing: 'Promotions and offers',
+      marketingA11y: 'Promotional offers and discounts',
+      saveError: 'Could not save preference. Please try again.',
+    },
   },
   common: {
     offlineBanner: 'You are currently offline',

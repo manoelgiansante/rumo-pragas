@@ -17,6 +17,25 @@ jest.mock('expo-notifications', () => ({
 // Mock expo-device
 jest.mock('expo-device', () => ({
   isDevice: true,
+  osVersion: '17.0',
+  deviceName: 'iPhone',
+  modelName: 'iPhone 15 Pro',
+  brand: 'Apple',
+}));
+
+// Mock @sentry/react-native — services/notifications now reports register
+// failures explicitly (no more silent swallow).
+jest.mock('@sentry/react-native', () => ({
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+}));
+
+// Mock the supabase client used by persistPushTokenToServer
+const mockRpc = jest.fn().mockResolvedValue({ error: null });
+jest.mock('../../services/supabase', () => ({
+  supabase: {
+    rpc: (...args: unknown[]) => mockRpc(...args),
+  },
 }));
 
 // Mock expo-constants
@@ -24,6 +43,9 @@ jest.mock('expo-constants', () => ({
   __esModule: true,
   default: {
     expoConfig: {
+      version: '1.0.0',
+      ios: { buildNumber: '36' },
+      android: { versionCode: 36 },
       extra: {
         eas: { projectId: 'test-project-id' },
       },
@@ -295,5 +317,149 @@ describe('scheduleLocalPestAlert', () => {
 
     const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
     expect(call.content.data).toEqual({});
+  });
+});
+
+// -----------------------------------------------------------------------------
+// persistPushTokenToServer
+// -----------------------------------------------------------------------------
+//
+// We re-use the top-of-file mocks (mockRpc, AsyncStorage default, etc.) and
+// just reset their behaviour per-test. Earlier tests that called
+// jest.resetModules() / jest.doMock() did so in nested scopes — by the time
+// the top describe finishes, the cached module is the original one again
+// because we import { __resetPushTokenSyncCache, persistPushTokenToServer }
+// fresh below.
+// -----------------------------------------------------------------------------
+describe('persistPushTokenToServer', () => {
+  const TOKEN = 'ExponentPushToken[zzz-very-real-token]';
+
+  // The earlier `registerForPushNotificationsAsync` tests call jest.resetModules()
+  // which orphans the original `@sentry/react-native` mock from the freshly
+  // re-required `services/notifications`. Re-establish a fresh module graph
+  // with ALL deps mocked at this describe's beforeEach.
+  let svc: typeof import('../../services/notifications');
+  let mockSentry: { captureException: jest.Mock; captureMessage: jest.Mock };
+  let mockSupabaseRpc: jest.Mock;
+  let mockGetItem: jest.Mock;
+  let mockSetItem: jest.Mock;
+
+  beforeEach(async () => {
+    jest.resetModules();
+    mockSentry = { captureException: jest.fn(), captureMessage: jest.fn() };
+    mockSupabaseRpc = jest.fn().mockResolvedValue({ error: null });
+    mockGetItem = jest.fn().mockResolvedValue(null);
+    mockSetItem = jest.fn().mockResolvedValue(undefined);
+
+    jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }));
+    jest.doMock('expo-device', () => ({
+      isDevice: true,
+      osVersion: '17.0',
+      deviceName: 'iPhone',
+      modelName: 'iPhone 15 Pro',
+      brand: 'Apple',
+    }));
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: {
+        expoConfig: {
+          version: '1.0.0',
+          ios: { buildNumber: '36' },
+          android: { versionCode: 36 },
+          extra: { eas: { projectId: 'test-project-id' } },
+        },
+      },
+    }));
+    jest.doMock('@react-native-async-storage/async-storage', () => ({
+      __esModule: true,
+      default: {
+        getItem: mockGetItem,
+        setItem: mockSetItem,
+        removeItem: jest.fn().mockResolvedValue(undefined),
+      },
+    }));
+    jest.doMock('@sentry/react-native', () => mockSentry);
+    jest.doMock('../../services/supabase', () => ({
+      supabase: { rpc: mockSupabaseRpc },
+    }));
+    jest.doMock('expo-notifications', () => ({
+      setNotificationHandler: jest.fn(),
+      setNotificationChannelAsync: jest.fn(),
+      getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+      requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+      getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: 'ExponentPushToken[xxx]' }),
+      scheduleNotificationAsync: jest.fn().mockResolvedValue(undefined),
+      AndroidImportance: { HIGH: 4, DEFAULT: 3 },
+      SchedulableTriggerInputTypes: { TIME_INTERVAL: 1 },
+    }));
+
+    svc = require('../../services/notifications');
+    await svc.__resetPushTokenSyncCache();
+  });
+
+  it('returns false for empty / short tokens without calling RPC', async () => {
+    expect(await svc.persistPushTokenToServer('')).toBe(false);
+    expect(await svc.persistPushTokenToServer('x')).toBe(false);
+    expect(mockSupabaseRpc).not.toHaveBeenCalled();
+  });
+
+  it('calls touch_push_token RPC with platform + device fingerprint', async () => {
+    const ok = await svc.persistPushTokenToServer(TOKEN, { force: true });
+    expect(ok).toBe(true);
+    expect(mockSupabaseRpc).toHaveBeenCalledWith(
+      'touch_push_token',
+      expect.objectContaining({
+        p_expo_token: TOKEN,
+        p_platform: 'ios',
+        p_device_info: expect.objectContaining({
+          os: 'ios',
+          osVersion: '17.0',
+          modelName: 'iPhone 15 Pro',
+          brand: 'Apple',
+          appVersion: '1.0.0',
+          buildNumber: '36',
+        }),
+      }),
+    );
+  });
+
+  it('returns false and captures Sentry warning when RPC returns error', async () => {
+    mockSupabaseRpc.mockResolvedValue({
+      error: { code: '42501', message: 'permission denied' },
+    });
+    const ok = await svc.persistPushTokenToServer(TOKEN, { force: true });
+    expect(ok).toBe(false);
+    expect(mockSentry.captureMessage).toHaveBeenCalledWith(
+      'persistPushTokenToServer rpc error',
+      expect.objectContaining({
+        level: 'warning',
+        tags: expect.objectContaining({ feature: 'push', step: 'persist', code: '42501' }),
+      }),
+    );
+  });
+
+  it('returns false and captures exception when RPC throws', async () => {
+    mockSupabaseRpc.mockRejectedValue(new Error('network down'));
+    const ok = await svc.persistPushTokenToServer(TOKEN, { force: true });
+    expect(ok).toBe(false);
+    expect(mockSentry.captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ tags: expect.objectContaining({ feature: 'push' }) }),
+    );
+  });
+
+  it('skips the network call within the 30-day refresh window when force=false', async () => {
+    mockGetItem.mockResolvedValue(String(Date.now() - 1000));
+    const ok = await svc.persistPushTokenToServer(TOKEN, { force: false });
+    expect(ok).toBe(true);
+    expect(mockSupabaseRpc).not.toHaveBeenCalled();
+  });
+
+  it('hits the network when last sync is stale, even with force=false', async () => {
+    const stale = Date.now() - 60 * 24 * 60 * 60 * 1000; // 60 days ago
+    mockGetItem.mockResolvedValue(String(stale));
+    const ok = await svc.persistPushTokenToServer(TOKEN, { force: false });
+    expect(ok).toBe(true);
+    expect(mockSupabaseRpc).toHaveBeenCalledTimes(1);
   });
 });

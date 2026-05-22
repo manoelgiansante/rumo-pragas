@@ -24,6 +24,12 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
 import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  loadNotificationPreferences,
+  saveNotificationPreferences,
+  type NotificationPreferences,
+} from '../../services/notificationPreferences';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
 
@@ -95,6 +101,19 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   // Dark mode follows system preference (no manual toggle)
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(
+    DEFAULT_NOTIFICATION_PREFERENCES,
+  );
+  const [notifPrefsLoading, setNotifPrefsLoading] = useState(true);
+  // Per-key inflight flags so toggling one switch never blocks the others.
+  const [notifPrefsSaving, setNotifPrefsSaving] = useState<
+    Record<keyof NotificationPreferences, boolean>
+  >({
+    outbreaks_regional: false,
+    daily_reminder: false,
+    news: false,
+    marketing: false,
+  });
   const [plan, setPlan] = useState<string>('free');
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
   const [subLoading, setSubLoading] = useState(true);
@@ -131,6 +150,47 @@ export default function SettingsScreen() {
     setPushEnabled(value);
     AsyncStorage.setItem(PUSH_ENABLED_KEY, String(value));
   }, []);
+
+  // Load notification preferences from server (with AsyncStorage cache fallback)
+  useEffect(() => {
+    if (!user?.id) return;
+    let mounted = true;
+    setNotifPrefsLoading(true);
+    loadNotificationPreferences(user.id)
+      .then((prefs) => {
+        if (mounted) setNotifPrefs(prefs);
+      })
+      .catch((err: unknown) => {
+        if (__DEV__) console.warn('[settings] loadNotificationPreferences failed:', err);
+      })
+      .finally(() => {
+        if (mounted) setNotifPrefsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  const handleNotifPrefToggle = useCallback(
+    (key: keyof NotificationPreferences) => async (value: boolean) => {
+      if (!user?.id) return;
+      // Optimistic: flip UI immediately, then persist.
+      const previous = notifPrefs;
+      const next = { ...previous, [key]: value };
+      setNotifPrefs(next);
+      setNotifPrefsSaving((s) => ({ ...s, [key]: true }));
+      try {
+        await saveNotificationPreferences(user.id, { [key]: value });
+      } catch {
+        // rollback UI on failure (service already rolled back cache + reported to Sentry)
+        setNotifPrefs(previous);
+        Alert.alert(t('common.error'), t('settings.notifPrefs.saveError'));
+      } finally {
+        setNotifPrefsSaving((s) => ({ ...s, [key]: false }));
+      }
+    },
+    [user?.id, notifPrefs, t],
+  );
 
   const handleLanguageChange = useCallback(() => {
     const options = LANGUAGE_OPTIONS.map((opt) => opt.label);
@@ -416,6 +476,88 @@ export default function SettingsScreen() {
             />
           }
         />
+      </Section>
+
+      <Section isDark={isDark} title={t('settings.notifPrefs.sectionTitle')}>
+        {notifPrefsLoading ? (
+          <View style={styles.row}>
+            <Ionicons
+              name="notifications-outline"
+              size={20}
+              color={Colors.accent}
+              style={{ width: 28 }}
+            />
+            <Text style={[styles.rowLabel, isDark && styles.textDark]}>{t('common.loading')}</Text>
+            <ActivityIndicator size="small" color={Colors.accent} />
+          </View>
+        ) : (
+          <>
+            <Row
+              isDark={isDark}
+              icon="warning-outline"
+              label={t('settings.notifPrefs.outbreaks')}
+              trailing={
+                <Switch
+                  value={notifPrefs.outbreaks_regional}
+                  onValueChange={handleNotifPrefToggle('outbreaks_regional')}
+                  disabled={!pushEnabled || notifPrefsSaving.outbreaks_regional}
+                  trackColor={{ true: Colors.accent }}
+                  accessibilityLabel={t('settings.notifPrefs.outbreaksA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: notifPrefs.outbreaks_regional }}
+                />
+              }
+            />
+            <Row
+              isDark={isDark}
+              icon="alarm-outline"
+              label={t('settings.notifPrefs.dailyReminder')}
+              trailing={
+                <Switch
+                  value={notifPrefs.daily_reminder}
+                  onValueChange={handleNotifPrefToggle('daily_reminder')}
+                  disabled={!pushEnabled || notifPrefsSaving.daily_reminder}
+                  trackColor={{ true: Colors.accent }}
+                  accessibilityLabel={t('settings.notifPrefs.dailyReminderA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: notifPrefs.daily_reminder }}
+                />
+              }
+            />
+            <Row
+              isDark={isDark}
+              icon="newspaper-outline"
+              label={t('settings.notifPrefs.news')}
+              trailing={
+                <Switch
+                  value={notifPrefs.news}
+                  onValueChange={handleNotifPrefToggle('news')}
+                  disabled={!pushEnabled || notifPrefsSaving.news}
+                  trackColor={{ true: Colors.accent }}
+                  accessibilityLabel={t('settings.notifPrefs.newsA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: notifPrefs.news }}
+                />
+              }
+            />
+            <Row
+              isDark={isDark}
+              icon="megaphone-outline"
+              label={t('settings.notifPrefs.marketing')}
+              trailing={
+                <Switch
+                  value={notifPrefs.marketing}
+                  onValueChange={handleNotifPrefToggle('marketing')}
+                  disabled={!pushEnabled || notifPrefsSaving.marketing}
+                  trackColor={{ true: Colors.accent }}
+                  accessibilityLabel={t('settings.notifPrefs.marketingA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: notifPrefs.marketing }}
+                />
+              }
+            />
+          </>
+        )}
       </Section>
 
       <Section isDark={isDark} title={t('settings.about')}>

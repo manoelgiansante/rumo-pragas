@@ -3,9 +3,15 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import i18n from '../i18n';
+import { supabase } from './supabase';
 
 const PUSH_TOKEN_KEY = '@rumo_pragas_push_token';
+const PUSH_TOKEN_LAST_SYNC_KEY = '@rumo_pragas_push_token_last_sync';
+// Refresh the server-side audit row at most once every 30 days.
+// We still call on every login (handled in useNotifications) for liveness.
+const TOKEN_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // -----------------------------------------------------------------------------
 // iOS 26 TurboModule crash fix (preventive — follows Finance rejection 2026-04-20)
@@ -155,8 +161,138 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return token;
   } catch (error) {
     if (__DEV__) console.error('Failed to register push notifications:', error);
+    // Non-silent: surface in Sentry so we can detect register regressions.
+    // We swallow only the throw, never the visibility (ZERO-O).
+    try {
+      Sentry.captureException(error, {
+        tags: { feature: 'push', step: 'register' },
+      });
+    } catch {
+      // ignore — Sentry must never crash the caller
+    }
     return null;
   }
+}
+
+// -----------------------------------------------------------------------------
+// Server-side persistence (pragas_push_tokens audit table)
+// -----------------------------------------------------------------------------
+
+interface DeviceFingerprint {
+  os: 'ios' | 'android' | 'web' | 'unknown';
+  osVersion: string | null;
+  deviceName: string | null;
+  modelName: string | null;
+  brand: string | null;
+  appVersion: string;
+  buildNumber: string | null;
+}
+
+function buildDeviceFingerprint(): DeviceFingerprint {
+  const platform: DeviceFingerprint['os'] =
+    Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web'
+      ? Platform.OS
+      : 'unknown';
+  const expoConfig = Constants.expoConfig;
+  const buildNumber =
+    Platform.OS === 'ios'
+      ? (expoConfig?.ios?.buildNumber ?? null)
+      : Platform.OS === 'android' && expoConfig?.android?.versionCode != null
+        ? String(expoConfig.android.versionCode)
+        : null;
+  return {
+    os: platform,
+    osVersion: typeof Device.osVersion === 'string' ? Device.osVersion : null,
+    deviceName: typeof Device.deviceName === 'string' ? Device.deviceName : null,
+    modelName: typeof Device.modelName === 'string' ? Device.modelName : null,
+    brand: typeof Device.brand === 'string' ? Device.brand : null,
+    appVersion: expoConfig?.version ?? '0.0.0',
+    buildNumber,
+  };
+}
+
+/**
+ * Persists the Expo push token to the `pragas_push_tokens` audit table via
+ * the SECURITY DEFINER RPC `touch_push_token`. Idempotent server-side.
+ *
+ * `force=true` bypasses the 30-day cool-down and always hits the server.
+ * Use it on explicit login or on app version upgrade. On every cold start
+ * the hook layer also calls this with force=false, which only hits the
+ * network if the last sync is stale.
+ *
+ * Returns true on success, false on any failure. Failures are reported to
+ * Sentry with tags so we can dashboard them, but they never throw — push
+ * registration must NEVER block app boot.
+ */
+export async function persistPushTokenToServer(
+  token: string,
+  options: { force?: boolean } = {},
+): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    // pragas_push_tokens is mobile-only; web sessions never need a row.
+    return false;
+  }
+  if (!token || token.length < 10) {
+    return false;
+  }
+
+  try {
+    if (!options.force) {
+      const last = await AsyncStorage.getItem(PUSH_TOKEN_LAST_SYNC_KEY);
+      const lastTs = last ? Number(last) : 0;
+      if (Number.isFinite(lastTs) && Date.now() - lastTs < TOKEN_REFRESH_INTERVAL_MS) {
+        // Recent enough — skip network call.
+        return true;
+      }
+    }
+
+    const fingerprint = buildDeviceFingerprint();
+    // Use the RPC — it enforces auth.uid() server-side and upserts atomically.
+    const { error } = await supabase.rpc('touch_push_token', {
+      p_expo_token: token,
+      p_platform: fingerprint.os,
+      p_device_info: fingerprint,
+    });
+
+    if (error) {
+      // Don't go silent — emit to Sentry so we can spot RLS / RPC regressions.
+      try {
+        Sentry.captureMessage('persistPushTokenToServer rpc error', {
+          level: 'warning',
+          tags: {
+            feature: 'push',
+            step: 'persist',
+            code: error.code ?? 'unknown',
+          },
+          extra: { message: error.message },
+        });
+      } catch {
+        /* Sentry must never crash caller */
+      }
+      if (__DEV__) console.warn('[notifications] persistPushTokenToServer error:', error.message);
+      return false;
+    }
+
+    await AsyncStorage.setItem(PUSH_TOKEN_LAST_SYNC_KEY, String(Date.now()));
+    return true;
+  } catch (err) {
+    try {
+      Sentry.captureException(err, {
+        tags: { feature: 'push', step: 'persist' },
+      });
+    } catch {
+      /* Sentry must never crash caller */
+    }
+    if (__DEV__) console.warn('[notifications] persistPushTokenToServer threw:', err);
+    return false;
+  }
+}
+
+/**
+ * Force a server-side refresh on the next call. Used by tests.
+ */
+export async function __resetPushTokenSyncCache(): Promise<void> {
+  await AsyncStorage.removeItem(PUSH_TOKEN_LAST_SYNC_KEY);
 }
 
 /**
