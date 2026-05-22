@@ -406,7 +406,7 @@ export default {
     privacyFooter:
       'Em conformidade com a LGPD (Lei 13.709/2018). Você pode revogar permissões a qualquer momento.',
     subTaglineFree: 'Faça upgrade para diagnósticos ilimitados e suporte prioritário.',
-    subTaglinePro: 'Você tem acesso completo ao agrônomo IA. Obrigado por apoiar o Rumo Pragas.',
+    subTaglinePro: 'Você tem acesso completo ao agrônomo IA. Obrigado por apoiar o Rumo Pragas IA.',
     diagnosticsRemaining: '{{remaining}} diagnósticos restantes este mês',
   },
   // Common
@@ -762,7 +762,7 @@ export default {
   },
   // Paywall
   paywall: {
-    title: 'Rumo Pragas Pro',
+    title: 'Rumo Pragas IA Pro',
     subtitle: 'Desbloqueie todo o potencial da IA para proteção da sua lavoura',
     subscribe: 'Assinar',
     continueFree: 'Continuar Gratuito',

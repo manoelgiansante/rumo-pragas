@@ -395,7 +395,7 @@ export default {
     sectionAbout: 'Acerca de',
     privacyFooter: 'Conforme a la LGPD / GDPR. Puedes revocar permisos en cualquier momento.',
     subTaglineFree: 'Mejora a Pro para diagnósticos ilimitados y soporte prioritario.',
-    subTaglinePro: 'Tienes acceso completo al agrónomo IA. Gracias por apoyar Rumo Pragas.',
+    subTaglinePro: 'Tienes acceso completo al agrónomo IA. Gracias por apoyar Rumo Pragas IA.',
     diagnosticsRemaining: '{{remaining}} diagnósticos restantes este mes',
   },
   common: {
@@ -678,7 +678,7 @@ export default {
     banana: 'Banana',
   },
   paywall: {
-    title: 'Rumo Pragas Pro',
+    title: 'Rumo Pragas IA Pro',
     subtitle: 'Desbloquee todo el potencial de la IA para proteccion de cultivos',
     subscribe: 'Suscribirse',
     continueFree: 'Continuar Gratis',
