@@ -275,9 +275,24 @@ export default {
     subLoadError: 'Erro ao carregar assinatura',
     subLoadRetry: 'Toque para tentar novamente',
     pushNotifA11y: 'Notificações push',
+    pushNotifications: 'Notificações push',
     signOutA11y: 'Sair da conta',
+    signOutConfirmTitle: 'Sair da conta?',
+    signOutConfirmMessage: 'Você poderá voltar a qualquer momento fazendo login.',
     deleteAccountA11y: 'Excluir conta permanentemente',
     deleteAccountHint: 'Solicita a exclusão de todos os seus dados conforme a LGPD',
+    // Premium polish — 2026-05-21
+    headerTitle: 'Ajustes',
+    sectionAccount: 'Conta',
+    sectionPreferences: 'Preferências',
+    sectionNotifications: 'Notificações',
+    sectionPrivacy: 'Privacidade',
+    sectionAbout: 'Sobre',
+    privacyFooter:
+      'Em conformidade com a LGPD (Lei 13.709/2018). Você pode revogar permissões a qualquer momento.',
+    subTaglineFree: 'Faça upgrade para diagnósticos ilimitados e suporte prioritário.',
+    subTaglinePro: 'Você tem acesso completo ao agrônomo IA. Obrigado por apoiar o Rumo Pragas.',
+    diagnosticsRemaining: '{{remaining}} diagnósticos restantes este mês',
   },
   // Common
   common: {
@@ -734,10 +749,24 @@ export default {
     backA11y: 'Voltar',
     saveA11y: 'Salvar alterações do perfil',
     fullNameA11y: 'Nome completo',
+    fullNamePlaceholder: 'Como você gosta de ser chamado',
     cityA11y: 'Cidade',
+    cityPlaceholder: 'Ex: Sorriso',
     stateSelectA11y: 'Selecionar estado {{state}}',
     cropToggleA11y: 'Alternar cultura {{crop}}',
     emailReadOnlyA11y: 'Email (somente leitura)',
+    // Premium polish — 2026-05-21
+    phone: 'Telefone',
+    phoneA11y: 'Telefone (opcional)',
+    avatarHint: 'Toque na foto para alterar',
+    avatarChangeA11y: 'Alterar foto de perfil',
+    avatarSheetTitle: 'Foto de perfil',
+    avatarTakePhoto: 'Tirar foto',
+    avatarChooseLibrary: 'Escolher da biblioteca',
+    avatarUploadError: 'Não foi possível atualizar a foto. Tente novamente.',
+    permissionDeniedTitle: 'Permissão negada',
+    permissionDeniedMsg:
+      'Conceda permissão de câmera ou fotos em Ajustes para alterar sua foto de perfil.',
   },
   // P0-3 (LGPD) — explicit opt-in consent screens
   consent: {

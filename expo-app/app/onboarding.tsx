@@ -15,6 +15,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  Easing,
+} from 'react-native-reanimated';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 
 const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
@@ -27,26 +33,27 @@ interface OnboardingPage {
   Icon: typeof Camera;
 }
 
+// Sequential green/amber ramp — no rainbow, no tech-blue (per design system token doc).
 const PAGES: OnboardingPage[] = [
   {
     id: '1',
     titleKey: 'onboarding.page1Title',
     subtitleKey: 'onboarding.page1Subtitle',
-    gradientColors: ['#0F6B4D', '#1A966B'],
+    gradientColors: ['#06281D', '#0F6B4D'],
     Icon: Camera,
   },
   {
     id: '2',
     titleKey: 'onboarding.page2Title',
     subtitleKey: 'onboarding.page2Subtitle',
-    gradientColors: ['#2563EB', '#3B82F6'],
+    gradientColors: ['#0B3D2E', '#145A45'],
     Icon: ClipboardList,
   },
   {
     id: '3',
     titleKey: 'onboarding.page3Title',
     subtitleKey: 'onboarding.page3Subtitle',
-    gradientColors: ['#D97706', '#F59E0B'],
+    gradientColors: ['#7A5C2E', '#C89B3C'],
     Icon: BookOpen,
   },
   {
@@ -58,15 +65,32 @@ const PAGES: OnboardingPage[] = [
   },
 ];
 
+// ============================================================================
+// Animated indicator dot — width morphs from 8 → 24 on active.
+// Runs on UI thread via Reanimated, no JS bridge cost per frame.
+// ============================================================================
+
+interface DotProps {
+  active: boolean;
+}
+
+function Dot({ active }: DotProps) {
+  const style = useAnimatedStyle(() => ({
+    width: withSpring(active ? 24 : 8, { damping: 18, stiffness: 200 }),
+    opacity: withTiming(active ? 1 : 0.45, { duration: 200, easing: Easing.out(Easing.ease) }),
+  }));
+  return <Animated.View style={[styles.dot, style]} />;
+}
+
+// ============================================================================
+// Onboarding screen
+// ============================================================================
+
 export default function OnboardingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  // P0 (Apple Guideline 2.1.0 — iPad rejection 2026-04-29):
-  // Use useWindowDimensions() instead of Dimensions.get('window') so the
-  // FlatList page width tracks live size changes (rotation, iPad split-view,
-  // iPhone-app-on-iPad scaling between 1x/2x). Module-init Dimensions become
-  // stale on iPad and break pagingEnabled snapping → "unable to move past
-  // onboarding screens".
+  // P0 (Apple 2.1.0 — iPad rejection 2026-04-29): live useWindowDimensions
+  // so FlatList page width tracks rotation / split-view / iPad scaling.
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isTablet = screenWidth >= 768;
 
@@ -87,10 +111,6 @@ export default function OnboardingScreen() {
   const goToNext = useCallback(() => {
     if (currentIndex < PAGES.length - 1) {
       const nextIndex = currentIndex + 1;
-      // Defensive: scrollToIndex can throw if the FlatList isn't laid out
-      // yet (race on cold start). Fall back to scrollToOffset using the
-      // *current* live width and update the indicator dot manually so the
-      // user is never trapped on the same page.
       try {
         flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       } catch {
@@ -116,6 +136,14 @@ export default function OnboardingScreen() {
           end={{ x: 1, y: 1 }}
           style={[styles.page, { width: screenWidth, height: screenHeight }]}
         >
+          {/* Decorative concentric rings behind the icon — adds depth without
+              hurting perf (static views, no animation). */}
+          <View style={styles.heroLayer} pointerEvents="none">
+            <View style={[styles.ring, styles.ringOuter]} />
+            <View style={[styles.ring, styles.ringMiddle]} />
+            <View style={[styles.ring, styles.ringInner]} />
+          </View>
+
           <View style={[styles.pageContent, isTablet && styles.pageContentTablet]}>
             <View style={[styles.iconContainer, isTablet && styles.iconContainerTablet]}>
               <Icon size={isTablet ? 96 : 64} color={Colors.white} strokeWidth={1.5} />
@@ -146,90 +174,106 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         bounces={false}
-        // Critical for iPad/orientation changes: getItemLayout uses live width
-        // so scrollToIndex always lands correctly even if width changed mid-flight.
         getItemLayout={(_, index) => ({
           length: screenWidth,
           offset: screenWidth * index,
           index,
         })}
-        // Re-key the list on width changes so FlatList re-measures children;
-        // without this, page widths remain stale after rotation on iPad.
         extraData={screenWidth}
         onMomentumScrollEnd={(e) => {
           if (screenWidth <= 0) return;
           const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-          setCurrentIndex(Math.max(0, Math.min(index, PAGES.length - 1)));
+          const clamped = Math.max(0, Math.min(index, PAGES.length - 1));
+          if (clamped !== currentIndex) {
+            Haptics.selectionAsync().catch(() => {});
+          }
+          setCurrentIndex(clamped);
         }}
       />
 
+      {/* Skip — top-right, always visible */}
+      {!isLastPage ? (
+        <View style={styles.topRight}>
+          <TouchableOpacity
+            onPress={finishOnboarding}
+            style={styles.skipPill}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityLabel={t('onboarding.skipA11y')}
+            accessibilityRole="button"
+            testID="onboarding-skip"
+          >
+            <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       {/* Bottom controls overlay */}
       <View style={[styles.bottomOverlay, isTablet && styles.bottomOverlayTablet]}>
-        {/* Dot indicators */}
+        {/* Animated dot indicators */}
         <View style={styles.dotsContainer}>
           {PAGES.map((page, index) => (
-            <View
-              key={page.id}
-              style={[styles.dot, index === currentIndex ? styles.dotActive : styles.dotInactive]}
-            />
+            <Dot key={page.id} active={index === currentIndex} />
           ))}
         </View>
 
-        {/* Buttons — "Skip" and "Next" are ALWAYS rendered (Apple reviewer
-            must never be stuck). Skip immediately exits onboarding to login. */}
-        <View style={styles.buttonsContainer}>
+        {/* Primary CTA */}
+        <TouchableOpacity
+          onPress={goToNext}
+          style={styles.primaryButton}
+          activeOpacity={0.85}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel={isLastPage ? t('onboarding.startA11y') : t('onboarding.next')}
+          accessibilityRole="button"
+          accessibilityHint={t('onboarding.pageOf', {
+            current: currentIndex + 1,
+            total: PAGES.length,
+          })}
+          testID={isLastPage ? 'onboarding-start' : 'onboarding-next'}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isLastPage ? t('onboarding.startNow') : t('onboarding.next')}
+          </Text>
           {!isLastPage ? (
-            <>
-              <TouchableOpacity
-                onPress={finishOnboarding}
-                style={styles.skipButton}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                accessibilityLabel={t('onboarding.skipA11y')}
-                accessibilityRole="button"
-              >
-                <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={goToNext}
-                style={styles.nextButton}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                accessibilityLabel={t('onboarding.next')}
-                accessibilityRole="button"
-                accessibilityHint={t('onboarding.pageOf', {
-                  current: currentIndex + 1,
-                  total: PAGES.length,
-                })}
-              >
-                <Text style={styles.nextText}>{t('onboarding.next')}</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity
-              onPress={finishOnboarding}
-              style={styles.startButton}
-              activeOpacity={0.8}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              accessibilityLabel={t('onboarding.startA11y')}
-              accessibilityRole="button"
-            >
-              <Text style={styles.startText}>{t('onboarding.startNow')}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+            <View style={styles.arrowCircle}>
+              <Text style={styles.arrowGlyph}>›</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+
+        {/* Page indicator label for accessibility / a11y users */}
+        <Text style={styles.pageOf} accessibilityLiveRegion="polite">
+          {t('onboarding.pageOf', { current: currentIndex + 1, total: PAGES.length })}
+        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.black,
-  },
-  page: {
+  container: { flex: 1, backgroundColor: Colors.black },
+  page: { justifyContent: 'center', alignItems: 'center' },
+
+  // Hero rings
+  heroLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: -80,
   },
+  ring: {
+    position: 'absolute',
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  ringOuter: { width: 360, height: 360 },
+  ringMiddle: { width: 260, height: 260, borderColor: 'rgba(255,255,255,0.10)' },
+  ringInner: { width: 180, height: 180, borderColor: 'rgba(255,255,255,0.14)' },
+
   pageContent: {
     alignItems: 'center',
     paddingHorizontal: Spacing.xxxl * 1.5,
@@ -249,104 +293,114 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xxxl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  iconContainerTablet: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-  },
+  iconContainerTablet: { width: 180, height: 180, borderRadius: 90 },
   pageTitle: {
     fontSize: FontSize.title,
     fontWeight: FontWeight.bold,
     color: Colors.white,
     textAlign: 'center',
     marginBottom: Spacing.lg,
+    letterSpacing: -0.5,
   },
-  pageTitleTablet: {
-    fontSize: 40,
-  },
+  pageTitleTablet: { fontSize: 40 },
   pageSubtitle: {
     fontSize: FontSize.body,
     color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
     lineHeight: 26,
   },
-  pageSubtitleTablet: {
-    fontSize: 20,
-    lineHeight: 30,
+  pageSubtitleTablet: { fontSize: 20, lineHeight: 30 },
+
+  // Top-right skip pill
+  topRight: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 24,
+    right: Spacing.lg,
   },
+  skipPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  skipText: {
+    fontSize: FontSize.footnote,
+    color: 'rgba(255,255,255,0.95)',
+    fontWeight: FontWeight.medium,
+  },
+
+  // Bottom overlay
   bottomOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 30,
     paddingHorizontal: Spacing.xxl,
+    alignItems: 'center',
   },
   bottomOverlayTablet: {
     paddingHorizontal: Spacing.xxxl * 2,
-    paddingBottom: Platform.OS === 'ios' ? 64 : 40,
+    paddingBottom: Platform.OS === 'ios' ? 56 : 40,
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.xxl,
+    marginBottom: Spacing.xl,
+    gap: 8,
   },
   dot: {
     height: 8,
     borderRadius: 4,
-    marginHorizontal: 4,
-  },
-  dotActive: {
-    width: 24,
     backgroundColor: Colors.white,
   },
-  dotInactive: {
-    width: 8,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  buttonsContainer: {
+
+  // Primary button
+  primaryButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  skipButton: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    minHeight: 44,
     justifyContent: 'center',
-  },
-  skipText: {
-    fontSize: FontSize.body,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: FontWeight.medium,
-  },
-  nextButton: {
+    gap: 10,
     backgroundColor: Colors.white,
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
     paddingHorizontal: Spacing.xxxl,
     borderRadius: BorderRadius.full,
-    minHeight: 44,
-    justifyContent: 'center',
+    minHeight: 54,
+    minWidth: 220,
+    alignSelf: 'stretch',
   },
-  nextText: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.semibold,
-    color: Colors.accent,
-  },
-  startButton: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    minHeight: 52,
-    justifyContent: 'center',
-  },
-  startText: {
+  primaryButtonText: {
     fontSize: FontSize.body,
     fontWeight: FontWeight.bold,
     color: Colors.accent,
+  },
+  arrowCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.accent + '14',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arrowGlyph: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: Colors.accent,
+    fontWeight: FontWeight.bold,
+    includeFontPadding: false,
+    marginTop: -2,
+  },
+  pageOf: {
+    marginTop: 12,
+    fontSize: FontSize.caption,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: FontWeight.medium,
   },
 });

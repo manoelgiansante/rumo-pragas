@@ -11,14 +11,20 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize } from '../constants/theme';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as Haptics from 'expo-haptics';
+import * as Sentry from '@sentry/react-native';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 import { CROPS } from '../constants/crops';
 import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import { Avatar } from '../components/Avatar';
 
 const BRAZILIAN_STATES = [
   'AC',
@@ -54,8 +60,13 @@ interface ProfileData {
   full_name: string;
   city: string;
   state: string;
+  phone: string;
   crops: string[];
+  avatar_url: string | null;
 }
+
+const AVATAR_BUCKET = 'avatars';
+const AVATAR_MAX_DIM = 512;
 
 export default function EditProfileScreen() {
   const isDark = useColorScheme() === 'dark';
@@ -64,11 +75,14 @@ export default function EditProfileScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
     full_name: '',
     city: '',
     state: '',
+    phone: '',
     crops: [],
+    avatar_url: null,
   });
 
   useEffect(() => {
@@ -79,7 +93,7 @@ export default function EditProfileScreen() {
       try {
         const { data } = await supabase
           .from('pragas_profiles')
-          .select('full_name, city, state, crops')
+          .select('full_name, city, state, phone, crops, avatar_url')
           .eq('id', user.id)
           .single();
 
@@ -88,11 +102,14 @@ export default function EditProfileScreen() {
             full_name: data.full_name || '',
             city: data.city || '',
             state: data.state || '',
+            phone: data.phone || '',
             crops: data.crops || [],
+            avatar_url: data.avatar_url || null,
           });
         }
       } catch (err) {
         if (__DEV__) console.error('Failed to load profile:', err);
+        Sentry.captureException(err, { tags: { feature: 'editProfile.load' } });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -103,6 +120,7 @@ export default function EditProfileScreen() {
   }, [user]);
 
   const toggleCrop = useCallback((cropId: string) => {
+    Haptics.selectionAsync().catch(() => {});
     setProfile((prev) => ({
       ...prev,
       crops: prev.crops.includes(cropId)
@@ -111,10 +129,116 @@ export default function EditProfileScreen() {
     }));
   }, []);
 
+  /**
+   * Pick + compress + upload to Supabase Storage.
+   * Path convention: `<user_id>/avatar-<timestamp>.jpg` (RLS enforced).
+   */
+  const uploadAvatar = useCallback(
+    async (source: 'camera' | 'library') => {
+      if (!user) return;
+      try {
+        const perm =
+          source === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (!perm.granted) {
+          Alert.alert(t('editProfile.permissionDeniedTitle'), t('editProfile.permissionDeniedMsg'));
+          return;
+        }
+
+        const result =
+          source === 'camera'
+            ? await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.85,
+              })
+            : await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.85,
+              });
+
+        if (result.canceled || !result.assets?.[0]) return;
+
+        setUploadingAvatar(true);
+        Haptics.selectionAsync().catch(() => {});
+
+        // Downscale + recompress so we never upload multi-MB raw photos.
+        const manipulated = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: AVATAR_MAX_DIM, height: AVATAR_MAX_DIM } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
+
+        // Upload as ArrayBuffer (cross-platform RN-safe)
+        const response = await fetch(manipulated.uri);
+        const arrayBuffer = await response.arrayBuffer();
+        const path = `${user.id}/avatar-${Date.now()}.jpg`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(AVATAR_BUCKET)
+          .upload(path, arrayBuffer, {
+            contentType: 'image/jpeg',
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrl } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+        // Cache-bust so React Native Image picks up the new bytes immediately.
+        const finalUrl = `${publicUrl.publicUrl}?t=${Date.now()}`;
+
+        // Persist URL on profile (and metadata for quick reads in headers)
+        await supabase.from('pragas_profiles').update({ avatar_url: finalUrl }).eq('id', user.id);
+
+        setProfile((p) => ({ ...p, avatar_url: finalUrl }));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } catch (err) {
+        if (__DEV__) console.error('Avatar upload failed:', err);
+        Sentry.captureException(err, { tags: { feature: 'editProfile.avatarUpload' } });
+        Alert.alert(t('common.error'), t('editProfile.avatarUploadError'));
+      } finally {
+        setUploadingAvatar(false);
+      }
+    },
+    [user, t],
+  );
+
+  const handleAvatarPress = useCallback(() => {
+    if (uploadingAvatar) return;
+    const options = [t('editProfile.avatarTakePhoto'), t('editProfile.avatarChooseLibrary')];
+
+    if (Platform.OS === 'ios') {
+      const buttons = [...options, t('common.cancel')];
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: buttons,
+          cancelButtonIndex: options.length,
+          title: t('editProfile.avatarSheetTitle'),
+        },
+        (index) => {
+          if (index === 0) uploadAvatar('camera');
+          else if (index === 1) uploadAvatar('library');
+        },
+      );
+    } else {
+      Alert.alert(t('editProfile.avatarSheetTitle'), undefined, [
+        { text: options[0], onPress: () => uploadAvatar('camera') },
+        { text: options[1], onPress: () => uploadAvatar('library') },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
+    }
+  }, [uploadingAvatar, uploadAvatar, t]);
+
   const handleSave = useCallback(async () => {
     if (!user) return;
 
     if (!profile.full_name.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       Alert.alert(t('settings.editProfile'), t('settings.nameRequired'));
       return;
     }
@@ -127,22 +251,25 @@ export default function EditProfileScreen() {
           full_name: profile.full_name.trim(),
           city: profile.city.trim() || null,
           state: profile.state || null,
+          phone: profile.phone.trim() || null,
           crops: profile.crops.length > 0 ? profile.crops : null,
         })
         .eq('id', user.id);
 
       if (error) throw error;
 
-      // Also update auth metadata so it's available in user object
       await supabase.auth.updateUser({
         data: { full_name: profile.full_name.trim() },
       });
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       Alert.alert(t('settings.editProfile'), t('settings.profileSaved'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err) {
       if (__DEV__) console.error('Failed to save profile:', err);
+      Sentry.captureException(err, { tags: { feature: 'editProfile.save' } });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       Alert.alert(t('settings.editProfile'), t('settings.profileSaveError'));
     } finally {
       setSaving(false);
@@ -157,159 +284,208 @@ export default function EditProfileScreen() {
     );
   }
 
+  const userName = profile.full_name || user?.user_metadata?.full_name || '?';
+
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: isDark ? Colors.backgroundDark : Colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Header */}
+      <View style={[styles.header, isDark && styles.headerDark]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('editProfile.backA11y')}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          testID="edit-profile-back"
+        >
+          <Ionicons name="chevron-back" size={26} color={Colors.accent} />
+        </TouchableOpacity>
+        <Text
+          style={[styles.headerTitle, isDark && styles.textDark]}
+          accessibilityRole="header"
+          numberOfLines={1}
+        >
+          {t('settings.editProfile')}
+        </Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={saving}
+          style={styles.saveBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('editProfile.saveA11y')}
+          accessibilityState={{ disabled: saving, busy: saving }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          testID="edit-profile-save"
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={Colors.accent} />
+          ) : (
+            <Text style={styles.saveBtnText}>{t('settings.save')}</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
-        style={[styles.container, isDark && styles.containerDark]}
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Avatar editor */}
+        <View style={styles.avatarBlock}>
           <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backBtn}
+            onPress={handleAvatarPress}
+            activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel={t('editProfile.backA11y')}
+            accessibilityLabel={t('editProfile.avatarChangeA11y')}
+            testID="edit-profile-avatar"
+            style={styles.avatarTouch}
           >
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color={Colors.accent}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
+            <Avatar uri={profile.avatar_url} name={userName} size={104} />
+            <View style={styles.avatarBadge}>
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Ionicons name="camera" size={16} color="#FFF" />
+              )}
+            </View>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, isDark && styles.textDark]} accessibilityRole="header">
-            {t('settings.editProfile')}
+          <Text style={[styles.avatarHint, isDark && styles.textMuted]}>
+            {t('editProfile.avatarHint')}
           </Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={saving}
-            style={styles.saveBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('editProfile.saveA11y')}
-            accessibilityState={{ disabled: saving, busy: saving }}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color={Colors.accent} />
-            ) : (
-              <Text style={styles.saveBtnText}>{t('settings.save')}</Text>
-            )}
-          </TouchableOpacity>
         </View>
 
-        {/* Name */}
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>
-            {t('settings.fullName')}
-          </Text>
-          <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
+        {/* Personal info card */}
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Field
+            isDark={isDark}
+            label={t('settings.fullName')}
             value={profile.full_name}
             onChangeText={(text) => setProfile((p) => ({ ...p, full_name: text }))}
-            placeholder={t('settings.fullName')}
-            placeholderTextColor={Colors.systemGray3}
-            autoCapitalize="words"
-            returnKeyType="next"
+            placeholder={t('editProfile.fullNamePlaceholder')}
             autoComplete="name"
             textContentType="name"
-            accessibilityLabel={t('editProfile.fullNameA11y')}
+            autoCapitalize="words"
+            a11yLabel={t('editProfile.fullNameA11y')}
+            required
+            testID="edit-profile-input-name"
+          />
+          <Separator />
+          <Field
+            isDark={isDark}
+            label="Email"
+            value={user?.email || ''}
+            disabled
+            a11yLabel={t('editProfile.emailReadOnlyA11y')}
+          />
+          <Separator />
+          <Field
+            isDark={isDark}
+            label={t('editProfile.phone')}
+            value={profile.phone}
+            onChangeText={(text) => setProfile((p) => ({ ...p, phone: text }))}
+            placeholder="(11) 9 9999-9999"
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            a11yLabel={t('editProfile.phoneA11y')}
+            testID="edit-profile-input-phone"
           />
         </View>
 
-        {/* City */}
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>{t('settings.city')}</Text>
-          <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
+        {/* Location card */}
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Field
+            isDark={isDark}
+            label={t('settings.city')}
             value={profile.city}
             onChangeText={(text) => setProfile((p) => ({ ...p, city: text }))}
-            placeholder={t('settings.city')}
-            placeholderTextColor={Colors.systemGray3}
+            placeholder={t('editProfile.cityPlaceholder')}
             autoCapitalize="words"
-            returnKeyType="next"
             autoComplete="postal-address-locality"
             textContentType="addressCity"
-            accessibilityLabel={t('editProfile.cityA11y')}
+            a11yLabel={t('editProfile.cityA11y')}
+            testID="edit-profile-input-city"
           />
-        </View>
-
-        {/* State */}
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>{t('settings.state')}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stateScroll}>
-            {BRAZILIAN_STATES.map((st) => (
-              <TouchableOpacity
-                key={st}
-                style={[styles.stateChip, profile.state === st && styles.stateChipActive]}
-                onPress={() => setProfile((p) => ({ ...p, state: p.state === st ? '' : st }))}
-                accessibilityRole="button"
-                accessibilityLabel={t('editProfile.stateSelectA11y', { state: st })}
-                accessibilityState={{ selected: profile.state === st }}
-              >
-                <Text
-                  style={[styles.stateChipText, profile.state === st && styles.stateChipTextActive]}
-                >
-                  {st}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <Separator />
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>
+              {t('settings.state')}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.stateChipRow}
+            >
+              {BRAZILIAN_STATES.map((st) => {
+                const selected = profile.state === st;
+                return (
+                  <TouchableOpacity
+                    key={st}
+                    style={[styles.stateChip, selected && styles.stateChipActive]}
+                    onPress={() => {
+                      Haptics.selectionAsync().catch(() => {});
+                      setProfile((p) => ({ ...p, state: p.state === st ? '' : st }));
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('editProfile.stateSelectA11y', { state: st })}
+                    accessibilityState={{ selected }}
+                    testID={`edit-profile-state-${st}`}
+                  >
+                    <Text style={[styles.stateChipText, selected && styles.stateChipTextActive]}>
+                      {st}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
 
         {/* Crops */}
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>{t('settings.crops')}</Text>
-          <View style={styles.cropsGrid}>
-            {CROPS.map((crop) => {
-              const selected = profile.crops.includes(crop.id);
-              return (
-                <TouchableOpacity
-                  key={crop.id}
-                  style={[
-                    styles.cropChip,
-                    selected && { backgroundColor: crop.color + '30', borderColor: crop.color },
-                  ]}
-                  onPress={() => toggleCrop(crop.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('editProfile.cropToggleA11y', { crop: crop.displayName })}
-                  accessibilityState={{ selected }}
+        <Text style={[styles.sectionTitle, isDark && styles.textMuted]}>{t('settings.crops')}</Text>
+        <View style={styles.cropsGrid}>
+          {CROPS.map((crop) => {
+            const selected = profile.crops.includes(crop.id);
+            return (
+              <TouchableOpacity
+                key={crop.id}
+                style={[
+                  styles.cropChip,
+                  isDark && styles.cropChipDark,
+                  selected && {
+                    backgroundColor: crop.color + '30',
+                    borderColor: crop.color,
+                  },
+                ]}
+                onPress={() => toggleCrop(crop.id)}
+                accessibilityRole="button"
+                accessibilityLabel={t('editProfile.cropToggleA11y', { crop: crop.displayName })}
+                accessibilityState={{ selected }}
+                testID={`edit-profile-crop-${crop.id}`}
+              >
+                <Text
+                  style={styles.cropIcon}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
                 >
-                  <Text
-                    style={styles.cropIcon}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no"
-                  >
-                    {crop.icon}
-                  </Text>
-                  <Text
-                    style={[styles.cropName, selected && { color: crop.color, fontWeight: '600' }]}
-                  >
-                    {crop.displayName}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Email (read-only) */}
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>Email</Text>
-          <View
-            style={[styles.input, styles.inputDisabled, isDark && styles.inputDark]}
-            accessible
-            accessibilityLabel={t('editProfile.emailReadOnlyA11y')}
-            accessibilityValue={{ text: user?.email || '' }}
-            accessibilityState={{ disabled: true }}
-          >
-            <Text style={[styles.inputDisabledText, isDark && styles.textMuted]}>
-              {user?.email || ''}
-            </Text>
-          </View>
+                  {crop.icon}
+                </Text>
+                <Text
+                  style={[
+                    styles.cropName,
+                    isDark && styles.textDark,
+                    selected && { color: crop.color, fontWeight: FontWeight.bold },
+                  ]}
+                >
+                  {crop.displayName}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={{ height: 80 }} />
@@ -318,111 +494,216 @@ export default function EditProfileScreen() {
   );
 }
 
+// ============================================================================
+// Field primitive (iOS-style grouped inset)
+// ============================================================================
+
+interface FieldProps {
+  label: string;
+  value: string;
+  onChangeText?: (t: string) => void;
+  placeholder?: string;
+  isDark: boolean;
+  keyboardType?: 'default' | 'phone-pad' | 'email-address' | 'numeric';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoComplete?: 'name' | 'tel' | 'postal-address-locality' | 'email' | 'off';
+  textContentType?: 'name' | 'telephoneNumber' | 'addressCity' | 'emailAddress';
+  disabled?: boolean;
+  required?: boolean;
+  a11yLabel?: string;
+  testID?: string;
+}
+
+function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  isDark,
+  keyboardType,
+  autoCapitalize,
+  autoComplete,
+  textContentType,
+  disabled,
+  required,
+  a11yLabel,
+  testID,
+}: FieldProps) {
+  return (
+    <View style={styles.field}>
+      <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>
+        {label}
+        {required ? ' *' : ''}
+      </Text>
+      <TextInput
+        style={[styles.input, isDark && styles.inputDark, disabled && styles.inputDisabled]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={Colors.systemGray3}
+        editable={!disabled}
+        keyboardType={keyboardType ?? 'default'}
+        autoCapitalize={autoCapitalize ?? 'sentences'}
+        autoComplete={autoComplete}
+        textContentType={textContentType}
+        returnKeyType="next"
+        accessibilityLabel={a11yLabel ?? label}
+        accessibilityState={disabled ? { disabled: true } : undefined}
+        testID={testID}
+      />
+    </View>
+  );
+}
+
+function Separator() {
+  return <View style={styles.separator} />;
+}
+
+// ============================================================================
+// Styles
+// ============================================================================
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1 },
   containerDark: { backgroundColor: Colors.backgroundDark },
+  scrollContent: { paddingBottom: Spacing.xxxl },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? Spacing.xl : Spacing.md,
+    paddingBottom: Spacing.sm,
+    backgroundColor: Colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.separator,
   },
-  backBtn: { padding: Spacing.xs },
+  headerDark: { backgroundColor: Colors.backgroundDark, borderBottomColor: Colors.separatorDark },
+  backBtn: { padding: Spacing.xs, minWidth: 48 },
   headerTitle: {
-    fontSize: FontSize.headline,
-    fontWeight: '700',
     flex: 1,
+    fontSize: FontSize.headline,
+    fontWeight: FontWeight.bold,
     textAlign: 'center',
+    color: Colors.text,
   },
   saveBtn: { padding: Spacing.xs, minWidth: 60, alignItems: 'flex-end' },
-  saveBtnText: {
-    fontSize: FontSize.body,
-    fontWeight: '600',
-    color: Colors.accent,
+  saveBtnText: { fontSize: FontSize.body, fontWeight: FontWeight.semibold, color: Colors.accent },
+
+  // Avatar
+  avatarBlock: { alignItems: 'center', marginTop: Spacing.xl, marginBottom: Spacing.lg },
+  avatarTouch: { position: 'relative' },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.background,
   },
-  fieldGroup: {
+  avatarHint: {
+    marginTop: 12,
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+  },
+
+  // Grouped card (iOS inset)
+  card: {
+    backgroundColor: Colors.card,
+    marginHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
   },
+  cardDark: { backgroundColor: '#1C1C1E' },
+
+  field: { paddingHorizontal: Spacing.lg, paddingVertical: 10 },
   fieldLabel: {
     fontSize: FontSize.caption,
-    fontWeight: '600',
+    fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
+    letterSpacing: 0.4,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
     fontSize: FontSize.body,
-    borderWidth: 1,
-    borderColor: Colors.separator,
+    color: Colors.text,
+    paddingVertical: 6,
+    minHeight: 28,
   },
-  inputDark: {
-    backgroundColor: '#1C1C1E',
-    borderColor: '#333',
-    color: Colors.textDark,
+  inputDark: { color: Colors.textDark },
+  inputDisabled: { color: Colors.textSecondary, opacity: 0.7 },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.separator,
+    marginLeft: Spacing.lg,
   },
-  inputDisabled: {
-    justifyContent: 'center',
-    opacity: 0.6,
-  },
-  inputDisabledText: {
-    fontSize: FontSize.body,
-    color: Colors.textSecondary,
-  },
-  stateScroll: {
-    flexDirection: 'row',
-  },
+
+  // State chips
+  stateChipRow: { gap: 8, paddingRight: Spacing.lg, paddingVertical: 4 },
   stateChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.card,
+    backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.separator,
-    marginRight: 8,
   },
-  stateChipActive: {
-    backgroundColor: Colors.accent + '20',
-    borderColor: Colors.accent,
-  },
+  stateChipActive: { backgroundColor: Colors.accent + '20', borderColor: Colors.accent },
   stateChipText: {
     fontSize: FontSize.caption,
-    fontWeight: '500',
+    fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
   },
-  stateChipTextActive: {
-    color: Colors.accent,
-    fontWeight: '700',
+  stateChipTextActive: { color: Colors.accent, fontWeight: FontWeight.bold },
+
+  // Crops section
+  sectionTitle: {
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    paddingHorizontal: Spacing.xxl,
+    marginTop: Spacing.xxl,
+    marginBottom: Spacing.sm,
   },
   cropsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    paddingHorizontal: Spacing.lg,
   },
   cropChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.separator,
     gap: 6,
+    minHeight: 40,
   },
-  cropIcon: { fontSize: 16 },
+  cropChipDark: { backgroundColor: '#1C1C1E', borderColor: '#2A2A2C' },
+  cropIcon: { fontSize: 18 },
   cropName: { fontSize: FontSize.caption, color: Colors.textSecondary },
+
   textDark: { color: Colors.textDark },
   textMuted: { color: Colors.systemGray },
 });
