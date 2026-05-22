@@ -33,8 +33,10 @@ import {
   Card,
   SectionHeader,
   SeverityBadge,
+  SuccessCheck,
   type SeverityLevel,
 } from '../../components/ui';
+import * as Haptics from 'expo-haptics';
 import { ConfidenceBar } from '../../components/ConfidenceBar';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
 import { trackEvent } from '../../services/analytics';
@@ -116,6 +118,22 @@ export default function ResultScreen() {
         pest_name: result.pest_name,
         confidence,
       });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Haptic on result reveal — communicates outcome before the user has finished
+  // reading. Success for healthy crops; Warning for critical pests. Skipped on
+  // error/queued/invalid_image since those have their own error UI signals.
+  useEffect(() => {
+    if (error || queued || isInvalidImage) return;
+    if (isHealthy) {
+      // SuccessCheck fires its own Success haptic — don't double-fire here.
+      return;
+    }
+    if (severityForBadge === 'critical' || severityForBadge === 'high') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    } else if (severityForBadge === 'medium' || severityForBadge === 'low') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -556,6 +574,14 @@ export default function ResultScreen() {
               />
             </LinearGradient>
           )}
+          {/* Healthy crop reveal — animated check overlay scales in on top of
+              the user's photo. Fires Success notification haptic on completion.
+              Hidden on pest detection / low-confidence / invalid_image. */}
+          {isHealthy && !isInvalidImage && !error && !queued && (
+            <View style={styles.heroSuccessOverlay} pointerEvents="none">
+              <SuccessCheck size={100} color={Colors.white} ringColor="rgba(255,255,255,0.22)" />
+            </View>
+          )}
         </View>
 
         {/* Pest header: name + scientific + severity */}
@@ -850,6 +876,12 @@ const styles = StyleSheet.create({
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  heroSuccessOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(11,61,46,0.35)', // accent at 35% — keeps photo readable
   },
 
   headerBlock: {

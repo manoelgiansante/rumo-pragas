@@ -46,6 +46,9 @@ export default [
       "*.config.js",
       "*.config.mjs",
       "supabase/functions/**",
+      // Manual Jest mocks live as plain CommonJS .js files (Node globals like
+      // `require` / `module`). They're test-only and not part of the bundle.
+      "__mocks__/**",
     ],
   },
 ];

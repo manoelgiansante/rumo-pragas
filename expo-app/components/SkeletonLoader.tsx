@@ -1,5 +1,17 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, useColorScheme, ViewStyle, DimensionValue } from 'react-native';
+/**
+ * SkeletonLoader — thin compatibility shim that delegates to <Shimmer/>.
+ *
+ * Previously this component ran a JS-thread `Animated.timing` opacity loop
+ * (5+ shimmers on the home screen = 5+ JS callbacks per frame during the
+ * initial render burst). Replaced with the new Reanimated 3 Shimmer which
+ * runs on the UI thread and renders a sliding gradient bar.
+ *
+ * API preserved 1:1 so HistorySkeleton / HomeScreenSkeleton continue to work
+ * without changes. New code should import { Shimmer } from 'components/ui'.
+ */
+import React from 'react';
+import { type ViewStyle, type DimensionValue } from 'react-native';
+import { Shimmer } from './ui/Shimmer';
 
 interface SkeletonLoaderProps {
   width: DimensionValue;
@@ -9,41 +21,5 @@ interface SkeletonLoaderProps {
 }
 
 export function SkeletonLoader({ width, height, borderRadius = 8, style }: SkeletonLoaderProps) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacity]);
-
-  return (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          borderRadius,
-          backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA',
-          opacity,
-        },
-        style,
-      ]}
-    />
-  );
+  return <Shimmer width={width} height={height} borderRadius={borderRadius} style={style} />;
 }
