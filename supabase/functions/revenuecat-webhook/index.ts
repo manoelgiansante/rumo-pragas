@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// ZERO-O: shared Sentry helper for edge fns (added W9-4 withSentry HOC sweep 2026-05-22).
+// captureException → outer catch; captureMessage → security/db-write degradation
+// events that previously only emitted logJson(level=ERROR) — Sentry blind.
+import { captureException, captureMessage } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: revenuecat-webhook
@@ -284,6 +288,14 @@ Deno.serve(async (req: Request) => {
   // ── Security: Constant-time comparison to prevent timing attacks ──
   // See file header for HMAC discussion (#14) and compensating controls.
   if (authHeader.length !== expected.length || !timingSafeEqual(authHeader, expected)) {
+    // ZERO-O: capture invalid-auth events. RevenueCat in normal operation
+    // sends the configured Bearer token; mismatches indicate rotated secret
+    // (misconfig) or attack attempts. Either way: alert.
+    captureMessage("revenuecat-webhook invalid authorization", {
+      level: "warning",
+      tags: { fn: "revenuecat-webhook", phase: "auth-check" },
+      extra: { requestId, has_header: authHeader.length > 0 },
+    });
     logJson("revenuecat-webhook", requestId, "ERROR", "Invalid authorization");
     return new Response(
       JSON.stringify({ error: "Unauthorized", requestId }),
@@ -387,7 +399,11 @@ Deno.serve(async (req: Request) => {
           },
         );
       }
-      await captureError(insertErr, {
+      // ZERO-O fix W9-4: this call previously referenced an undefined
+      // `captureError` symbol — would have crashed the Deno runtime on the
+      // first non-23505 insert error. Replaced with the canonical
+      // captureException from _shared/sentry.ts.
+      await captureException(insertErr, {
         tags: { fn: "revenuecat-webhook", op: "webhook_events_insert" },
         extra: { eventId, eventType: event.type },
       });
@@ -457,6 +473,13 @@ Deno.serve(async (req: Request) => {
       );
 
     if (upsertError) {
+      // ZERO-O: subscription upsert failure is a billing-flow degradation.
+      // Without Sentry capture, customers stay on stale plan tier silently.
+      await captureException(upsertError, {
+        level: "error",
+        tags: { fn: "revenuecat-webhook", phase: "subscription-upsert" },
+        extra: { requestId, userId, eventType: event.type, plan, status },
+      });
       logJson("revenuecat-webhook", requestId, "ERROR", "Upsert error", { userId, error: upsertError.message });
       return new Response(
         JSON.stringify({ error: "Failed to update subscription", requestId }),
@@ -485,6 +508,13 @@ Deno.serve(async (req: Request) => {
       },
     );
   } catch (err) {
+    // ZERO-O: outer-catch Sentry capture. logJson stream is structured
+    // stdout only — Sentry is what wakes on-call.
+    await captureException(err, {
+      level: "error",
+      tags: { fn: "revenuecat-webhook", phase: "outer-catch" },
+      extra: { requestId },
+    });
     logJson("revenuecat-webhook", requestId, "ERROR", "Unexpected error", { error: String(err) });
     return new Response(
       JSON.stringify({ error: "Internal server error", requestId }),

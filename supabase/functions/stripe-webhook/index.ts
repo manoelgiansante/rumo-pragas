@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// ZERO-O: shared Sentry helper for edge fns (added W9-4 withSentry HOC sweep 2026-05-22).
+// captureException → outer catch; previously only logJson(level=ERROR) which
+// emits structured stdout but never reached Sentry → silent prod failures.
+import { captureException, captureMessage } from "../_shared/sentry.ts";
 
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -239,6 +243,14 @@ Deno.serve(async (req: Request) => {
     STRIPE_WEBHOOK_SECRET,
   );
   if (!isValid) {
+    // ZERO-O: capture invalid-signature events. Stripe never sends invalid
+    // signatures in normal operation — these are either misconfiguration
+    // (rotated webhook secret) or attack attempts. Either way: signal.
+    captureMessage("stripe-webhook invalid signature", {
+      level: "warning",
+      tags: { fn: "stripe-webhook", phase: "signature-verify" },
+      extra: { requestId },
+    });
     return new Response(
       JSON.stringify({ error: "Invalid signature", requestId }),
       {
@@ -398,6 +410,14 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     // Never leak internal error details to client
+    // ZERO-O: capture to Sentry. logJson emits structured stdout but Sentry
+    // is the on-call signal — without this, payment webhook failures stay
+    // invisible until a customer complains.
+    captureException(error, {
+      level: "error",
+      tags: { fn: "stripe-webhook", phase: "outer-catch" },
+      extra: { requestId },
+    });
     logJson("stripe-webhook", requestId, "ERROR", "Processing error", { error: String(error) });
     return new Response(
       JSON.stringify({ error: "Internal processing error", requestId }),
