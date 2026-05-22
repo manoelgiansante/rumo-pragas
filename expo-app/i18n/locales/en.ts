@@ -547,7 +547,7 @@ export default {
     banana: 'Banana',
   },
   paywall: {
-    title: 'Rumo Praga Pro',
+    title: 'Rumo Pragas Pro',
     subtitle: 'Unlock the full potential of AI for crop protection',
     subscribe: 'Subscribe',
     continueFree: 'Continue Free',

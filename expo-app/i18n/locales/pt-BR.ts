@@ -632,7 +632,7 @@ export default {
   },
   // Paywall
   paywall: {
-    title: 'Rumo Praga Pro',
+    title: 'Rumo Pragas Pro',
     subtitle: 'Desbloqueie todo o potencial da IA para proteção da sua lavoura',
     subscribe: 'Assinar',
     continueFree: 'Continuar Gratuito',
