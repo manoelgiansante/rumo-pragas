@@ -572,7 +572,7 @@ export default {
     banana: 'Banana',
   },
   paywall: {
-    title: 'Rumo Praga Pro',
+    title: 'Rumo Pragas Pro',
     subtitle: 'Desbloquee todo el potencial de la IA para proteccion de cultivos',
     subscribe: 'Suscribirse',
     continueFree: 'Continuar Gratis',
