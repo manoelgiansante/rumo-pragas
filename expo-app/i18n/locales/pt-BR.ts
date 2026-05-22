@@ -222,6 +222,23 @@ export default {
       '⚠️ Confiança baixa — consulte um agrônomo antes de aplicar qualquer tratamento.',
     legalDisclaimer:
       'Este diagnóstico é auxiliar e não substitui receituário agronômico obrigatório por Lei 7.802/89. Consulte um agrônomo com CREA ativo antes de aplicar defensivos.',
+    // Loading screen step counter (e.g. "Passo 2 de 4")
+    stepCounter: 'Passo {{current}} de {{total}}',
+    // Premium usage gate (camera entry pill)
+    usageFree: '{{used}}/{{limit}} grátis este mês',
+    usagePro: '{{used}}/{{limit}} do Pro este mês',
+    usageBlocked: 'Limite mensal atingido ({{limit}}) — toque para Pro',
+    usageLoadingA11y: 'Carregando uso mensal',
+    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mês',
+    usageBlockedA11y: 'Limite de {{limit}} diagnósticos atingido. Toque para fazer upgrade.',
+    usageUpgradeHint: 'Toque duas vezes para ver os planos Pro',
+    // Top-3 alternatives card
+    topAlternatives: 'Outras possibilidades',
+    topAlternativesHint:
+      'A IA também considerou estas opções. Se a principal não bate com o que você vê, talvez seja uma delas.',
+    topAlternativesDisclaimer:
+      'Compare os sintomas e, em caso de dúvida, consulte um agrônomo antes de tratar.',
+    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por cento de confiança.',
   },
   // Settings
   settings: {

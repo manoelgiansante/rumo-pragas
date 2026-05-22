@@ -217,6 +217,20 @@ export default {
       '⚠️ Confianza baja — consulte a un agrónomo antes de aplicar cualquier tratamiento.',
     legalDisclaimer:
       'Este diagnóstico es auxiliar y no reemplaza el recetario agronómico obligatorio por la Ley brasileña 7.802/89. Consulte a un agrónomo con CREA activo antes de aplicar plaguicidas.',
+    stepCounter: 'Paso {{current}} de {{total}}',
+    usageFree: '{{used}}/{{limit}} gratis este mes',
+    usagePro: '{{used}}/{{limit}} del Pro este mes',
+    usageBlocked: 'Límite mensual alcanzado ({{limit}}) — toca para Pro',
+    usageLoadingA11y: 'Cargando uso mensual',
+    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mes',
+    usageBlockedA11y: 'Límite de {{limit}} diagnósticos alcanzado. Toca para mejorar el plan.',
+    usageUpgradeHint: 'Toca dos veces para ver los planes Pro',
+    topAlternatives: 'Otras posibilidades',
+    topAlternativesHint:
+      'La IA también consideró estas opciones. Si la principal no coincide, puede ser una de estas.',
+    topAlternativesDisclaimer:
+      'Compare los síntomas y, en caso de duda, consulte a un agrónomo antes de tratar.',
+    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por ciento de confianza.',
   },
   settings: {
     profile: 'Perfil',

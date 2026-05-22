@@ -28,8 +28,10 @@ import Animated, {
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
+import { TopAlternatives } from '../../components/TopAlternatives';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
-import type { AgrioEnrichment } from '../../types/diagnosis';
+import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
+import { addBreadcrumb } from '../../services/sentry-shim';
 
 export default function ResultScreen() {
   const { t } = useTranslation();
@@ -71,6 +73,22 @@ export default function ResultScreen() {
       return (notes.enrichment || {}) as AgrioEnrichment;
     } catch {
       return {} as AgrioEnrichment;
+    }
+  }, [result]);
+
+  // Top-N alternative predictions — used by the TopAlternatives card.
+  // Sourced from the same parsed notes blob to avoid re-parsing JSON.
+  const alternatives = useMemo((): AgrioPrediction[] => {
+    try {
+      let notes: Record<string, unknown> = {} as Record<string, unknown>;
+      if (result.parsedNotes) notes = result.parsedNotes;
+      else if (typeof result.notes === 'string') notes = JSON.parse(result.notes);
+      else notes = result.notes || {};
+      // New API: predictions[]; legacy: id_array[].
+      const list = (notes.predictions || notes.id_array || []) as AgrioPrediction[];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
     }
   }, [result]);
 
@@ -129,6 +147,17 @@ export default function ResultScreen() {
   useEffect(() => {
     if (!error && !queued && result.pest_name) {
       trackSuccessfulDiagnosis();
+      addBreadcrumb({
+        category: 'diagnosis.result',
+        message: 'result_rendered',
+        level: 'info',
+        data: {
+          pestId: result.pest_id ?? 'unknown',
+          confidence: result.confidence ?? 0,
+          severity: enrichment?.severity ?? 'undefined',
+          alternativeCount: alternatives.length,
+        },
+      });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -610,6 +639,13 @@ export default function ResultScreen() {
         )}
 
         <View style={styles.sections}>
+          {/* Top alternatives — second-guess card.
+              Rendered ABOVE the description so the user can self-correct fast
+              if the hero pick doesn't look like the leaf in front of them. */}
+          {!isHealthy && (
+            <TopAlternatives predictions={alternatives} primaryId={result.pest_id} max={3} />
+          )}
+
           {enrichment.description && (
             <CollapsibleSection
               title={t('diagnosis.description')}

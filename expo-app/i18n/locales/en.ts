@@ -214,6 +214,20 @@ export default {
     lowConfidenceBanner: '⚠️ Low confidence — consult an agronomist before applying any treatment.',
     legalDisclaimer:
       'This diagnosis is advisory and does not replace an agronomic prescription required by Brazilian Law 7.802/89. Consult a licensed agronomist (CREA) before applying pesticides.',
+    stepCounter: 'Step {{current}} of {{total}}',
+    usageFree: '{{used}}/{{limit}} free this month',
+    usagePro: '{{used}}/{{limit}} Pro this month',
+    usageBlocked: 'Monthly limit reached ({{limit}}) — tap to go Pro',
+    usageLoadingA11y: 'Loading monthly usage',
+    usageRemainingA11y: '{{remaining}} of {{limit}} diagnoses remaining this month',
+    usageBlockedA11y: 'Limit of {{limit}} diagnoses reached. Tap to upgrade.',
+    usageUpgradeHint: 'Double tap to see Pro plans',
+    topAlternatives: 'Other possibilities',
+    topAlternativesHint:
+      'The AI also considered these options. If the top match does not look right, it may be one of these.',
+    topAlternativesDisclaimer:
+      'Compare the symptoms and, if in doubt, consult an agronomist before treating.',
+    alternativeA11y: 'Alternative number {{rank}}: {{name}}, {{pct}} percent confidence.',
   },
   settings: {
     profile: 'Profile',
