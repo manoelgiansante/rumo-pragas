@@ -218,6 +218,41 @@ export default {
     legalDisclaimer:
       'Este diagnóstico es auxiliar y no reemplaza el recetario agronómico obligatorio por la Ley brasileña 7.802/89. Consulte a un agrónomo con CREA activo antes de aplicar plaguicidas.',
   },
+  mip: {
+    title: 'Protocolo MIP',
+    emptyState:
+      'No hay protocolo MIP registrado para esta plaga o enfermedad. Consulte a un agrónomo licenciado (CREA) para orientación específica.',
+    levelPickerLabel: 'Nivel de infestación observado',
+    level: {
+      baixo: 'Bajo',
+      medio: 'Medio',
+      alto: 'Alto',
+    },
+    criterionLabel: 'Criterio de campo',
+    recommendedActionLabel: 'Acción recomendada',
+    culturalActions: 'Control cultural',
+    biologicalActions: 'Control biológico',
+    mechanicalActions: 'Control mecánico',
+    chemicalActions: 'Control químico',
+    chemicalWarning:
+      'La aplicación química requiere recetario agronómico emitido por un ingeniero agrónomo con CREA activo.',
+    chemicalClasses: 'Clases',
+    commercialProductsLabel: 'Productos de referencia ({{level}})',
+    monitoringLabel: 'Monitoreo',
+    monitoringMethod: 'Método',
+    monitoringFrequency: 'Frecuencia',
+    monitoringControlLevel: 'Nivel de control',
+    resistanceRotation: 'Manejo antirresistencia',
+    referencesLabel: 'Fuentes',
+    referenceA11y: 'Fuente {{source}}, {{year}}',
+    chipA11yUnlocked: 'Nivel {{level}}, desbloqueado',
+    chipA11yLocked:
+      'Nivel {{level}}, exclusivo para suscriptores Pro. Toca para ver los planes.',
+    upgradeCtaTitle: 'Desbloquear protocolos completos',
+    upgradeCtaSubtitle:
+      '{{count}} nivel(es) bloqueado(s) — suscríbete a Pro para acceso a manejo medio/alto + químicos.',
+    upgradeCtaA11y: 'Ver planes para desbloquear niveles de manejo Pro',
+  },
   settings: {
     profile: 'Perfil',
     subscription: 'Suscripcion',

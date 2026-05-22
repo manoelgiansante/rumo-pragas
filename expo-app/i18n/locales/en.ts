@@ -215,6 +215,40 @@ export default {
     legalDisclaimer:
       'This diagnosis is advisory and does not replace an agronomic prescription required by Brazilian Law 7.802/89. Consult a licensed agronomist (CREA) before applying pesticides.',
   },
+  mip: {
+    title: 'IPM Protocol',
+    emptyState:
+      'No IPM protocol registered for this pest or disease. Consult a licensed agronomist (CREA) for specific guidance.',
+    levelPickerLabel: 'Observed infestation level',
+    level: {
+      baixo: 'Low',
+      medio: 'Medium',
+      alto: 'High',
+    },
+    criterionLabel: 'Field criterion',
+    recommendedActionLabel: 'Recommended action',
+    culturalActions: 'Cultural control',
+    biologicalActions: 'Biological control',
+    mechanicalActions: 'Mechanical control',
+    chemicalActions: 'Chemical control',
+    chemicalWarning:
+      'Chemical application requires an agronomic prescription issued by a licensed agronomist (CREA).',
+    chemicalClasses: 'Classes',
+    commercialProductsLabel: 'Reference products ({{level}})',
+    monitoringLabel: 'Monitoring',
+    monitoringMethod: 'Method',
+    monitoringFrequency: 'Frequency',
+    monitoringControlLevel: 'Control level',
+    resistanceRotation: 'Anti-resistance management',
+    referencesLabel: 'Sources',
+    referenceA11y: 'Source {{source}}, {{year}}',
+    chipA11yUnlocked: '{{level}} level, unlocked',
+    chipA11yLocked: '{{level}} level, Pro subscribers only. Tap to view plans.',
+    upgradeCtaTitle: 'Unlock full IPM protocols',
+    upgradeCtaSubtitle:
+      '{{count}} level(s) locked — subscribe to Pro for medium/high management + chemical guidance.',
+    upgradeCtaA11y: 'View plans to unlock Pro management levels',
+  },
   settings: {
     profile: 'Profile',
     subscription: 'Subscription',

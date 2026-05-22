@@ -223,6 +223,41 @@ export default {
     legalDisclaimer:
       'Este diagnóstico é auxiliar e não substitui receituário agronômico obrigatório por Lei 7.802/89. Consulte um agrônomo com CREA ativo antes de aplicar defensivos.',
   },
+  // MIP knowledge card (Manejo Integrado de Pragas — EMBRAPA/MAPA references)
+  mip: {
+    title: 'Protocolo MIP',
+    emptyState:
+      'Sem protocolo MIP cadastrado para essa praga ou doença. Consulte um agrônomo licenciado pelo CREA para orientação específica.',
+    levelPickerLabel: 'Nível de infestação observado',
+    level: {
+      baixo: 'Baixo',
+      medio: 'Médio',
+      alto: 'Alto',
+    },
+    criterionLabel: 'Critério de campo',
+    recommendedActionLabel: 'Ação recomendada',
+    culturalActions: 'Controle cultural',
+    biologicalActions: 'Controle biológico',
+    mechanicalActions: 'Controle mecânico',
+    chemicalActions: 'Controle químico',
+    chemicalWarning:
+      'Aplicação química exige receituário agronômico emitido por engenheiro agrônomo com CREA ativo.',
+    chemicalClasses: 'Classes',
+    commercialProductsLabel: 'Produtos de referência ({{level}})',
+    monitoringLabel: 'Monitoramento',
+    monitoringMethod: 'Método',
+    monitoringFrequency: 'Frequência',
+    monitoringControlLevel: 'Nível de controle',
+    resistanceRotation: 'Manejo antirresistência',
+    referencesLabel: 'Fontes',
+    referenceA11y: 'Fonte {{source}}, {{year}}',
+    chipA11yUnlocked: 'Nível {{level}}, desbloqueado',
+    chipA11yLocked: 'Nível {{level}}, exclusivo para assinantes Pro. Toque para ver os planos.',
+    upgradeCtaTitle: 'Desbloquear protocolos completos',
+    upgradeCtaSubtitle:
+      '{{count}} nível(is) bloqueado(s) — assine Pro para acesso a manejo médio/alto + químicos.',
+    upgradeCtaA11y: 'Ver planos para desbloquear níveis de manejo Pro',
+  },
   // Settings
   settings: {
     profile: 'Perfil',
