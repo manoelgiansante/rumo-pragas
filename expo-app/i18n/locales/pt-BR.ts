@@ -278,6 +278,18 @@ export default {
     signOutA11y: 'Sair da conta',
     deleteAccountA11y: 'Excluir conta permanentemente',
     deleteAccountHint: 'Solicita a exclusão de todos os seus dados conforme a LGPD',
+    notifPrefs: {
+      sectionTitle: 'Notificações',
+      outbreaks: 'Surtos regionais',
+      outbreaksA11y: 'Alertas de surtos de pragas na sua região',
+      dailyReminder: 'Lembrete diário',
+      dailyReminderA11y: 'Lembrete diário para inspecionar a lavoura',
+      news: 'Novidades do app',
+      newsA11y: 'Avisos de novas funcionalidades e melhorias',
+      marketing: 'Promoções e ofertas',
+      marketingA11y: 'Ofertas promocionais e descontos',
+      saveError: 'Não foi possível salvar a preferência. Tente novamente.',
+    },
   },
   // Common
   common: {
