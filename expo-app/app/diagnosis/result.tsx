@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  Image,
   useColorScheme,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue,
@@ -29,12 +31,30 @@ import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../consta
 import { PremiumCard } from '../../components/PremiumCard';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
-import type { AgrioEnrichment } from '../../types/diagnosis';
+import {
+  trackShareDiagnosis,
+  trackPestDetailViewed,
+  trackProGateShown,
+  trackProGateTapped,
+} from '../../services/analytics';
+import { useSubscription } from '../../hooks/useSubscription';
+import { useDiagnosis } from '../../contexts/DiagnosisContext';
+import { savePestToCache } from '../../services/pestRegistry';
+import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
+
+// --- Free vs Pro gate ------------------------------------------------------
+// Free users see the hero, treatment summary (cultural level only), and may
+// share via WhatsApp. Pro features: PDF export, alternative diagnoses, full
+// pest fact sheet, biological + chemical levels, save to history.
+const FREE_ALTERNATIVES_VISIBLE = 0;
+const PRO_ALTERNATIVES_VISIBLE = 3;
 
 export default function ResultScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { isPro } = useSubscription();
+  const { imageUri } = useDiagnosis();
   const { data, error, queued } = useLocalSearchParams<{
     data?: string;
     error?: string;
@@ -74,6 +94,20 @@ export default function ResultScreen() {
     }
   }, [result]);
 
+  // Alternative predictions surfaced by the AI (top 3 candidates besides the winner).
+  const alternatives = useMemo((): AgrioPrediction[] => {
+    try {
+      const notes =
+        result.parsedNotes ||
+        (typeof result.notes === 'string' ? JSON.parse(result.notes) : result.notes || {});
+      const list: AgrioPrediction[] = notes?.predictions ?? notes?.id_array ?? [];
+      // Drop the winning pest from alternatives to avoid duplicate UI rows.
+      return list.filter((p) => p.id !== result.pest_id).slice(0, PRO_ALTERNATIVES_VISIBLE);
+    } catch {
+      return [];
+    }
+  }, [result]);
+
   const getSeverityColor = () => {
     const severity = enrichment?.severity;
     if (severity === 'critical') return '#D32F2F';
@@ -100,6 +134,7 @@ export default function ResultScreen() {
   // Uses Reanimated worklet so the animation runs entirely on the UI thread.
   const confidenceProgress = useSharedValue(0);
   const [displayConfidence, setDisplayConfidence] = useState(0);
+  const [showAlternatives, setShowAlternatives] = useState(false);
 
   useEffect(() => {
     if (!error && !queued && result.pest_id) {
@@ -124,11 +159,24 @@ export default function ResultScreen() {
     width: `${confidenceProgress.value * 100}%`,
   }));
 
-  // Track successful diagnosis for store review prompt
-  // Hook is called unconditionally (React rules of hooks) but logic is guarded
+  // Track successful diagnosis for store review prompt + persist to local cache
+  // so the pest detail page can render fully offline. Hooks are unconditional
+  // (React rules of hooks) but logic is guarded.
   useEffect(() => {
     if (!error && !queued && result.pest_name) {
       trackSuccessfulDiagnosis();
+      if (result.pest_id && !isHealthy && !isInvalidImage) {
+        void savePestToCache({
+          id: result.pest_id,
+          pest_name: result.pest_name,
+          scientific_name: enrichment.scientific_name,
+          crop: result.crop,
+          image_uri: imageUri ?? undefined,
+          confidence,
+          enrichment,
+          alternatives,
+        });
+      }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -187,10 +235,14 @@ export default function ResultScreen() {
   }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handleWhatsAppShare = useCallback(async () => {
+    void Haptics.selectionAsync().catch(() => {
+      /* haptics best-effort */
+    });
     const text = buildShareText();
     const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
     const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
+      trackShareDiagnosis('whatsapp');
       await Linking.openURL(url);
     } else {
       Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
@@ -345,7 +397,17 @@ export default function ResultScreen() {
   }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handlePdfExport = useCallback(async () => {
+    // Premium gate: free users see a paywall CTA instead of PDF generation.
+    if (!isPro) {
+      trackProGateTapped('pdf');
+      router.push('/paywall');
+      return;
+    }
+    void Haptics.selectionAsync().catch(() => {
+      /* best-effort */
+    });
     try {
+      trackShareDiagnosis('pdf');
       const html = buildPdfHtml();
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (Platform.OS === 'web') {
@@ -360,7 +422,36 @@ export default function ResultScreen() {
     } catch {
       Alert.alert(t('common.error'), t('diagnosis.exportPdfError'));
     }
-  }, [buildPdfHtml, t]);
+  }, [buildPdfHtml, t, isPro]);
+
+  const handleViewDetails = useCallback(() => {
+    if (!result.pest_id) return;
+    if (!isPro) {
+      trackProGateTapped('details');
+      router.push('/paywall');
+      return;
+    }
+    trackPestDetailViewed(result.pest_id, 'result');
+    router.push(`/diagnosis/pest/${encodeURIComponent(result.pest_id)}`);
+  }, [result.pest_id, isPro]);
+
+  const handleToggleAlternatives = useCallback(() => {
+    if (!isPro && alternatives.length > FREE_ALTERNATIVES_VISIBLE) {
+      trackProGateTapped('alternatives');
+      router.push('/paywall');
+      return;
+    }
+    setShowAlternatives((v) => !v);
+  }, [isPro, alternatives.length]);
+
+  // Track that a pro gate was *shown* (vs tapped) for funnel analysis.
+  useEffect(() => {
+    if (!isPro && !error && !queued && result.pest_id && !isHealthy && !isInvalidImage) {
+      if (alternatives.length > 0) trackProGateShown('alternatives');
+      trackProGateShown('pdf');
+      trackProGateShown('details');
+    }
+  }, [isPro, error, queued, result.pest_id, isHealthy, isInvalidImage, alternatives.length]);
 
   // Early returns AFTER all hooks have been called
   if (queued === 'true') {
@@ -478,122 +569,92 @@ export default function ResultScreen() {
 
   return (
     <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView>
-        <LinearGradient
-          colors={
-            isHealthy
-              ? Gradients.hero
-              : ([severityColor + '25', severityColor + '08'] as [string, string])
-          }
-          style={styles.header}
-        >
-          <View style={styles.headerTopRow}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic">
+        {/* HERO — captured image overlay + name + animated confidence bar */}
+        <View style={styles.heroWrap}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.heroImage}
+              resizeMode="cover"
+              accessible
+              accessibilityLabel={t('diagnosis.pestDetailHeroAlt')}
+              accessibilityRole="image"
+            />
+          ) : (
+            <LinearGradient colors={Gradients.hero} style={styles.heroImage} />
+          )}
+          <LinearGradient
+            colors={['transparent', 'rgba(6,40,29,0.55)', 'rgba(6,40,29,0.92)']}
+            style={styles.heroGradient}
+            pointerEvents="none"
+          />
+          <View style={styles.heroTopRow}>
             <TouchableOpacity
               onPress={() => router.dismissAll()}
-              style={styles.backBtn}
+              style={styles.iconBtn}
               accessibilityLabel={t('diagnosis.closeResult')}
               accessibilityRole="button"
+              testID="result-close-button"
             >
-              <Ionicons name="close" size={22} color={isHealthy ? '#FFF' : Colors.text} />
+              <Ionicons name="close" size={22} color="#FFF" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleWhatsAppShare}
-              style={styles.backBtn}
+              style={styles.iconBtn}
               accessibilityLabel={t('diagnosis.shareDiagnosis')}
               accessibilityRole="button"
               accessibilityHint={t('diagnosis.shareHint')}
+              testID="result-share-button"
             >
-              <Ionicons name="share-outline" size={22} color={isHealthy ? '#FFF' : Colors.text} />
+              <Ionicons name="share-outline" size={22} color="#FFF" />
             </TouchableOpacity>
           </View>
-          <View style={styles.headerContent}>
-            <View
-              style={[
-                styles.headerIcon,
-                { backgroundColor: isHealthy ? 'rgba(255,255,255,0.2)' : severityColor + '25' },
-              ]}
-            >
-              <Ionicons
-                name={isHealthy ? 'checkmark-circle' : 'warning'}
-                size={32}
-                color={isHealthy ? '#FFF' : severityColor}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.pestName,
-                  isHealthy && { color: '#FFF' },
-                  !isHealthy && isDark && styles.textDark,
-                ]}
-              >
-                {isHealthy
-                  ? t('diagnosis.healthy')
-                  : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected')}
-              </Text>
-              {!isHealthy && (
-                <Text style={styles.scientific}>{enrichment.scientific_name || ''}</Text>
+
+          <View style={styles.heroContent}>
+            <View style={styles.heroBadgeRow}>
+              {result.crop && (
+                <View style={styles.heroBadge}>
+                  <Ionicons name="leaf" size={11} color="#FFF" />
+                  <Text style={styles.heroBadgeText}>{result.crop}</Text>
+                </View>
               )}
+              <View style={[styles.heroBadge, { backgroundColor: severityColor + 'CC' }]}>
+                <Ionicons name="speedometer" size={11} color="#FFF" />
+                <Text style={styles.heroBadgeText}>{severityLabel()}</Text>
+              </View>
             </View>
-          </View>
-
-          {/* Animated confidence bar — counts up from 0% to final value in 1s */}
-          <View style={styles.confidenceWrap}>
-            <View style={styles.confidenceLabelRow}>
-              <Text
-                style={[
-                  styles.confidenceLabel,
-                  { color: isHealthy ? 'rgba(255,255,255,0.9)' : Colors.textSecondary },
-                ]}
-              >
-                {t('diagnosis.confidence')}
-              </Text>
-              <Text style={[styles.confidenceValue, { color: isHealthy ? '#FFF' : severityColor }]}>
-                {displayConfidence}%
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.confidenceTrack,
-                {
-                  backgroundColor: isHealthy ? 'rgba(255,255,255,0.2)' : Colors.systemGray5,
-                },
-              ]}
+            <Text
+              style={styles.heroPestName}
+              numberOfLines={2}
+              maxFontSizeMultiplier={1.4}
             >
-              <Animated.View
-                style={[
-                  styles.confidenceFill,
-                  confidenceBarStyle,
-                  { backgroundColor: isHealthy ? '#FFF' : severityColor },
-                ]}
-              />
-            </View>
-          </View>
-        </LinearGradient>
+              {isHealthy
+                ? t('diagnosis.healthy')
+                : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected')}
+            </Text>
+            {!isHealthy && enrichment.scientific_name ? (
+              <Text style={styles.heroScientific} numberOfLines={1}>
+                {enrichment.scientific_name}
+              </Text>
+            ) : null}
 
-        <View style={styles.badges}>
-          <View style={[styles.badge, { backgroundColor: severityColor + '1F' }]}>
-            <Ionicons name="speedometer" size={10} color={severityColor} />
-            <Text style={[styles.badgeText, { color: severityColor }]}>
-              {confidence > 0.7
-                ? t('diagnosis.confidenceHigh')
-                : confidence > 0.4
-                  ? t('diagnosis.confidenceMedium')
-                  : t('diagnosis.confidenceLow')}
-            </Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: Colors.techBlue + '1F' }]}>
-            <Ionicons name="analytics" size={10} color={Colors.techBlue} />
-            <Text style={[styles.badgeText, { color: Colors.techBlue }]}>
-              {t('diagnosis.confidence')}: {Math.round(confidence * 100)}%
-            </Text>
-          </View>
-          {result.crop && (
-            <View style={[styles.badge, { backgroundColor: Colors.accent + '1F' }]}>
-              <Ionicons name="leaf" size={10} color={Colors.accent} />
-              <Text style={[styles.badgeText, { color: Colors.accent }]}>{result.crop}</Text>
+            {/* Animated confidence bar — UI-thread Reanimated worklet */}
+            <View
+              style={styles.confidenceWrap}
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={t('diagnosis.confidenceBarA11y', { pct: displayConfidence })}
+            >
+              <View style={styles.confidenceLabelRow}>
+                <Text style={styles.confidenceLabel}>{t('diagnosis.confidence')}</Text>
+                <Text style={styles.confidenceValue}>{displayConfidence}%</Text>
+              </View>
+              <View style={styles.confidenceTrack}>
+                <Animated.View style={[styles.confidenceFill, confidenceBarStyle]} />
+              </View>
             </View>
-          )}
+          </View>
         </View>
 
         {/* P0-1: Low confidence warning banner — confidence < 70% */}
@@ -603,12 +664,125 @@ export default function ResultScreen() {
             accessible
             accessibilityRole="alert"
             accessibilityLabel={t('diagnosis.lowConfidenceBanner')}
+            testID="result-low-confidence-banner"
           >
             <Ionicons name="warning" size={20} color="#B45309" />
             <Text style={styles.lowConfidenceText}>{t('diagnosis.lowConfidenceBanner')}</Text>
           </View>
         )}
 
+        {/* Top 3 alternative diagnoses — collapsed by default, Pro-gated */}
+        {!isHealthy && alternatives.length > 0 && (
+          <View style={styles.alternativesWrap}>
+            <TouchableOpacity
+              style={styles.alternativesHeader}
+              onPress={handleToggleAlternatives}
+              accessibilityRole="button"
+              accessibilityLabel={t('diagnosis.alternativeDiagnoses')}
+              accessibilityHint={t('diagnosis.alternativeDiagnosesHint')}
+              testID="result-alternatives-toggle"
+              activeOpacity={0.7}
+            >
+              <View style={styles.alternativesHeaderLeft}>
+                <Ionicons name="layers" size={18} color={Colors.accent} />
+                <Text style={[styles.alternativesTitle, isDark && styles.textDark]}>
+                  {t('diagnosis.alternativeDiagnoses')}
+                </Text>
+                {!isPro && (
+                  <View style={styles.proPill}>
+                    <Ionicons name="star" size={9} color="#FFF" />
+                    <Text style={styles.proPillText}>PRO</Text>
+                  </View>
+                )}
+              </View>
+              <Ionicons
+                name={showAlternatives && isPro ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={Colors.textSecondary}
+              />
+            </TouchableOpacity>
+            {showAlternatives && isPro && (
+              <View style={styles.alternativesList}>
+                {alternatives.map((alt) => (
+                  <View
+                    key={alt.id}
+                    style={styles.alternativeRow}
+                    testID={`result-alternative-${alt.id}`}
+                  >
+                    <View style={styles.alternativeRowMain}>
+                      <Text style={[styles.alternativeName, isDark && styles.textDark]}>
+                        {alt.common_name || alt.id}
+                      </Text>
+                      {alt.scientific_name ? (
+                        <Text style={styles.alternativeScientific} numberOfLines={1}>
+                          {alt.scientific_name}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.alternativeConfidence}>
+                      {Math.round((alt.confidence ?? 0) * 100)}%
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Treatment summary card — 3 IPM levels with Pro gate on bio/chem */}
+        {!isHealthy && (
+          <PremiumCard style={styles.treatmentCard}>
+            <View style={styles.treatmentHeader}>
+              <Ionicons name="medkit" size={18} color={Colors.accent} />
+              <Text style={[styles.treatmentTitle, isDark && styles.textDark]}>
+                {t('diagnosis.treatmentSummary')}
+              </Text>
+            </View>
+            <View style={styles.treatmentLevels}>
+              <TreatmentLevelRow
+                icon="hand-left"
+                color={Colors.accent}
+                title={t('diagnosis.treatmentLevelCultural')}
+                hint={t('diagnosis.treatmentLevelCulturalHint')}
+                count={enrichment.cultural_treatment?.length ?? 0}
+                isPro={isPro}
+                proGated={false}
+              />
+              <TreatmentLevelRow
+                icon="bug"
+                color="#4CAF50"
+                title={t('diagnosis.treatmentLevelBiological')}
+                hint={t('diagnosis.treatmentLevelBiologicalHint')}
+                count={enrichment.biological_treatment?.length ?? 0}
+                isPro={isPro}
+                proGated={!isPro}
+              />
+              <TreatmentLevelRow
+                icon="flask"
+                color={Colors.warmAmber}
+                title={t('diagnosis.treatmentLevelChemical')}
+                hint={t('diagnosis.treatmentLevelChemicalHint')}
+                count={enrichment.chemical_treatment?.length ?? 0}
+                isPro={isPro}
+                proGated={!isPro}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.viewDetailsBtn}
+              onPress={handleViewDetails}
+              accessibilityRole="button"
+              accessibilityLabel={t('diagnosis.viewDetails')}
+              accessibilityHint={t('diagnosis.viewDetailsHint')}
+              testID="result-view-details-button"
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewDetailsBtnText}>{t('diagnosis.viewDetails')}</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFF" />
+            </TouchableOpacity>
+          </PremiumCard>
+        )}
+
+        {/* Full collapsible sections (existing — kept for full content view) */}
         <View style={styles.sections}>
           {enrichment.description && (
             <CollapsibleSection
@@ -665,7 +839,7 @@ export default function ResultScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {(enrichment.chemical_treatment?.length ?? 0) > 0 && (
+          {isPro && (enrichment.chemical_treatment?.length ?? 0) > 0 && (
             <CollapsibleSection
               title={t('diagnosis.chemicalControl')}
               icon="flask"
@@ -683,7 +857,7 @@ export default function ResultScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {(enrichment.biological_treatment?.length ?? 0) > 0 && (
+          {isPro && (enrichment.biological_treatment?.length ?? 0) > 0 && (
             <CollapsibleSection
               title={t('diagnosis.biologicalControl')}
               icon="bug"
@@ -739,7 +913,7 @@ export default function ResultScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {enrichment.economic_impact && (
+          {isPro && enrichment.economic_impact && (
             <CollapsibleSection
               title={t('diagnosis.economicImpact')}
               icon="trending-down"
@@ -750,7 +924,7 @@ export default function ResultScreen() {
               </Text>
             </CollapsibleSection>
           )}
-          {enrichment.mip_strategy && (
+          {isPro && enrichment.mip_strategy && (
             <CollapsibleSection
               title={t('diagnosis.mipStrategy')}
               icon="leaf"
@@ -771,6 +945,7 @@ export default function ResultScreen() {
             accessibilityLabel={t('diagnosis.shareWhatsApp')}
             accessibilityRole="button"
             accessibilityHint={t('diagnosis.shareHint')}
+            testID="result-whatsapp-button"
           >
             <Ionicons name="logo-whatsapp" size={20} color="#FFF" accessibilityElementsHidden />
             <Text style={styles.actionBtnText}>{t('diagnosis.shareWhatsApp')}</Text>
@@ -779,19 +954,27 @@ export default function ResultScreen() {
             style={styles.pdfBtn}
             onPress={handlePdfExport}
             activeOpacity={0.75}
-            accessibilityLabel={t('diagnosis.exportPdfA11y')}
+            accessibilityLabel={
+              isPro ? t('diagnosis.exportPdfA11y') : t('diagnosis.proLockedShare')
+            }
             accessibilityRole="button"
             accessibilityHint={t('diagnosis.exportPdfHint')}
+            testID="result-pdf-button"
           >
             <Ionicons
-              name="document-text"
+              name={isPro ? 'document-text' : 'lock-closed'}
               size={20}
               color={Colors.accent}
               accessibilityElementsHidden
             />
             <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
-              {t('diagnosis.exportPdf')}
+              {isPro ? t('diagnosis.exportPdf') : t('diagnosis.sharePdf')}
             </Text>
+            {!isPro && (
+              <View style={styles.proPillSmall}>
+                <Text style={styles.proPillSmallText}>PRO</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -832,68 +1015,273 @@ export default function ResultScreen() {
   );
 }
 
+interface TreatmentLevelRowProps {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  color: string;
+  title: string;
+  hint: string;
+  count: number;
+  isPro: boolean;
+  proGated: boolean;
+}
+
+/**
+ * One MIP level row in the treatment summary card.
+ * - When `proGated && !isPro`, replaces count with a lock icon + PRO pill.
+ * - Always shows the level (transparency) so the user knows what they're missing.
+ */
+function TreatmentLevelRow({ icon, color, title, hint, count, isPro, proGated }: TreatmentLevelRowProps) {
+  const locked = proGated && !isPro;
+  return (
+    <View
+      style={styles.treatmentLevelRow}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={
+        locked ? `${title}. ${hint}. ${count} itens. Recurso Pro.` : `${title}. ${hint}. ${count} itens.`
+      }
+    >
+      <View style={[styles.treatmentLevelIcon, { backgroundColor: color + '1F' }]}>
+        <Ionicons name={icon} size={16} color={color} />
+      </View>
+      <View style={styles.treatmentLevelText}>
+        <Text style={styles.treatmentLevelTitle}>{title}</Text>
+        <Text style={styles.treatmentLevelHint} numberOfLines={1}>
+          {hint}
+        </Text>
+      </View>
+      {locked ? (
+        <View style={styles.treatmentLevelLocked}>
+          <Ionicons name="lock-closed" size={12} color={Colors.warmAmber} />
+          <Text style={styles.treatmentLevelLockedText}>PRO</Text>
+        </View>
+      ) : (
+        <Text style={[styles.treatmentLevelCount, { color }]}>{count}</Text>
+      )}
+    </View>
+  );
+}
+
+const HERO_HEIGHT = 360;
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
   textDark: { color: Colors.textDark },
-  header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
-  headerTopRow: {
+  // --- HERO ---
+  heroWrap: {
+    height: HERO_HEIGHT,
+    backgroundColor: '#06281D',
+    position: 'relative',
+  },
+  heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  heroGradient: { ...StyleSheet.absoluteFillObject },
+  heroTopRow: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    zIndex: 2,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+  heroContent: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 20,
+    zIndex: 2,
   },
-  pestName: { fontSize: FontSize.title2, fontWeight: '700' },
-  scientific: {
-    fontSize: FontSize.subheadline,
-    color: Colors.textSecondary,
+  heroBadgeRow: { flexDirection: 'row', gap: 6, marginBottom: 10, flexWrap: 'wrap' },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  heroBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '600' },
+  heroPestName: {
+    color: '#FFF',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    lineHeight: 32,
+  },
+  heroScientific: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
     fontStyle: 'italic',
-    marginTop: 2,
+    marginTop: 4,
   },
-  confidenceWrap: { marginTop: 16 },
+  // --- Confidence bar ---
+  confidenceWrap: { marginTop: 18 },
   confidenceLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginBottom: 6,
   },
-  confidenceLabel: { fontSize: FontSize.caption, fontWeight: '600', letterSpacing: 0.2 },
-  confidenceValue: { fontSize: FontSize.headline, fontWeight: '700' },
+  confidenceLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  confidenceValue: { fontSize: 18, fontWeight: '700', color: '#FFF' },
   confidenceTrack: {
     height: 8,
     borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     overflow: 'hidden',
   },
-  confidenceFill: { height: '100%', borderRadius: 4 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: Spacing.lg },
-  badge: {
+  confidenceFill: { height: '100%', borderRadius: 4, backgroundColor: '#FFF' },
+  // --- Low confidence warning ---
+  lowConfidenceBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+    padding: 14,
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#D97706',
+    borderRadius: BorderRadius.md,
+  },
+  lowConfidenceText: {
+    flex: 1,
+    fontSize: FontSize.caption,
+    color: '#78350F',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  // --- Alternatives card ---
+  alternativesWrap: {
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.separator,
+    overflow: 'hidden',
+  },
+  alternativesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+  },
+  alternativesHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  alternativesTitle: {
+    fontSize: FontSize.subheadline,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  proPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.warmAmber,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  proPillText: { color: '#FFF', fontSize: 9, fontWeight: '800', letterSpacing: 0.4 },
+  alternativesList: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.separator,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 8,
+  },
+  alternativeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  alternativeRowMain: { flex: 1 },
+  alternativeName: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
+  alternativeScientific: {
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  alternativeConfidence: {
+    fontSize: FontSize.subheadline,
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  // --- Treatment summary card ---
+  treatmentCard: {
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  treatmentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  treatmentTitle: {
+    fontSize: FontSize.subheadline,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  treatmentLevels: { gap: 10, marginBottom: 14 },
+  treatmentLevelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  treatmentLevelIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  treatmentLevelText: { flex: 1 },
+  treatmentLevelTitle: { fontSize: FontSize.subheadline, fontWeight: '700', color: Colors.text },
+  treatmentLevelHint: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
+  treatmentLevelCount: {
+    fontSize: FontSize.headline,
+    fontWeight: '800',
+    minWidth: 24,
+    textAlign: 'right',
+  },
+  treatmentLevelLocked: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    backgroundColor: Colors.warmAmber + '1F',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  badgeText: { fontSize: FontSize.caption, fontWeight: '600' },
-  sections: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
+  treatmentLevelLockedText: { fontSize: 10, fontWeight: '800', color: Colors.warmAmber },
+  viewDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.accent,
+    paddingVertical: 14,
+    borderRadius: BorderRadius.md,
+  },
+  viewDetailsBtnText: { color: '#FFF', fontSize: FontSize.subheadline, fontWeight: '700' },
+  // --- Sections ---
+  sections: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: Spacing.sm },
   sectionText: { fontSize: FontSize.subheadline, lineHeight: 22, flex: 1, color: Colors.text },
-  sectionTextDark: { color: Colors.textDark },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 6 },
   bullet: { width: 6, height: 6, borderRadius: 3, marginTop: 8 },
   warning: {
@@ -906,6 +1294,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   warningText: { fontSize: FontSize.caption, color: Colors.warmAmber, flex: 1 },
+  // --- Details card ---
   detailTitle: {
     fontSize: FontSize.subheadline,
     fontWeight: '700',
@@ -915,6 +1304,7 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   detailLabel: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
   detailValue: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
+  // --- Error states ---
   errorCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   errorIcon: {
     width: 100,
@@ -938,6 +1328,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   },
   closeBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
+  // --- Action buttons ---
   actionRow: {
     flexDirection: 'row',
     gap: 10,
@@ -973,27 +1364,15 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent + '40',
   },
   actionBtnText: { fontSize: FontSize.caption, fontWeight: '700', color: '#FFF' },
-  // P0-1: Low confidence warning banner (confidence < 70%)
-  lowConfidenceBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-    padding: 14,
-    backgroundColor: '#FEF3C7', // amber-100
-    borderLeftWidth: 4,
-    borderLeftColor: '#D97706', // amber-600
-    borderRadius: BorderRadius.md,
+  proPillSmall: {
+    marginLeft: 4,
+    backgroundColor: Colors.warmAmber,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
-  lowConfidenceText: {
-    flex: 1,
-    fontSize: FontSize.caption,
-    color: '#78350F', // amber-900
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  // P0-1: Legal disclaimer (Lei 7.802/89) — mandatory CREA warning
+  proPillSmallText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+  // --- Legal disclaimer ---
   legalDisclaimer: {
     flexDirection: 'row',
     alignItems: 'flex-start',

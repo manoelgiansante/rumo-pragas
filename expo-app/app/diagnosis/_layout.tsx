@@ -33,6 +33,14 @@ export default function DiagnosisLayout() {
           animation: Platform.OS === 'ios' ? 'slide_from_right' : 'fade',
         }}
       />
+      {/* Pest fact sheet — Pro feature, reachable from result and history */}
+      <Stack.Screen
+        name="pest/[id]"
+        options={{
+          presentation: 'card',
+          animation: Platform.OS === 'ios' ? 'slide_from_right' : 'fade',
+        }}
+      />
     </Stack>
   );
 }
