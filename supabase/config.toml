@@ -1,0 +1,59 @@
+# For detailed configuration reference documentation, visit:
+# https://supabase.com/docs/guides/local-development/cli/config
+# A string used to distinguish different Supabase projects on the same host. Defaults to the
+# working directory name when running `supabase init`.
+project_id = "rumo-pragas"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[realtime]
+enabled = true
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+jwt_expiry = 3600
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+inspector_port = 8083
+deno_version = 2
+
+# ── Per-function gateway verify_jwt overrides ──
+# RC + Stripe webhooks authenticate via shared-secret in body/headers, NOT JWT.
+# Gateway must let raw POST through; handler does its own auth (Bearer + HMAC).
+# P0 incident 2026-05-21: revenuecat-webhook deployed with verify_jwt=true →
+# all RC events returned 401 before reaching handler → zero subscriptions
+# synced since launch. Fix: force verify_jwt=false here and on next deploy.
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+# waitlist accepts anonymous POSTs from public landing page
+[functions.waitlist-campovivo]
+verify_jwt = false
+
+# send-push triggered by server-to-server cron / triggers via service_role; no end-user JWT
+[functions.send-push]
+verify_jwt = false
