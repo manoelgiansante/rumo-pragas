@@ -69,6 +69,13 @@ export function configureNotificationHandler() {
   } catch (error) {
     // Non-fatal: iOS 26 TurboModule may throw during init; log and continue.
     if (__DEV__) console.warn('[notifications] setNotificationHandler failed (non-fatal):', error);
+    try {
+      Sentry.captureException(error, {
+        tags: { feature: 'push', step: 'set_notification_handler' },
+      });
+    } catch {
+      /* swallow */
+    }
     handlerConfigured = true; // avoid retry storm on every call
   }
 }
@@ -96,6 +103,13 @@ async function ensureAndroidChannelsConfigured(): Promise<void> {
     androidChannelsConfigured = true;
   } catch (error) {
     if (__DEV__) console.warn('[notifications] Android channels failed (non-fatal):', error);
+    try {
+      Sentry.captureException(error, {
+        tags: { feature: 'push', step: 'android_channels' },
+      });
+    } catch {
+      /* swallow */
+    }
     androidChannelsConfigured = true;
   }
 }
@@ -301,7 +315,14 @@ export async function __resetPushTokenSyncCache(): Promise<void> {
 export async function getSavedPushToken(): Promise<string | null> {
   try {
     return await AsyncStorage.getItem(PUSH_TOKEN_KEY);
-  } catch {
+  } catch (err) {
+    try {
+      Sentry.captureException(err, {
+        tags: { feature: 'push', step: 'get_saved_token' },
+      });
+    } catch {
+      /* Sentry must never crash caller */
+    }
     return null;
   }
 }
@@ -356,5 +377,12 @@ export async function scheduleLocalPestAlert(
     });
   } catch (error) {
     if (__DEV__) console.warn('[notifications] scheduleLocalPestAlert failed (non-fatal):', error);
+    try {
+      Sentry.captureException(error, {
+        tags: { feature: 'push', step: 'schedule_local_alert' },
+      });
+    } catch {
+      /* swallow */
+    }
   }
 }

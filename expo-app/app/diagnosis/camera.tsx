@@ -22,6 +22,12 @@ import { PremiumCard } from '../../components/PremiumCard';
 import { UsageCounter } from '../../components/UsageCounter';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
+import {
+  trackFirstDiagnosisAttempted,
+  trackPermissionPrompted,
+  trackPermissionGranted,
+  trackPermissionDenied,
+} from '../../services/analytics';
 
 const MAX_DIMENSION = 1024;
 const JPEG_QUALITY = 0.75;
@@ -59,6 +65,13 @@ export default function CameraScreen() {
       message: useCamera ? 'open_camera_tapped' : 'open_gallery_tapped',
       level: 'info',
     });
+    // INV-3 funnel — capture the user's intent to start a diagnosis. Fires
+    // *before* the permission prompt so we measure conversion at every step.
+    try {
+      trackFirstDiagnosisAttempted();
+    } catch {
+      /* swallow */
+    }
 
     // P0: when permission denied (especially canAskAgain=false), give the user a
     // direct "Open Settings" CTA instead of a dead-end Alert. Apple reviewer that
@@ -79,26 +92,56 @@ export default function CameraScreen() {
     };
 
     if (useCamera) {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
+      try {
+        trackPermissionPrompted('camera');
+      } catch {
+        /* swallow */
+      }
+      const permResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (permResult.status !== 'granted') {
         addBreadcrumb({
           category: 'diagnosis.camera',
           message: 'camera_permission_denied',
           level: 'warning',
         });
+        try {
+          trackPermissionDenied('camera', { canAskAgain: permResult.canAskAgain });
+        } catch {
+          /* swallow */
+        }
         showPermissionAlert(t('diagnosis.cameraPermissionMsg'));
         return;
       }
+      try {
+        trackPermissionGranted('camera');
+      } catch {
+        /* swallow */
+      }
     } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      try {
+        trackPermissionPrompted('gallery');
+      } catch {
+        /* swallow */
+      }
+      const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permResult.status !== 'granted') {
         addBreadcrumb({
           category: 'diagnosis.camera',
           message: 'gallery_permission_denied',
           level: 'warning',
         });
+        try {
+          trackPermissionDenied('gallery', { canAskAgain: permResult.canAskAgain });
+        } catch {
+          /* swallow */
+        }
         showPermissionAlert(t('diagnosis.galleryPermissionMsg'));
         return;
+      }
+      try {
+        trackPermissionGranted('gallery');
+      } catch {
+        /* swallow */
       }
     }
 

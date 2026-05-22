@@ -15,6 +15,7 @@
 
 import Purchases, { CustomerInfo } from 'react-native-purchases';
 import { isRevenueCatConfigured } from './purchases';
+import { captureException } from './sentry-shim';
 
 type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
@@ -81,6 +82,7 @@ export async function syncSubscriptionToSupabase(_userId: string): Promise<void>
     }
   } catch (err) {
     if (__DEV__) console.error('[SubscriptionSync] Error:', err);
+    captureException(err, { tags: { feature: 'subscription_sync', step: 'rc_get_customer_info' } });
   }
 }
 

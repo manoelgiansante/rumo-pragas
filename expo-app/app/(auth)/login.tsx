@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import { trackSignupStarted, trackSignupCompleted } from '../../services/analytics';
 import {
   Colors,
   Spacing,
@@ -101,6 +102,14 @@ export default function LoginScreen() {
         await signIn(email.trim(), password);
       } else {
         await signUp(email.trim(), password, fullName.trim());
+        // INV-3 funnel: fired AFTER signUp resolves — i.e. Supabase accepted
+        // the credentials. Email confirmation may still be pending, but the
+        // account row now exists. Pair with app_opened + signup_started.
+        try {
+          trackSignupCompleted({ method: 'email' });
+        } catch {
+          /* swallow */
+        }
         Alert.alert('', t('auth.checkEmail'));
       }
     } catch (err) {
@@ -140,6 +149,15 @@ export default function LoginScreen() {
     setMode(newMode);
     setAcceptedTerms(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // INV-3 funnel: capture intent the moment the user switches into signup,
+    // BEFORE they fill the form. Detects abandonment between intent and submit.
+    if (newMode === 'signup') {
+      try {
+        trackSignupStarted({ method: 'email' });
+      } catch {
+        /* swallow */
+      }
+    }
   };
 
   const handleAppleSignIn = async () => {
@@ -167,6 +185,14 @@ export default function LoginScreen() {
         message: 'login.apple.success',
         level: 'info',
       });
+      // INV-3 funnel: Apple sign-in resolves both intent and completion in a
+      // single call. Fire both so dashboards can attribute origin.
+      try {
+        trackSignupStarted({ method: 'apple' });
+        trackSignupCompleted({ method: 'apple' });
+      } catch {
+        /* swallow */
+      }
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : t('auth.loginError');

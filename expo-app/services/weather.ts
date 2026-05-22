@@ -1,3 +1,5 @@
+import { captureException } from './sentry-shim';
+
 export interface DailyForecast {
   date: string;
   dayAbbrev: string;
@@ -181,6 +183,9 @@ export async function fetchWeather(
         '[Weather] Failed to fetch weather data:',
         error instanceof Error ? error.message : error,
       );
+    // ZERO-O: weather card silent failure was contributing to "home looks empty"
+    // for new users on first launch. Surface so we can monitor open-meteo SLA.
+    captureException(error, { tags: { feature: 'weather', step: 'fetch' } });
 
     // Network failed -- return stale cache if available so the UI still shows something
     const stale = await getStaleCache();

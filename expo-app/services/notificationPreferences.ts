@@ -56,7 +56,14 @@ async function readCache(): Promise<NotificationPreferences | null> {
     const raw = await AsyncStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     return coerce(JSON.parse(raw));
-  } catch {
+  } catch (err) {
+    try {
+      Sentry.captureException(err, {
+        tags: { feature: 'push_prefs', step: 'read_cache' },
+      });
+    } catch {
+      /* swallow */
+    }
     return null;
   }
 }
@@ -64,8 +71,15 @@ async function readCache(): Promise<NotificationPreferences | null> {
 async function writeCache(prefs: NotificationPreferences): Promise<void> {
   try {
     await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(prefs));
-  } catch {
+  } catch (err) {
     // best-effort cache, don't crash on disk-full
+    try {
+      Sentry.captureException(err, {
+        tags: { feature: 'push_prefs', step: 'write_cache' },
+      });
+    } catch {
+      /* swallow */
+    }
   }
 }
 

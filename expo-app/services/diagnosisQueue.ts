@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
+import { captureException } from './sentry-shim';
 
 // expo-file-system SDK 55: documentDirectory exists at runtime but is not in TS type definitions.
 const documentDirectory = (FileSystem as unknown as { documentDirectory: string | null })
@@ -87,6 +88,7 @@ async function migrateLegacyEntries(): Promise<void> {
     }
   } catch (err) {
     if (__DEV__) console.error('[DiagnosisQueue] Migration error:', err);
+    captureException(err, { tags: { feature: 'diagnosis_queue', step: 'migrate_legacy' } });
   }
 }
 
@@ -129,7 +131,10 @@ export async function getQueue(): Promise<PendingDiagnosis[]> {
     const raw = await AsyncStorage.getItem(QUEUE_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as PendingDiagnosis[];
-  } catch {
+  } catch (err) {
+    // ZERO-O: surface the silent "return [] on read failure" — corrupt JSON
+    // means previously queued offline diagnoses are lost. We need to know.
+    captureException(err, { tags: { feature: 'diagnosis_queue', step: 'get_queue' } });
     return [];
   }
 }
@@ -154,8 +159,12 @@ export async function removeFromQueue(id: string): Promise<void> {
       if (info.exists) {
         await FileSystem.deleteAsync(item.imageUri, { idempotent: true });
       }
-    } catch {
-      // Non-critical: file cleanup failed, continue
+    } catch (err) {
+      // Non-critical: file cleanup failed, continue — but surface as warning
+      // so we can spot disk-full / sandbox issues without a P0 page.
+      captureException(err, {
+        tags: { feature: 'diagnosis_queue', step: 'remove_cleanup_file' },
+      });
     }
   }
 
@@ -176,11 +185,15 @@ export async function clearQueue(): Promise<void> {
       if (item.imageUri) {
         await FileSystem.deleteAsync(item.imageUri, { idempotent: true }).catch((err) => {
           if (__DEV__) console.warn('[DiagnosisQueue] File cleanup failed:', err);
+          captureException(err, {
+            tags: { feature: 'diagnosis_queue', step: 'clear_cleanup_file' },
+          });
         });
       }
     }
-  } catch {
+  } catch (err) {
     // Best effort cleanup
+    captureException(err, { tags: { feature: 'diagnosis_queue', step: 'clear_loop' } });
   }
   await AsyncStorage.removeItem(QUEUE_KEY);
 }

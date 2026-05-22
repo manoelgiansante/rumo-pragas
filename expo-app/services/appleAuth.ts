@@ -14,6 +14,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from './supabase';
 import { Platform } from 'react-native';
+import { captureException } from './sentry-shim';
 
 /**
  * Check if Apple Sign In is available on this device.
@@ -24,7 +25,10 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
 
   try {
     return await AppleAuthentication.isAvailableAsync();
-  } catch {
+  } catch (err) {
+    // Surface to Sentry so we can spot iOS 26 TurboModule regressions on the
+    // capability check (this was a silent fail-closed before).
+    captureException(err, { tags: { feature: 'apple_auth', step: 'is_available' } });
     return false;
   }
 }
@@ -78,6 +82,9 @@ export async function signInWithApple() {
     ) {
       return null;
     }
+    // ZERO-O: Apple Sign-In real failures (Supabase auth error, network, etc.)
+    // need to be visible. The caller still surfaces a UI alert.
+    captureException(error, { tags: { feature: 'apple_auth', step: 'sign_in_with_apple' } });
     throw error;
   }
 }

@@ -1,8 +1,15 @@
 import '../i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import {
+  ActivityIndicator,
+  AppState,
+  AppStateStatus,
+  View,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Sentry from '@sentry/react-native';
@@ -13,7 +20,13 @@ import { useNotifications } from '../hooks/useNotifications';
 import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
 import { useOTAUpdate } from '../hooks/useOTAUpdate';
 import { initializePurchases } from '../services/purchases';
-import { initAnalytics, resetAnalytics } from '../services/analytics';
+import {
+  flush as flushAnalytics,
+  initAnalytics,
+  resetAnalytics,
+  trackAppOpened,
+  trackSessionEnd,
+} from '../services/analytics';
 import {
   syncSubscriptionToSupabase,
   startSubscriptionListener,
@@ -245,6 +258,47 @@ function RootLayout() {
   // calls that crash on iOS 26 TurboModule bridge (SIGABRT on cold start).
   useEffect(() => {
     initSentryOnce();
+  }, []);
+
+  // app_opened — fire exactly once per cold start. Auth state may not be
+  // resolved at this point; the boolean flag is best-effort and the analytics
+  // pipeline tolerates undefined.
+  const appOpenedFired = useRef(false);
+  useEffect(() => {
+    if (appOpenedFired.current) return;
+    appOpenedFired.current = true;
+    try {
+      trackAppOpened();
+    } catch {
+      /* analytics must never crash the boot */
+    }
+  }, []);
+
+  // AppState listener — flushes queued analytics events before the OS suspends
+  // the JS context. INV-3 funnel coverage: without this, background/quit drops
+  // the last ~30s of events (FLUSH_INTERVAL_MS = 30s) on every session.
+  useEffect(() => {
+    const previousStateRef = { current: AppState.currentState as AppStateStatus };
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      const previous = previousStateRef.current;
+      previousStateRef.current = next;
+      // Transition active → background / inactive is when we lose work.
+      if (
+        previous === 'active' &&
+        (next === 'background' || next === 'inactive')
+      ) {
+        try {
+          trackSessionEnd({ reason: next });
+        } catch {
+          /* swallow */
+        }
+        // Fire-and-forget flush. flush() swallows its own errors.
+        void flushAnalytics();
+      }
+    });
+    return () => {
+      sub.remove();
+    };
   }, []);
 
   return (

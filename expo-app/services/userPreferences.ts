@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { captureException } from './sentry-shim';
 
 /**
  * P0-3 (LGPD) — user_preferences service.
@@ -36,11 +37,17 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 
     if (error) {
       if (__DEV__) console.warn('[userPreferences] read failed:', error.message);
+      // ZERO-O / INV-3: degraded reads silent before — surface as warning so
+      // we can see RLS / network drift in prod dashboards.
+      captureException(new Error(`userPreferences read: ${error.message}`), {
+        tags: { feature: 'user_preferences', step: 'read', code: error.code ?? 'unknown' },
+      });
       return DEFAULT_PREFS;
     }
     return data ?? DEFAULT_PREFS;
   } catch (e) {
     if (__DEV__) console.warn('[userPreferences] exception reading prefs:', e);
+    captureException(e, { tags: { feature: 'user_preferences', step: 'read_exception' } });
     return DEFAULT_PREFS;
   }
 }

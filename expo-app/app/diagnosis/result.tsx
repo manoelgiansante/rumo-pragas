@@ -39,6 +39,7 @@ import {
   trackProGateShown,
   trackProGateTapped,
   trackEvent,
+  trackFirstDiagnosisSuccess,
 } from '../../services/analytics';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
@@ -183,6 +184,18 @@ export default function ResultScreen() {
           enrichment,
           alternatives,
         });
+      }
+      // INV-3 funnel — the diagnosis funnel completion event. Named
+      // "first_diagnosis_success" for product clarity even though it fires on
+      // every success (server side can dedupe per-user from first event).
+      try {
+        trackFirstDiagnosisSuccess({
+          pestId: result.pest_id ?? undefined,
+          crop: result.crop ?? undefined,
+          confidence: result.confidence ?? undefined,
+        });
+      } catch {
+        /* swallow */
       }
       addBreadcrumb({
         category: 'diagnosis.result',

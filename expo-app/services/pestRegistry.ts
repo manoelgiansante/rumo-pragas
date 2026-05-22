@@ -15,7 +15,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { addBreadcrumb } from './sentry-shim';
+import { addBreadcrumb, captureException } from './sentry-shim';
 import type { AgrioEnrichment, AgrioPrediction } from '../types/diagnosis';
 
 const CACHE_PREFIX = '@rumopragas/pest-cache/';
@@ -73,6 +73,7 @@ export async function savePestToCache(
       level: 'error',
       data: { error: e instanceof Error ? e.message : String(e) },
     });
+    captureException(e, { tags: { feature: 'pest_cache', step: 'save' } });
   }
 }
 
@@ -91,6 +92,7 @@ export async function loadPestFromCache(id: string): Promise<PestCacheEntry | nu
       level: 'error',
       data: { error: e instanceof Error ? e.message : String(e) },
     });
+    captureException(e, { tags: { feature: 'pest_cache', step: 'load' } });
     return null;
   }
 }

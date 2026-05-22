@@ -182,3 +182,119 @@ export function trackLanguageChanged(language: string): void {
 export function trackError(errorType: string, message: string): void {
   trackEvent('app_error', { errorType, message });
 }
+
+// =====================================================
+// Funnel coverage helpers (INV-3 / 2026-05-22)
+// -----------------------------------------------------
+// Wave wired by feat/pragas-telemetry-wire-up-2026-05-22 to close the funnel
+// drop-off blind-spots discovered in INV-3 ("4 trials 100% drop-off, telemetry
+// cega"). Signatures are additive only — existing helpers above untouched.
+// =====================================================
+
+/**
+ * App was opened (cold start or warm foreground). Wired at root layout mount.
+ */
+export function trackAppOpened(properties?: {
+  isAuthenticated?: boolean;
+  hasSeenOnboarding?: boolean;
+}): void {
+  trackEvent('app_opened', properties);
+}
+
+/**
+ * User tapped "Criar conta" tab or entered signup mode. The user may abandon
+ * before submit — this captures the *intent*.
+ */
+export function trackSignupStarted(properties?: { method?: 'email' | 'apple' }): void {
+  trackEvent('signup_started', properties);
+}
+
+/**
+ * Supabase auth.signUp() resolved successfully (email confirmation pending or
+ * not depending on Supabase config). DOES NOT mean the user has confirmed.
+ */
+export function trackSignupCompleted(properties?: { method?: 'email' | 'apple' }): void {
+  trackEvent('signup_completed', properties);
+}
+
+/**
+ * About to call ImagePicker.requestCameraPermissionsAsync / MediaLibrary.
+ * Pair with trackPermissionGranted / trackPermissionDenied for funnel.
+ */
+export function trackPermissionPrompted(permission: 'camera' | 'gallery' | 'location'): void {
+  trackEvent('permission_prompted', { permission });
+}
+
+export function trackPermissionGranted(permission: 'camera' | 'gallery' | 'location'): void {
+  trackEvent('permission_granted', { permission });
+}
+
+export function trackPermissionDenied(
+  permission: 'camera' | 'gallery' | 'location',
+  properties?: { canAskAgain?: boolean },
+): void {
+  trackEvent('permission_denied', { permission, ...properties });
+}
+
+/**
+ * User tapped "Diagnosticar" CTA. Funnel entry — not yet a successful diagnosis.
+ */
+export function trackFirstDiagnosisAttempted(properties?: { crop?: string }): void {
+  trackEvent('first_diagnosis_attempted', properties);
+}
+
+/**
+ * Diagnosis result successfully rendered with a pest_id.
+ */
+export function trackFirstDiagnosisSuccess(properties?: {
+  pestId?: string;
+  crop?: string;
+  confidence?: number;
+}): void {
+  trackEvent('first_diagnosis_success', properties);
+}
+
+/**
+ * Paywall screen mounted / visible.
+ */
+export function trackPaywallViewed(properties?: { source?: string; selectedPlan?: string }): void {
+  trackEvent('paywall_viewed', properties);
+}
+
+/**
+ * Paywall closed without purchase (back, swipe down, close X).
+ */
+export function trackPaywallDismissed(properties?: { selectedPlan?: string }): void {
+  trackEvent('paywall_dismissed', properties);
+}
+
+/**
+ * Paywall purchase succeeded (RevenueCat returned CustomerInfo).
+ */
+export function trackPaywallPurchased(properties: { plan: string; provider: string }): void {
+  trackEvent('paywall_purchased', properties);
+}
+
+/**
+ * AppState went background / inactive — used to flush analytics queue before
+ * the OS kills the JS context. Fire-and-forget.
+ */
+export function trackSessionEnd(properties?: { reason?: 'background' | 'inactive' }): void {
+  trackEvent('session_end', properties);
+}
+
+/**
+ * Force-flush the in-memory analytics queue. Safe to call any time.
+ * Useful in AppState background transitions to make sure events don't get
+ * lost when the OS suspends the JS context.
+ *
+ * Errors are swallowed (Sentry breadcrumb only) — analytics must never crash
+ * the caller.
+ */
+export async function flush(): Promise<void> {
+  try {
+    await flushEvents();
+  } catch (err) {
+    if (__DEV__) console.warn('[Analytics] flush() error (swallowed):', err);
+  }
+}

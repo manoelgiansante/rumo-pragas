@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,11 @@ import {
   purchasePackage,
   restorePurchases,
 } from '../services/purchases';
+import {
+  trackPaywallViewed,
+  trackPaywallDismissed,
+  trackPaywallPurchased,
+} from '../services/analytics';
 
 export default function PaywallScreen() {
   const { t } = useTranslation();
@@ -75,6 +81,34 @@ export default function PaywallScreen() {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  // INV-3 funnel — fire-once-per-mount paywall_viewed. Refs guard against the
+  // React 18 strict-mode double-invocation and against re-renders.
+  const viewedFiredRef = React.useRef(false);
+  // Track whether a purchase actually completed so we don't double-attribute
+  // a "dismiss" event after the user upgraded.
+  const purchasedFiredRef = React.useRef(false);
+
+  useEffect(() => {
+    if (viewedFiredRef.current) return;
+    viewedFiredRef.current = true;
+    try {
+      trackPaywallViewed({ source: 'modal', selectedPlan: 'pro' });
+    } catch {
+      /* swallow */
+    }
+    return () => {
+      // Unmount = paywall closed. If no purchase succeeded, it's a dismissal.
+      if (!purchasedFiredRef.current) {
+        try {
+          trackPaywallDismissed({ selectedPlan: 'pro' });
+        } catch {
+          /* swallow */
+        }
+      }
+    };
+    // We intentionally fire paywall_viewed on mount only, with the initial
+    // "pro" selection (the default the user sees first).
+  }, []);
 
   const configured = isRevenueCatConfigured();
 
@@ -168,6 +202,17 @@ export default function PaywallScreen() {
           level: 'info',
           data: { plan: selected },
         });
+        // INV-3 funnel — mark purchase complete so the unmount cleanup does
+        // NOT emit paywall_dismissed for the same session.
+        purchasedFiredRef.current = true;
+        try {
+          trackPaywallPurchased({
+            plan: selected,
+            provider: Platform.OS === 'ios' ? 'apple' : 'google',
+          });
+        } catch {
+          /* swallow */
+        }
         Alert.alert(t('paywall.subscriptionActivated'), t('paywall.enjoyFeatures'), [
           { text: 'OK', onPress: () => router.back() },
         ]);

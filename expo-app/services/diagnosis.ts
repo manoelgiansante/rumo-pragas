@@ -1,5 +1,5 @@
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
-import { addBreadcrumb } from './sentry-shim';
+import { addBreadcrumb, captureException } from './sentry-shim';
 import { router } from 'expo-router';
 import { Config } from '../constants/config';
 import type { DiagnosisResult } from '../types/diagnosis';
@@ -70,6 +70,10 @@ export async function sendDiagnosis(
     } catch (e) {
       // Fail closed — any error → no location sent
       if (__DEV__) console.warn('[diagnosis] consent check failed, dropping location:', e);
+      // INV-3: surface as warning so we can see consent-RPC degradation in prod.
+      captureException(e, {
+        tags: { feature: 'diagnosis', step: 'consent_check' },
+      });
     }
   }
 
@@ -129,12 +133,19 @@ export async function sendDiagnosis(
             router.push('/paywall');
           } catch (navErr) {
             if (__DEV__) console.warn('[diagnosis] paywall navigation failed:', navErr);
+            captureException(navErr, {
+              tags: { feature: 'diagnosis', step: 'paywall_nav_403' },
+            });
           }
           const planLabel = errorData.plan === 'free' ? i18n.t('errors.planFree') : errorData.plan;
           throw new Error(i18n.t('errors.planLimit', { limit: errorData.limit, plan: planLabel }));
         }
       } catch (e) {
         if (e instanceof Error && e.message.includes(String(i18n.t('errors.planFree')))) throw e;
+        // 403 with non-standard body — capture so we can fix the contract.
+        captureException(e, {
+          tags: { feature: 'diagnosis', step: 'parse_403_body' },
+        });
       }
     }
     throw new Error(sanitizeErrorMessage(response.status));

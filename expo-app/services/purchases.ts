@@ -5,6 +5,7 @@ import Purchases, {
 } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
+import { captureException } from './sentry-shim';
 
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '';
 const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '';
@@ -44,6 +45,7 @@ export async function identifyUser(userId: string): Promise<void> {
     await Purchases.logIn(userId);
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to identify user:', e);
+    captureException(e, { tags: { feature: 'purchases', step: 'identify_user' } });
   }
 }
 
@@ -59,6 +61,8 @@ export async function getOfferings(): Promise<PurchasesPackage[]> {
     return [];
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to get offerings:', e);
+    // ZERO-O: empty offerings = blank paywall = silent funnel break.
+    captureException(e, { tags: { feature: 'purchases', step: 'get_offerings' } });
     return [];
   }
 }
@@ -105,6 +109,7 @@ export async function checkSubscriptionStatus(): Promise<{
     return { plan: 'free', isActive: false };
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to check subscription status:', e);
+    captureException(e, { tags: { feature: 'purchases', step: 'check_subscription_status' } });
     return {
       plan: 'free',
       isActive: false,
@@ -122,6 +127,7 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
     return customerInfo;
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to restore purchases:', e);
+    captureException(e, { tags: { feature: 'purchases', step: 'restore_purchases' } });
     throw new Error(i18n.t('errors.restorePurchasesFailed'), { cause: e });
   }
 }

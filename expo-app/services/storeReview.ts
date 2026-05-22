@@ -2,6 +2,7 @@ import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 import i18n from '../i18n';
+import { captureException } from './sentry-shim';
 
 const DIAGNOSIS_COUNT_KEY = '@rumo_pragas_successful_diagnoses';
 const REVIEW_PROMPTED_KEY = '@rumo_pragas_review_prompted';
@@ -39,14 +40,17 @@ export async function trackSuccessfulDiagnosis(): Promise<void> {
         onPress: async () => {
           try {
             await StoreReview.requestReview();
-          } catch {
-            // Native review dialog may fail silently — that's OK
+          } catch (e) {
+            // Native review dialog may fail silently — that's OK, but log to
+            // Sentry so we can see if iOS rate-limits us.
+            captureException(e, { tags: { feature: 'store_review', step: 'request_review' } });
           }
         },
       },
     ]);
-  } catch {
+  } catch (e) {
     // Non-critical feature — never crash the app for a review prompt
+    captureException(e, { tags: { feature: 'store_review', step: 'track_diagnosis' } });
   }
 }
 
