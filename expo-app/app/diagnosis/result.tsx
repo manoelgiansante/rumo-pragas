@@ -28,7 +28,14 @@ import Animated, {
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
+import { MipCard } from '../../components/MipCard';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
+import { trackEvent } from '../../services/analytics';
+import {
+  checkSubscriptionStatus,
+  isRevenueCatConfigured,
+} from '../../services/purchases';
+import { useMipKnowledge, type SubscriptionTier } from '../../hooks/useMipKnowledge';
 import type { AgrioEnrichment } from '../../types/diagnosis';
 
 export default function ResultScreen() {
@@ -131,6 +138,69 @@ export default function ResultScreen() {
       trackSuccessfulDiagnosis();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Subscription tier — drives MIP premium gating. Default to 'free' until
+  // RevenueCat confirms; never block the rest of the screen on this fetch.
+  const [tier, setTier] = useState<SubscriptionTier>('free');
+  useEffect(() => {
+    let cancelled = false;
+    if (!isRevenueCatConfigured()) return;
+    (async () => {
+      try {
+        const status = await checkSubscriptionStatus();
+        if (!cancelled && status.isActive) setTier(status.plan as SubscriptionTier);
+      } catch (e) {
+        if (__DEV__) console.warn('[Result] tier check failed:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Resolve MIP catalog entry from pest/symptoms. Disabled when no useful
+  // diagnosis is on screen (healthy plant / no pest_name).
+  const mipEnabled = !error && !queued && !isHealthy && !isInvalidImage && !!result.pest_name;
+  const mipKnowledge = useMipKnowledge({
+    pestName: result.pest_name,
+    enrichment,
+    crop: result.crop,
+    tier,
+    enabled: mipEnabled,
+  });
+
+  // Fire one analytics event per resolved entry (covers both unlocked and
+  // empty states — empty is itself a signal we should grow the catalog).
+  useEffect(() => {
+    if (!mipEnabled || mipKnowledge.loading) return;
+    if (mipKnowledge.entry) {
+      trackEvent('mip_card_shown', {
+        entry_id: mipKnowledge.entry.id,
+        match_score: mipKnowledge.matchScore,
+        tier,
+        crop: result.crop,
+        pest_id: result.pest_id,
+      });
+    } else {
+      trackEvent('mip_card_empty', {
+        tier,
+        crop: result.crop,
+        pest_name: result.pest_name,
+        pest_id: result.pest_id,
+      });
+    }
+    // We only want to fire once per resolved entry — keying on entry.id is
+    // intentional; the dep on `tier` also re-fires when tier resolves.
+  }, [
+    mipEnabled,
+    mipKnowledge.loading,
+    mipKnowledge.entry,
+    mipKnowledge.matchScore,
+    tier,
+    result.crop,
+    result.pest_id,
+    result.pest_name,
+  ]);
 
   // All useCallback hooks must be declared before any early returns (Rules of Hooks)
   const buildShareText = useCallback(() => {
@@ -762,6 +832,15 @@ export default function ResultScreen() {
             </CollapsibleSection>
           )}
         </View>
+
+        {/* MIP knowledge base card — premium-gated EMBRAPA/MAPA protocols.
+            Hidden when the plant is healthy or no pest was identified. */}
+        <MipCard
+          knowledge={mipKnowledge}
+          tier={tier}
+          enabled={mipEnabled}
+          onAnalyticsEvent={trackEvent}
+        />
 
         <View style={styles.actionRow}>
           <TouchableOpacity
