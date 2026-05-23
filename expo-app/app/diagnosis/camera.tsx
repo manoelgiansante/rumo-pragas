@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { UsageCounter } from '../../components/UsageCounter';
+import { VoiceRecorderButton } from '../../components/VoiceRecorderButton';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
 
@@ -258,6 +259,15 @@ export default function CameraScreen() {
               </View>
             </PremiumCard>
           </TouchableOpacity>
+
+          {/* Voice recorder STUB — feature-flagged by EXPO_PUBLIC_VOICE_ENABLED.
+              Returns null when flag is OFF (default). Wired now so the build is
+              ready to flip ON when IA Hub voice endpoints (PR #18) ship. */}
+          <VoiceRecorderButton
+            context="diagnosis_camera"
+            style={{ marginTop: Spacing.sm }}
+            testID="diagnosis-voice-recorder"
+          />
         </View>
 
         <View style={styles.tips}>
