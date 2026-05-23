@@ -15,7 +15,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "typecheck": "node --stack-size=16000 ./node_modules/.bin/tsc --noEmit",
-    "prepare": "cd .. && husky"
+    "prepare": "cd .. && husky",
+    "sentry:finalize": "bash scripts/eas-post-build-sentry.sh",
+    "eas-build-on-success": "bash scripts/eas-post-build-sentry.sh"
   },
   "overrides": {
     "@xmldom/xmldom": "^0.8.13"
