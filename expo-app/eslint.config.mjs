@@ -1,16 +1,16 @@
-import js from "@eslint/js";
-import tseslint from "typescript-eslint";
-import reactPlugin from "eslint-plugin-react";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
 export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ['**/*.{ts,tsx}'],
     plugins: {
       react: reactPlugin,
-      "react-hooks": reactHooksPlugin,
+      'react-hooks': reactHooksPlugin,
     },
     languageOptions: {
       parserOptions: {
@@ -19,33 +19,33 @@ export default [
     },
     rules: {
       // Relax rules for existing codebase
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_" },
-      ],
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-      "no-console": ["warn", { allow: ["warn", "error"] }],
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       // React Native uses require() for static asset resolution
-      "@typescript-eslint/no-require-imports": "off",
+      '@typescript-eslint/no-require-imports': 'off',
     },
     settings: {
-      react: { version: "detect" },
+      react: { version: 'detect' },
     },
   },
   {
     ignores: [
-      "node_modules/",
-      ".expo/",
-      "dist/",
-      "build/",
-      "coverage/",
-      "logs/",
-      "scripts/**",
-      "*.config.js",
-      "*.config.mjs",
-      "supabase/functions/**",
+      'node_modules/',
+      '.expo/',
+      'dist/',
+      'build/',
+      'coverage/',
+      'logs/',
+      'scripts/**',
+      '*.config.js',
+      '*.config.mjs',
+      'supabase/functions/**',
+      // Vendored snapshot of @agrorumo/ia-hub-client — canonical source
+      // lives in agrorumo-monorepo/packages/ia-hub-client. See VENDORED.md.
+      'vendor/**',
     ],
   },
 ];

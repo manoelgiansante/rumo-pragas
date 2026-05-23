@@ -9,6 +9,11 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Allow vendored SDK dist/ (snapshot of @agrorumo/ia-hub-client) — see
+# vendor/ia-hub-client/VENDORED.md for why this lives in the repo.
+!vendor/**/dist/
+!vendor/**/dist/**
+
 # Native
 .kotlin/
 *.orig.*
