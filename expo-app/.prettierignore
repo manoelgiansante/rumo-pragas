@@ -2,3 +2,8 @@ node_modules
 .expo
 dist
 *.lock
+
+# Vendored snapshot of @agrorumo/ia-hub-client (see VENDORED.md). We do
+# not reformat the upstream code to keep diffs against the canonical
+# package readable when refreshing.
+vendor/
