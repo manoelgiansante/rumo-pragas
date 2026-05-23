@@ -20,19 +20,27 @@ try {
 
 const getDefaultLanguage = (): string => {
   if (deviceLanguage.startsWith('pt')) return 'pt-BR';
-  if (deviceLanguage.startsWith('es')) return 'es';
-  return 'en';
+  if (deviceLanguage.startsWith('es')) return 'es-ES';
+  return 'en-US';
 };
 
+// Resources registered under BOTH short (en/es) and BCP-47 (en-US/es-ES) keys
+// so device locales like "en-US" or "es-AR" resolve without a fallbackLng hop.
+// Canonical (per N7 directive 2026-05-23): pt-BR + en-US + es-ES.
 i18n.use(initReactI18next).init({
   resources: {
     'pt-BR': { translation: ptBR },
     en: { translation: en },
+    'en-US': { translation: en },
     es: { translation: es },
+    'es-ES': { translation: es },
   },
   lng: getDefaultLanguage(),
   fallbackLng: 'pt-BR',
+  supportedLngs: ['pt-BR', 'en', 'en-US', 'es', 'es-ES'],
+  nonExplicitSupportedLngs: true,
   interpolation: { escapeValue: false },
+  react: { useSuspense: false },
 });
 
 // Load persisted language preference (async, overrides device default if set).
