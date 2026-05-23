@@ -158,7 +158,8 @@
           "project": "rumo-pragas",
           "url": "https://sentry.io/"
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {
