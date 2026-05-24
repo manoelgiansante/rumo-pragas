@@ -12,10 +12,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
+    "assetBundlePatterns": [
+      "assets/icon.png",
+      "assets/splash-icon.png",
+      "assets/adaptive-icon.png",
+      "assets/favicon.png",
+      "assets/android-icon-foreground.png",
+      "assets/android-icon-background.png",
+      "assets/android-icon-monochrome.png"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.agrorumo.rumopragas",
-      "buildNumber": "41",
+      "buildNumber": "42",
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:pragas.agrorumo.com"],
       "requireFullScreen": true,
@@ -52,7 +61,7 @@
       }
     },
     "android": {
-      "versionCode": 32,
+      "versionCode": 33,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF",
