@@ -392,7 +392,8 @@ export default {
     sectionAbout: 'About',
     privacyFooter: 'GDPR / LGPD compliant. You can revoke permissions at any time.',
     subTaglineFree: 'Upgrade for unlimited diagnoses and priority support.',
-    subTaglinePro: 'You have full access to the AI agronomist. Thanks for supporting Rumo Pragas.',
+    subTaglinePro:
+      'You have full access to the AI agronomist. Thanks for supporting Rumo Pragas IA.',
     diagnosticsRemaining: '{{remaining}} diagnoses left this month',
   },
   common: {
@@ -672,7 +673,7 @@ export default {
     banana: 'Banana',
   },
   paywall: {
-    title: 'Rumo Pragas Pro',
+    title: 'Rumo Pragas IA Pro',
     subtitle: 'Unlock the full potential of AI for crop protection',
     subscribe: 'Subscribe',
     continueFree: 'Continue Free',
