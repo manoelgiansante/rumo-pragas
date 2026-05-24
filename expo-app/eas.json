@@ -44,7 +44,9 @@
         "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168",
         "SENTRY_DISABLE_AUTO_UPLOAD": "false",
         "SENTRY_DISABLE_NATIVE_DEBUG_UPLOAD": "false",
-        "SENTRY_ALLOW_FAILURE": "true"
+        "SENTRY_ALLOW_FAILURE": "true",
+        "SENTRY_ORG": "rumo-maquinas",
+        "SENTRY_PROJECT": "rumo-pragas"
       }
     }
   },
