@@ -32,6 +32,7 @@
         "NSCameraUsageDescription": "O Rumo Pragas IA usa a câmera para que você fotografe plantas, folhas, frutos e sintomas visíveis de pragas ou doenças diretamente na lavoura, para diagnóstico imediato por IA agrícola.",
         "NSPhotoLibraryUsageDescription": "O Rumo Pragas IA usa sua galeria para que você selecione fotos de plantas, folhas ou frutos afetados (feitas anteriormente na lavoura) e envie ao diagnóstico por IA agrícola, incluindo registros de infestações, sintomas de doenças e comparações de tratamento.",
         "NSLocationWhenInUseUsageDescription": "O Rumo Pragas IA usa sua localização (apenas quando o app está em uso) para enriquecer o diagnóstico com dados de clima regional (temperatura, umidade, precipitação) que influenciam o ciclo das pragas, e para enviar alertas de infestações próximas à sua lavoura. É opcional — o app funciona normalmente sem localização.",
+        "NSMicrophoneUsageDescription": "O Rumo Pragas IA usa o microfone para você ditar a descrição da praga, sintoma ou observação sobre a foto (push-to-talk). O áudio é transcrito para texto e descartado em seguida — nada é armazenado no dispositivo ou enviado para terceiros além do serviço de transcrição.",
         "ITSAppUsesNonExemptEncryption": false,
         "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
         "UISupportedInterfaceOrientations~ipad": [
@@ -73,11 +74,11 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.READ_MEDIA_IMAGES"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -168,7 +169,12 @@
           "url": "https://sentry.io/"
         }
       ],
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "O Rumo Pragas IA usa o microfone para você ditar a descrição da praga, sintoma ou observação sobre a foto (push-to-talk). O áudio é transcrito para texto e descartado em seguida — nada é armazenado no dispositivo ou enviado para terceiros além do serviço de transcrição."
+        }
+      ]
     ],
     "extra": {
       "eas": {
