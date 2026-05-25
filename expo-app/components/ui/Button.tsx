@@ -13,7 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Colors, BorderRadius, FontWeight, Spacing } from '../../constants/theme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -41,6 +43,9 @@ const SIZES: Record<
   md: { height: 48, paddingHorizontal: 20, fontSize: 17, iconSize: 18, gap: 8 },
   lg: { height: 56, paddingHorizontal: 24, fontSize: 17, iconSize: 20, gap: 10 },
 };
+
+// Spring config tuned for ~120ms perceived "tap" — snappy but never bouncy.
+const PRESS_SPRING = { damping: 18, stiffness: 320, mass: 0.7 } as const;
 
 function getVariantStyles(variant: ButtonVariant): {
   container: ViewStyle;
@@ -102,11 +107,39 @@ function ButtonImpl({
   textStyle,
   haptic = true,
   onPress,
+  onPressIn,
+  onPressOut,
   ...rest
 }: ButtonProps) {
   const dims = SIZES[size];
   const v = getVariantStyles(variant);
   const isDisabled = disabled || loading;
+  const reduceMotion = useReducedMotion();
+
+  // UI-thread scale-on-press (Reanimated 3 worklet).
+  // Pressable's built-in `pressed` style fires on JS thread → one frame late
+  // on busy renders (lists, paywall). Spring on UI thread feels native.
+  const scale = useSharedValue(1);
+
+  const handlePressIn = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!isDisabled && !reduceMotion) {
+        scale.value = withSpring(0.97, PRESS_SPRING);
+      }
+      onPressIn?.(e);
+    },
+    [isDisabled, reduceMotion, scale, onPressIn],
+  );
+
+  const handlePressOut = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!isDisabled && !reduceMotion) {
+        scale.value = withSpring(1, PRESS_SPRING);
+      }
+      onPressOut?.(e);
+    },
+    [isDisabled, reduceMotion, scale, onPressOut],
+  );
 
   const handlePress = useCallback(
     (e: GestureResponderEvent) => {
@@ -119,52 +152,59 @@ function ButtonImpl({
     [isDisabled, haptic, onPress],
   );
 
+  const animatedWrapperStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
-      onPress={handlePress}
-      disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        {
-          height: dims.height,
-          paddingHorizontal: dims.paddingHorizontal,
-          gap: dims.gap,
-        },
-        v.container,
-        block && styles.block,
-        pressed && !isDisabled && styles.pressed,
-        isDisabled && styles.disabled,
-        style,
-      ]}
-      {...rest}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={v.iconColor} />
-      ) : (
-        <>
-          {iconName ? <Ionicons name={iconName} size={dims.iconSize} color={v.iconColor} /> : null}
-          <View style={styles.labelWrap}>
-            {typeof children === 'string' ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.label,
-                  { fontSize: dims.fontSize, fontWeight: FontWeight.semibold },
-                  v.text,
-                  textStyle,
-                ]}
-              >
-                {children}
-              </Text>
-            ) : (
-              children
-            )}
-          </View>
-        </>
-      )}
-    </Pressable>
+    <Animated.View style={[animatedWrapperStyle, block && styles.block, style]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        style={[
+          styles.base,
+          {
+            height: dims.height,
+            paddingHorizontal: dims.paddingHorizontal,
+            gap: dims.gap,
+          },
+          v.container,
+          isDisabled && styles.disabled,
+        ]}
+        {...rest}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={v.iconColor} />
+        ) : (
+          <>
+            {iconName ? (
+              <Ionicons name={iconName} size={dims.iconSize} color={v.iconColor} />
+            ) : null}
+            <View style={styles.labelWrap}>
+              {typeof children === 'string' ? (
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.label,
+                    { fontSize: dims.fontSize, fontWeight: FontWeight.semibold },
+                    v.text,
+                    textStyle,
+                  ]}
+                >
+                  {children}
+                </Text>
+              ) : (
+                children
+              )}
+            </View>
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -178,9 +218,6 @@ const styles = StyleSheet.create({
   },
   block: {
     alignSelf: 'stretch',
-  },
-  pressed: {
-    opacity: 0.85,
   },
   disabled: {
     opacity: 0.7,

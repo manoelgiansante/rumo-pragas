@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Pressable,
   RefreshControl,
   StyleSheet,
   useColorScheme,
@@ -18,6 +17,8 @@ import { WeatherCard } from '../../components/WeatherCard';
 import { AlertCard } from '../../components/AlertCard';
 import { HomeScreenSkeleton } from '../../components/HomeScreenSkeleton';
 import { Hero, IconButton, PrimaryAmberButton, SectionHeader, StatTile } from '../../components/ui';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { useHapticRefresh } from '../../hooks/useHapticRefresh';
 import { supabase } from '../../services/supabase';
 import { fetchWeather } from '../../services/weather';
 import type { WeatherData } from '../../services/weather';
@@ -56,7 +57,6 @@ export default function HomeScreen() {
   const [diagnosisCount, setDiagnosisCount] = useState(0);
   const [monthlyDiagnosisCount, setMonthlyDiagnosisCount] = useState(0);
   const [isFreePlan, setIsFreePlan] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [weatherError, setWeatherError] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState(false);
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
@@ -206,11 +206,9 @@ export default function HomeScreen() {
     };
   }, [loadData]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
+  // Pull-to-refresh — fires Light haptic on pull, Success on complete,
+  // Warning on failure. Apple Mail / Apollo / Things3 pattern.
+  const { refreshing, onRefresh } = useHapticRefresh(loadData);
 
   const riskLevelText = useMemo(() => {
     if (!weather) return '—';
@@ -316,31 +314,35 @@ export default function HomeScreen() {
           {t('diagnosis.takePhoto')}
         </PrimaryAmberButton>
 
-        {/* Two translucent secondary buttons */}
+        {/* Two translucent secondary buttons — PressableScale for premium tap. */}
         <View style={styles.secondaryRow}>
-          <Pressable
+          <PressableScale
             onPress={() => router.push('/diagnosis/camera')}
             accessibilityRole="button"
             accessibilityLabel={t('diagnosis.chooseGalleryA11y')}
             accessibilityHint={t('diagnosis.chooseGalleryHint')}
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}
+            style={styles.secondaryBtnFlex}
           >
-            <Ionicons name="image" size={16} color={Colors.white} />
-            <Text style={styles.secondaryBtnText} numberOfLines={1}>
-              {t('diagnosis.chooseGallery')}
-            </Text>
-          </Pressable>
-          <Pressable
+            <View style={styles.secondaryBtn}>
+              <Ionicons name="image" size={16} color={Colors.white} />
+              <Text style={styles.secondaryBtnText} numberOfLines={1}>
+                {t('diagnosis.chooseGallery')}
+              </Text>
+            </View>
+          </PressableScale>
+          <PressableScale
             onPress={() => router.push('/(tabs)/ai-chat')}
             accessibilityRole="button"
             accessibilityLabel={t('tabs.aiChatA11y')}
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}
+            style={styles.secondaryBtnFlex}
           >
-            <Ionicons name="sparkles" size={16} color={Colors.white} />
-            <Text style={styles.secondaryBtnText} numberOfLines={1}>
-              {t('tabs.aiChat')}
-            </Text>
-          </Pressable>
+            <View style={styles.secondaryBtn}>
+              <Ionicons name="sparkles" size={16} color={Colors.white} />
+              <Text style={styles.secondaryBtnText} numberOfLines={1}>
+                {t('tabs.aiChat')}
+              </Text>
+            </View>
+          </PressableScale>
         </View>
       </Hero>
 
@@ -387,10 +389,13 @@ export default function HomeScreen() {
             const remaining = Math.max(0, FREE_MONTHLY_DIAGNOSES - monthlyDiagnosisCount);
             const exhausted = remaining === 0;
             return (
-              <TouchableOpacity
+              <PressableScale
                 onPress={() => router.push('/paywall')}
-                activeOpacity={0.8}
-                style={[styles.trialCounter, exhausted && styles.trialCounterExhausted]}
+                scaleTo={0.97}
+                // Exhausted state is a soft warning — Warning haptic. Otherwise
+                // a selection click since the user is browsing an upsell.
+                hapticStyle={exhausted ? 'warning' : 'selection'}
+                style={styles.trialCounterWrap}
                 accessibilityRole="button"
                 accessibilityLabel={
                   exhausted
@@ -402,30 +407,32 @@ export default function HomeScreen() {
                 }
                 testID="home.upgrade-card"
               >
-                <Ionicons
-                  name={exhausted ? 'alert-circle' : 'sparkles'}
-                  size={16}
-                  color={exhausted ? Colors.coral : Colors.accent}
-                />
-                <Text
-                  style={[
-                    styles.trialCounterText,
-                    { color: exhausted ? Colors.coral : Colors.accent },
-                  ]}
-                >
-                  {exhausted
-                    ? t('home.freeDiagnosesUsed')
-                    : t('home.freeDiagnosesRemaining', {
-                        count: remaining,
-                        total: FREE_MONTHLY_DIAGNOSES,
-                      })}
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color={exhausted ? Colors.coral : Colors.accent}
-                />
-              </TouchableOpacity>
+                <View style={[styles.trialCounter, exhausted && styles.trialCounterExhausted]}>
+                  <Ionicons
+                    name={exhausted ? 'alert-circle' : 'sparkles'}
+                    size={16}
+                    color={exhausted ? Colors.coral : Colors.accent}
+                  />
+                  <Text
+                    style={[
+                      styles.trialCounterText,
+                      { color: exhausted ? Colors.coral : Colors.accent },
+                    ]}
+                  >
+                    {exhausted
+                      ? t('home.freeDiagnosesUsed')
+                      : t('home.freeDiagnosesRemaining', {
+                          count: remaining,
+                          total: FREE_MONTHLY_DIAGNOSES,
+                        })}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={14}
+                    color={exhausted ? Colors.coral : Colors.accent}
+                  />
+                </View>
+              </PressableScale>
             );
           })()}
 
@@ -579,8 +586,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  secondaryBtn: {
+  secondaryBtnFlex: {
     flex: 1,
+  },
+  secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -591,9 +600,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.24)',
-  },
-  secondaryBtnPressed: {
-    opacity: 0.85,
   },
   secondaryBtnText: {
     fontSize: 14,
@@ -607,11 +613,13 @@ const styles = StyleSheet.create({
     marginTop: -16,
     gap: Spacing.md,
   },
+  trialCounterWrap: {
+    alignSelf: 'flex-start',
+  },
   trialCounter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,

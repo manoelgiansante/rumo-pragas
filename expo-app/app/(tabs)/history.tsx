@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,18 @@ import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
 import * as Haptics from 'expo-haptics';
 import { AppBar, IconButton, Input, Chip, SectionHeader } from '../../components/ui';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { useHapticRefresh } from '../../hooks/useHapticRefresh';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  cancelAnimation,
+} from 'react-native-reanimated';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 const ALL_CROPS = '__all__';
 
@@ -46,7 +58,6 @@ export default function HistoryScreen() {
   const { isTablet, contentMaxWidth } = useResponsive();
   const [diagnoses, setDiagnoses] = useState<DiagnosisResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const [cropFilter, setCropFilter] = useState<string>(ALL_CROPS);
@@ -102,12 +113,9 @@ export default function HistoryScreen() {
     ]);
   };
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadDiagnoses();
-    setRefreshing(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, session]);
+  // Pull-to-refresh — useHapticRefresh fires Light haptic on pull start,
+  // Success on complete, Warning on failure. See hooks/useHapticRefresh.ts.
+  const { refreshing, onRefresh } = useHapticRefresh(loadDiagnoses);
 
   // Crop chips derived from current dataset (preserve original casing from data).
   const cropOptions = useMemo(() => {
@@ -287,47 +295,7 @@ export default function HistoryScreen() {
         windowSize={5}
         ListEmptyComponent={
           diagnoses.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIllustration}>
-                <LinearGradient
-                  colors={[Colors.accentLight + '33', Colors.accent + '14']}
-                  style={styles.emptyIllustrationBg}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                />
-                <View style={styles.emptyIllustrationRing}>
-                  <LinearGradient
-                    colors={Gradients.hero}
-                    style={styles.emptyIllustrationInner}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name="leaf" size={36} color="#FFF" />
-                  </LinearGradient>
-                </View>
-              </View>
-              <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
-                {t('diagnosis.emptyHistoryTitle')}
-              </Text>
-              <Text style={styles.emptyDesc}>{t('diagnosis.emptyHistoryDesc')}</Text>
-              <TouchableOpacity
-                onPress={() => router.push('/diagnosis/camera')}
-                activeOpacity={0.85}
-                style={styles.emptyCtaShadow}
-                accessibilityRole="button"
-                accessibilityLabel={t('diagnosis.startFirstDiagnosis')}
-              >
-                <LinearGradient
-                  colors={Gradients.hero}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.emptyCta}
-                >
-                  <Ionicons name="camera" size={18} color="#FFF" />
-                  <Text style={styles.emptyCtaText}>{t('diagnosis.startFirstDiagnosis')}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+            <EmptyHistoryState isDark={isDark} t={t} />
           ) : (
             <View style={styles.center}>
               <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
@@ -363,6 +331,88 @@ export default function HistoryScreen() {
         )}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * EmptyHistoryState — first-launch empty state with a slow-floating leaf
+ * illustration and PressableScale CTA. Encapsulated as its own component so
+ * the floating animation hooks live in a render-stable location (avoids the
+ * "hook count changed" warning that would fire if we inlined `useEffect`
+ * inside FlatList's `ListEmptyComponent` callback).
+ */
+function EmptyHistoryState({
+  isDark,
+  t,
+}: {
+  isDark: boolean;
+  t: (k: string, opts?: Record<string, unknown>) => string;
+}) {
+  const reduceMotion = useReducedMotion();
+  const float = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    float.value = withRepeat(
+      withSequence(
+        withTiming(-6, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      true,
+    );
+    return () => {
+      cancelAnimation(float);
+    };
+  }, [reduceMotion, float]);
+
+  const animatedLeafStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: float.value }],
+  }));
+
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIllustration}>
+        <LinearGradient
+          colors={[Colors.accentLight + '33', Colors.accent + '14']}
+          style={styles.emptyIllustrationBg}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <Animated.View style={[styles.emptyIllustrationRing, animatedLeafStyle]}>
+          <LinearGradient
+            colors={Gradients.hero}
+            style={styles.emptyIllustrationInner}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="leaf" size={36} color="#FFF" />
+          </LinearGradient>
+        </Animated.View>
+      </View>
+      <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
+        {t('diagnosis.emptyHistoryTitle')}
+      </Text>
+      <Text style={styles.emptyDesc}>{t('diagnosis.emptyHistoryDesc')}</Text>
+      <PressableScale
+        onPress={() => router.push('/diagnosis/camera')}
+        scaleTo={0.96}
+        hapticStyle="medium"
+        style={styles.emptyCtaShadow}
+        accessibilityRole="button"
+        accessibilityLabel={t('diagnosis.startFirstDiagnosis')}
+      >
+        <LinearGradient
+          colors={Gradients.hero}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.emptyCta}
+        >
+          <Ionicons name="camera" size={18} color="#FFF" />
+          <Text style={styles.emptyCtaText}>{t('diagnosis.startFirstDiagnosis')}</Text>
+        </LinearGradient>
+      </PressableScale>
+    </View>
   );
 }
 

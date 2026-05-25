@@ -8,10 +8,13 @@ import Animated, {
   withTiming,
   withRepeat,
   withSequence,
+  withDelay,
   Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { Colors, FontSize, FontWeight } from '../../constants/theme';
 import { Hero } from '../../components/ui';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { sendDiagnosis } from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
@@ -42,6 +45,14 @@ export default function LoadingScreen() {
   // Animated leaf: gentle pulse + slow rotation, runs on UI thread.
   const leafScale = useSharedValue(1);
   const leafRotate = useSharedValue(0);
+  // Concentric pulse rings expanding outward from the leaf — communicates
+  // "AI is actively scanning" without blocking-modal feel. Two rings, offset
+  // by 1.2s so the second wave starts while the first is mid-flight.
+  const ring1Scale = useSharedValue(1);
+  const ring1Opacity = useSharedValue(0);
+  const ring2Scale = useSharedValue(1);
+  const ring2Opacity = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
   const hasStartedAnalysis = useRef(false);
   const isMountedRef = useRef(true);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -78,6 +89,14 @@ export default function LoadingScreen() {
 
   // Kick off the leaf "thinking" animation once on mount (worklet, UI thread).
   useEffect(() => {
+    if (reduceMotion) {
+      // Reduce Motion ON: keep leaf static, suppress rings entirely.
+      leafScale.value = 1;
+      leafRotate.value = 0;
+      ring1Opacity.value = 0;
+      ring2Opacity.value = 0;
+      return;
+    }
     leafScale.value = withRepeat(
       withSequence(
         withTiming(1.08, { duration: 700, easing: Easing.inOut(Easing.quad) }),
@@ -94,8 +113,49 @@ export default function LoadingScreen() {
       -1,
       true,
     );
+
+    // Ring 1: scale 1 → 1.8 + fade 0.5 → 0 every 2.4s.
+    const startRing = (
+      scale: typeof ring1Scale,
+      opacity: typeof ring1Opacity,
+      offsetMs: number,
+    ) => {
+      scale.value = withDelay(
+        offsetMs,
+        withRepeat(
+          withSequence(
+            withTiming(1.8, { duration: 2400, easing: Easing.out(Easing.cubic) }),
+            withTiming(1, { duration: 0 }),
+          ),
+          -1,
+          false,
+        ),
+      );
+      opacity.value = withDelay(
+        offsetMs,
+        withRepeat(
+          withSequence(
+            withTiming(0.5, { duration: 0 }),
+            withTiming(0, { duration: 2400, easing: Easing.out(Easing.quad) }),
+          ),
+          -1,
+          false,
+        ),
+      );
+    };
+    startRing(ring1Scale, ring1Opacity, 0);
+    startRing(ring2Scale, ring2Opacity, 1200);
+
+    return () => {
+      cancelAnimation(leafScale);
+      cancelAnimation(leafRotate);
+      cancelAnimation(ring1Scale);
+      cancelAnimation(ring1Opacity);
+      cancelAnimation(ring2Scale);
+      cancelAnimation(ring2Opacity);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reduceMotion]);
 
   useEffect(() => {
     // Guard against StrictMode double-invoke — prevents duplicate Claude API calls
@@ -228,6 +288,16 @@ export default function LoadingScreen() {
     transform: [{ scale: leafScale.value }, { rotate: `${leafRotate.value}deg` }],
   }));
 
+  const ring1AnimatedStyle = useAnimatedStyle(() => ({
+    opacity: ring1Opacity.value,
+    transform: [{ scale: ring1Scale.value }],
+  }));
+
+  const ring2AnimatedStyle = useAnimatedStyle(() => ({
+    opacity: ring2Opacity.value,
+    transform: [{ scale: ring2Scale.value }],
+  }));
+
   return (
     <View style={styles.root}>
       {/* Top half: brand Hero (deep leaf gradient) */}
@@ -238,13 +308,19 @@ export default function LoadingScreen() {
           accessibilityLabel={`${t('diagnosis.analyzingA11y')}. ${STEPS[step]}`}
           accessibilityRole="progressbar"
         >
-          <Animated.View style={[styles.leafCircle, leafAnimatedStyle]}>
-            <Ionicons name="leaf" size={44} color="#FFF" accessibilityElementsHidden />
-            {/* Subtle sparkle accent in warm amber, off-axis */}
-            <View style={styles.sparkle} pointerEvents="none">
-              <Ionicons name="sparkles" size={18} color={Colors.warmAmber} />
-            </View>
-          </Animated.View>
+          <View style={styles.leafStack} pointerEvents="none">
+            {/* Concentric pulse rings — expand + fade outward to convey
+                "AI is actively scanning". Disabled under Reduce Motion. */}
+            <Animated.View style={[styles.pulseRing, ring1AnimatedStyle]} />
+            <Animated.View style={[styles.pulseRing, ring2AnimatedStyle]} />
+            <Animated.View style={[styles.leafCircle, leafAnimatedStyle]}>
+              <Ionicons name="leaf" size={44} color="#FFF" accessibilityElementsHidden />
+              {/* Subtle sparkle accent in warm amber, off-axis */}
+              <View style={styles.sparkle} pointerEvents="none">
+                <Ionicons name="sparkles" size={18} color={Colors.warmAmber} />
+              </View>
+            </Animated.View>
+          </View>
 
           <Animated.Text
             style={[styles.title, stepTextAnimatedStyle]}
@@ -288,6 +364,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
+  leafStack: {
+    width: 112,
+    height: 112,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
   leafCircle: {
     width: 112,
     height: 112,
@@ -297,7 +380,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.28)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 28,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   sparkle: {
     position: 'absolute',

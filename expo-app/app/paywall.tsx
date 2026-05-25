@@ -16,7 +16,8 @@ import * as Haptics from 'expo-haptics';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
-import { Button, Card, Chip, Hero, IconButton } from '../components/ui';
+import { Button, Card, Chip, Hero, IconButton, StaggeredEntrance } from '../components/ui';
+import { PressableScale } from '../components/ui/PressableScale';
 import {
   isRevenueCatConfigured,
   getOfferings,
@@ -189,7 +190,9 @@ export default function PaywallScreen() {
     try {
       const customerInfo = await purchasePackage(pkg);
       if (customerInfo) {
-        // Purchase succeeded
+        // Purchase succeeded — fire Success haptic so the user feels the win
+        // before the Alert renders. Same pattern Apple uses in Apple Pay sheets.
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         trackEvent('paywall_purchase_success', { plan_id: selected, provider: Platform.OS });
         Alert.alert(t('paywall.subscriptionActivated'), t('paywall.enjoyFeatures'), [
           { text: 'OK', onPress: () => router.back() },
@@ -232,6 +235,7 @@ export default function PaywallScreen() {
         const hasActive =
           customerInfo.entitlements.active['pro'] || customerInfo.entitlements.active['enterprise'];
         if (hasActive) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           Alert.alert(t('paywall.purchasesRestored'), t('paywall.subscriptionReactivated'), [
             { text: 'OK', onPress: () => router.back() },
           ]);
@@ -324,67 +328,69 @@ export default function PaywallScreen() {
             ))}
           </View>
 
-          {/* Plan cards stacked */}
+          {/* Plan cards stacked — staggered entrance for a premium reveal. */}
           <View style={styles.plansBlock}>
-            {plansWithPrices.map((p) => {
-              const isSelected = selected === p.id;
-              // testID per plan id — mapped from RC product mapping so Maestro
-              // can target both monthly/annual when both are visible.
-              const testID =
-                p.id === 'pro'
-                  ? 'paywall.plan-monthly'
-                  : p.id === 'enterprise'
-                    ? 'paywall.plan-annual'
-                    : `paywall.plan-${p.id}`;
-              return (
-                <TouchableOpacity
-                  key={p.id}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setSelected(p.id);
-                    trackEvent('paywall_plan_selected', { plan_id: p.id });
-                  }}
-                  activeOpacity={0.85}
-                  accessibilityLabel={t('paywall.planA11y', {
-                    name: p.name,
-                    price: p.price,
-                    limit:
-                      p.limit === -1
-                        ? t('paywall.unlimitedDiagnoses')
-                        : t('paywall.limitedDiagnoses', { count: p.limit }),
-                  })}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  testID={testID}
-                >
-                  <Card
-                    padding={Spacing.lg}
-                    style={[styles.planCard, isSelected && styles.planCardSelected]}
+            <StaggeredEntrance step={80} initialDelay={120}>
+              {plansWithPrices.map((p) => {
+                const isSelected = selected === p.id;
+                // testID per plan id — mapped from RC product mapping so Maestro
+                // can target both monthly/annual when both are visible.
+                const testID =
+                  p.id === 'pro'
+                    ? 'paywall.plan-monthly'
+                    : p.id === 'enterprise'
+                      ? 'paywall.plan-annual'
+                      : `paywall.plan-${p.id}`;
+                return (
+                  <PressableScale
+                    key={p.id}
+                    scaleTo={0.98}
+                    hapticStyle="selection"
+                    onPress={() => {
+                      setSelected(p.id);
+                      trackEvent('paywall_plan_selected', { plan_id: p.id });
+                    }}
+                    accessibilityLabel={t('paywall.planA11y', {
+                      name: p.name,
+                      price: p.price,
+                      limit:
+                        p.limit === -1
+                          ? t('paywall.unlimitedDiagnoses')
+                          : t('paywall.limitedDiagnoses', { count: p.limit }),
+                    })}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    testID={testID}
                   >
-                    {p.popular && (
-                      <View style={styles.popularBadgeWrap}>
-                        <Chip iconName="star">{t('paywall.popular')}</Chip>
-                      </View>
-                    )}
-                    <View style={styles.planRow}>
-                      <Text style={[styles.planName, isSelected && styles.planNameSelected]}>
-                        {p.name}
-                      </Text>
-                      <View style={styles.priceRow}>
-                        <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>
-                          {p.price}
+                    <Card
+                      padding={Spacing.lg}
+                      style={[styles.planCard, isSelected && styles.planCardSelected]}
+                    >
+                      {p.popular && (
+                        <View style={styles.popularBadgeWrap}>
+                          <Chip iconName="star">{t('paywall.popular')}</Chip>
+                        </View>
+                      )}
+                      <View style={styles.planRow}>
+                        <Text style={[styles.planName, isSelected && styles.planNameSelected]}>
+                          {p.name}
                         </Text>
+                        <View style={styles.priceRow}>
+                          <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>
+                            {p.price}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <Text style={styles.planLimit}>
-                      {p.limit === -1
-                        ? t('paywall.unlimited')
-                        : `${p.limit} ${t('paywall.diagPerMonth')}`}
-                    </Text>
-                  </Card>
-                </TouchableOpacity>
-              );
-            })}
+                      <Text style={styles.planLimit}>
+                        {p.limit === -1
+                          ? t('paywall.unlimited')
+                          : `${p.limit} ${t('paywall.diagPerMonth')}`}
+                      </Text>
+                    </Card>
+                  </PressableScale>
+                );
+              })}
+            </StaggeredEntrance>
           </View>
 
           {/* CTA */}

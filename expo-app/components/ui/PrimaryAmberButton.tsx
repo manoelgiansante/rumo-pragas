@@ -13,7 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Colors, BorderRadius, FontWeight, Spacing } from '../../constants/theme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import type { ButtonSize } from './Button';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -39,6 +41,8 @@ const SIZES: Record<
   lg: { height: 56, paddingHorizontal: 24, fontSize: 17, iconSize: 20, gap: 10 },
 };
 
+const PRESS_SPRING = { damping: 18, stiffness: 320, mass: 0.7 } as const;
+
 function PrimaryAmberButtonImpl({
   size = 'md',
   block = false,
@@ -50,15 +54,42 @@ function PrimaryAmberButtonImpl({
   textStyle,
   haptic = true,
   onPress,
+  onPressIn,
+  onPressOut,
   ...rest
 }: PrimaryAmberButtonProps) {
   const dims = SIZES[size];
   const isDisabled = disabled || loading;
+  const reduceMotion = useReducedMotion();
+
+  const scale = useSharedValue(1);
+
+  const handlePressIn = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!isDisabled && !reduceMotion) {
+        scale.value = withSpring(0.97, PRESS_SPRING);
+      }
+      onPressIn?.(e);
+    },
+    [isDisabled, reduceMotion, scale, onPressIn],
+  );
+
+  const handlePressOut = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!isDisabled && !reduceMotion) {
+        scale.value = withSpring(1, PRESS_SPRING);
+      }
+      onPressOut?.(e);
+    },
+    [isDisabled, reduceMotion, scale, onPressOut],
+  );
 
   const handlePress = useCallback(
     (e: GestureResponderEvent) => {
       if (isDisabled) return;
       if (haptic) {
+        // Medium impact — this is the primary CTA across the app, deserves
+        // slightly more weight than Light buttons.
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       }
       onPress?.(e);
@@ -66,50 +97,57 @@ function PrimaryAmberButtonImpl({
     [isDisabled, haptic, onPress],
   );
 
+  const animatedWrapperStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
-      onPress={handlePress}
-      disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        {
-          height: dims.height,
-          paddingHorizontal: dims.paddingHorizontal,
-          gap: dims.gap,
-        },
-        block && styles.block,
-        pressed && !isDisabled && styles.pressed,
-        isDisabled && styles.disabled,
-        style,
-      ]}
-      {...rest}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={Colors.text} />
-      ) : (
-        <>
-          {iconName ? <Ionicons name={iconName} size={dims.iconSize} color={Colors.text} /> : null}
-          <View style={styles.labelWrap}>
-            {typeof children === 'string' ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.label,
-                  { fontSize: dims.fontSize, fontWeight: FontWeight.semibold },
-                  textStyle,
-                ]}
-              >
-                {children}
-              </Text>
-            ) : (
-              children
-            )}
-          </View>
-        </>
-      )}
-    </Pressable>
+    <Animated.View style={[animatedWrapperStyle, block && styles.block, style]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        style={[
+          styles.base,
+          {
+            height: dims.height,
+            paddingHorizontal: dims.paddingHorizontal,
+            gap: dims.gap,
+          },
+          isDisabled && styles.disabled,
+        ]}
+        {...rest}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={Colors.text} />
+        ) : (
+          <>
+            {iconName ? (
+              <Ionicons name={iconName} size={dims.iconSize} color={Colors.text} />
+            ) : null}
+            <View style={styles.labelWrap}>
+              {typeof children === 'string' ? (
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.label,
+                    { fontSize: dims.fontSize, fontWeight: FontWeight.semibold },
+                    textStyle,
+                  ]}
+                >
+                  {children}
+                </Text>
+              ) : (
+                children
+              )}
+            </View>
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -130,9 +168,6 @@ const styles = StyleSheet.create({
   },
   block: {
     alignSelf: 'stretch',
-  },
-  pressed: {
-    opacity: 0.85,
   },
   disabled: {
     opacity: 0.7,

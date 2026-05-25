@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Colors, FontSize, FontWeight } from '../../constants/theme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -25,6 +27,8 @@ export interface IconButtonProps extends Omit<PressableProps, 'style' | 'childre
   haptic?: boolean;
 }
 
+const PRESS_SPRING = { damping: 18, stiffness: 320, mass: 0.7 } as const;
+
 function IconButtonImpl({
   iconName,
   tone = 'default',
@@ -32,6 +36,8 @@ function IconButtonImpl({
   accessibilityLabel,
   style,
   onPress,
+  onPressIn,
+  onPressOut,
   disabled,
   haptic = true,
   ...rest
@@ -39,6 +45,28 @@ function IconButtonImpl({
   const isOnHero = tone === 'onHero';
   const bg = isOnHero ? 'rgba(255,255,255,0.18)' : Colors.accent + '14';
   const color = isOnHero ? Colors.white : Colors.accent;
+  const reduceMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+
+  const handlePressIn = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!disabled && !reduceMotion) {
+        scale.value = withSpring(0.94, PRESS_SPRING);
+      }
+      onPressIn?.(e);
+    },
+    [disabled, reduceMotion, scale, onPressIn],
+  );
+
+  const handlePressOut = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!disabled && !reduceMotion) {
+        scale.value = withSpring(1, PRESS_SPRING);
+      }
+      onPressOut?.(e);
+    },
+    [disabled, reduceMotion, scale, onPressOut],
+  );
 
   const handlePress = useCallback(
     (e: GestureResponderEvent) => {
@@ -51,24 +79,30 @@ function IconButtonImpl({
     [disabled, haptic, onPress],
   );
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      onPress={handlePress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        iconButtonStyles.base,
-        { backgroundColor: bg },
-        pressed && !disabled && iconButtonStyles.pressed,
-        disabled && iconButtonStyles.disabled,
-        style,
-      ]}
-      hitSlop={8}
-      {...rest}
-    >
-      <Ionicons name={iconName} size={size} color={color} />
-    </Pressable>
+    <Animated.View style={[animatedStyle, style]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled}
+        style={[
+          iconButtonStyles.base,
+          { backgroundColor: bg },
+          disabled && iconButtonStyles.disabled,
+        ]}
+        hitSlop={8}
+        {...rest}
+      >
+        <Ionicons name={iconName} size={size} color={color} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -82,9 +116,6 @@ const iconButtonStyles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.85,
   },
   disabled: {
     opacity: 0.7,
