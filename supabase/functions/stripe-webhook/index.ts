@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException, logError } from "../_shared/sentry.ts";
 
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -71,7 +72,9 @@ function checkWebhookRateLimit(key: string): boolean {
 // ── UUID validation regex (#7) ──
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Simple in-memory idempotency check (prevents duplicate processing on retries)
+// Warm-path in-memory dedup retained as second-layer guard against rapid
+// retries hitting the same warm instance before the persistent row commit
+// lands. Persistent dedup via `webhook_events` PK (event_id) is authoritative.
 const processedEvents = new Map<string, number>();
 const MAX_PROCESSED_EVENTS = 1000;
 const EVENT_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -278,7 +281,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Idempotency: skip already-processed events
+  // Warm-path in-memory dedup (fast pre-check)
   if (isEventProcessed(event.id)) {
     return new Response(
       JSON.stringify({ received: true, deduplicated: true, requestId }),
@@ -301,6 +304,43 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // ── Persistent idempotency via webhook_events PK (survives cold start) ──
+  // Pattern: claim-INSERT-first. If row already exists, PK violation (23505)
+  // tells us this is a duplicate Stripe retry. We short-circuit with 200.
+  // Mirrors Rumo-Arroba/Rumo-CampoVivo/Rumo-Pragas RC webhook patterns.
+  {
+    const { error: dedupErr } = await supabase
+      .from("webhook_events")
+      .insert({
+        event_id: event.id,
+        event_type: event.type,
+        source: "stripe",
+        payload_summary: {
+          livemode: event.livemode,
+        },
+      });
+    if (dedupErr) {
+      const code = (dedupErr as { code?: string }).code;
+      if (code === "23505") {
+        logJson("stripe-webhook", requestId, "INFO", "Duplicate event (persistent dedup)", { eventId: event.id });
+        markEventProcessed(event.id);
+        return new Response(
+          JSON.stringify({ received: true, deduplicated: true, requestId }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      // Non-fatal: log + Sentry, continue. Prefer double-process over drop.
+      await logError(dedupErr, {
+        tags: { fn: "stripe-webhook", op: "webhook_events_insert" },
+        extra: { eventId: event.id, eventType: event.type, requestId },
+      });
+      logJson("stripe-webhook", requestId, "ERROR", "webhook_events insert failed (non-fatal)", { error: (dedupErr as Error).message });
+    }
+  }
 
   try {
     switch (event.type) {
@@ -399,6 +439,10 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     // Never leak internal error details to client
     logJson("stripe-webhook", requestId, "ERROR", "Processing error", { error: String(error) });
+    await captureException(error, {
+      tags: { fn: "stripe-webhook", op: "handler_error", requestId },
+      extra: { eventId: event.id, eventType: event.type },
+    });
     return new Response(
       JSON.stringify({ error: "Internal processing error", requestId }),
       {
