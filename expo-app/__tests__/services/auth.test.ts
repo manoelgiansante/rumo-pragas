@@ -79,6 +79,45 @@ describe('signUp', () => {
     expect(result).toEqual(mockData);
   });
 
+  // QW-3 (W16-1, 2026-05-22): fullName is optional on signup.
+  it('omits options.data.full_name when fullName is undefined', async () => {
+    const mockData = { user: { id: 'u3' }, session: null };
+    mockSignUp.mockResolvedValueOnce({ data: mockData, error: null });
+
+    const result = await signUp('anon@example.com', 'pass123');
+
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'anon@example.com',
+      password: 'pass123',
+    });
+    expect(result).toEqual(mockData);
+  });
+
+  it('omits options.data.full_name when fullName is empty/whitespace', async () => {
+    const mockData = { user: { id: 'u4' }, session: null };
+    mockSignUp.mockResolvedValueOnce({ data: mockData, error: null });
+
+    await signUp('anon2@example.com', 'pass123', '   ');
+
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'anon2@example.com',
+      password: 'pass123',
+    });
+  });
+
+  it('trims fullName before sending to supabase', async () => {
+    const mockData = { user: { id: 'u5' }, session: null };
+    mockSignUp.mockResolvedValueOnce({ data: mockData, error: null });
+
+    await signUp('p@example.com', 'pass123', '  Padded Name  ');
+
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'p@example.com',
+      password: 'pass123',
+      options: { data: { full_name: 'Padded Name' } },
+    });
+  });
+
   it('throws on signup error', async () => {
     mockSignUp.mockResolvedValueOnce({
       data: null,

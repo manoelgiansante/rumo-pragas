@@ -96,7 +96,7 @@ export function useAuth() {
     }
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       await authService.signUp(email, password, fullName);

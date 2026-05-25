@@ -12,14 +12,22 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
-export async function signUp(email: string, password: string, fullName: string) {
+/**
+ * Sign up a new user.
+ *
+ * QW-3 (W16-1, 2026-05-22): `fullName` is now optional. When omitted, no
+ * `full_name` key is written to user_metadata so the profile row keeps NULL
+ * (rather than an empty string the UI would have to special-case). Users can
+ * fill it later from the edit-profile screen.
+ */
+export async function signUp(email: string, password: string, fullName?: string) {
   addBreadcrumb({ category: 'auth', message: 'Sign up attempt', level: 'info' });
+  const trimmedName = fullName?.trim();
+  const userMetadata = trimmedName ? { full_name: trimmedName } : undefined;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: { full_name: fullName },
-    },
+    options: userMetadata ? { data: userMetadata } : undefined,
   });
   if (error) throw error;
   return data;
