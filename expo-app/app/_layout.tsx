@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import { getSentryRelease } from '../services/sentry-release';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { DiagnosisProvider } from '../contexts/DiagnosisContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -33,15 +34,17 @@ let sentryInitialized = false;
 function initSentryOnce() {
   if (sentryInitialized) return;
   try {
+    // W17-4 (2026-05-22): canonical `<slug>@<version>+<buildId>` release ID
+    // resolved by getSentryRelease(). Reads EXPO_PUBLIC_BUILD_ID env override
+    // first (set by EAS), then falls back to platform-specific buildNumber.
+    // Backward-compat: `extra.sentryRelease` in app.json still wins if set
+    // (legacy escape hatch — prefer not to set it).
     const expoConfig = Constants.expoConfig;
-    const appVersion = expoConfig?.version ?? '0.0.0';
-    const iosBuildNumber = expoConfig?.ios?.buildNumber;
-    const androidVersionCode = expoConfig?.android?.versionCode;
-    const sentryDist =
-      iosBuildNumber ?? (androidVersionCode != null ? String(androidVersionCode) : undefined);
+    const { release: defaultRelease, dist: defaultDist } = getSentryRelease();
     const sentryRelease =
       (expoConfig?.extra as { sentryRelease?: string } | undefined)?.sentryRelease ??
-      `rumo-pragas@${appVersion}`;
+      defaultRelease;
+    const sentryDist = defaultDist;
 
     Sentry.init({
       dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
