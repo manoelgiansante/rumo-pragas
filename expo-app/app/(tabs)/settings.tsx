@@ -478,7 +478,7 @@ export default function SettingsScreen() {
   const openMail = () => {
     import('expo-linking').then(({ openURL }) =>
       openURL(
-        `mailto:suporte@agrorumo.com.br?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
+        `mailto:suporte@agrorumo.com?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
       ),
     );
   };
