@@ -3,21 +3,76 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { Config } from '../constants/config';
+import { addBreadcrumb } from './sentry-shim';
 
 // SecureStore adapter for encrypted auth token storage (iOS/Android)
-// Falls back to in-memory on web where SecureStore is unavailable
+// Falls back to in-memory on web where SecureStore is unavailable.
+//
+// Corrupted-keychain recovery (2026-05-28, sibling fix to RUMO-PRAGAS-C):
+// `expo-secure-store` can throw `getValueWithKeyAsync` errors when the
+// underlying iOS Keychain entry / Android Keystore alias is corrupted (OS
+// upgrade race, biometric re-enrollment, restore-from-backup edge cases).
+// The Supabase client treats `null` as "no cached session" and re-bootstraps
+// cleanly, so the safe recovery is:
+//   1. breadcrumb the failure for diagnosability,
+//   2. best-effort `deleteItemAsync` to evict the broken entry,
+//   3. return `null` from `getItem` (Supabase treats as "no session"),
+//   4. swallow `setItem` / `removeItem` failures so a single bad write
+//      cannot crash the auth pipeline.
+// Pattern adopted from Rumo Operacional PR #22 (memory ref
+// [[feedback_apple_siwa_filter_benign_code_1000]] §SecureStore).
 const SecureStoreAdapter = {
-  getItem: (key: string) => {
+  getItem: async (key: string): Promise<string | null> => {
     if (Platform.OS === 'web') return null;
-    return SecureStore.getItemAsync(key);
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      addBreadcrumb({
+        category: 'auth',
+        message: 'securestore.getItem.corrupt',
+        level: 'warning',
+        data: { key, error: message },
+      });
+      // Best-effort: evict the broken entry so the next sign-in starts clean.
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch {
+        /* nothing actionable — the recovery path tolerates this */
+      }
+      return null;
+    }
   },
-  setItem: (key: string, value: string) => {
+  setItem: async (key: string, value: string): Promise<void> => {
     if (Platform.OS === 'web') return;
-    return SecureStore.setItemAsync(key, value);
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      addBreadcrumb({
+        category: 'auth',
+        message: 'securestore.setItem.failed',
+        level: 'warning',
+        data: { key, error: message },
+      });
+      // Swallow — Supabase will retry on the next auth event. A throw here
+      // would tear down the auth state machine.
+    }
   },
-  removeItem: (key: string) => {
+  removeItem: async (key: string): Promise<void> => {
     if (Platform.OS === 'web') return;
-    return SecureStore.deleteItemAsync(key);
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      addBreadcrumb({
+        category: 'auth',
+        message: 'securestore.removeItem.failed',
+        level: 'warning',
+        data: { key, error: message },
+      });
+      // Swallow — sign-out should never throw because of a stale keychain.
+    }
   },
 };
 

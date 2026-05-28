@@ -19,7 +19,11 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import {
+  isAppleSignInAvailable,
+  isBenignAppleSiwaError,
+  signInWithApple,
+} from '../../services/appleAuth';
 import { useGoogleSignIn } from '../../services/googleAuth';
 import {
   Colors,
@@ -218,7 +222,17 @@ export default function LoginScreen() {
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : t('auth.loginError');
-      Sentry.captureException(err, { tags: { feature: 'auth', action: 'apple_signin' } });
+      // RUMO-PRAGAS-C noise filter — appleAuth.ts already breadcrumbed the
+      // benign Apple-side codes (ERR_REQUEST_UNKNOWN / _FAILED /
+      // _INVALID_RESPONSE / missing token). Capturing again here would
+      // re-create the exact unbounded Sentry noise we're trying to silence.
+      // We still show the friendly retry message and the error haptic so the
+      // user-facing behaviour is identical to before.
+      if (!isBenignAppleSiwaError(err)) {
+        Sentry.captureException(err, {
+          tags: { feature: 'auth', action: 'apple_signin' },
+        });
+      }
       Alert.alert(t('common.error'), message);
     } finally {
       setAppleLoading(false);
