@@ -34,6 +34,7 @@
         "NSLocationWhenInUseUsageDescription": "O Rumo Pragas IA usa sua localização (apenas quando o app está em uso) para enriquecer o diagnóstico com dados de clima regional (temperatura, umidade, precipitação) que influenciam o ciclo das pragas, e para enviar alertas de infestações próximas à sua lavoura. É opcional — o app funciona normalmente sem localização.",
         "NSMicrophoneUsageDescription": "O Rumo Pragas IA usa o microfone para você ditar a descrição da praga, sintoma ou observação sobre a foto (push-to-talk). O áudio é transcrito para texto e descartado em seguida — nada é armazenado no dispositivo ou enviado para terceiros além do serviço de transcrição.",
         "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["whatsapp"],
         "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
         "UISupportedInterfaceOrientations~ipad": [
           "UIInterfaceOrientationPortrait",
