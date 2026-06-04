@@ -171,7 +171,7 @@ export function trackProGateTapped(feature: 'alternatives' | 'pdf' | 'history' |
   trackEvent('pro_gate_tapped', { feature });
 }
 
-export function trackShareDiagnosis(method: 'whatsapp' | 'pdf'): void {
+export function trackShareDiagnosis(method: 'whatsapp' | 'pdf' | 'share_sheet'): void {
   trackEvent('share_diagnosis', { method });
 }
 
