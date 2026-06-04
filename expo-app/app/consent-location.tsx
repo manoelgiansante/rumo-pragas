@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useNavigationGate } from '../contexts/NavigationGateContext';
+import { LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY } from '../services/navigationGate';
 import { setLocationConsent } from '../services/userPreferences';
 import { useLocation } from '../hooks/useLocation';
 import { trackEvent } from '../services/analytics';
@@ -31,73 +31,82 @@ import { trackEvent } from '../services/analytics';
  * Default when the user skips or fails to reach this screen: no consent.
  */
 
-export const LOCATION_CONSENT_SHOWN_KEY = '@rumo_pragas_location_consent_shown';
+// Re-exported from the canonical navigation-gate module to avoid key drift.
+export const LOCATION_CONSENT_SHOWN_KEY = GATE_LOCATION_CONSENT_SHOWN_KEY;
 
 const CONSENT_PURPOSE_PT =
   'Compartilhar localização com o agrônomo IA para melhorar o diagnóstico de pragas regionais e alertas climáticos.';
 
 export default function ConsentLocationScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { user } = useAuthContext();
-  const { getCurrentLocation } = useLocation();
+  const { markLocationConsentSeen } = useNavigationGate();
+  const { requestPermission, getCurrentLocation } = useLocation();
   const [isSaving, setIsSaving] = useState(false);
 
-  const finish = async () => {
-    await AsyncStorage.setItem(LOCATION_CONSENT_SHOWN_KEY, 'true');
-    router.replace('/(tabs)');
+  // RUMO-PRAGAS-7/8 fix: this screen NO LONGER self-navigates. It only records
+  // the consent flag via the reactive navigation gate. The single source-of-truth
+  // routing effect in app/_layout.tsx observes the flag flip and replaces to
+  // '/(tabs)' exactly once. Self-navigating here is what created the dual-writer
+  // race (two callers of router.replace) that the layout effect then bounced into
+  // an infinite "Maximum update depth exceeded" loop on iPad/iOS 26.
+  const finish = () => {
+    markLocationConsentSeen();
   };
 
-  const handleAccept = async () => {
+  // Apple Guideline 5.1.1(iv) fix (2026-05-27): the primary button is now
+  // "Continuar"/"Continue" and there is NO exit ("Not now") button. Tapping the
+  // button ALWAYS fires the native iOS location permission prompt, and we record
+  // the LGPD consent decision from the user's choice in that native prompt:
+  //   - granted  -> setLocationConsent(true)  + fetch location
+  //   - denied   -> setLocationConsent(false)
+  // The purpose is disclosed on this screen before the prompt, so explicit-consent
+  // (LGPD) remains intact and is revocable later in Settings > Privacy.
+  const handleContinue = async () => {
     if (!user?.id) {
-      await finish();
+      finish();
       return;
     }
     setIsSaving(true);
+
+    // ALWAYS proceed to the native permission prompt on tap (Apple 5.1.1(iv)).
+    // requestPermission() calls Location.requestForegroundPermissionsAsync() and
+    // returns true only when the user grants in the native dialog.
+    let granted: boolean;
     try {
-      await setLocationConsent(user.id, true, CONSENT_PURPOSE_PT);
-      trackEvent('location_consent_accepted');
-      // QW-1 (W16-1, 2026-05-22): chain the OS permission prompt + location fetch
-      // here so the user has visual continuity from "accept" tap -> native prompt.
-      // We deliberately don't await before navigating: the location fetch can
-      // take a few seconds (especially first cold fix) and we don't want to
-      // block the navigation to (tabs). Home reads from useLocation when it
-      // resolves. If the OS prompt is denied, useLocation() sets an error state
-      // and the dependent Home widgets (weather, alerts) degrade gracefully.
-      const fetchPromise = getCurrentLocation()
-        .then((coords) => {
-          trackEvent('location_first_fetch', {
-            success: !!coords,
-            source: 'consent_accept',
+      granted = await requestPermission();
+    } catch (err) {
+      if (__DEV__) console.warn('[consent-location] permission request failed:', err);
+      granted = false;
+    }
+
+    try {
+      if (granted) {
+        await setLocationConsent(user.id, true, CONSENT_PURPOSE_PT);
+        trackEvent('location_consent_accepted');
+        // Fire-and-forget the location fetch so we don't block finishing. The
+        // permission is already granted, so this resolves coords (Home reads
+        // useLocation when it lands). Degrades gracefully on failure.
+        const fetchPromise = getCurrentLocation()
+          .then((coords) => {
+            trackEvent('location_first_fetch', {
+              success: !!coords,
+              source: 'consent_continue',
+            });
+          })
+          .catch((err) => {
+            if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
+            trackEvent('location_first_fetch', { success: false, source: 'consent_continue' });
           });
-        })
-        .catch((err) => {
-          if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
-          trackEvent('location_first_fetch', { success: false, source: 'consent_accept' });
-        });
-      // Fire-and-forget — never block navigation on this.
-      void fetchPromise;
-      await finish();
+        void fetchPromise;
+      } else {
+        await setLocationConsent(user.id, false, CONSENT_PURPOSE_PT);
+        trackEvent('location_consent_declined');
+      }
+      finish();
     } catch {
       setIsSaving(false);
       Alert.alert(t('common.error'), t('consent.location.saveError'), [{ text: t('common.ok') }]);
-    }
-  };
-
-  const handleDecline = async () => {
-    if (!user?.id) {
-      await finish();
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await setLocationConsent(user.id, false, CONSENT_PURPOSE_PT);
-      trackEvent('location_consent_declined');
-      await finish();
-    } catch (e) {
-      // Even if save fails, treat as declined and move on — default is no consent
-      if (__DEV__) console.warn('[consent-location] decline save failed:', e);
-      await finish();
     }
   };
 
@@ -131,7 +140,7 @@ export default function ConsentLocationScreen() {
           <TouchableOpacity
             testID="consent-location-accept"
             style={styles.acceptBtn}
-            onPress={handleAccept}
+            onPress={handleContinue}
             activeOpacity={0.8}
             disabled={isSaving}
             accessibilityRole="button"
@@ -143,19 +152,6 @@ export default function ConsentLocationScreen() {
             ) : (
               <Text style={styles.acceptText}>{t('consent.location.accept')}</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            testID="consent-location-decline"
-            style={styles.declineBtn}
-            onPress={handleDecline}
-            activeOpacity={0.7}
-            disabled={isSaving}
-            accessibilityRole="button"
-            accessibilityLabel={t('consent.location.declineA11y')}
-            accessibilityState={{ disabled: isSaving, busy: isSaving }}
-          >
-            <Text style={styles.declineText}>{t('consent.location.decline')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -272,19 +268,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.headline,
     fontWeight: FontWeight.bold,
     color: '#FFF',
-  },
-  declineBtn: {
-    backgroundColor: 'transparent',
-    paddingVertical: 16,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.systemGray5,
-  },
-  declineText: {
-    fontSize: FontSize.headline,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textSecondary,
   },
   footnote: {
     fontSize: FontSize.caption,

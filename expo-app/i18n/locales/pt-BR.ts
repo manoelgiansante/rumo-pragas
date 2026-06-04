@@ -900,10 +900,8 @@ export default {
       benefit3: 'Recomendações regionais de MIP',
       lgpdNotice:
         'Em conformidade com a LGPD (Lei 13.709/2018): seus dados de localização só serão enviados ao agrônomo IA com sua autorização explícita. Você pode revogar a qualquer momento em Ajustes.',
-      accept: 'Permitir localização',
-      acceptA11y: 'Permitir compartilhamento de localização',
-      decline: 'Agora não',
-      declineA11y: 'Recusar compartilhamento de localização',
+      accept: 'Continuar',
+      acceptA11y: 'Continuar',
       footnote: 'Você poderá alterar essa escolha a qualquer momento em Ajustes > Privacidade.',
       saveError: 'Não foi possível salvar sua preferência. Tente novamente.',
     },

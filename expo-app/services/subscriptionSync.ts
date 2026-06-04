@@ -13,8 +13,22 @@
  *    (populated by the webhook) whenever they need authoritative state.
  */
 
-import Purchases, { CustomerInfo } from 'react-native-purchases';
+import type { CustomerInfo } from 'react-native-purchases';
 import { isRevenueCatConfigured } from './purchases';
+
+// iOS 26 cold-start freeze defense (Apple Guideline 2.1(a)): lazy-require the
+// react-native-purchases native module so it is never evaluated during JS
+// bundle eval. See services/purchases.ts for the full rationale. Type-only
+// import above is erased at compile time (zero runtime cost).
+type PurchasesModule = typeof import('react-native-purchases').default;
+
+let cachedPurchases: PurchasesModule | null = null;
+
+function getPurchases(): PurchasesModule {
+  if (cachedPurchases) return cachedPurchases;
+  cachedPurchases = require('react-native-purchases').default as PurchasesModule;
+  return cachedPurchases;
+}
 
 type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
@@ -70,7 +84,7 @@ export async function syncSubscriptionToSupabase(_userId: string): Promise<void>
   if (!isRevenueCatConfigured()) return;
 
   try {
-    const customerInfo = await Purchases.getCustomerInfo();
+    const customerInfo = await getPurchases().getCustomerInfo();
     const info = deriveSubscriptionInfo(customerInfo);
     if (__DEV__) {
       console.warn(
@@ -97,7 +111,7 @@ export function startSubscriptionListener(_userId: string): void {
   if (!isRevenueCatConfigured()) return;
   if (listenerRegistered) return;
 
-  Purchases.addCustomerInfoUpdateListener((customerInfo: CustomerInfo) => {
+  getPurchases().addCustomerInfoUpdateListener((customerInfo: CustomerInfo) => {
     if (__DEV__) {
       const info = deriveSubscriptionInfo(customerInfo);
       console.warn(
