@@ -63,6 +63,7 @@ jobs:
     steps:
       - name: Skip note when EXPO_TOKEN is not configured
         if: env.EXPO_TOKEN == ''
+        working-directory: ${{ github.workspace }}
         run: echo "EXPO_TOKEN secret not set — skipping EAS Build Check (non-blocking)."
       - uses: actions/checkout@v4
         if: env.EXPO_TOKEN != ''
