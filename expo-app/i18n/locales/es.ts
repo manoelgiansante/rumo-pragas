@@ -880,10 +880,8 @@ export default {
       benefit3: 'Recomendaciones de MIP regionales',
       lgpdNotice:
         'Conforme a la LGPD brasileña (Ley 13.709/2018): tu ubicación solo se envía al agrónomo IA con tu consentimiento explícito. Puedes revocarlo en cualquier momento en Ajustes.',
-      accept: 'Permitir ubicación',
-      acceptA11y: 'Permitir compartir ubicación',
-      decline: 'Ahora no',
-      declineA11y: 'Rechazar compartir ubicación',
+      accept: 'Continuar',
+      acceptA11y: 'Continuar',
       footnote: 'Puedes cambiar esta elección en Ajustes > Privacidad.',
       saveError: 'No se pudo guardar tu preferencia. Inténtalo de nuevo.',
     },

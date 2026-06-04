@@ -40,6 +40,7 @@ i18n.use(initReactI18next).init({
   supportedLngs: ['pt-BR', 'en', 'en-US', 'es', 'es-ES'],
   nonExplicitSupportedLngs: true,
   interpolation: { escapeValue: false },
+  initImmediate: false, // synchronous init; resources are inline
   react: { useSuspense: false },
 });
 

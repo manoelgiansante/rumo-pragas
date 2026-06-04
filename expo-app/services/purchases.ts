@@ -1,10 +1,28 @@
-import Purchases, {
-  PurchasesPackage,
-  CustomerInfo,
-  PURCHASES_ERROR_CODE,
-} from 'react-native-purchases';
+import type { PurchasesPackage, CustomerInfo } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
+
+// iOS 26 cold-start freeze defense (Apple Guideline 2.1(a)):
+// `react-native-purchases` is a StoreKit-backed native (Turbo)Module. A
+// top-level `import Purchases from 'react-native-purchases'` evaluates and
+// registers that native module at JS bundle-eval time. On iPad / iOS 26 New
+// Architecture this can stall or throw during cold start before the bridge is
+// ready (the recurring "freezes on loading screen" rejection class). We instead
+// require() the module lazily, the first time a purchases API is actually
+// invoked (paywall mount, post-login sync) — never during module evaluation.
+//
+// We only import the TYPES statically above (erased at compile time — zero
+// runtime cost) so the rest of the file stays fully typed.
+type PurchasesModule = typeof import('react-native-purchases').default;
+
+let cachedPurchases: PurchasesModule | null = null;
+
+function getPurchases(): PurchasesModule {
+  if (cachedPurchases) return cachedPurchases;
+
+  cachedPurchases = require('react-native-purchases').default as PurchasesModule;
+  return cachedPurchases;
+}
 
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '';
 const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '';
@@ -31,7 +49,7 @@ export async function initializePurchases(userId?: string): Promise<void> {
     return;
   }
 
-  Purchases.configure({ apiKey, appUserID: userId ?? null });
+  getPurchases().configure({ apiKey, appUserID: userId ?? null });
 }
 
 /**
@@ -41,7 +59,7 @@ export async function initializePurchases(userId?: string): Promise<void> {
 export async function identifyUser(userId: string): Promise<void> {
   if (!isRevenueCatConfigured()) return;
   try {
-    await Purchases.logIn(userId);
+    await getPurchases().logIn(userId);
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to identify user:', e);
   }
@@ -52,7 +70,7 @@ export async function identifyUser(userId: string): Promise<void> {
  */
 export async function getOfferings(): Promise<PurchasesPackage[]> {
   try {
-    const offerings = await Purchases.getOfferings();
+    const offerings = await getPurchases().getOfferings();
     if (offerings.current) {
       return offerings.current.availablePackages;
     }
@@ -70,15 +88,32 @@ export async function getOfferings(): Promise<PurchasesPackage[]> {
  */
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
   try {
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    const { customerInfo } = await getPurchases().purchasePackage(pkg);
     return customerInfo;
   } catch (e: unknown) {
-    if (
-      e instanceof Object &&
-      'code' in e &&
-      (e as { code: string }).code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
-    ) {
-      return null; // user cancelled -- not an error
+    // User cancellation is not a real error. We avoid statically importing the
+    // PURCHASES_ERROR_CODE enum as a runtime VALUE (which would re-introduce
+    // module-eval of react-native-purchases). Instead we read the enum lazily
+    // inside this catch block — it only runs on a purchase failure, long after
+    // cold start. We also accept the `userCancelled` boolean that RC v9 sets,
+    // and fall back to the known enum value ("1") if the lazy require fails.
+    if (e instanceof Object) {
+      if ('userCancelled' in e && (e as { userCancelled?: boolean }).userCancelled === true) {
+        return null;
+      }
+      if ('code' in e) {
+        const code = (e as { code: unknown }).code;
+        let cancelledCode: unknown = '1';
+        try {
+          cancelledCode =
+            require('react-native-purchases').PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR;
+        } catch {
+          /* keep fallback '1' */
+        }
+        if (code === cancelledCode) {
+          return null; // user cancelled -- not an error
+        }
+      }
     }
     throw e;
   }
@@ -95,7 +130,7 @@ export async function checkSubscriptionStatus(): Promise<{
   error?: string;
 }> {
   try {
-    const customerInfo = await Purchases.getCustomerInfo();
+    const customerInfo = await getPurchases().getCustomerInfo();
     if (customerInfo.entitlements.active['enterprise']) {
       return { plan: 'enterprise', isActive: true };
     }
@@ -118,7 +153,7 @@ export async function checkSubscriptionStatus(): Promise<{
  */
 export async function restorePurchases(): Promise<CustomerInfo | null> {
   try {
-    const customerInfo = await Purchases.restorePurchases();
+    const customerInfo = await getPurchases().restorePurchases();
     return customerInfo;
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to restore purchases:', e);

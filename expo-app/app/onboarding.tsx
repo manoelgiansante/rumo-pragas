@@ -11,8 +11,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, BookOpen, ShieldCheck } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import Animated, {
@@ -22,9 +20,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import { useNavigationGate } from '../contexts/NavigationGateContext';
 import { trackEvent } from '../services/analytics';
-
-const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
 
 interface OnboardingPage {
   id: string;
@@ -87,7 +84,7 @@ function Dot({ active }: DotProps) {
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const { markOnboardingSeen } = useNavigationGate();
   // P0 (Apple 2.1.0 — iPad rejection 2026-04-29): live useWindowDimensions
   // so FlatList page width tracks rotation / split-view / iPad scaling.
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -102,22 +99,21 @@ export default function OnboardingScreen() {
   }, []);
 
   const finishOnboarding = useCallback(
-    async (reason: 'completed' | 'skipped') => {
-      try {
-        await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-      } catch {
-        // Never block navigation on storage failure — Apple reviewer must
-        // always be able to leave this screen.
-      }
+    (reason: 'completed' | 'skipped') => {
       trackEvent('onboarding_finished', {
         reason,
         last_page_index: currentIndex,
         total_pages: PAGES.length,
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      router.replace('/(auth)/login');
+      // RUMO-PRAGAS-7/8 fix: do NOT self-navigate. Mark the gate flag (which also
+      // persists to AsyncStorage) and let the single source-of-truth routing
+      // effect in app/_layout.tsx route to '/(auth)/login' (or '/(tabs)' if the
+      // user is already authenticated). Self-navigating here was the same
+      // dual-writer pattern that fed the infinite update loop.
+      markOnboardingSeen();
     },
-    [router, currentIndex],
+    [markOnboardingSeen, currentIndex],
   );
 
   const goToNext = useCallback(() => {
