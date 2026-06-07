@@ -12,6 +12,7 @@
  */
 import {
   GATE_HREF,
+  isGateOwnedSegment,
   needsRedirect,
   resolveGateTarget,
   type GateState,
@@ -118,6 +119,45 @@ describe('needsRedirect', () => {
   it('does NOT redirect once the current segment equals the target', () => {
     expect(needsRedirect('(tabs)', '(tabs)')).toBe(false);
     expect(needsRedirect('consent-location', 'consent-location')).toBe(false);
+  });
+
+  // Regression guard for the iPad "Upgrade Plan does nothing" rejection
+  // (Apple Guideline 2.1(b), iPad Air M3 / iPadOS 26.5). The gate must NOT
+  // yank the user off a legitimate leaf route they pushed to from (tabs).
+  it('does NOT redirect away from a non-gate leaf route the user pushed to', () => {
+    expect(needsRedirect('paywall', '(tabs)')).toBe(false);
+    expect(needsRedirect('diagnosis', '(tabs)')).toBe(false);
+    expect(needsRedirect('edit-profile', '(tabs)')).toBe(false);
+    expect(needsRedirect('privacy', '(tabs)')).toBe(false);
+    expect(needsRedirect('terms', '(tabs)')).toBe(false);
+    expect(needsRedirect('+not-found', '(tabs)')).toBe(false);
+  });
+
+  it('STILL redirects from a gate-owned wrong segment (e.g. authed user on (auth))', () => {
+    expect(needsRedirect('(auth)', '(tabs)')).toBe(true);
+    expect(needsRedirect('consent-location', '(tabs)')).toBe(true);
+    expect(needsRedirect('onboarding', '(auth)')).toBe(true);
+    // Cold-start index (undefined segment) is gate-owned → first decision works.
+    expect(needsRedirect(undefined, 'onboarding')).toBe(true);
+  });
+});
+
+describe('isGateOwnedSegment', () => {
+  it('treats the four gate segments and the cold-start index as gate-owned', () => {
+    expect(isGateOwnedSegment(undefined)).toBe(true);
+    expect(isGateOwnedSegment('onboarding')).toBe(true);
+    expect(isGateOwnedSegment('(auth)')).toBe(true);
+    expect(isGateOwnedSegment('consent-location')).toBe(true);
+    expect(isGateOwnedSegment('(tabs)')).toBe(true);
+  });
+
+  it('treats every intentional leaf route as NOT gate-owned', () => {
+    expect(isGateOwnedSegment('paywall')).toBe(false);
+    expect(isGateOwnedSegment('diagnosis')).toBe(false);
+    expect(isGateOwnedSegment('edit-profile')).toBe(false);
+    expect(isGateOwnedSegment('privacy')).toBe(false);
+    expect(isGateOwnedSegment('terms')).toBe(false);
+    expect(isGateOwnedSegment('+not-found')).toBe(false);
   });
 });
 
