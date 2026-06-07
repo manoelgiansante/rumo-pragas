@@ -279,6 +279,23 @@ export default {
     pestDetailFavorableEmpty: 'Condições de favorecimento não cadastradas.',
     pestDetailProductsEmpty: 'Nenhum produto comercial cadastrado. Consulte um agrônomo.',
     pestDetailMonitoringEmpty: 'Sem método de monitoramento cadastrado.',
+    // Loading screen step counter (e.g. "Passo 2 de 4")
+    stepCounter: 'Passo {{current}} de {{total}}',
+    // Premium usage gate (camera entry pill)
+    usageFree: '{{used}}/{{limit}} grátis este mês',
+    usagePro: '{{used}}/{{limit}} do Pro este mês',
+    usageBlocked: 'Limite mensal atingido ({{limit}}) — toque para Pro',
+    usageLoadingA11y: 'Carregando uso mensal',
+    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mês',
+    usageBlockedA11y: 'Limite de {{limit}} diagnósticos atingido. Toque para fazer upgrade.',
+    usageUpgradeHint: 'Toque duas vezes para ver os planos Pro',
+    // Top-3 alternatives card
+    topAlternatives: 'Outras possibilidades',
+    topAlternativesHint:
+      'A IA também considerou estas opções. Se a principal não bate com o que você vê, talvez seja uma delas.',
+    topAlternativesDisclaimer:
+      'Compare os sintomas e, em caso de dúvida, consulte um agrônomo antes de tratar.',
+    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por cento de confiança.',
   },
   // MIP knowledge card (Manejo Integrado de Pragas — EMBRAPA/MAPA references)
   mip: {
@@ -314,23 +331,6 @@ export default {
     upgradeCtaSubtitle:
       '{{count}} nível(is) bloqueado(s) — assine Pro para acesso a manejo médio/alto + químicos.',
     upgradeCtaA11y: 'Ver planos para desbloquear níveis de manejo Pro',
-    // Loading screen step counter (e.g. "Passo 2 de 4")
-    stepCounter: 'Passo {{current}} de {{total}}',
-    // Premium usage gate (camera entry pill)
-    usageFree: '{{used}}/{{limit}} grátis este mês',
-    usagePro: '{{used}}/{{limit}} do Pro este mês',
-    usageBlocked: 'Limite mensal atingido ({{limit}}) — toque para Pro',
-    usageLoadingA11y: 'Carregando uso mensal',
-    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mês',
-    usageBlockedA11y: 'Limite de {{limit}} diagnósticos atingido. Toque para fazer upgrade.',
-    usageUpgradeHint: 'Toque duas vezes para ver os planos Pro',
-    // Top-3 alternatives card
-    topAlternatives: 'Outras possibilidades',
-    topAlternativesHint:
-      'A IA também considerou estas opções. Se a principal não bate com o que você vê, talvez seja uma delas.',
-    topAlternativesDisclaimer:
-      'Compare os sintomas e, em caso de dúvida, consulte um agrônomo antes de tratar.',
-    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por cento de confiança.',
   },
   // Settings
   settings: {

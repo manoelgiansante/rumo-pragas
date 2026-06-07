@@ -271,6 +271,20 @@ export default {
     pestDetailFavorableEmpty: 'Favorable conditions not registered.',
     pestDetailProductsEmpty: 'No commercial products registered. Consult an agronomist.',
     pestDetailMonitoringEmpty: 'No monitoring method registered.',
+    stepCounter: 'Step {{current}} of {{total}}',
+    usageFree: '{{used}}/{{limit}} free this month',
+    usagePro: '{{used}}/{{limit}} Pro this month',
+    usageBlocked: 'Monthly limit reached ({{limit}}) — tap to go Pro',
+    usageLoadingA11y: 'Loading monthly usage',
+    usageRemainingA11y: '{{remaining}} of {{limit}} diagnoses remaining this month',
+    usageBlockedA11y: 'Limit of {{limit}} diagnoses reached. Tap to upgrade.',
+    usageUpgradeHint: 'Double tap to see Pro plans',
+    topAlternatives: 'Other possibilities',
+    topAlternativesHint:
+      'The AI also considered these options. If the top match does not look right, it may be one of these.',
+    topAlternativesDisclaimer:
+      'Compare the symptoms and, if in doubt, consult an agronomist before treating.',
+    alternativeA11y: 'Alternative number {{rank}}: {{name}}, {{pct}} percent confidence.',
   },
   mip: {
     title: 'IPM Protocol',
@@ -305,20 +319,6 @@ export default {
     upgradeCtaSubtitle:
       '{{count}} level(s) locked — subscribe to Pro for medium/high management + chemical guidance.',
     upgradeCtaA11y: 'View plans to unlock Pro management levels',
-    stepCounter: 'Step {{current}} of {{total}}',
-    usageFree: '{{used}}/{{limit}} free this month',
-    usagePro: '{{used}}/{{limit}} Pro this month',
-    usageBlocked: 'Monthly limit reached ({{limit}}) — tap to go Pro',
-    usageLoadingA11y: 'Loading monthly usage',
-    usageRemainingA11y: '{{remaining}} of {{limit}} diagnoses remaining this month',
-    usageBlockedA11y: 'Limit of {{limit}} diagnoses reached. Tap to upgrade.',
-    usageUpgradeHint: 'Double tap to see Pro plans',
-    topAlternatives: 'Other possibilities',
-    topAlternativesHint:
-      'The AI also considered these options. If the top match does not look right, it may be one of these.',
-    topAlternativesDisclaimer:
-      'Compare the symptoms and, if in doubt, consult an agronomist before treating.',
-    alternativeA11y: 'Alternative number {{rank}}: {{name}}, {{pct}} percent confidence.',
   },
   settings: {
     profile: 'Profile',

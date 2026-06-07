@@ -274,6 +274,20 @@ export default {
     pestDetailFavorableEmpty: 'Condiciones favorables no registradas.',
     pestDetailProductsEmpty: 'Sin productos comerciales registrados. Consulte a un agrónomo.',
     pestDetailMonitoringEmpty: 'Sin método de monitoreo registrado.',
+    stepCounter: 'Paso {{current}} de {{total}}',
+    usageFree: '{{used}}/{{limit}} gratis este mes',
+    usagePro: '{{used}}/{{limit}} del Pro este mes',
+    usageBlocked: 'Límite mensual alcanzado ({{limit}}) — toca para Pro',
+    usageLoadingA11y: 'Cargando uso mensual',
+    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mes',
+    usageBlockedA11y: 'Límite de {{limit}} diagnósticos alcanzado. Toca para mejorar el plan.',
+    usageUpgradeHint: 'Toca dos veces para ver los planes Pro',
+    topAlternatives: 'Otras posibilidades',
+    topAlternativesHint:
+      'La IA también consideró estas opciones. Si la principal no coincide, puede ser una de estas.',
+    topAlternativesDisclaimer:
+      'Compare los síntomas y, en caso de duda, consulte a un agrónomo antes de tratar.',
+    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por ciento de confianza.',
   },
   mip: {
     title: 'Protocolo MIP',
@@ -308,20 +322,6 @@ export default {
     upgradeCtaSubtitle:
       '{{count}} nivel(es) bloqueado(s) — suscríbete a Pro para acceso a manejo medio/alto + químicos.',
     upgradeCtaA11y: 'Ver planes para desbloquear niveles de manejo Pro',
-    stepCounter: 'Paso {{current}} de {{total}}',
-    usageFree: '{{used}}/{{limit}} gratis este mes',
-    usagePro: '{{used}}/{{limit}} del Pro este mes',
-    usageBlocked: 'Límite mensual alcanzado ({{limit}}) — toca para Pro',
-    usageLoadingA11y: 'Cargando uso mensual',
-    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mes',
-    usageBlockedA11y: 'Límite de {{limit}} diagnósticos alcanzado. Toca para mejorar el plan.',
-    usageUpgradeHint: 'Toca dos veces para ver los planes Pro',
-    topAlternatives: 'Otras posibilidades',
-    topAlternativesHint:
-      'La IA también consideró estas opciones. Si la principal no coincide, puede ser una de estas.',
-    topAlternativesDisclaimer:
-      'Compare los síntomas y, en caso de duda, consulte a un agrónomo antes de tratar.',
-    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por ciento de confianza.',
   },
   settings: {
     profile: 'Perfil',
