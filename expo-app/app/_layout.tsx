@@ -255,9 +255,38 @@ function RootLayoutNav() {
   //     ONE replace per distinct target is ever issued. When `segments[0]`
   //     finally equals the target we clear the ref (arrival), ready for the next
   //     legitimate transition. No oscillation is reachable.
+  // Guard against re-firing a replace toward a target we are already in flight
+  // toward OR have already arrived at. `arrivedTargetRef` holds the last target
+  // the user has actually landed on; once set, we will NEVER replace toward it
+  // again until a CONCRETE, DIFFERENT, gate-owned segment is observed (a genuine
+  // user-initiated departure, e.g. logout). This is the structural fix for the
+  // RUMO-PRAGAS-M Android render loop (see comment block below).
   const lastIssuedTargetRef = useRef<string | null>(null);
+  const arrivedTargetRef = useRef<string | null>(null);
   const currentSegment = segments[0];
 
+  // ---------------------------------------------------------------------------
+  // RUMO-PRAGAS-M (Android, OTA): "Maximum update depth exceeded" (FATAL)
+  // ---------------------------------------------------------------------------
+  // Stack: linkTo -> replace -> forceStoreRerender -> (re-render) -> replace ...
+  //
+  // Root cause (a gap left by the RUMO-PRAGAS-7/8 fix): the OLD guard cleared
+  // `lastIssuedTargetRef` to `null` the moment `currentSegment === target`
+  // (arrival). On Android (Fabric / New Architecture) `useSegments()` — a
+  // useSyncExternalStore — transiently emits `undefined` for `segments[0]`
+  // DURING the navigation store churn that `router.replace` itself triggers
+  // (`forceStoreRerender`). Because `isGateOwnedSegment(undefined)` is `true`
+  // and `undefined !== target`, `needsRedirect(undefined, target)` returned
+  // `true`. With the guard freshly cleared on the arrival frame, the effect
+  // re-issued `router.replace(target)` on that transient `undefined` frame ->
+  // more store churn -> another transient `undefined` -> replace -> infinite
+  // nested update -> React's update-depth limit -> fatal.
+  //
+  // Fix: once we ARRIVE at a target, we record it in `arrivedTargetRef` and
+  // refuse to ever replace toward that same target again until a concrete,
+  // different, gate-owned segment shows up. A transient `undefined` segment is
+  // therefore inert (it is store churn, not a real route) and can never re-arm
+  // a redirect. At most ONE replace per genuine target transition is issued.
   useEffect(() => {
     const target = resolveGateTarget({
       isLoading,
@@ -269,16 +298,34 @@ function RootLayoutNav() {
     // Not ready yet (still loading / flags unresolved) — render spinner, no nav.
     if (target === null) return;
 
-    // Arrived at the target: clear the in-flight guard so a future legitimate
-    // transition (e.g. logout) can navigate again.
+    // Arrived at the target: record arrival and disarm the in-flight guard. We
+    // intentionally do NOT reset `arrivedTargetRef` to null here — it stays
+    // pinned to this target so a transient `undefined` segment cannot bounce us.
     if (currentSegment === target) {
+      arrivedTargetRef.current = target;
       lastIssuedTargetRef.current = null;
       return;
     }
 
+    // Transient `undefined` segment (Android Fabric store churn during a
+    // navigation): this is NOT a real route the user is on — never treat it as
+    // a reason to redirect once we have already routed at least once.
+    if (currentSegment === undefined && arrivedTargetRef.current !== null) return;
+
+    // Any concrete, gate-owned segment that differs from `target` means the user
+    // genuinely left the arrived target (e.g. logout): re-arm so the legitimate
+    // transition can fire exactly once.
+    if (currentSegment !== undefined && currentSegment !== arrivedTargetRef.current) {
+      arrivedTargetRef.current = null;
+    }
+
+    // We have already arrived at this exact target — do not bounce back to it
+    // (covers the case where flags resolve back to a target we are already on).
+    if (arrivedTargetRef.current === target) return;
+
     // Already issued a replace toward this exact target and still waiting for the
-    // segment store to catch up — do NOT issue it again (this is the line that
-    // structurally prevents the infinite-update loop).
+    // segment store to catch up — do NOT issue it again (structurally prevents
+    // the infinite-update loop while the replace is in flight).
     if (lastIssuedTargetRef.current === target) return;
 
     if (needsRedirect(currentSegment, target)) {

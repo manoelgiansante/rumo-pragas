@@ -17,7 +17,7 @@
  *   for pest fact sheets ships, add `fetchPestFromRemote` as fallback.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -82,9 +82,21 @@ export default function PestDetailScreen() {
 
   // Premium gate redirect — never reachable in V1 (Result already gates),
   // but defensive against deep links / future history surface.
+  //
+  // `/paywall` is a MODAL, so this screen stays mounted UNDERNEATH it after the
+  // replace. A one-shot ref guarantees we never re-fire the replace toward the
+  // modal (which would feed the navigation store and risk an update loop) if
+  // this effect re-runs for any reason while the paywall is open.
+  const paywallRedirectedRef = useRef(false);
   useEffect(() => {
-    if (!subLoading && !isPro) {
+    if (subLoading) return;
+    if (!isPro && !paywallRedirectedRef.current) {
+      paywallRedirectedRef.current = true;
       router.replace('/paywall');
+    } else if (isPro) {
+      // Entitlement arrived (e.g. user purchased on the paywall) — re-arm so a
+      // future downgrade can gate again.
+      paywallRedirectedRef.current = false;
     }
   }, [subLoading, isPro]);
 
