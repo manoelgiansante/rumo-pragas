@@ -888,6 +888,12 @@ export default {
     permissionDeniedTitle: 'Permissão negada',
     permissionDeniedMsg:
       'Conceda permissão de câmera ou fotos em Ajustes para alterar sua foto de perfil.',
+    // UX correctness — 2026-06-08
+    keyboardDone: 'Concluído',
+    discardTitle: 'Descartar alterações?',
+    discardMessage: 'Você tem alterações não salvas. Deseja descartá-las?',
+    discardConfirm: 'Descartar',
+    keepEditing: 'Continuar editando',
   },
   // P0-3 (LGPD) — explicit opt-in consent screens
   consent: {

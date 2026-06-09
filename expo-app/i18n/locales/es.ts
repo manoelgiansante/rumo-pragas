@@ -800,6 +800,12 @@ export default {
     permissionDeniedTitle: 'Permiso denegado',
     permissionDeniedMsg:
       'Concede permiso de cámara o fotos en Ajustes para cambiar tu foto de perfil.',
+    // UX correctness — 2026-06-08
+    keyboardDone: 'Listo',
+    discardTitle: '¿Descartar cambios?',
+    discardMessage: 'Tienes cambios sin guardar. ¿Deseas descartarlos?',
+    discardConfirm: 'Descartar',
+    keepEditing: 'Seguir editando',
   },
   // Nombres comunes de plagas (estandarizados en portugués para agricultura brasileña)
   pests: {

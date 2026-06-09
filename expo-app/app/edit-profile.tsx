@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActionSheetIOS,
+  BackHandler,
+  InputAccessoryView,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -68,6 +71,24 @@ interface ProfileData {
 const AVATAR_BUCKET = 'avatars';
 const AVATAR_MAX_DIM = 512;
 
+// iOS InputAccessoryView nativeID — keyboards without a Return key (phone-pad)
+// otherwise have no on-screen way to dismiss/confirm. We attach a "Concluído"
+// toolbar above the keyboard for those fields.
+const KEYBOARD_ACCESSORY_ID = 'edit-profile-keyboard-accessory';
+
+/** Field-by-field equality so the back guard only prompts on real edits. */
+function profilesEqual(a: ProfileData, b: ProfileData): boolean {
+  return (
+    a.full_name === b.full_name &&
+    a.city === b.city &&
+    a.state === b.state &&
+    a.phone === b.phone &&
+    a.avatar_url === b.avatar_url &&
+    a.crops.length === b.crops.length &&
+    a.crops.every((c) => b.crops.includes(c))
+  );
+}
+
 export default function EditProfileScreen() {
   const isDark = useColorScheme() === 'dark';
   const { user } = useAuthContext();
@@ -84,6 +105,9 @@ export default function EditProfileScreen() {
     crops: [],
     avatar_url: null,
   });
+  // Snapshot of the last persisted profile. Used by the back guard to detect
+  // unsaved edits (and refreshed after a successful save / avatar upload).
+  const initialProfileRef = useRef<ProfileData>(profile);
 
   useEffect(() => {
     if (!user) return;
@@ -98,14 +122,16 @@ export default function EditProfileScreen() {
           .single();
 
         if (mounted && data) {
-          setProfile({
+          const loaded: ProfileData = {
             full_name: data.full_name || '',
             city: data.city || '',
             state: data.state || '',
             phone: data.phone || '',
             crops: data.crops || [],
             avatar_url: data.avatar_url || null,
-          });
+          };
+          setProfile(loaded);
+          initialProfileRef.current = loaded;
         }
       } catch (err) {
         if (__DEV__) console.error('Failed to load profile:', err);
@@ -118,6 +144,38 @@ export default function EditProfileScreen() {
       mounted = false;
     };
   }, [user]);
+
+  const isDirty = useCallback(() => !profilesEqual(profile, initialProfileRef.current), [profile]);
+
+  // Back navigation guard (category: back nav). Confirms discard when there are
+  // unsaved edits, then goes back. Shared by the header button AND the Android
+  // hardware back button so neither path silently drops the user's changes.
+  const handleBack = useCallback(() => {
+    Keyboard.dismiss();
+    if (!isDirty()) {
+      router.back();
+      return;
+    }
+    Alert.alert(t('editProfile.discardTitle'), t('editProfile.discardMessage'), [
+      { text: t('editProfile.keepEditing'), style: 'cancel' },
+      {
+        text: t('editProfile.discardConfirm'),
+        style: 'destructive',
+        onPress: () => router.back(),
+      },
+    ]);
+  }, [isDirty, t]);
+
+  // Android hardware back: intercept so it routes through the discard guard
+  // instead of dismissing the modal (and dropping edits) unconditionally.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true; // we handled it
+    });
+    return () => sub.remove();
+  }, [handleBack]);
 
   const toggleCrop = useCallback((cropId: string) => {
     Haptics.selectionAsync().catch(() => {});
@@ -196,6 +254,9 @@ export default function EditProfileScreen() {
         await supabase.from('pragas_profiles').update({ avatar_url: finalUrl }).eq('id', user.id);
 
         setProfile((p) => ({ ...p, avatar_url: finalUrl }));
+        // Avatar is persisted immediately above, so fold it into the saved
+        // snapshot — the back guard shouldn't treat a saved photo as a dirty edit.
+        initialProfileRef.current = { ...initialProfileRef.current, avatar_url: finalUrl };
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       } catch (err) {
         if (__DEV__) console.error('Avatar upload failed:', err);
@@ -262,6 +323,9 @@ export default function EditProfileScreen() {
         data: { full_name: profile.full_name.trim() },
       });
 
+      // Saved successfully — refresh the snapshot so the back guard no longer
+      // sees pending edits (defensive: user dismisses the alert via gesture).
+      initialProfileRef.current = { ...profile };
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       Alert.alert(t('settings.editProfile'), t('settings.profileSaved'), [
         { text: 'OK', onPress: () => router.back() },
@@ -294,7 +358,7 @@ export default function EditProfileScreen() {
       {/* Header */}
       <View style={[styles.header, isDark && styles.headerDark]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={styles.backBtn}
           accessibilityRole="button"
           accessibilityLabel={t('editProfile.backA11y')}
@@ -393,6 +457,8 @@ export default function EditProfileScreen() {
             textContentType="telephoneNumber"
             a11yLabel={t('editProfile.phoneA11y')}
             testID="edit-profile-input-phone"
+            returnKeyType="done"
+            inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_ACCESSORY_ID : undefined}
           />
         </View>
 
@@ -490,6 +556,25 @@ export default function EditProfileScreen() {
 
         <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* iOS keyboard "Concluído" toolbar (category: keyboard confirm).
+          phone-pad has no Return key, so this gives a way to dismiss/confirm. */}
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={KEYBOARD_ACCESSORY_ID}>
+          <View style={[styles.keyboardAccessory, isDark && styles.keyboardAccessoryDark]}>
+            <TouchableOpacity
+              onPress={() => Keyboard.dismiss()}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('editProfile.keyboardDone')}
+              testID="edit-profile-keyboard-done"
+              style={styles.keyboardDoneBtn}
+            >
+              <Text style={styles.keyboardDoneText}>{t('editProfile.keyboardDone')}</Text>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -512,6 +597,8 @@ interface FieldProps {
   required?: boolean;
   a11yLabel?: string;
   testID?: string;
+  returnKeyType?: 'next' | 'done';
+  inputAccessoryViewID?: string;
 }
 
 function Field({
@@ -528,6 +615,8 @@ function Field({
   required,
   a11yLabel,
   testID,
+  returnKeyType,
+  inputAccessoryViewID,
 }: FieldProps) {
   return (
     <View style={styles.field}>
@@ -546,7 +635,8 @@ function Field({
         autoCapitalize={autoCapitalize ?? 'sentences'}
         autoComplete={autoComplete}
         textContentType={textContentType}
-        returnKeyType="next"
+        returnKeyType={returnKeyType ?? 'next'}
+        inputAccessoryViewID={inputAccessoryViewID}
         accessibilityLabel={a11yLabel ?? label}
         accessibilityState={disabled ? { disabled: true } : undefined}
         testID={testID}
@@ -706,4 +796,28 @@ const styles = StyleSheet.create({
 
   textDark: { color: Colors.textDark },
   textMuted: { color: Colors.systemGray },
+
+  // iOS keyboard accessory toolbar
+  keyboardAccessory: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    backgroundColor: '#F2F2F7',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.separator,
+  },
+  keyboardAccessoryDark: { backgroundColor: '#2C2C2E', borderTopColor: Colors.separatorDark },
+  keyboardDoneBtn: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  keyboardDoneText: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: Colors.accent,
+  },
 });

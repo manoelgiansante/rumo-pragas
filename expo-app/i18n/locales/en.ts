@@ -792,6 +792,12 @@ export default {
     permissionDeniedTitle: 'Permission denied',
     permissionDeniedMsg:
       'Grant camera or photo permission in Settings to change your profile photo.',
+    // UX correctness — 2026-06-08
+    keyboardDone: 'Done',
+    discardTitle: 'Discard changes?',
+    discardMessage: 'You have unsaved changes. Do you want to discard them?',
+    discardConfirm: 'Discard',
+    keepEditing: 'Keep editing',
   },
   // Pest common names (standardized in Portuguese for Brazilian agriculture)
   pests: {
