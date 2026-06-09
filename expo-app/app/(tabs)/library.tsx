@@ -13,7 +13,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  Gradients,
+  Shadows,
+} from '../../constants/theme';
 import { CROPS } from '../../constants/crops';
 import { PremiumCard } from '../../components/PremiumCard';
 import { SearchInput } from '../../components/SearchInput';
@@ -218,6 +226,17 @@ export default function LibraryScreen() {
     >
       <View
         style={[
+          styles.header,
+          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+        ]}
+      >
+        <Text style={[styles.headerTitle, isDark && styles.textDark]} accessibilityRole="header">
+          {t('library.title')}
+        </Text>
+      </View>
+
+      <View
+        style={[
           styles.searchRow,
           isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
         ]}
@@ -331,7 +350,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
   center: { alignItems: 'center', paddingTop: 60 },
-  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: Spacing.sm },
+  header: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xxl,
+    paddingBottom: Spacing.xs,
+  },
+  headerTitle: {
+    fontSize: FontSize.largeTitle,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: Spacing.sm },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -370,12 +399,8 @@ const styles = StyleSheet.create({
   clearFilterText: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.accent },
   textDark: { color: Colors.textDark },
   emptyCtaShadow: {
+    ...Shadows.raised,
     marginTop: Spacing.lg,
-    shadowColor: Colors.accentDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    elevation: 5,
     borderRadius: BorderRadius.lg,
   },
   emptyCta: {

@@ -47,6 +47,43 @@ export const GATE_HREF: Record<GateSegment, string> = {
   '(tabs)': '/(tabs)',
 };
 
+/**
+ * The set of top-level segments the gate is RESPONSIBLE for. These are the only
+ * places the gate may yank the user away from. Any other top-level route
+ * (`paywall`, `diagnosis`, `edit-profile`, `privacy`, `terms`, `+not-found`,
+ * etc.) is an intentional in-app destination reached by an explicit
+ * `router.push` from inside `(tabs)` — the gate must NEVER override it.
+ *
+ * BUG (Apple Guideline 2.1(b), iPad Air M3 / iPadOS 26.5): the gate effect used
+ * `currentSegment !== target` as its only redirect predicate. When an onboarded,
+ * authenticated, consented user tapped "Upgrade Plan", `router.push('/paywall')`
+ * set `currentSegment = 'paywall'`. The gate target is `'(tabs)'`, so
+ * `'paywall' !== '(tabs)'` was TRUE → the effect immediately fired
+ * `router.replace('/(tabs)')`, dismissing the paywall modal the instant it
+ * mounted. The StoreKit purchase sheet therefore never appeared → "tapping
+ * Upgrade Plan does nothing". The same bounce hit `diagnosis` / `edit-profile`.
+ * Restricting the gate to its OWN segments leaves every leaf route untouched.
+ */
+const GATE_SEGMENTS: ReadonlySet<string> = new Set<GateSegment>([
+  'onboarding',
+  '(auth)',
+  'consent-location',
+  '(tabs)',
+]);
+
+/**
+ * Whether `currentSegment` is a route the gate owns (and may redirect away from).
+ *
+ * `undefined` (the cold-start index route before any segment resolves) counts as
+ * gate-owned, so the very first cold-start routing decision still works. Every
+ * non-gate leaf route (paywall, diagnosis, edit-profile, privacy, terms,
+ * not-found) is NOT gate-owned, so the gate leaves the user there.
+ */
+export function isGateOwnedSegment(currentSegment: string | undefined): boolean {
+  if (currentSegment === undefined) return true;
+  return GATE_SEGMENTS.has(currentSegment);
+}
+
 export interface GateState {
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -88,12 +125,20 @@ export function resolveGateTarget(state: GateState): GateSegment | null {
  * Whether a navigation is required to move from `currentSegment` to `target`.
  * `currentSegment` is `useSegments()[0]` (may be undefined on first frame, e.g.
  * at the index route). A null target means "not ready" → never navigate.
+ *
+ * The gate only redirects when the user is on a route the gate OWNS
+ * (`isGateOwnedSegment`). If the user has intentionally navigated to a leaf
+ * route outside the gate's responsibility (e.g. `/paywall`, `/diagnosis`,
+ * `/edit-profile`), the gate must stay out of the way — otherwise it bounces
+ * those modals straight back to `(tabs)` the instant they mount (the iPad
+ * "Upgrade Plan does nothing" rejection, Guideline 2.1(b)).
  */
 export function needsRedirect(
   currentSegment: string | undefined,
   target: GateSegment | null,
 ): boolean {
   if (target === null) return false;
+  if (!isGateOwnedSegment(currentSegment)) return false;
   return currentSegment !== target;
 }
 

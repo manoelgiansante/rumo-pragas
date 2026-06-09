@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import { Colors, Spacing, BorderRadius, FontSize, Gradients, Shadows } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { WeatherCard } from '../../components/WeatherCard';
 import { AlertCard } from '../../components/AlertCard';
@@ -488,11 +488,7 @@ const styles = StyleSheet.create({
   scanTitle: { fontSize: FontSize.title3, fontWeight: '700' },
   scanSub: { fontSize: FontSize.subheadline, color: Colors.textSecondary, marginTop: 2 },
   ctaShadow: {
-    shadowColor: Colors.accentDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Shadows.cta,
     borderRadius: BorderRadius.lg,
   },
   ctaContainer: {
