@@ -15,8 +15,25 @@ jest.mock('expo-apple-authentication', () => ({
   },
 }));
 
+// expo-crypto: deterministic nonce + hash so we can assert the raw nonce is
+// forwarded to Supabase (the security-critical handoff).
+jest.mock('expo-crypto', () => ({
+  getRandomBytes: jest.fn(() => new Uint8Array(32).fill(0)),
+  digestStringAsync: jest.fn(async (_alg: unknown, value: string) => `sha256(${value})`),
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+}));
+
+// Sentry: no-op breadcrumbs/captures in tests.
+jest.mock('@sentry/react-native', () => ({
+  addBreadcrumb: jest.fn(),
+  captureException: jest.fn(),
+}));
+
 const mockSignInWithIdToken = jest.fn();
 const mockUpdateProfile = jest.fn();
+
+// 32 zero bytes → 64 zero hex chars; matches getRandomBytes mock above.
+const EXPECTED_RAW_NONCE = '0'.repeat(64);
 
 jest.mock('../../services/supabase', () => ({
   supabase: {
@@ -82,7 +99,6 @@ describe('isAppleSignInAvailable', () => {
       supabase: { auth: {}, from: jest.fn() },
     }));
 
-     
     const { isAppleSignInAvailable: checkAndroid } = require('../../services/appleAuth');
     const result = await checkAndroid();
     expect(result).toBe(false);
@@ -108,10 +124,27 @@ describe('signInWithApple', () => {
     const result = await signInWithApple();
 
     expect(result).toEqual({ session: mockSession, user: mockUser });
+    // Security: the RAW nonce is forwarded to Supabase so it can validate the
+    // id_token's hashed `nonce` claim (Apple was given SHA-256(raw)).
     expect(mockSignInWithIdToken).toHaveBeenCalledWith({
       provider: 'apple',
       token: 'apple-id-token',
+      nonce: EXPECTED_RAW_NONCE,
     });
+  });
+
+  it('passes the SHA-256 of the raw nonce to Apple signInAsync', async () => {
+    mockSignInAsync.mockResolvedValueOnce({ identityToken: 'apple-id-token', fullName: null });
+    mockSignInWithIdToken.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {} },
+      error: null,
+    });
+
+    await signInWithApple();
+
+    expect(mockSignInAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ nonce: `sha256(${EXPECTED_RAW_NONCE})` }),
+    );
   });
 
   it('updates profile with Apple-provided name on first sign-in', async () => {
@@ -137,12 +170,30 @@ describe('signInWithApple', () => {
       fullName: null,
     });
 
-    await expect(signInWithApple()).rejects.toThrow('No identity token');
+    await expect(signInWithApple()).rejects.toThrow('did not return an identity token');
   });
 
-  it('returns null when user cancels', async () => {
+  it('returns null when user cancels (ERR_REQUEST_CANCELED)', async () => {
     const cancelError = { code: 'ERR_REQUEST_CANCELED' };
     mockSignInAsync.mockRejectedValueOnce(cancelError);
+
+    const result = await signInWithApple();
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null (breadcrumb, not exception) for benign unknown code 1000', async () => {
+    // ASAuthorizationError.unknown — Apple's catch-all for dismiss/timeout.
+    const unknownError = { code: '1000' };
+    mockSignInAsync.mockRejectedValueOnce(unknownError);
+
+    const result = await signInWithApple();
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null for ERR_REQUEST_UNKNOWN', async () => {
+    mockSignInAsync.mockRejectedValueOnce({ code: 'ERR_REQUEST_UNKNOWN' });
 
     const result = await signInWithApple();
 
