@@ -46,11 +46,22 @@ export function useAuth() {
         return null;
       });
 
+    // Hold the timer handle so cleanup can clear it. Without this, the 8s
+    // timeout keeps ticking after getSession() wins the race (the normal path)
+    // and after the component unmounts — a dangling timer that fires for no
+    // reason in production and leaks the Jest worker (open-handle warning).
+    let sessionTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
     const timeoutPromise = new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), SESSION_TIMEOUT_MS);
+      sessionTimeoutTimer = setTimeout(() => resolve(null), SESSION_TIMEOUT_MS);
     });
 
     Promise.race([sessionPromise, timeoutPromise]).then((session) => {
+      // The race is settled — the timeout is no longer needed regardless of
+      // which side won. Clear it so it cannot fire later.
+      if (sessionTimeoutTimer) {
+        clearTimeout(sessionTimeoutTimer);
+        sessionTimeoutTimer = null;
+      }
       if (!mounted) return;
       setState({
         user: session?.user ?? null,
@@ -77,6 +88,10 @@ export function useAuth() {
 
     return () => {
       mounted = false;
+      if (sessionTimeoutTimer) {
+        clearTimeout(sessionTimeoutTimer);
+        sessionTimeoutTimer = null;
+      }
       subscription.unsubscribe();
     };
   }, []);
