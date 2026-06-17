@@ -50,3 +50,7 @@ node_modules
 expo-app/coverage/
 .vercel
 bun.lock
+
+# Agent / git worktrees — local-only, never tracked (avoids untracked drift noise)
+.worktrees/
+.claude/worktrees/
