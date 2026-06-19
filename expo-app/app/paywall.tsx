@@ -94,18 +94,24 @@ export default function PaywallScreen() {
   // Fetch RevenueCat offerings on mount
   useEffect(() => {
     if (!configured) return;
-    getOfferings().then((pkgs) => {
-      setPackages(pkgs);
-      // Collect real store prices (without mutating PLANS)
-      const prices: Record<string, string> = {};
-      pkgs.forEach((pkg) => {
-        const planId = mapPackageToPlan(pkg);
-        if (planId) {
-          prices[planId] = pkg.product.priceString;
-        }
+    getOfferings()
+      .then((pkgs) => {
+        setPackages(pkgs);
+        // Collect real store prices (without mutating PLANS)
+        const prices: Record<string, string> = {};
+        pkgs.forEach((pkg) => {
+          const planId = mapPackageToPlan(pkg);
+          if (planId) {
+            prices[planId] = pkg.product.priceString;
+          }
+        });
+        setRealPrices(prices);
+      })
+      .catch((err) => {
+        // Degrade gracefully — fall back to the static PLAN prices instead of
+        // crashing the paywall if getOfferings() rejects (race / async timing).
+        if (__DEV__) console.warn('[paywall] getOfferings failed:', err);
       });
-      setRealPrices(prices);
-    });
   }, [configured]);
 
   const findPackageForPlan = useCallback(
