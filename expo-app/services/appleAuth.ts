@@ -152,12 +152,33 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
 
       if (fullName) {
         try {
-          await supabase
+          // Supabase .update() does NOT throw on RLS-blocked writes or 0-rows-
+          // matched (e.g. the profile row trigger hasn't fired yet on first
+          // sign-in). It resolves with { error, data }. We must inspect both so
+          // a silent profile-name loss becomes observable instead of vanishing.
+          const { data: updated, error: updateErr } = await supabase
             .from('pragas_profiles')
             .update({ full_name: fullName })
-            .eq('id', data.user.id);
-        } catch {
-          // swallowed on purpose — auth must not be blocked by profile drift
+            .eq('id', data.user.id)
+            .select('id');
+          if (updateErr) {
+            Sentry.captureException(updateErr, {
+              tags: { area: 'auth', provider: 'apple', op: 'profile_name_backfill' },
+            });
+          } else if (!updated || updated.length === 0) {
+            Sentry.addBreadcrumb({
+              category: 'auth',
+              message: 'apple.profile_name_backfill.no_row',
+              level: 'warning',
+              data: { userId: data.user.id },
+            });
+          }
+        } catch (backfillErr) {
+          // swallowed on purpose — auth must not be blocked by profile drift,
+          // but the failure is surfaced to Sentry so it is not invisible.
+          Sentry.captureException(backfillErr, {
+            tags: { area: 'auth', provider: 'apple', op: 'profile_name_backfill' },
+          });
         }
       }
     }

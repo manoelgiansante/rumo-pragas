@@ -41,6 +41,7 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
+import * as Sentry from '@sentry/react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { Config } from '../constants/config';
@@ -195,12 +196,33 @@ export function useGoogleSignIn(): UseGoogleSignIn {
             : '';
       if (fullName) {
         try {
-          await supabase
+          // Supabase .update() does NOT throw on RLS-blocked writes or 0-rows-
+          // matched (e.g. the profile row trigger hasn't fired yet on first
+          // sign-in). It resolves with { error, data }. Inspect both so a
+          // silent profile-name loss becomes observable instead of vanishing.
+          const { data: updated, error: updateErr } = await supabase
             .from('pragas_profiles')
             .update({ full_name: fullName })
-            .eq('id', data.user.id);
-        } catch {
-          // swallowed on purpose — auth must not be blocked by profile drift
+            .eq('id', data.user.id)
+            .select('id');
+          if (updateErr) {
+            Sentry.captureException(updateErr, {
+              tags: { area: 'auth', provider: 'google', op: 'profile_name_backfill' },
+            });
+          } else if (!updated || updated.length === 0) {
+            Sentry.addBreadcrumb({
+              category: 'auth',
+              message: 'google.profile_name_backfill.no_row',
+              level: 'warning',
+              data: { userId: data.user.id },
+            });
+          }
+        } catch (backfillErr) {
+          // swallowed on purpose — auth must not be blocked by profile drift,
+          // but the failure is surfaced to Sentry so it is not invisible.
+          Sentry.captureException(backfillErr, {
+            tags: { area: 'auth', provider: 'google', op: 'profile_name_backfill' },
+          });
         }
       }
 

@@ -268,6 +268,7 @@ export default function PaywallScreen() {
             testID="paywall-close"
             onPress={() => router.back()}
             style={styles.closeBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel={t('paywall.closeA11y')}
             accessibilityRole="button"
           >
@@ -381,6 +382,7 @@ export default function PaywallScreen() {
             testID="paywall-legal-privacy"
             onPress={() => router.push('/privacy')}
             accessibilityRole="link"
+            accessibilityLabel={t('paywall.legalPrivacy')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={styles.legalLinkText}>{t('paywall.legalPrivacy')}</Text>
@@ -390,6 +392,7 @@ export default function PaywallScreen() {
             testID="paywall-legal-terms"
             onPress={() => router.push('/terms')}
             accessibilityRole="link"
+            accessibilityLabel={t('paywall.legalTerms')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={styles.legalLinkText}>{t('paywall.legalTerms')}</Text>

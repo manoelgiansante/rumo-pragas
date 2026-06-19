@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -70,13 +70,13 @@ interface DotProps {
   active: boolean;
 }
 
-function Dot({ active }: DotProps) {
+const Dot = memo(function Dot({ active }: DotProps) {
   const style = useAnimatedStyle(() => ({
     width: withSpring(active ? 24 : 8, { damping: 18, stiffness: 200 }),
     opacity: withTiming(active ? 1 : 0.45, { duration: 200, easing: Easing.out(Easing.ease) }),
   }));
   return <Animated.View style={[styles.dot, style]} />;
-}
+});
 
 // ============================================================================
 // Onboarding screen

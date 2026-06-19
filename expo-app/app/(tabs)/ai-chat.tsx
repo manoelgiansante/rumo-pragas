@@ -266,6 +266,9 @@ export default function AIChatScreen() {
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
+            initialNumToRender={10}
+            maxToRenderPerBatch={5}
+            windowSize={5}
             contentContainerStyle={[
               { padding: Spacing.md, paddingBottom: 20 },
               isTablet && {
