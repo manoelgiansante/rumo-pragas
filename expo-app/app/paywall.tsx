@@ -94,27 +94,25 @@ export default function PaywallScreen() {
   // Fetch RevenueCat offerings on mount
   useEffect(() => {
     if (!configured) return;
-    getOfferings().then((pkgs) => {
-      setPackages(pkgs);
-      // Collect real store prices (without mutating PLANS)
-      const prices: Record<string, string> = {};
-      pkgs.forEach((pkg) => {
-        const planId = mapPackageToPlan(pkg);
-        if (planId) {
-          prices[planId] = pkg.product.priceString;
-        }
+    getOfferings()
+      .then((pkgs) => {
+        setPackages(pkgs);
+        // Collect real store prices (without mutating PLANS)
+        const prices: Record<string, string> = {};
+        pkgs.forEach((pkg) => {
+          const planId = mapPackageToPlan(pkg);
+          if (planId) {
+            prices[planId] = pkg.product.priceString;
+          }
+        });
+        setRealPrices(prices);
+      })
+      .catch((err) => {
+        // Degrade gracefully — fall back to the static PLAN prices instead of
+        // crashing the paywall if getOfferings() rejects (race / async timing).
+        if (__DEV__) console.warn('[paywall] getOfferings failed:', err);
       });
-      setRealPrices(prices);
-    });
   }, [configured]);
-
-  // Merge real prices with plan definitions (immutable)
-  const plansWithPrices = useMemo(
-    () => PLANS.map((p) => (realPrices[p.id] ? { ...p, price: realPrices[p.id] } : p)),
-    [PLANS, realPrices],
-  );
-
-  const plan = plansWithPrices.find((p) => p.id === selected)!;
 
   const findPackageForPlan = useCallback(
     (planId: string): PurchasesPackage | undefined => {
@@ -122,6 +120,44 @@ export default function PaywallScreen() {
     },
     [packages],
   );
+
+  // Merge real prices with plan definitions (immutable) AND gate purchasable
+  // plans to those that actually have a RevenueCat package loaded from the
+  // offering. The "enterprise" tile has NO product configured in App Store
+  // Connect, so it must never render as a tappable/subscribable option — an
+  // Apple reviewer tapping "Subscribe" on a plan without a package produced the
+  // `paywall.subscribe.no_package` rejection (RUMO-PRAGAS-K).
+  //
+  // Rules:
+  //  - 'free' always shows (it's the "continue free" path, no package needed).
+  //  - any paid plan shows ONLY if findPackageForPlan(plan.id) is defined.
+  //  - if RevenueCat is not configured yet (no key / offerings not loaded),
+  //    we fall back to showing 'free' + 'pro' so the screen is never empty and
+  //    the graceful "coming soon" path still works. We never show a paid plan
+  //    that we KNOW has no package once offerings have loaded.
+  const plansWithPrices = useMemo(() => {
+    const offeringsLoaded = packages.length > 0;
+    return PLANS.filter((p) => {
+      if (p.id === 'free') return true;
+      if (!configured) return p.id === 'pro';
+      if (!offeringsLoaded) return p.id === 'pro';
+      return Boolean(findPackageForPlan(p.id));
+    }).map((p) => (realPrices[p.id] ? { ...p, price: realPrices[p.id] } : p));
+  }, [PLANS, realPrices, packages, configured, findPackageForPlan]);
+
+  // Keep `selected` valid: if the currently-selected plan got filtered out
+  // (e.g. user had 'enterprise' selected before offerings loaded), fall back to
+  // the first available plan so the footer CTA never targets a missing package.
+  useEffect(() => {
+    if (!plansWithPrices.some((p) => p.id === selected)) {
+      setSelected(plansWithPrices[0]?.id ?? 'free');
+    }
+  }, [plansWithPrices, selected]);
+
+  // 'free' always survives the filter above, so plansWithPrices is never empty
+  // and `plan` is always defined. The `?? PLANS[0]` keeps TypeScript happy and
+  // guards the (impossible) empty case so the screen never crashes on render.
+  const plan = plansWithPrices.find((p) => p.id === selected) ?? plansWithPrices[0] ?? PLANS[0];
 
   const handleSubscribe = useCallback(async () => {
     // Idempotency guard: never let a second tap fire mid-purchase.

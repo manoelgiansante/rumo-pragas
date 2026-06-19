@@ -97,6 +97,10 @@ export default function AIChatScreen() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const hasLoadedHistory = useRef(false);
+  // Mirror of `messages` so `send` can read the latest history without listing
+  // `messages` as a dependency (which would recreate `send` — and the memoised
+  // `handleSuggestionPress` — on every message, re-rendering all suggestions).
+  const messagesRef = useRef<Message[]>([]);
 
   // Load chat history from AsyncStorage on mount
   useEffect(() => {
@@ -115,8 +119,9 @@ export default function AIChatScreen() {
     };
   }, []);
 
-  // Persist messages to AsyncStorage after each change
+  // Persist messages to AsyncStorage after each change + keep the ref in sync.
   useEffect(() => {
+    messagesRef.current = messages;
     if (!hasLoadedHistory.current) return;
     saveChatHistory(messages);
   }, [messages]);
@@ -136,7 +141,10 @@ export default function AIChatScreen() {
       setSending(true);
 
       try {
-        const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+        const history = [...messagesRef.current, userMsg].map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
         const response = await sendChatMessage(history);
         const aiMsg: Message = {
           id: nextMessageId(),
@@ -169,7 +177,7 @@ export default function AIChatScreen() {
         setSending(false);
       }
     },
-    [input, sending, messages, t],
+    [input, sending, t],
   );
 
   const handleSuggestionPress = useCallback(

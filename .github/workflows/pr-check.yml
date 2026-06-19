@@ -39,5 +39,8 @@ jobs:
           cache-dependency-path: expo-app/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
+      # Use the typecheck script (node --stack-size=16000) — plain `tsc` crashes
+      # on this codebase with RangeError: Maximum call stack size exceeded.
+      # Code is 0-error; the crash is a V8 default-stack limit, not a type error.
+      - run: npm run typecheck
       - run: npm test -- --ci

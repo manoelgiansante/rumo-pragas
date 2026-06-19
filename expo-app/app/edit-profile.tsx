@@ -192,8 +192,13 @@ export default function EditProfileScreen() {
         // Cache-bust so React Native Image picks up the new bytes immediately.
         const finalUrl = `${publicUrl.publicUrl}?t=${Date.now()}`;
 
-        // Persist URL on profile (and metadata for quick reads in headers)
-        await supabase.from('pragas_profiles').update({ avatar_url: finalUrl }).eq('id', user.id);
+        // Persist URL on profile (and metadata for quick reads in headers).
+        // upsert (not update) so the avatar persists even when the profile row
+        // doesn't exist yet — a plain update against a missing row is a silent
+        // no-op (0 rows, no error) and the avatar would appear to save but vanish.
+        await supabase
+          .from('pragas_profiles')
+          .upsert({ id: user.id, avatar_url: finalUrl }, { onConflict: 'id' });
 
         setProfile((p) => ({ ...p, avatar_url: finalUrl }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -245,16 +250,24 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('pragas_profiles')
-        .update({
+      // upsert (not update) so the first-ever profile save self-heals when the
+      // pragas_profiles row was never created (e.g. signup before the row trigger
+      // existed / a social-login path that skipped row creation). A plain
+      // `.update().eq('id', ...)` against a missing row affects 0 rows and
+      // returns NO error — the user sees "profile saved" but nothing persists
+      // (silent CRUD-edit failure). Upsert is idempotent: identical result when
+      // the row already exists, creates it when absent.
+      const { error } = await supabase.from('pragas_profiles').upsert(
+        {
+          id: user.id,
           full_name: profile.full_name.trim(),
           city: profile.city.trim() || null,
           state: profile.state || null,
           phone: profile.phone.trim() || null,
           crops: profile.crops.length > 0 ? profile.crops : null,
-        })
-        .eq('id', user.id);
+        },
+        { onConflict: 'id' },
+      );
 
       if (error) throw error;
 

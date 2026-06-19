@@ -19,3 +19,34 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageTag: 'pt-BR', languageCode: 'pt' }],
 }));
+
+// 3. Mock @sentry/react-native globally with a no-op stub.
+//    The real module arms a module-scope setInterval (AsyncExpiringMap cleanup
+//    ticker in timeToDisplayFallback) the instant it is require()'d. That timer
+//    is never .unref()'d, so it keeps the Jest worker alive after the suite
+//    ends and triggers the "worker process has failed to exit gracefully …
+//    ensure that .unref() was called" warning. Suites that need to assert on
+//    Sentry calls declare their own jest.mock('@sentry/react-native', …),
+//    which takes precedence over this global stub; everything else just gets
+//    the no-op and never loads the leaking real module.
+jest.mock('@sentry/react-native', () => {
+  const noop = () => undefined;
+  const scope = {
+    setTag: noop,
+    setContext: noop,
+    setExtra: noop,
+    setLevel: noop,
+    setUser: noop,
+  };
+  return {
+    init: noop,
+    wrap: <T>(component: T): T => component,
+    addBreadcrumb: noop,
+    captureException: noop,
+    captureMessage: noop,
+    setUser: noop,
+    setTag: noop,
+    setContext: noop,
+    withScope: (cb: (s: typeof scope) => void) => cb(scope),
+  };
+});
