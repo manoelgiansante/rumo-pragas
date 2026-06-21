@@ -78,6 +78,7 @@
   },
   "dependencies": {
     "@agrorumo/ia-hub-client": "file:./vendor/ia-hub-client",
+    "@babel/core": "^7.29.6",
     "@expo/metro-runtime": "~55.0.10",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -112,6 +113,7 @@
     "expo-updates": "~55.0.21",
     "expo-web-browser": "~55.0.14",
     "i18next": "^25.10.10",
+    "js-yaml": "^4.2.0",
     "lucide-react-native": "^0.577.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
