@@ -3,18 +3,26 @@
 **Package name:** com.agrorumo.rumopragas
 **Track target:** Internal → Closed → Production
 **Primary Locale:** pt-BR
-**Updated:** 2026-04-15
+**Updated:** 2026-06-15
+**App version:** 1.0.7 — Android `versionCode` 33 (see `expo-app/app.json`); iOS `buildNumber` 46
+
+> ⚠️ **Live Play Console track status NOT verified from this branch.** The
+> release-tracks table below is reconstructed from the in-repo `app.json`
+> (`versionCode: 33`), not from a live Play Console read. Before relying on it
+> for a Play submission, confirm the actual track/rollout state in
+> Play Console → Rumo Pragas → Release → Track overview (CEO / authenticated
+> session). Do NOT assume "Production live" from this doc alone.
 
 ---
 
 ## 1. App Details
 
-| Campo | Valor | Chars |
-|---|---|---|
-| Title | `Rumo Pragas: Diagnostico IA` | 28/30 |
-| Short description | `IA que identifica praga por foto em 5s. Tratamento pra soja, milho e cafe.` | 74/80 |
-| Full description | ver `expo-app/store-assets/metadata/android/pt-BR/full_description.txt` | ~3800/4000 |
-| What's New (release notes) | ver `expo-app/store-assets/metadata/android/pt-BR/whats_new.txt` | ~343/500 |
+| Campo                      | Valor                                                                        | Chars      |
+| -------------------------- | ---------------------------------------------------------------------------- | ---------- |
+| Title                      | `Rumo Pragas: Diagnostico IA`                                                | 28/30      |
+| Short description          | `IA que identifica praga por foto em 5s. Tratamento pra soja, milho e cafe.` | 74/80      |
+| Full description           | ver `expo-app/store-assets/metadata/android/pt-BR/full_description.txt`      | ~3800/4000 |
+| What's New (release notes) | ver `expo-app/store-assets/metadata/android/pt-BR/whats_new.txt`             | ~343/500   |
 
 ### Category & tags
 
@@ -29,11 +37,11 @@
 
 ## 2. Graphic Assets
 
-| Tipo | Path | Dimensões |
-|---|---|---|
-| Feature Graphic | `expo-app/store-assets/android/feature-graphic.png` | 1024x500 |
-| Phone Screenshots | `expo-app/store-assets/android/phone/*.png` | 1080x2340 |
-| App Icon | `expo-app/assets/images/icon.png` | 512x512 (verificar) |
+| Tipo              | Path                                                | Dimensões           |
+| ----------------- | --------------------------------------------------- | ------------------- |
+| Feature Graphic   | `expo-app/store-assets/android/feature-graphic.png` | 1024x500            |
+| Phone Screenshots | `expo-app/store-assets/android/phone/*.png`         | 1080x2340           |
+| App Icon          | `expo-app/assets/images/icon.png`                   | 512x512 (verificar) |
 
 ### Screenshots (ordem recomendada)
 
@@ -51,11 +59,11 @@
 
 ## 3. Store Listing Contact
 
-| Campo | Valor |
-|---|---|
-| Website | https://pragas.agrorumo.com |
-| Email | contato@agrorumo.com |
-| Phone | (opcional) |
+| Campo          | Valor                                   |
+| -------------- | --------------------------------------- |
+| Website        | https://pragas.agrorumo.com             |
+| Email          | contato@agrorumo.com                    |
+| Phone          | (opcional)                              |
 | Privacy Policy | https://pragas.agrorumo.com/privacidade |
 
 ---
@@ -64,16 +72,16 @@
 
 ### Dados coletados
 
-| Tipo | Dado | Finalidade | Compartilhado | Obrigatório |
-|---|---|---|---|---|
-| Informações pessoais | Email | Contas, comunicação | Não | Sim |
-| Informações pessoais | Nome | Contas | Não | Opcional |
-| Fotos/Vídeos | Fotos | Funcionalidade | Não (processado, não vendido) | Obrigatório p/ diagnóstico |
-| Localização | Local aproximado | Funcionalidade | Não | Opcional |
-| ID do app | User ID | Análise, funcionalidade | Não | Sim |
-| Atividade do app | Interações | Análise | Não | Sim |
-| Diagnóstico | Travamentos | Análise (Sentry) | Não | Sim |
-| Diagnóstico | Performance | Análise | Não | Sim |
+| Tipo                 | Dado             | Finalidade              | Compartilhado                 | Obrigatório                |
+| -------------------- | ---------------- | ----------------------- | ----------------------------- | -------------------------- |
+| Informações pessoais | Email            | Contas, comunicação     | Não                           | Sim                        |
+| Informações pessoais | Nome             | Contas                  | Não                           | Opcional                   |
+| Fotos/Vídeos         | Fotos            | Funcionalidade          | Não (processado, não vendido) | Obrigatório p/ diagnóstico |
+| Localização          | Local aproximado | Funcionalidade          | Não                           | Opcional                   |
+| ID do app            | User ID          | Análise, funcionalidade | Não                           | Sim                        |
+| Atividade do app     | Interações       | Análise                 | Não                           | Sim                        |
+| Diagnóstico          | Travamentos      | Análise (Sentry)        | Não                           | Sim                        |
+| Diagnóstico          | Performance      | Análise                 | Não                           | Sim                        |
 
 ### Práticas de segurança
 
@@ -107,6 +115,7 @@
 ### Upload via API (opcional)
 
 > Sem credencial Play Developer API (`google-play-api-key.json`) atualmente configurada no ambiente. Para automatizar uploads futuros:
+>
 > 1. Service account: `Play Console → Setup → API access → create service account`
 > 2. Conceder roles: `Release Manager`
 > 3. Download JSON key → salvar em `~/.keys/play-publisher.json`
@@ -116,11 +125,15 @@
 
 ## 7. Release tracks
 
-| Track | Status | Version Code | Action |
-|---|---|---|---|
-| Internal | Submitted (anterior) | 1 | Usar p/ QA interno |
-| Closed (Alpha) | Pending | — | Promover após QA |
-| Production | Pending | — | Promover após Closed aprovado |
+> Version codes below reflect the current in-repo `app.json` (`versionCode: 33`).
+> The **Status** column must be re-confirmed live in Play Console — it is not
+> readable from this branch (see warning at top of this doc).
+
+| Track          | Status (verify live)        | Version Code  | Action                        |
+| -------------- | --------------------------- | ------------- | ----------------------------- |
+| Internal       | _verificar no Play Console_ | 33 (app.json) | QA interno                    |
+| Closed (Alpha) | _verificar no Play Console_ | 33 (app.json) | Promover após QA              |
+| Production     | _verificar no Play Console_ | 33 (app.json) | Promover após Closed aprovado |
 
 ---
 

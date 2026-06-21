@@ -291,8 +291,8 @@ export default function PrivacyScreen() {
         <Text style={styles.paragraph}>
           Para exercer seus direitos ou esclarecer duvidas sobre o tratamento de seus dados
           pessoais, entre em contato conosco:{'\n\n'}
-          Email: privacidade@agrorumo.com.br{'\n'}
-          Encarregado de Dados (DPO): dpo@agrorumo.com.br
+          Email: privacidade@agrorumo.com{'\n'}
+          Encarregado de Dados (DPO): dpo@agrorumo.com
         </Text>
 
         <View style={styles.bottomSpacer} />

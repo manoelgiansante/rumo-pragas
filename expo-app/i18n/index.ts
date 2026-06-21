@@ -38,8 +38,16 @@ i18n.use(initReactI18next).init({
   lng: getDefaultLanguage(),
   fallbackLng: 'pt-BR',
   supportedLngs: ['pt-BR', 'en', 'en-US', 'es', 'es-ES'],
-  nonExplicitSupportedLngs: true,
+  // NOTE: `nonExplicitSupportedLngs` was removed (2026-06-04). On i18next v25
+  // the combination of `supportedLngs` + `nonExplicitSupportedLngs: true`
+  // breaks key resolution: the translator resolves a language code that no
+  // longer matches the resource-store key, so `t()` silently returns the raw
+  // key (e.g. "errors.deleteDiagnosis") instead of the translation. The
+  // dual-key registration above (short `en`/`es` + BCP-47 `en-US`/`es-ES`)
+  // already covers region variants like `es-AR` via natural fallback, so the
+  // flag was both redundant and harmful.
   interpolation: { escapeValue: false },
+  initImmediate: false, // synchronous init; resources are inline
   react: { useSuspense: false },
 });
 

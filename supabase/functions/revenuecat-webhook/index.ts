@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException } from "../_shared/sentry.ts";
+
+// Alias for legacy call sites that referenced `captureError` (no import existed —
+// audit Wave 3-B 2026-05-22 caught the dangling reference; this preserves
+// behavior while making it route through the shared Sentry helper).
+const captureError = captureException;
 
 /**
  * Edge Function: revenuecat-webhook
@@ -486,6 +492,10 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     logJson("revenuecat-webhook", requestId, "ERROR", "Unexpected error", { error: String(err) });
+    await captureException(err, {
+      tags: { fn: "revenuecat-webhook", op: "handler_error", requestId },
+      extra: { eventId: event?.id, eventType: event?.type },
+    });
     return new Response(
       JSON.stringify({ error: "Internal server error", requestId }),
       {

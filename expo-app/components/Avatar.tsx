@@ -26,6 +26,8 @@ export function Avatar({ uri, name, size = 60, style }: AvatarProps) {
     return (
       <Image
         accessibilityIgnoresInvertColors
+        accessibilityRole="image"
+        accessibilityLabel={name}
         source={{ uri }}
         style={[
           { width: size, height: size, borderRadius: size / 2 } as ImageStyle,

@@ -150,7 +150,7 @@ export default function TermsScreen() {
         </Text>
         <Text style={styles.paragraph}>
           Em caso de duvidas sobre estes Termos de Uso, entre em contato conosco pelo email:
-          contato@agrorumo.com.br
+          contato@agrorumo.com
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -159,8 +159,8 @@ export default function TermsScreen() {
         <Text style={styles.paragraph}>
           Razao Social: AgroRumo (Manoel Nascimento - Pessoa Fisica){'\n'}
           CNPJ: Em processo de registro como MEI{'\n'}
-          Email: contato@agrorumo.com.br{'\n'}
-          DPO: dpo@agrorumo.com.br
+          Email: contato@agrorumo.com{'\n'}
+          DPO: dpo@agrorumo.com
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">

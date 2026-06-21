@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, ClipboardList, BookOpen, ShieldCheck } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { Camera, BookOpen, ShieldCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import Animated, {
@@ -22,8 +20,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
-
-const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
+import { useNavigationGate } from '../contexts/NavigationGateContext';
+import { trackEvent } from '../services/analytics';
 
 interface OnboardingPage {
   id: string;
@@ -33,6 +31,11 @@ interface OnboardingPage {
   Icon: typeof Camera;
 }
 
+// QW-2 (W16-1, 2026-05-22): reduced 4 -> 3 pages by removing the secondary
+// "Histórico Completo" feature page (was page2). Each extra onboarding screen
+// historically drops conversion 5-8%; the History feature is discoverable
+// in-app via the dedicated tab and doesn't need a dedicated onboarding pitch.
+// Page1 = primary value prop (AI diagnose), page3->2 = library, page4->3 = MIP/CTA.
 // Sequential green/amber ramp — no rainbow, no tech-blue (per design system token doc).
 const PAGES: OnboardingPage[] = [
   {
@@ -44,20 +47,13 @@ const PAGES: OnboardingPage[] = [
   },
   {
     id: '2',
-    titleKey: 'onboarding.page2Title',
-    subtitleKey: 'onboarding.page2Subtitle',
-    gradientColors: ['#0B3D2E', '#145A45'],
-    Icon: ClipboardList,
-  },
-  {
-    id: '3',
     titleKey: 'onboarding.page3Title',
     subtitleKey: 'onboarding.page3Subtitle',
     gradientColors: ['#7A5C2E', '#C89B3C'],
     Icon: BookOpen,
   },
   {
-    id: '4',
+    id: '3',
     titleKey: 'onboarding.page4Title',
     subtitleKey: 'onboarding.page4Subtitle',
     gradientColors: ['#0F6B4D', '#29B887'],
@@ -88,7 +84,7 @@ function Dot({ active }: DotProps) {
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const { markOnboardingSeen } = useNavigationGate();
   // P0 (Apple 2.1.0 — iPad rejection 2026-04-29): live useWindowDimensions
   // so FlatList page width tracks rotation / split-view / iPad scaling.
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -96,17 +92,29 @@ export default function OnboardingScreen() {
 
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // QW-2 (W16-1, 2026-05-22): instrument onboarding lifecycle so we can measure
+  // the conversion delta vs. the 4-page baseline.
+  useEffect(() => {
+    trackEvent('onboarding_started', { total_pages: PAGES.length });
+  }, []);
 
-  const finishOnboarding = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-    } catch {
-      // Never block navigation on storage failure — Apple reviewer must
-      // always be able to leave this screen.
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    router.replace('/(auth)/login');
-  }, [router]);
+  const finishOnboarding = useCallback(
+    (reason: 'completed' | 'skipped') => {
+      trackEvent('onboarding_finished', {
+        reason,
+        last_page_index: currentIndex,
+        total_pages: PAGES.length,
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      // RUMO-PRAGAS-7/8 fix: do NOT self-navigate. Mark the gate flag (which also
+      // persists to AsyncStorage) and let the single source-of-truth routing
+      // effect in app/_layout.tsx route to '/(auth)/login' (or '/(tabs)' if the
+      // user is already authenticated). Self-navigating here was the same
+      // dual-writer pattern that fed the infinite update loop.
+      markOnboardingSeen();
+    },
+    [markOnboardingSeen, currentIndex],
+  );
 
   const goToNext = useCallback(() => {
     if (currentIndex < PAGES.length - 1) {
@@ -122,7 +130,7 @@ export default function OnboardingScreen() {
       setCurrentIndex(nextIndex);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     } else {
-      finishOnboarding();
+      finishOnboarding('completed');
     }
   }, [currentIndex, screenWidth, finishOnboarding]);
 
@@ -195,7 +203,7 @@ export default function OnboardingScreen() {
       {!isLastPage ? (
         <View style={styles.topRight}>
           <TouchableOpacity
-            onPress={finishOnboarding}
+            onPress={() => finishOnboarding('skipped')}
             style={styles.skipPill}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityLabel={t('onboarding.skipA11y')}

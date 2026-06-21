@@ -11,13 +11,25 @@ if (!CLAUDE_API_KEY) {
   console.error(JSON.stringify({ function: "ai-chat", level: "FATAL", message: "CLAUDE_API_KEY not set. Function will reject all requests." }));
 }
 
-// ── Security: CORS — whitelist fallback instead of wildcard ──
-// If ALLOWED_ORIGINS env is not configured, fall back to known-safe origins.
-// This protects production even if env var is accidentally unset.
+// ── Security: CORS — hardcoded fallback + cross-app coverage (audit #17) ──
+// Edge fn ai-chat is shared across rumo-pragas AND rumo-vet (same Anthropic
+// chat backend, hosted in jxcn). Allowlist MUST include both apps' production
+// origins. ALLOWED_ORIGINS env is a single project-level secret in jxcn shared
+// across all apps' fns — if a sibling app sets it, the fallback below ensures
+// vet/pragas origins still resolve.
+//
+// RUMO-VET-4 class: prior version omitted vet origins entirely from the
+// fallback. A wrong ALLOWED_ORIGINS env meant vet calls were silently blocked.
 const DEFAULT_ALLOWED = [
+  // rumo-pragas origins
   "https://pragas.agrorumo.com",
   "https://rumopragas.com.br",
   "https://rumo-pragas.vercel.app",
+  // rumo-vet origins (audit #17 fix — was missing, caused class RUMO-VET-4)
+  "https://app.vet.agrorumo.com",
+  "https://rumo-vet.agrorumo.com",
+  "https://app.agrorumo.com",
+  // dev
   "exp://localhost:19000",
   "exp://localhost:8081",
   "http://localhost:19006",
@@ -29,20 +41,24 @@ const ALLOWED_ORIGINS = (() => {
   return env.split(",").map((o) => o.trim()).filter(Boolean);
 })();
 
+function isOriginAllowed(origin: string): boolean {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (origin.endsWith(".expo.dev")) return true;
+  if (origin.endsWith(".exp.host")) return true;
+  return false;
+}
+
 function getCorsHeaders(req?: Request) {
   const origin = req?.headers.get("origin") ?? "";
-  const allowedOrigin =
-    ALLOWED_ORIGINS.length === 0
-      ? ""
-      : ALLOWED_ORIGINS.includes(origin)
-        ? origin
-        : "";
-
+  const allow = isOriginAllowed(origin);
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": allow ? origin : "",
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
   };
 }
 
@@ -146,20 +162,32 @@ function validateMessage(msg: unknown): msg is ChatMessage {
 Deno.serve(async (req: Request) => {
   const requestId = generateRequestId();
   const corsHeaders = getCorsHeaders(req);
+  const origin = req.headers.get("origin") ?? "";
 
   // ── Structured request metadata logging (#10) ──
   logJson("ai-chat", requestId, "INFO", "Request received", {
     method: req.method,
-    origin: req.headers.get("origin") ?? "none",
+    origin: origin || "none",
   });
 
   if (req.method === "OPTIONS") {
     return new Response("ok", {
-      headers: {
-        ...corsHeaders,
-        "Access-Control-Max-Age": "86400", // (#4) Cache preflight for 24h
-      },
+      headers: corsHeaders,
     });
+  }
+
+  // CORS defense-in-depth (audit #17): reject non-allowlisted origins LOUDLY
+  // (403) instead of silently echoing empty ACAO. Only enforce on browser POSTs
+  // (origin present); server-to-server callers (no Origin) still pass through.
+  if (origin && !isOriginAllowed(origin)) {
+    logJson("ai-chat", requestId, "WARN", "origin_not_allowed", { origin });
+    return new Response(
+      JSON.stringify({ error: "origin_not_allowed", requestId }),
+      {
+        status: 403,
+        headers: { "Content-Type": "application/json", Vary: "Origin" },
+      },
+    );
   }
 
   if (req.method !== "POST") {

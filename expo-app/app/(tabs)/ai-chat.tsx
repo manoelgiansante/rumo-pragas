@@ -32,6 +32,18 @@ interface Message {
 const CHAT_HISTORY_KEY = '@rumo_pragas_chat_history';
 const MAX_STORED_MESSAGES = 50;
 
+/**
+ * Monotonic, collision-free message id generator.
+ * `Date.now()` (and `Date.now() + 1`) collide when two messages are created
+ * within the same handler / millisecond (e.g. user + AI reply on the error
+ * path, or rapid suggestion taps), producing duplicate React keys.
+ */
+let messageIdCounter = 0;
+function nextMessageId(): string {
+  messageIdCounter += 1;
+  return `${Date.now()}-${messageIdCounter}`;
+}
+
 /** Serializable version of Message (timestamp as string) */
 interface StoredMessage {
   id: string;
@@ -85,6 +97,10 @@ export default function AIChatScreen() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const hasLoadedHistory = useRef(false);
+  // Mirror of `messages` so `send` can read the latest history without listing
+  // `messages` as a dependency (which would recreate `send` — and the memoised
+  // `handleSuggestionPress` — on every message, re-rendering all suggestions).
+  const messagesRef = useRef<Message[]>([]);
 
   // Load chat history from AsyncStorage on mount
   useEffect(() => {
@@ -103,8 +119,9 @@ export default function AIChatScreen() {
     };
   }, []);
 
-  // Persist messages to AsyncStorage after each change
+  // Persist messages to AsyncStorage after each change + keep the ref in sync.
   useEffect(() => {
+    messagesRef.current = messages;
     if (!hasLoadedHistory.current) return;
     saveChatHistory(messages);
   }, [messages]);
@@ -114,7 +131,7 @@ export default function AIChatScreen() {
       const msg = (text || input).trim();
       if (!msg || sending) return;
       const userMsg: Message = {
-        id: Date.now().toString(),
+        id: nextMessageId(),
         role: 'user',
         content: msg,
         timestamp: new Date(),
@@ -124,10 +141,13 @@ export default function AIChatScreen() {
       setSending(true);
 
       try {
-        const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+        const history = [...messagesRef.current, userMsg].map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
         const response = await sendChatMessage(history);
         const aiMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: nextMessageId(),
           role: 'assistant',
           content: response,
           timestamp: new Date(),
@@ -144,7 +164,7 @@ export default function AIChatScreen() {
           ]);
         }
         const errMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: nextMessageId(),
           role: 'assistant',
           content:
             errCode === 'CHAT_LIMIT_REACHED'
@@ -153,10 +173,11 @@ export default function AIChatScreen() {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errMsg]);
+      } finally {
+        setSending(false);
       }
-      setSending(false);
     },
-    [input, sending, messages, t],
+    [input, sending, t],
   );
 
   const handleSuggestionPress = useCallback(

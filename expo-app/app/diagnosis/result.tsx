@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   Image,
+  Share,
   useColorScheme,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -315,18 +316,59 @@ export default function ResultScreen() {
     ].join('\n');
   }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
+  // Share the diagnosis. Prefer the WhatsApp deep link when it is actually
+  // openable, but NEVER let a missing/unopenable WhatsApp turn into a UX
+  // dead-end or an unhandled throw.
+  //
+  // RUMO-PRAGAS-5 ("Unable to open URL: whatsapp://send?...") root cause:
+  //   1. `whatsapp` is not declared in iOS `LSApplicationQueriesSchemes`, so
+  //      `Linking.canOpenURL('whatsapp://...')` returns false even when the
+  //      app IS installed — and historically `openURL` could throw.
+  //   2. The Apple reviewer's device has no WhatsApp at all, so the old code
+  //      hit a dead-end Alert ("WhatsApp not installed") with no way to share.
+  //
+  // Fix: try the WhatsApp deep link inside try/catch; on any failure fall back
+  // to the native OS share sheet (`Share.share`), which always works and lets
+  // the reviewer (and any non-WhatsApp user) actually share the diagnosis.
   const handleWhatsAppShare = useCallback(async () => {
     void Haptics.selectionAsync().catch(() => {
       /* haptics best-effort */
     });
     const text = buildShareText();
+
+    // 1. Fast path: open WhatsApp directly if it is reachable.
     const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      trackShareDiagnosis('whatsapp');
-      await Linking.openURL(url);
-    } else {
-      Alert.alert('WhatsApp', t('diagnosis.whatsAppNotInstalled'));
+    try {
+      if (await Linking.canOpenURL(url)) {
+        trackShareDiagnosis('whatsapp');
+        await Linking.openURL(url);
+        return;
+      }
+    } catch (err) {
+      // Deep link failed (not installed / scheme not whitelisted) — fall
+      // through to the native share sheet. Breadcrumb only, never capture:
+      // this is an expected, non-actionable condition.
+      addBreadcrumb({
+        category: 'share',
+        message: 'whatsapp.deeplink.unavailable',
+        level: 'info',
+        data: { reason: err instanceof Error ? err.message : 'canOpen/open failed' },
+      });
+    }
+
+    // 2. Graceful fallback: native OS share sheet (works without WhatsApp).
+    try {
+      trackShareDiagnosis('share_sheet');
+      await Share.share({ message: text }, { dialogTitle: t('diagnosis.shareTitle') });
+    } catch (err) {
+      // The user dismissing the share sheet rejects on some platforms — treat
+      // as non-fatal. Only show an alert if sharing is genuinely unavailable.
+      addBreadcrumb({
+        category: 'share',
+        message: 'share.sheet.dismissed_or_failed',
+        level: 'info',
+        data: { reason: err instanceof Error ? err.message : 'share failed' },
+      });
     }
   }, [buildShareText, t]);
 

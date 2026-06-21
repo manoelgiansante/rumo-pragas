@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import { useGoogleSignIn } from '../../services/googleAuth';
 import {
   Colors,
   Spacing,
@@ -42,6 +43,12 @@ export default function LoginScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const {
+    ready: googleReady,
+    loading: googleLoading,
+    signIn: googleSignIn,
+    configured: googleConfigured,
+  } = useGoogleSignIn();
   // Guards against rapid double-tap submitting the same form twice. The
   // network request might be in-flight before isLoading flips, so we use a
   // local ref to short-circuit re-entry within the same tick.
@@ -84,10 +91,9 @@ export default function LoginScreen() {
       return;
     }
 
-    if (mode === 'signup' && !fullName.trim()) {
-      Alert.alert('', t('auth.enterFullName'));
-      return;
-    }
+    // QW-3 (W16-1, 2026-05-22): fullName is OPTIONAL on signup. -1 required
+    // field is worth ~8-12% conv lift on Android (where the soft keyboard
+    // covers the form). The user can fill it later in edit-profile.
 
     submitGuardRef.current = true;
     Sentry.addBreadcrumb({
@@ -100,7 +106,11 @@ export default function LoginScreen() {
       if (mode === 'login') {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password, fullName.trim());
+        // QW-3: pass undefined when empty so the backend stores NULL instead
+        // of an empty string in profiles.full_name. Avoids "" as a sentinel
+        // that downstream code might display as the user's name.
+        const trimmedName = fullName.trim();
+        await signUp(email.trim(), password, trimmedName ? trimmedName : undefined);
         Alert.alert('', t('auth.checkEmail'));
       }
     } catch (err) {
@@ -140,6 +150,44 @@ export default function LoginScreen() {
     setMode(newMode);
     setAcceptedTerms(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (googleLoading || !googleReady) return;
+    try {
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'login.google.start',
+        level: 'info',
+      });
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const outcome = await googleSignIn();
+      if (outcome.kind === 'cancelled') {
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'login.google.cancelled',
+          level: 'info',
+        });
+        return;
+      }
+      if (outcome.kind === 'error') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Sentry.captureException(outcome.error, {
+          tags: { feature: 'auth', action: 'google_signin' },
+        });
+        Alert.alert(t('common.error'), outcome.error.message || t('auth.googleSignInError'));
+        return;
+      }
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'login.google.success',
+        level: 'info',
+      });
+    } catch (err: unknown) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Sentry.captureException(err, { tags: { feature: 'auth', action: 'google_signin' } });
+      Alert.alert(t('common.error'), t('auth.googleSignInError'));
+    }
   };
 
   const handleAppleSignIn = async () => {
@@ -254,14 +302,14 @@ export default function LoginScreen() {
                   <TextInput
                     testID="login-input-fullname"
                     style={styles.input}
-                    placeholder={t('auth.fullNamePlaceholder')}
+                    placeholder={t('auth.fullNameOptionalPlaceholder')}
                     placeholderTextColor={Colors.systemGray2}
                     value={fullName}
                     onChangeText={setFullName}
                     autoCapitalize="words"
                     returnKeyType="next"
                     onSubmitEditing={() => emailRef.current?.focus()}
-                    accessibilityLabel={t('auth.fullNameA11y')}
+                    accessibilityLabel={t('auth.fullNameOptionalA11y')}
                     accessibilityRole="text"
                   />
                 </View>
@@ -429,8 +477,12 @@ export default function LoginScreen() {
               </Text>
             ) : null}
 
-            {/* Social sign-in divider & Apple Sign In */}
-            {appleAvailable && (
+            {/* Social sign-in divider & Apple / Google Sign In.
+              Renders if at least one provider is usable on this device.
+              Apple is iOS-only (gated by isAppleSignInAvailable).
+              Google is cross-platform (gated by EXPO_PUBLIC_GOOGLE_CLIENT_ID
+              being wired at build time). */}
+            {(appleAvailable || googleConfigured) && (
               <>
                 <View style={styles.dividerRow}>
                   <View style={styles.dividerLine} />
@@ -438,25 +490,52 @@ export default function LoginScreen() {
                   <View style={styles.dividerLine} />
                 </View>
 
-                <TouchableOpacity
-                  testID="login-apple-signin"
-                  style={styles.appleButton}
-                  onPress={handleAppleSignIn}
-                  disabled={appleLoading}
-                  activeOpacity={0.8}
-                  accessibilityLabel={t('auth.appleA11y')}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: appleLoading, busy: appleLoading }}
-                >
-                  {appleLoading ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="logo-apple" size={20} color="#FFF" />
-                      <Text style={styles.appleButtonText}>{t('auth.signInWithApple')}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                {appleAvailable && (
+                  <TouchableOpacity
+                    testID="login-apple-signin"
+                    style={styles.appleButton}
+                    onPress={handleAppleSignIn}
+                    disabled={appleLoading}
+                    activeOpacity={0.8}
+                    accessibilityLabel={t('auth.appleA11y')}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: appleLoading, busy: appleLoading }}
+                  >
+                    {appleLoading ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-apple" size={20} color="#FFF" />
+                        <Text style={styles.appleButtonText}>{t('auth.signInWithApple')}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                {googleConfigured && (
+                  <TouchableOpacity
+                    testID="login-google-signin"
+                    style={styles.googleButton}
+                    onPress={handleGoogleSignIn}
+                    disabled={googleLoading || !googleReady}
+                    activeOpacity={0.8}
+                    accessibilityLabel={t('auth.googleA11y')}
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      disabled: googleLoading || !googleReady,
+                      busy: googleLoading,
+                    }}
+                  >
+                    {googleLoading ? (
+                      <ActivityIndicator color={Colors.text} />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-google" size={20} color={Colors.text} />
+                        <Text style={styles.googleButtonText}>{t('auth.signInWithGoogle')}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </>
             )}
           </View>
@@ -677,5 +756,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
     color: '#FFF',
+  },
+  // Google brand guidelines: light variant. White button, dark text,
+  // 1px outline so it doesn't disappear on white form card. Logo at 20px to
+  // match Apple's height for visual consistency.
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: BorderRadius.md,
+    paddingVertical: 14,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+  },
+  googleButtonText: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: '#3C4043',
   },
 });

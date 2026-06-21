@@ -476,11 +476,17 @@ export default function SettingsScreen() {
   };
 
   const openMail = () => {
-    import('expo-linking').then(({ openURL }) =>
-      openURL(
-        `mailto:suporte@agrorumo.com.br?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
-      ),
-    );
+    // A device without a configured mail client (e.g. an App Review iPad)
+    // rejects openURL — guard it so it never becomes an unhandled rejection.
+    import('expo-linking')
+      .then(({ openURL }) =>
+        openURL(
+          `mailto:suporte@agrorumo.com?subject=${encodeURIComponent(t('settings.supportSubject'))}`,
+        ),
+      )
+      .catch(() => {
+        Alert.alert(t('settings.support'), 'suporte@agrorumo.com');
+      });
   };
 
   return (

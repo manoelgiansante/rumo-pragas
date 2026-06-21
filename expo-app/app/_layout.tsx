@@ -1,24 +1,21 @@
 import '../i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, View, StyleSheet, Platform, Dimensions } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import { getSentryRelease } from '../services/sentry-release';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { DiagnosisProvider } from '../contexts/DiagnosisContext';
+import { NavigationGateProvider, useNavigationGate } from '../contexts/NavigationGateContext';
+import { GATE_HREF, needsRedirect, resolveGateTarget } from '../services/navigationGate';
 import { useNotifications } from '../hooks/useNotifications';
 import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
 import { useOTAUpdate } from '../hooks/useOTAUpdate';
-import { initializePurchases } from '../services/purchases';
 import { initAnalytics, resetAnalytics } from '../services/analytics';
-import {
-  syncSubscriptionToSupabase,
-  startSubscriptionListener,
-  stopSubscriptionListener,
-} from '../services/subscriptionSync';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { Colors } from '../constants/theme';
@@ -33,15 +30,17 @@ let sentryInitialized = false;
 function initSentryOnce() {
   if (sentryInitialized) return;
   try {
+    // W17-4 (2026-05-22): canonical `<slug>@<version>+<buildId>` release ID
+    // resolved by getSentryRelease(). Reads EXPO_PUBLIC_BUILD_ID env override
+    // first (set by EAS), then falls back to platform-specific buildNumber.
+    // Backward-compat: `extra.sentryRelease` in app.json still wins if set
+    // (legacy escape hatch — prefer not to set it).
     const expoConfig = Constants.expoConfig;
-    const appVersion = expoConfig?.version ?? '0.0.0';
-    const iosBuildNumber = expoConfig?.ios?.buildNumber;
-    const androidVersionCode = expoConfig?.android?.versionCode;
-    const sentryDist =
-      iosBuildNumber ?? (androidVersionCode != null ? String(androidVersionCode) : undefined);
+    const { release: defaultRelease, dist: defaultDist } = getSentryRelease();
     const sentryRelease =
       (expoConfig?.extra as { sentryRelease?: string } | undefined)?.sentryRelease ??
-      `rumo-pragas@${appVersion}`;
+      defaultRelease;
+    const sentryDist = defaultDist;
 
     Sentry.init({
       dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
@@ -93,15 +92,63 @@ function initSentryOnce() {
 // Prevent the splash screen from auto-hiding before data is loaded
 SplashScreen.preventAutoHideAsync();
 
-const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
-const LOCATION_CONSENT_SHOWN_KEY = '@rumo_pragas_location_consent_shown';
+// -----------------------------------------------------------------------------
+// ABSOLUTE SPLASH WATCHDOG (Apple Guideline 2.1(a) — iPad freeze defense)
+// -----------------------------------------------------------------------------
+// Apple repeatedly rejected the app for "freezes on the loading screen" on
+// iPad (iPadOS 26.5) during cold start / Sign in with Apple. Root cause class:
+// the splash is only hidden from inside React effects (auth + onboarding +
+// consent checks). If ANY of the following stalls, the splash NEVER hides and
+// the app appears permanently frozen:
+//   - react-native-safe-area-context's native NativeSafeAreaProvider never
+//     reports insets (it gates ALL children behind `insets != null`), so the
+//     entire React tree — including the effects that hide the splash — never
+//     mounts. The useAuth() 8s timeout cannot help because its effect never runs.
+//   - getSession()/RevenueCat/network hangs on the reviewer's slow/proxied wifi.
+//   - A TurboModule init throws during bundle eval on iOS 26 New Architecture.
+//
+// This watchdog is armed at MODULE scope (independent of React render) and
+// force-hides the splash after a hard ceiling. It guarantees the user always
+// reaches an interactive screen, even if the React tree never mounts.
+const SPLASH_WATCHDOG_MS = 10000;
+let splashHidden = false;
+
+function safeHideSplash(reason: 'ready' | 'watchdog'): void {
+  if (splashHidden) return;
+  splashHidden = true;
+  if (splashWatchdogTimer) {
+    clearTimeout(splashWatchdogTimer);
+    splashWatchdogTimer = null;
+  }
+  // hideAsync can reject if called before the native module is ready or twice;
+  // never let that bubble. Use .catch on the returned promise AND a try/catch
+  // around the synchronous call surface.
+  try {
+    void SplashScreen.hideAsync().catch(() => {
+      /* splash already hidden / not yet shown — non-fatal */
+    });
+  } catch {
+    /* non-fatal */
+  }
+  if (__DEV__ && reason === 'watchdog') {
+    console.warn('[splash] watchdog fired — forcing hideAsync (bootstrap stalled)');
+  }
+}
+
+let splashWatchdogTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+  safeHideSplash('watchdog');
+}, SPLASH_WATCHDOG_MS);
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
-  const [hasSeenLocationConsent, setHasSeenLocationConsent] = useState<boolean | null>(null);
+  // Gate flags live in a reactive provider (NavigationGateContext) — NOT in
+  // local state read once on mount. This is the fix for the stale-read half of
+  // the RUMO-PRAGAS-7/8 infinite loop: when consent-location / onboarding finish,
+  // they call the provider setters, so this layout re-runs its routing effect
+  // with FRESH flags instead of a stale `false` that bounced the user back.
+  const { hasSeenOnboarding, hasSeenLocationConsent } = useNavigationGate();
 
   // Register for push notifications only after the user is authenticated
   useNotifications(isAuthenticated);
@@ -118,86 +165,181 @@ function RootLayoutNav() {
   // If ads/cross-app tracking are added in the future: reintroduce with a pre-prompt
   // screen explaining the purpose + gate call behind a post-login guard + AsyncStorage flag.
 
-  // Initialise RevenueCat for in-app purchases (never blocks startup)
+  // Initialise RevenueCat for in-app purchases (never blocks startup).
+  // The purchases service is loaded LAZILY via require() inside the effect —
+  // NOT imported at module scope — so `react-native-purchases` (a StoreKit
+  // TurboModule) is never pulled into the root layout's bundle-eval path. On
+  // iPad/iOS 26 New Architecture, evaluating that native module during cold
+  // start was a freeze/SIGABRT risk. Deferring to a post-mount effect means it
+  // only runs once React is alive and the splash watchdog is armed.
   useEffect(() => {
-    initializePurchases(user?.id).catch((e) => {
-      if (__DEV__) console.warn('[RevenueCat] Init failed (non-blocking):', e);
-    });
+    let cancelled = false;
+    (async () => {
+      try {
+        const { initializePurchases } = await import('../services/purchases');
+        if (cancelled) return;
+        await initializePurchases(user?.id);
+      } catch (e) {
+        if (__DEV__) console.warn('[RevenueCat] Init failed (non-blocking):', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
-  // Initialize analytics and subscription sync when user is authenticated
+  // Initialize analytics and subscription sync when user is authenticated.
+  // subscriptionSync (also a react-native-purchases consumer) is lazy-loaded
+  // for the same iPad cold-start reason as above.
   useEffect(() => {
     if (user?.id) {
-      initAnalytics(user.id);
-      syncSubscriptionToSupabase(user.id).catch((err: unknown) => {
-        if (__DEV__) console.error('[Layout] Subscription sync failed:', err);
-      });
-      startSubscriptionListener(user.id);
+      const uid = user.id;
+      initAnalytics(uid);
+      (async () => {
+        try {
+          const { syncSubscriptionToSupabase, startSubscriptionListener } =
+            await import('../services/subscriptionSync');
+          await syncSubscriptionToSupabase(uid);
+          startSubscriptionListener(uid);
+        } catch (err: unknown) {
+          if (__DEV__) console.error('[Layout] Subscription sync failed:', err);
+        }
+      })();
       // Set Sentry user context for crash reports — ID ONLY, no PII (no email).
       // beforeSend strips email defensively, but we also avoid passing it here.
-      Sentry.setUser({ id: user.id });
+      Sentry.setUser({ id: uid });
       Sentry.setTag('app.platform', Platform.OS);
       Sentry.setTag('app.version', Constants.expoConfig?.version ?? 'unknown');
     } else {
       resetAnalytics();
-      stopSubscriptionListener();
+      (async () => {
+        try {
+          const { stopSubscriptionListener } = await import('../services/subscriptionSync');
+          stopSubscriptionListener();
+        } catch {
+          /* non-fatal */
+        }
+      })();
       Sentry.setUser(null);
     }
   }, [user?.id, user?.email]);
 
-  useEffect(() => {
-    let mounted = true;
-    AsyncStorage.getItem(ONBOARDING_KEY)
-      .then((value) => {
-        if (mounted) setHasSeenOnboarding(value === 'true');
-      })
-      .catch((err: unknown) => {
-        if (__DEV__) console.error('[Layout] Failed to read onboarding key:', err);
-        if (mounted) setHasSeenOnboarding(false);
-      });
-    // P0-3 (LGPD): Read whether the user has already seen the location consent screen
-    AsyncStorage.getItem(LOCATION_CONSENT_SHOWN_KEY)
-      .then((value) => {
-        if (mounted) setHasSeenLocationConsent(value === 'true');
-      })
-      .catch((err: unknown) => {
-        if (__DEV__) console.error('[Layout] Failed to read consent key:', err);
-        if (mounted) setHasSeenLocationConsent(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Hide splash screen once auth state, onboarding and consent checks are resolved
+  // Hide splash screen once auth state, onboarding and consent checks are
+  // resolved. safeHideSplash() is idempotent and also disarms the absolute
+  // watchdog so the two never race / double-call hideAsync.
   useEffect(() => {
     if (!isLoading && hasSeenOnboarding !== null && hasSeenLocationConsent !== null) {
-      SplashScreen.hideAsync();
+      safeHideSplash('ready');
     }
   }, [isLoading, hasSeenOnboarding, hasSeenLocationConsent]);
 
+  // ---------------------------------------------------------------------------
+  // SINGLE SOURCE-OF-TRUTH ROUTING (fix for RUMO-PRAGAS-7/8 — Apple 2.1.0)
+  // ---------------------------------------------------------------------------
+  // resolveGateTarget() is a PURE function of the gate state: it returns exactly
+  // one top-level target route (or null while not ready). We then replace ONLY
+  // when the current segment differs from that target — and we guard with a ref
+  // holding the last target we already issued a replace toward, so the same
+  // replace is never fired twice while it is in flight.
+  //
+  // Why this makes the loop impossible:
+  //   * `useSegments()` is a useSyncExternalStore. The OLD code mutated that
+  //     store (router.replace) on every effect re-run whose condition was still
+  //     true, and because `hasSeenLocationConsent` was a STALE `false`, the
+  //     condition stayed true forever → re-render → re-run → replace → loop →
+  //     "Maximum update depth exceeded".
+  //   * Now: (a) the flags are fresh (provider), so once consent is marked the
+  //     target becomes '(tabs)' and STAYS '(tabs)'. (b) Even during the brief
+  //     window where `segments[0]` has not yet caught up to the target, the ref
+  //     guard suppresses any repeat replace toward the same target, so at most
+  //     ONE replace per distinct target is ever issued. When `segments[0]`
+  //     finally equals the target we clear the ref (arrival), ready for the next
+  //     legitimate transition. No oscillation is reachable.
+  // Guard against re-firing a replace toward a target we are already in flight
+  // toward OR have already arrived at. `arrivedTargetRef` holds the last target
+  // the user has actually landed on; once set, we will NEVER replace toward it
+  // again until a CONCRETE, DIFFERENT, gate-owned segment is observed (a genuine
+  // user-initiated departure, e.g. logout). This is the structural fix for the
+  // RUMO-PRAGAS-M Android render loop (see comment block below).
+  const lastIssuedTargetRef = useRef<string | null>(null);
+  const arrivedTargetRef = useRef<string | null>(null);
+  const currentSegment = segments[0];
+
+  // ---------------------------------------------------------------------------
+  // RUMO-PRAGAS-M (Android, OTA): "Maximum update depth exceeded" (FATAL)
+  // ---------------------------------------------------------------------------
+  // Stack: linkTo -> replace -> forceStoreRerender -> (re-render) -> replace ...
+  //
+  // Root cause (a gap left by the RUMO-PRAGAS-7/8 fix): the OLD guard cleared
+  // `lastIssuedTargetRef` to `null` the moment `currentSegment === target`
+  // (arrival). On Android (Fabric / New Architecture) `useSegments()` — a
+  // useSyncExternalStore — transiently emits `undefined` for `segments[0]`
+  // DURING the navigation store churn that `router.replace` itself triggers
+  // (`forceStoreRerender`). Because `isGateOwnedSegment(undefined)` is `true`
+  // and `undefined !== target`, `needsRedirect(undefined, target)` returned
+  // `true`. With the guard freshly cleared on the arrival frame, the effect
+  // re-issued `router.replace(target)` on that transient `undefined` frame ->
+  // more store churn -> another transient `undefined` -> replace -> infinite
+  // nested update -> React's update-depth limit -> fatal.
+  //
+  // Fix: once we ARRIVE at a target, we record it in `arrivedTargetRef` and
+  // refuse to ever replace toward that same target again until a concrete,
+  // different, gate-owned segment shows up. A transient `undefined` segment is
+  // therefore inert (it is store churn, not a real route) and can never re-arm
+  // a redirect. At most ONE replace per genuine target transition is issued.
   useEffect(() => {
-    if (isLoading || hasSeenOnboarding === null || hasSeenLocationConsent === null) return;
+    const target = resolveGateTarget({
+      isLoading,
+      isAuthenticated,
+      hasSeenOnboarding,
+      hasSeenLocationConsent,
+    });
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[0] === 'onboarding';
-    const inConsentLocation = segments[0] === 'consent-location';
+    // Not ready yet (still loading / flags unresolved) — render spinner, no nav.
+    if (target === null) return;
 
-    if (!hasSeenOnboarding && !inOnboarding) {
-      router.replace('/onboarding');
-    } else if (!isAuthenticated && !inAuthGroup && hasSeenOnboarding) {
-      router.replace('/(auth)/login');
-    } else if (isAuthenticated && !hasSeenLocationConsent && !inConsentLocation) {
-      // P0-3 (LGPD): show explicit consent once per user after first login
-      router.replace('/consent-location');
-    } else if (
-      isAuthenticated &&
-      hasSeenLocationConsent &&
-      (inAuthGroup || inOnboarding || inConsentLocation)
-    ) {
-      router.replace('/(tabs)');
+    // Arrived at the target: record arrival and disarm the in-flight guard. We
+    // intentionally do NOT reset `arrivedTargetRef` to null here — it stays
+    // pinned to this target so a transient `undefined` segment cannot bounce us.
+    if (currentSegment === target) {
+      arrivedTargetRef.current = target;
+      lastIssuedTargetRef.current = null;
+      return;
     }
-  }, [isAuthenticated, isLoading, segments, hasSeenOnboarding, hasSeenLocationConsent, router]);
+
+    // Transient `undefined` segment (Android Fabric store churn during a
+    // navigation): this is NOT a real route the user is on — never treat it as
+    // a reason to redirect once we have already routed at least once.
+    if (currentSegment === undefined && arrivedTargetRef.current !== null) return;
+
+    // Any concrete, gate-owned segment that differs from `target` means the user
+    // genuinely left the arrived target (e.g. logout): re-arm so the legitimate
+    // transition can fire exactly once.
+    if (currentSegment !== undefined && currentSegment !== arrivedTargetRef.current) {
+      arrivedTargetRef.current = null;
+    }
+
+    // We have already arrived at this exact target — do not bounce back to it
+    // (covers the case where flags resolve back to a target we are already on).
+    if (arrivedTargetRef.current === target) return;
+
+    // Already issued a replace toward this exact target and still waiting for the
+    // segment store to catch up — do NOT issue it again (structurally prevents
+    // the infinite-update loop while the replace is in flight).
+    if (lastIssuedTargetRef.current === target) return;
+
+    if (needsRedirect(currentSegment, target)) {
+      lastIssuedTargetRef.current = target;
+      router.replace(GATE_HREF[target]);
+    }
+  }, [
+    isAuthenticated,
+    isLoading,
+    currentSegment,
+    hasSeenOnboarding,
+    hasSeenLocationConsent,
+    router,
+  ]);
 
   if (isLoading || hasSeenOnboarding === null || hasSeenLocationConsent === null) {
     return (
@@ -240,6 +382,23 @@ function RootLayoutNav() {
   );
 }
 
+// iPad freeze defense (Apple Guideline 2.1(a)): guarantee non-null safe-area
+// insets on the FIRST render so the React tree always mounts immediately.
+//
+// react-native-safe-area-context's native provider renders its children only
+// once the native side reports insets (`insets != null`). expo-router mounts
+// an outer SafeAreaProvider WITHOUT initialMetrics on native, so if that native
+// inset event is delayed/never fires on iPad/iOS 26, the entire app tree —
+// including the effects that hide the splash — never mounts and the app looks
+// frozen on the loading screen. Providing initialMetrics here (the same pattern
+// react-navigation's SafeAreaProviderCompat uses) makes insets non-null
+// synchronously, so the tree mounts on frame 1 regardless of the native event.
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const SAFE_AREA_INITIAL_METRICS = initialWindowMetrics ?? {
+  frame: { x: 0, y: 0, width: WINDOW_WIDTH, height: WINDOW_HEIGHT },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
+
 function RootLayout() {
   // Lazy Sentry init — deferred to first render to avoid module-scope native
   // calls that crash on iOS 26 TurboModule bridge (SIGABRT on cold start).
@@ -248,13 +407,17 @@ function RootLayout() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <DiagnosisProvider>
-          <RootLayoutNav />
-        </DiagnosisProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider initialMetrics={SAFE_AREA_INITIAL_METRICS}>
+      <ErrorBoundary>
+        <AuthProvider>
+          <NavigationGateProvider>
+            <DiagnosisProvider>
+              <RootLayoutNav />
+            </DiagnosisProvider>
+          </NavigationGateProvider>
+        </AuthProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 

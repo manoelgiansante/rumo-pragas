@@ -7,6 +7,14 @@ interface DiagnosisState {
   selectedCrop: string | null;
   result: DiagnosisResult | null;
   errorMessage: string | null;
+  /**
+   * Optional user-dictated notes (push-to-talk voice transcript) captured on
+   * the camera screen. Empty by default — only populated when
+   * `EXPO_PUBLIC_VOICE_ENABLED === 'true'` AND the user actually used the mic
+   * button. Available to downstream screens (e.g. result.tsx) for future
+   * contextual display.
+   */
+  notes: string;
 }
 
 interface DiagnosisContextType extends DiagnosisState {
@@ -14,6 +22,10 @@ interface DiagnosisContextType extends DiagnosisState {
   setCrop: (cropId: string) => void;
   setResult: (result: DiagnosisResult) => void;
   setError: (message: string) => void;
+  /** Replace notes verbatim (used by future manual UI). */
+  setNotes: (notes: string) => void;
+  /** Append a transcript chunk to notes (used by voice push-to-talk). */
+  appendNotes: (chunk: string) => void;
   reset: () => void;
 }
 
@@ -23,6 +35,7 @@ const initial: DiagnosisState = {
   selectedCrop: null,
   result: null,
   errorMessage: null,
+  notes: '',
 };
 
 const DiagnosisContext = createContext<DiagnosisContextType | null>(null);
@@ -46,12 +59,36 @@ export function DiagnosisProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, errorMessage: message }));
   }, []);
 
+  const setNotes = useCallback((notes: string) => {
+    setState((prev) => ({ ...prev, notes }));
+  }, []);
+
+  const appendNotes = useCallback((chunk: string) => {
+    const trimmed = chunk.trim();
+    if (trimmed.length === 0) return;
+    setState((prev) => ({
+      ...prev,
+      notes: prev.notes ? `${prev.notes} ${trimmed}` : trimmed,
+    }));
+  }, []);
+
   const reset = useCallback(() => {
     setState(initial);
   }, []);
 
   return (
-    <DiagnosisContext.Provider value={{ ...state, setImage, setCrop, setResult, setError, reset }}>
+    <DiagnosisContext.Provider
+      value={{
+        ...state,
+        setImage,
+        setCrop,
+        setResult,
+        setError,
+        setNotes,
+        appendNotes,
+        reset,
+      }}
+    >
       {children}
     </DiagnosisContext.Provider>
   );

@@ -123,7 +123,14 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
       if (!user) return;
       // 1. Legacy single-column write (still consumed by old send-push paths
       //    until they migrate). Cheap, idempotent.
-      await supabase.from('pragas_profiles').update({ push_token: token }).eq('id', user.id);
+      //    Supabase `.update()` does NOT throw on RLS/row-missing errors — it
+      //    resolves with `{ error }`. Surface it so the catch below reports to
+      //    Sentry instead of the sync silently appearing to succeed.
+      const { error: updateError } = await supabase
+        .from('pragas_profiles')
+        .update({ push_token: token })
+        .eq('id', user.id);
+      if (updateError) throw updateError;
       // 2. New audit table — multi-device, soft-revocable, last_seen tracked.
       //    force=true so login always refreshes server state, regardless of
       //    the 30-day cool-down.
