@@ -112,7 +112,7 @@ describe('getOfferings', () => {
     const result = await getOfferings();
 
     expect(result).toHaveLength(2);
-    expect(result[0].identifier).toBe('monthly');
+    expect(result[0]!.identifier).toBe('monthly');
   });
 
   it('returns empty array when no current offering', async () => {

@@ -110,7 +110,9 @@ export function useGoogleSignIn(): UseGoogleSignIn {
     // managed builds via expo-auth-session (proxy / ASWebAuthenticationSession).
     iosClientId: configured ? clientId : undefined,
     androidClientId: configured ? clientId : undefined,
-    extraParams: hashedNonce ? { nonce: hashedNonce } : undefined,
+    // Only include `extraParams` when a nonce exists — omitting the key is the
+    // same as `undefined` at runtime, but satisfies exactOptionalPropertyTypes.
+    ...(hashedNonce ? { extraParams: { nonce: hashedNonce } } : {}),
     scopes: ['openid', 'profile', 'email'],
     redirectUri: AuthSession.makeRedirectUri({
       // Native scheme registered in app.json -> expo.scheme = "rumopragas".
@@ -244,7 +246,9 @@ function generateRawNonce(): string {
   const bytes = Crypto.getRandomBytes(32);
   let hex = '';
   for (let i = 0; i < bytes.length; i++) {
-    hex += bytes[i].toString(16).padStart(2, '0');
+    // i < bytes.length guarantees the element exists; assert for
+    // noUncheckedIndexedAccess without changing runtime behavior.
+    hex += bytes[i]!.toString(16).padStart(2, '0');
   }
   return hex;
 }

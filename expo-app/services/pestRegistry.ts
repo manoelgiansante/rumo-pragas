@@ -27,13 +27,13 @@ const MAX_ENTRY_BYTES = 200 * 1024;
 export interface PestCacheEntry {
   v: number;
   id: string;
-  scientific_name?: string;
-  pest_name?: string;
-  crop?: string;
-  image_uri?: string;
-  confidence?: number;
+  scientific_name?: string | undefined;
+  pest_name?: string | undefined;
+  crop?: string | undefined;
+  image_uri?: string | undefined;
+  confidence?: number | undefined;
   enrichment: AgrioEnrichment;
-  alternatives?: AgrioPrediction[];
+  alternatives?: AgrioPrediction[] | undefined;
   updated_at: number;
 }
 

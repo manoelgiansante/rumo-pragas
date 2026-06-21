@@ -27,7 +27,10 @@ export async function signUp(email: string, password: string, fullName?: string)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: userMetadata ? { data: userMetadata } : undefined,
+    // Only include `options` when we have metadata — omitting the key is the
+    // same as passing `undefined` at runtime, but satisfies
+    // exactOptionalPropertyTypes (options is optional, not `T | undefined`).
+    ...(userMetadata ? { options: { data: userMetadata } } : {}),
   });
   if (error) throw error;
   return data;

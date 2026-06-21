@@ -147,7 +147,10 @@ export async function fetchWeather(
       const date = new Date(dateStr + 'T12:00:00');
       return {
         date: dateStr,
-        dayAbbrev: i === 0 ? i18n.t('weather.today') : dayAbbrevs[date.getDay()],
+        // getDayAbbrevs() returns 7 entries; getDay() is always 0-6, so the
+        // lookup is in-bounds. Assert for noUncheckedIndexedAccess (runtime
+        // unchanged).
+        dayAbbrev: i === 0 ? i18n.t('weather.today') : dayAbbrevs[date.getDay()]!,
         weatherCode: dayCode,
         temperatureMax: daily.temperature_2m_max[i],
         temperatureMin: daily.temperature_2m_min[i],
@@ -198,7 +201,7 @@ export async function fetchWeather(
 }
 
 export class WeatherError extends Error {
-  cause?: Error;
+  cause?: Error | undefined;
   constructor(message: string, cause?: Error) {
     super(message);
     this.name = 'WeatherError';

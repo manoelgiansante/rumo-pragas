@@ -42,7 +42,7 @@ function deriveSubscriptionInfo(customerInfo: CustomerInfo): {
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
   provider: 'apple' | 'google' | 'free';
-  periodEnd?: string;
+  periodEnd?: string | undefined;
 } {
   // Check entitlements in priority order
   if (customerInfo.entitlements.active['enterprise']) {

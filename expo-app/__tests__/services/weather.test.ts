@@ -50,7 +50,7 @@ describe('fetchWeather', () => {
     expect(result!.humidity).toBe(72);
     expect(result!.windSpeed).toBe(12.3);
     expect(result!.forecast).toHaveLength(3);
-    expect(result!.forecast![0].dayAbbrev).toMatch(/Hoje/);
+    expect(result!.forecast![0]!.dayAbbrev).toMatch(/Hoje/);
   });
 
   it('returns cached data when cache is fresh', async () => {

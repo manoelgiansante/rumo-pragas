@@ -38,10 +38,16 @@ jest.mock('@sentry/react-native', () => ({
 type Resp = { data?: unknown; error?: { code: string; message: string } | null };
 const mockSelectResponses: Resp[] = [];
 const mockUpdateResponses: Resp[] = [];
-const mockSelectCalls: Array<{ table: string; column: string; equ: { col: string; val: unknown } }> =
-  [];
-const mockUpdateCalls: Array<{ table: string; patch: unknown; equ: { col: string; val: unknown } }> =
-  [];
+const mockSelectCalls: Array<{
+  table: string;
+  column: string;
+  equ: { col: string; val: unknown };
+}> = [];
+const mockUpdateCalls: Array<{
+  table: string;
+  patch: unknown;
+  equ: { col: string; val: unknown };
+}> = [];
 
 jest.mock('../../services/supabase', () => {
   const eqSelect = (table: string, column: string) => {
@@ -170,7 +176,9 @@ describe('saveNotificationPreferences', () => {
     expect(next.marketing).toBe(true);
     expect(next.outbreaks_regional).toBe(true); // unchanged from default
     expect(mockUpdateCalls).toHaveLength(1);
-    const patch = mockUpdateCalls[0].patch as { notification_preferences: Record<string, unknown> };
+    const patch = mockUpdateCalls[0]!.patch as {
+      notification_preferences: Record<string, unknown>;
+    };
     expect(patch.notification_preferences.marketing).toBe(true);
     // updated_at must be sent so we can audit when the user opted in
     expect(typeof patch.notification_preferences.updated_at).toBe('string');
@@ -182,9 +190,9 @@ describe('saveNotificationPreferences', () => {
       JSON.stringify(DEFAULT_NOTIFICATION_PREFERENCES),
     );
     mockUpdateResponses.push({ error: { code: '42501', message: 'permission denied' } });
-    await expect(
-      saveNotificationPreferences('user-1', { marketing: true }),
-    ).rejects.toThrow(/permission denied/);
+    await expect(saveNotificationPreferences('user-1', { marketing: true })).rejects.toThrow(
+      /permission denied/,
+    );
     const cached = JSON.parse(mockMemory.get('@rumo_pragas_notification_prefs')!);
     expect(cached.marketing).toBe(false); // rolled back to the default
     expect(mockSentryCaptureMessage).toHaveBeenCalled();

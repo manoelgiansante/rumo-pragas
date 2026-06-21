@@ -22,7 +22,9 @@ import { useDiagnosis } from '../../contexts/DiagnosisContext';
 export default function CropSelectScreen() {
   const { t } = useTranslation();
   const { imageUri, setCrop } = useDiagnosis();
-  const [selected, setSelected] = useState<CropType>(CROPS[0]);
+  // CROPS is a non-empty constant array; CROPS[0] always exists. Assert for
+  // noUncheckedIndexedAccess without changing runtime behavior.
+  const [selected, setSelected] = useState<CropType>(CROPS[0]!);
   const [search, setSearch] = useState('');
   const { isTablet, contentMaxWidth, numColumns } = useResponsive();
   const isNavigating = useRef(false);

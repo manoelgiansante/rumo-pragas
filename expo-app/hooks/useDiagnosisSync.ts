@@ -20,7 +20,7 @@ const DLQ_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 interface DLQEntry extends PendingDiagnosis {
   movedToDLQAt: string;
-  lastError?: string;
+  lastError?: string | undefined;
 }
 
 /**

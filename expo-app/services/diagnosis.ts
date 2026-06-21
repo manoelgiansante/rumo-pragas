@@ -217,7 +217,7 @@ async function sendDiagnosisViaIAHub(
     cropType: string;
     latitude: number | null;
     longitude: number | null;
-    userId?: string;
+    userId?: string | undefined;
   },
 ): Promise<DiagnosisResult> {
   const { imageBase64, cropType, latitude, longitude, userId } = args;
@@ -302,7 +302,7 @@ function adaptIAHubDiagnoseResponse(
   response: DiagnoseResponse,
   ctx: {
     cropType: string;
-    userId?: string;
+    userId?: string | undefined;
     latitude: number | null;
     longitude: number | null;
   },
@@ -416,7 +416,9 @@ export async function fetchDiagnosisCount(token: string, userId: string): Promis
   const count = response.headers.get('content-range');
   if (count) {
     const match = count.match(/\/(\d+)/);
-    return match ? parseInt(match[1], 10) : 0;
+    // Capture group 1 is guaranteed present when `match` is truthy; assert for
+    // noUncheckedIndexedAccess without changing runtime behavior.
+    return match ? parseInt(match[1]!, 10) : 0;
   }
   return 0;
 }

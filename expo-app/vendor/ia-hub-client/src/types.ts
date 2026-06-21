@@ -23,15 +23,15 @@ export type AppSlug =
 
 export interface RequestOptions {
   /** Abort the request. Compatible with React Native (RN polyfills AbortController). */
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   /** Timeout in ms. Defaults to client.timeoutMs. */
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   /** Extra HTTP headers (case-insensitive). */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   /** Override appSlug for this call only. */
-  appSlug?: AppSlug;
+  appSlug?: AppSlug | undefined;
   /** Stable id for idempotent retries. The IA Hub dedupes by this header. */
-  idempotencyKey?: string;
+  idempotencyKey?: string | undefined;
 }
 
 /** Lightweight payload shape for file uploads — RN / Web / Node compatible. */

@@ -111,7 +111,7 @@ describe('diagnosisQueue', () => {
       );
 
       expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(QUEUE_KEY, expect.any(String));
-      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1] as string);
+      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0]![1] as string);
       expect(savedData).toHaveLength(1);
       expect(savedData[0]).toMatchObject({ cropType: 'milho', retryCount: 0 });
       expect(savedData[0].imageUri).toContain('/mock/documents/diagnosis-queue/');
@@ -146,7 +146,7 @@ describe('diagnosisQueue', () => {
         longitude: -44.0,
       });
 
-      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1] as string);
+      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0]![1] as string);
       expect(savedData).toHaveLength(2);
       expect(savedData[0].id).toBe('existing1');
       expect(savedData[1].cropType).toBe('cafe');
@@ -167,7 +167,7 @@ describe('diagnosisQueue', () => {
         idempotent: true,
       });
 
-      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1] as string);
+      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0]![1] as string);
       expect(savedData).toHaveLength(1);
       expect(savedData[0].id).toBe('b');
     });
@@ -187,7 +187,7 @@ describe('diagnosisQueue', () => {
 
       await removeFromQueue('a');
 
-      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1] as string);
+      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0]![1] as string);
       expect(savedData).toHaveLength(0);
     });
   });
@@ -258,7 +258,7 @@ describe('diagnosisQueue', () => {
 
       await incrementRetry('x');
 
-      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1] as string);
+      const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0]![1] as string);
       const updated = savedData.find((d: { id: string }) => d.id === 'x');
       expect(updated.retryCount).toBe(3);
       const untouched = savedData.find((d: { id: string }) => d.id === 'y');
@@ -285,13 +285,12 @@ describe('diagnosisQueue', () => {
         EncodingType: { Base64: 'base64' },
       }));
 
-       
       const AsyncStorageFresh =
         require('@react-native-async-storage/async-storage').default ||
         require('@react-native-async-storage/async-storage');
-       
+
       const FileSystemFresh = require('expo-file-system');
-       
+
       const { getQueue: getQueueFresh } = require('../../services/diagnosisQueue');
 
       const legacyItems = [

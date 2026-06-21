@@ -9,19 +9,19 @@
 
 export interface RumoIAErrorInit {
   message: string;
-  status?: number;
-  code?: string;
-  requestId?: string;
+  status?: number | undefined;
+  code?: string | undefined;
+  requestId?: string | undefined;
   cause?: unknown;
   /** Endpoint slug (e.g. "chat", "diagnose") for breadcrumb tagging. */
-  endpoint?: string;
+  endpoint?: string | undefined;
 }
 
 export class RumoIAError extends Error {
-  public readonly status?: number;
-  public readonly code?: string;
-  public readonly requestId?: string;
-  public readonly endpoint?: string;
+  public readonly status?: number | undefined;
+  public readonly code?: string | undefined;
+  public readonly requestId?: string | undefined;
+  public readonly endpoint?: string | undefined;
 
   constructor(init: RumoIAErrorInit) {
     super(init.message);
@@ -65,8 +65,8 @@ export class RumoIAAuthError extends RumoIAClientError {
 
 /** HTTP 429 — caller exceeded rate limit. */
 export class RumoIARateLimitError extends RumoIAClientError {
-  public readonly retryAfterSec?: number;
-  constructor(init: RumoIAErrorInit & { retryAfterSec?: number }) {
+  public readonly retryAfterSec?: number | undefined;
+  constructor(init: RumoIAErrorInit & { retryAfterSec?: number | undefined }) {
     super(init);
     this.name = "RumoIARateLimitError";
     this.retryAfterSec = init.retryAfterSec;

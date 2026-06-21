@@ -19,9 +19,9 @@ let currentUserId: string | null = null;
 
 export interface AnalyticsEvent {
   event: string;
-  properties?: Record<string, unknown>;
+  properties?: Record<string, unknown> | undefined;
   timestamp: string;
-  userId?: string;
+  userId?: string | undefined;
   platform: string;
 }
 

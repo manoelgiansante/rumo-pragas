@@ -80,16 +80,16 @@ function Section({ title, children, isDark, footer }: SectionProps) {
 
 interface RowProps {
   icon: keyof typeof Ionicons.glyphMap;
-  iconColor?: string;
+  iconColor?: string | undefined;
   label: string;
-  value?: string;
-  onPress?: () => void;
-  trailing?: React.ReactNode;
+  value?: string | undefined;
+  onPress?: (() => void) | undefined;
+  trailing?: React.ReactNode | undefined;
   isDark: boolean;
-  destructive?: boolean;
-  isLast?: boolean;
-  testID?: string;
-  accessibilityHint?: string;
+  destructive?: boolean | undefined;
+  isLast?: boolean | undefined;
+  testID?: string | undefined;
+  accessibilityHint?: string | undefined;
 }
 
 function Row({
@@ -331,7 +331,9 @@ export default function SettingsScreen() {
         },
         (buttonIndex) => {
           if (buttonIndex < options.length) {
-            const selected = LANGUAGE_OPTIONS[buttonIndex].code;
+            // options is derived 1:1 from LANGUAGE_OPTIONS, so this index is
+            // in-bounds; assert for noUncheckedIndexedAccess (runtime unchanged).
+            const selected = LANGUAGE_OPTIONS[buttonIndex]!.code;
             i18n.changeLanguage(selected);
             AsyncStorage.setItem(LANGUAGE_KEY, selected);
           }

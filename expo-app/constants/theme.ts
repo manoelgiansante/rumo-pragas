@@ -37,7 +37,11 @@ export const DarkColors = {
 };
 
 // Sequential ramp (dark leaf → lighter leaf). NO rainbow, NO tech blue.
-export const Gradients: Record<string, readonly [string, string, ...string[]]> = {
+export const Gradients: {
+  hero: readonly [string, string, ...string[]];
+  tech: readonly [string, string, ...string[]];
+  mesh: readonly [string, string, ...string[]];
+} = {
   hero: ['#06281D', '#0B3D2E', '#145A45'],
   tech: ['#0B3D2E', '#145A45'],
   mesh: ['#06281D', '#0B3D2E', '#145A45', '#0F4A37', '#0B3D2E', '#081F17'],

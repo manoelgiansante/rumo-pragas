@@ -7,15 +7,15 @@ import type { DiagnosisResult } from '../types/diagnosis';
 
 export interface DiagnosisItem {
   id: string;
-  pest_name?: string;
-  pest_id?: string;
-  scientific_name?: string;
+  pest_name?: string | undefined;
+  pest_id?: string | undefined;
+  scientific_name?: string | undefined;
   crop: string;
-  confidence?: number;
-  severity?: 'low' | 'medium' | 'high' | 'critical';
-  notes?: string;
+  confidence?: number | undefined;
+  severity?: 'low' | 'medium' | 'high' | 'critical' | undefined;
+  notes?: string | undefined;
   created_at: string;
-  is_healthy?: boolean;
+  is_healthy?: boolean | undefined;
 }
 
 interface DiagnosisCardProps {

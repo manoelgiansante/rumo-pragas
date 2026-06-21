@@ -103,7 +103,7 @@ export function getEntriesByType(type: MipEntry['type']): MipEntry[] {
  */
 export function searchByKeywords(
   keywords: string[],
-  options: { cultureFilter?: string; limit?: number } = {},
+  options: { cultureFilter?: string | undefined; limit?: number | undefined } = {},
 ): Array<{ entry: MipEntry; score: number }> {
   const { cultureFilter, limit = 10 } = options;
   if (!keywords || keywords.length === 0) return [];
