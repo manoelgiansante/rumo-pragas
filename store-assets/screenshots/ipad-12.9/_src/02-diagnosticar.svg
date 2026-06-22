@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2732" viewBox="0 0 2048 2732">
+  <defs>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F0EDE4"/>
+      <stop offset="1" stop-color="#EDE8DC"/>
+    </linearGradient>
+    <linearGradient id="weather" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#143A28"/>
+      <stop offset="1" stop-color="#0D2B1E"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#143A28"/>
+      <stop offset="1" stop-color="#0D2B1E"/>
+    </linearGradient>
+    <filter id="dshadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="30" stdDeviation="40" flood-color="#0D2B1E" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="2048" height="2732" fill="url(#cream)"/>
+
+  <!-- Headline -->
+  <text x="150" y="290" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="150" fill="#0D2B1E">Diagnostique</text>
+  <text x="150" y="450" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="150" fill="#0D2B1E">na lavoura</text>
+  <text x="155" y="560" font-family="Poppins Regular, Poppins" font-weight="400" font-size="58" fill="#5b6b60">Foto ou galeria — resultado por IA em segundos</text>
+
+  <!-- ===== iPad device frame ===== -->
+  <!-- frame: x 524..1524 (w 1000), y 680..2620 (h 1940); bezel 36 -->
+  <g filter="url(#dshadow)">
+    <rect x="524" y="680" width="1000" height="1940" rx="86" fill="#1c1c1e"/>
+  </g>
+  <!-- screen -->
+  <clipPath id="scr02"><rect x="560" y="716" width="928" height="1868" rx="54"/></clipPath>
+  <rect x="560" y="716" width="928" height="1868" rx="54" fill="#F4F1EA"/>
+  <g clip-path="url(#scr02)">
+    <rect x="560" y="716" width="928" height="1868" fill="#F4F1EA"/>
+
+    <!-- status bar -->
+    <text x="608" y="800" font-family="Poppins SemiBold, Poppins" font-weight="600" font-size="40" fill="#0D2B1E">9:41</text>
+    <g fill="#0D2B1E">
+      <circle cx="1360" cy="786" r="9"/><circle cx="1392" cy="786" r="9"/><circle cx="1424" cy="786" r="9"/>
+      <rect x="1352" y="775" width="88" height="3" opacity="0"/>
+    </g>
+
+    <!-- greeting -->
+    <text x="608" y="900" font-family="Poppins Regular, Poppins" font-weight="400" font-size="46" fill="#5b6b60">Boa tarde,</text>
+    <text x="608" y="966" font-family="Poppins Bold, Poppins" font-weight="700" font-size="62" fill="#0D2B1E">Produtor</text>
+
+    <!-- weather card -->
+    <rect x="608" y="1010" width="832" height="200" rx="36" fill="url(#weather)"/>
+    <circle cx="708" cy="1110" r="44" fill="#F4B400"/>
+    <text x="800" y="1100" font-family="Poppins Bold, Poppins" font-weight="700" font-size="58" fill="#ffffff">28°C</text>
+    <text x="800" y="1158" font-family="Poppins Regular, Poppins" font-weight="400" font-size="36" fill="#cfe0d4">Umidade 72% · Parcialmente nublado</text>
+
+    <!-- stat cards row -->
+    <g font-family="Poppins Bold, Poppins">
+      <rect x="608" y="1248" width="262" height="180" rx="28" fill="#ffffff" stroke="#e3ddcf" stroke-width="2"/>
+      <circle cx="650" cy="1300" r="16" fill="#2b2b2b"/>
+      <text x="640" y="1370" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="60" fill="#0D2B1E">12</text>
+      <text x="640" y="1410" font-family="Poppins Regular, Poppins" font-weight="400" font-size="32" fill="#5b6b60">Diagnósticos</text>
+
+      <rect x="893" y="1248" width="262" height="180" rx="28" fill="#ffffff" stroke="#e3ddcf" stroke-width="2"/>
+      <circle cx="935" cy="1300" r="16" fill="#2b2b2b"/>
+      <text x="925" y="1370" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="50" fill="#0D2B1E">MIP</text>
+      <text x="925" y="1410" font-family="Poppins Regular, Poppins" font-weight="400" font-size="32" fill="#5b6b60">Estratégia</text>
+
+      <rect x="1178" y="1248" width="262" height="180" rx="28" fill="#ffffff" stroke="#e3ddcf" stroke-width="2"/>
+      <circle cx="1220" cy="1300" r="16" fill="#F4B400"/>
+      <text x="1210" y="1370" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="50" fill="#0D2B1E">Médio</text>
+      <text x="1210" y="1410" font-family="Poppins Regular, Poppins" font-weight="400" font-size="30" fill="#5b6b60">Monitoramento</text>
+    </g>
+
+    <!-- CTA card -->
+    <rect x="608" y="1468" width="832" height="220" rx="36" fill="url(#cta)"/>
+    <rect x="652" y="1528" width="100" height="100" rx="26" fill="#ffffff" fill-opacity="0.14"/>
+    <!-- camera glyph -->
+    <g transform="translate(672,1552)" fill="none" stroke="#ffffff" stroke-width="5">
+      <rect x="0" y="14" width="60" height="44" rx="10"/>
+      <circle cx="30" cy="36" r="14"/>
+      <rect x="20" y="6" width="20" height="12" rx="4" fill="#ffffff" stroke="none"/>
+    </g>
+    <text x="792" y="1572" font-family="Poppins Bold, Poppins" font-weight="700" font-size="58" fill="#ffffff">Diagnosticar Praga</text>
+    <text x="792" y="1626" font-family="Poppins Regular, Poppins" font-weight="400" font-size="36" fill="#cfe0d4">Foto ou galeria — IA especializada</text>
+
+    <!-- Alertas da Região -->
+    <text x="608" y="1790" font-family="Poppins Bold, Poppins" font-weight="700" font-size="54" fill="#0D2B1E">Alertas da Região</text>
+    <rect x="608" y="1820" width="832" height="150" rx="24" fill="#ffffff" stroke="#e3ddcf" stroke-width="2"/>
+    <rect x="608" y="1820" width="12" height="150" rx="6" fill="#C0392B"/>
+    <text x="656" y="1888" font-family="Poppins SemiBold, Poppins" font-weight="600" font-size="46" fill="#0D2B1E">Ferrugem asiática — risco alto</text>
+    <text x="656" y="1938" font-family="Poppins Regular, Poppins" font-weight="400" font-size="34" fill="#5b6b60">Soja · sua região</text>
+
+    <!-- Boas Práticas -->
+    <text x="608" y="2080" font-family="Poppins Bold, Poppins" font-weight="700" font-size="54" fill="#0D2B1E">Boas Práticas</text>
+    <rect x="608" y="2110" width="832" height="130" rx="24" fill="#ffffff" stroke="#e3ddcf" stroke-width="2"/>
+    <circle cx="664" cy="2175" r="18" fill="#1f7a3a"/>
+    <text x="708" y="2192" font-family="Poppins SemiBold, Poppins" font-weight="600" font-size="44" fill="#0D2B1E">Monitore regularmente a lavoura</text>
+
+    <!-- bottom tab bar -->
+    <rect x="560" y="2440" width="928" height="144" fill="#ffffff"/>
+    <line x1="560" y1="2440" x2="1488" y2="2440" stroke="#e3ddcf" stroke-width="2"/>
+    <g font-family="Poppins Medium, Poppins" font-weight="500" font-size="30" text-anchor="middle">
+      <!-- Início -->
+      <g transform="translate(652,2480)" fill="none" stroke="#1f7a3a" stroke-width="4"><path d="M -22 18 L 0 0 L 22 18 L 22 40 L -22 40 Z"/></g>
+      <text x="652" y="2556" fill="#1f7a3a">Início</text>
+      <!-- Histórico -->
+      <g transform="translate(862,2500)" fill="none" stroke="#8a9389" stroke-width="4"><circle cx="0" cy="0" r="22"/><path d="M 0 -12 L 0 0 L 12 8"/></g>
+      <text x="862" y="2556" fill="#8a9389">Histórico</text>
+      <!-- Biblioteca -->
+      <g transform="translate(1024,2500)" stroke="#8a9389" stroke-width="4"><line x1="-20" y1="-20" x2="-20" y2="20"/><line x1="-8" y1="-20" x2="-8" y2="20"/><line x1="6" y1="-18" x2="14" y2="20"/><line x1="20" y1="-20" x2="20" y2="20"/></g>
+      <text x="1024" y="2556" fill="#8a9389">Biblioteca</text>
+      <!-- Agro IA -->
+      <g transform="translate(1186,2500)" fill="#8a9389"><path d="M 0 -22 L 6 -6 L 22 0 L 6 6 L 0 22 L -6 6 L -22 0 L -6 -6 Z"/></g>
+      <text x="1186" y="2556" fill="#8a9389">Agro IA</text>
+      <!-- Ajustes -->
+      <g transform="translate(1396,2500)" fill="none" stroke="#8a9389" stroke-width="4"><circle cx="0" cy="0" r="10"/><circle cx="0" cy="0" r="22"/></g>
+      <text x="1396" y="2556" fill="#8a9389">Ajustes</text>
+    </g>
+  </g>
+</svg>

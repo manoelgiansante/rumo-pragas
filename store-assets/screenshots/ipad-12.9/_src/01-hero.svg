@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2732" viewBox="0 0 2048 2732">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0D2B1E"/>
+      <stop offset="1" stop-color="#15422C"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3f5f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="2048" height="2732" fill="url(#bg)"/>
+
+  <!-- subtle topographic line texture -->
+  <g fill="none" stroke="#ffffff" stroke-width="2" opacity="0.05">
+    <path d="M -100 400 Q 512 300 1024 420 T 2148 380"/>
+    <path d="M -100 560 Q 512 460 1024 580 T 2148 540"/>
+    <path d="M -100 720 Q 512 620 1024 740 T 2148 700"/>
+    <path d="M -100 1980 Q 512 1880 1024 2000 T 2148 1960"/>
+    <path d="M -100 2140 Q 512 2040 1024 2160 T 2148 2120"/>
+    <path d="M -100 2300 Q 512 2200 1024 2320 T 2148 2280"/>
+    <path d="M -100 2460 Q 512 2360 1024 2480 T 2148 2440"/>
+  </g>
+
+  <!-- app icon tile -->
+  <g transform="translate(844,820)">
+    <rect x="0" y="0" width="360" height="360" rx="84" fill="url(#tile)"/>
+    <!-- R monogram -->
+    <text x="118" y="288" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="320" fill="#0D2B1E">R</text>
+    <!-- leaf sprout -->
+    <g transform="translate(196,150)">
+      <path d="M 0 120 C 0 60 40 10 110 0 C 104 70 64 116 0 120 Z" fill="#4CAF2F"/>
+      <path d="M 0 120 C 0 70 -34 30 -86 24 C -82 78 -48 112 0 120 Z" fill="#3D8F26"/>
+      <path d="M 6 124 C 6 96 22 70 60 50" stroke="#0D2B1E" stroke-width="7" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- title -->
+  <text x="1024" y="1430" text-anchor="middle" font-family="Poppins ExtraBold, Poppins" font-weight="800" font-size="150" fill="#ffffff">Rumo Pragas IA</text>
+
+  <!-- sub tagline 2 lines -->
+  <text x="1024" y="1560" text-anchor="middle" font-family="Poppins Medium, Poppins" font-weight="500" font-size="60" fill="#cfe0d4">Diagnostique pragas e doenças por foto</text>
+  <text x="1024" y="1640" text-anchor="middle" font-family="Poppins Medium, Poppins" font-weight="500" font-size="60" fill="#cfe0d4">— resultado em segundos</text>
+
+  <!-- pill chips -->
+  <g font-family="Poppins SemiBold, Poppins" font-weight="600" font-size="50" fill="#ffffff">
+    <!-- chip widths estimated; centered group total ~ -->
+    <g transform="translate(560,1740)">
+      <rect x="0" y="0" width="320" height="104" rx="52" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2"/>
+      <text x="160" y="68" text-anchor="middle">IA agrícola</text>
+    </g>
+    <g transform="translate(900,1740)">
+      <rect x="0" y="0" width="360" height="104" rx="52" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2"/>
+      <text x="180" y="68" text-anchor="middle">Protocolo MIP</text>
+    </g>
+    <g transform="translate(1280,1740)">
+      <rect x="0" y="0" width="408" height="104" rx="52" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2"/>
+      <text x="204" y="68" text-anchor="middle">Fontes EMBRAPA</text>
+    </g>
+  </g>
+</svg>
