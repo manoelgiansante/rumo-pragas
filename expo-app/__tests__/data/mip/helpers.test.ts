@@ -105,7 +105,9 @@ describe('searchByKeywords', () => {
   it('resultados ordenados por score descendente', () => {
     const results = searchByKeywords(['percevejo', 'vagens']);
     for (let i = 0; i < results.length - 1; i++) {
-      expect(results[i].score).toBeGreaterThanOrEqual(results[i + 1].score);
+      // Loop bound keeps both indices in-bounds; assert for
+      // noUncheckedIndexedAccess (runtime unchanged).
+      expect(results[i]!.score).toBeGreaterThanOrEqual(results[i + 1]!.score);
     }
   });
 });

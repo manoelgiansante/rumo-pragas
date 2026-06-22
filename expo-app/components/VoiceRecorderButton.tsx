@@ -47,21 +47,21 @@ interface VoiceRecorderButtonProps {
   /**
    * Optional context tag (e.g. 'diagnosis_camera', 'diagnosis_notes').
    */
-  context?: string;
+  context?: string | undefined;
   /**
    * Optional callback fired after a successful LOCAL recording. Receives
    * { uri, durationMs }. Useful for analytics or local persistence.
    */
-  onRecorded?: (result: { uri: string; durationMs: number }) => void;
+  onRecorded?: ((result: { uri: string; durationMs: number }) => void) | undefined;
   /**
    * Required for SDK voice integration: receives the transcribed text. The
    * caller typically appends/prefills a notes / description field.
    */
-  onTranscribed?: (transcript: string) => void;
+  onTranscribed?: ((transcript: string) => void) | undefined;
   /** Optional override; defaults to 'pt'. */
-  language?: string;
-  style?: ViewStyle;
-  testID?: string;
+  language?: string | undefined;
+  style?: ViewStyle | undefined;
+  testID?: string | undefined;
 }
 
 export function VoiceRecorderButton({
@@ -127,7 +127,6 @@ function VoiceRecorderButtonImpl({
         }
       } catch (err) {
         if (__DEV__) {
-           
           console.warn('[VoiceRecorderButton] expo-audio init failed:', err);
         }
         if (mounted) setPermissionGranted(false);
@@ -150,7 +149,6 @@ function VoiceRecorderButtonImpl({
       setIsRecording(true);
     } catch (err) {
       if (__DEV__) {
-         
         console.warn('[VoiceRecorderButton] startRecording failed:', err);
       }
     }
@@ -189,7 +187,6 @@ function VoiceRecorderButtonImpl({
         } catch (err) {
           const code = err instanceof VoiceRecordError ? err.code : 'recorder_failed';
           if (__DEV__) {
-             
             console.warn(`[VoiceRecorderButton] transcribe failed (${code}):`, err);
           }
           const message =
@@ -205,7 +202,6 @@ function VoiceRecorderButtonImpl({
       }
     } catch (err) {
       if (__DEV__) {
-         
         console.warn('[VoiceRecorderButton] stopRecording failed:', err);
       }
       setIsRecording(false);

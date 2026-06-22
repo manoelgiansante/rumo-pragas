@@ -45,20 +45,20 @@ export const TIER_LEVELS: Record<SubscriptionTier, InfestationLevel[]> = {
 
 export interface UseMipKnowledgeArgs {
   /** Raw pest name returned by the IA (`result.pest_name`). */
-  pestName?: string;
+  pestName?: string | undefined;
   /** Enriched agronomic notes (from edge function). */
-  enrichment?: AgrioEnrichment;
+  enrichment?: AgrioEnrichment | undefined;
   /** Crop label as stored in `result.crop` (display name OR id). */
-  crop?: string;
+  crop?: string | undefined;
   /** Subscription tier — drives which levels are unlocked. */
   tier: SubscriptionTier;
   /** Min `searchByKeywords` score to accept a match (default 2). */
-  minScore?: number;
+  minScore?: number | undefined;
   /**
    * Whether the screen is even eligible to show MIP (skip when isHealthy
    * / invalid image / error states).
    */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
 }
 
 export interface MipLevelData {
@@ -98,9 +98,7 @@ function normaliseCropId(raw?: string): string | undefined {
   const byId = CROPS.find((c) => c.id === lowered);
   if (byId) return byId.id;
   // Display name match (e.g. "Soja", "Café")
-  const byDisplay = CROPS.find(
-    (c) => c.displayName.toLowerCase() === lowered,
-  );
+  const byDisplay = CROPS.find((c) => c.displayName.toLowerCase() === lowered);
   if (byDisplay) return byDisplay.id;
   // API name match (e.g. "Soybean", "Corn")
   const byApi = CROPS.find((c) => c.apiName.toLowerCase() === lowered);
@@ -116,10 +114,7 @@ function normaliseCropId(raw?: string): string | undefined {
  *  - Scientific name when present
  *  - First few symptoms (already in PT-BR by the time enrichment lands)
  */
-function buildKeywords(
-  pestName?: string,
-  enrichment?: AgrioEnrichment,
-): string[] {
+function buildKeywords(pestName?: string, enrichment?: AgrioEnrichment): string[] {
   const bag: string[] = [];
   if (enrichment?.name_pt) bag.push(enrichment.name_pt);
   if (pestName && pestName !== enrichment?.name_pt) bag.push(pestName);
@@ -155,7 +150,9 @@ export function useMipKnowledge({
       scored = searchByKeywords(keywords, { limit: 5 });
     }
     if (scored.length === 0) return { entry: null, matchScore: 0 };
-    const top = scored[0];
+    // The length check above guarantees scored[0] exists; assert for
+    // noUncheckedIndexedAccess without changing runtime behavior.
+    const top = scored[0]!;
     if (top.score < minScore) return { entry: null, matchScore: top.score };
     return { entry: top.entry, matchScore: top.score };
   }, [pestName, enrichment, crop, minScore, enabled]);

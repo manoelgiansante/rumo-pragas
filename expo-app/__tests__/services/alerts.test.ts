@@ -61,8 +61,10 @@ describe('generateAlerts', () => {
 
     for (let i = 0; i < alerts.length - 1; i++) {
       const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-      expect(severityOrder[alerts[i].severity]).toBeLessThanOrEqual(
-        severityOrder[alerts[i + 1].severity],
+      // Loop bound keeps both indices in-bounds and severities are known keys;
+      // assert for noUncheckedIndexedAccess (runtime unchanged).
+      expect(severityOrder[alerts[i]!.severity]!).toBeLessThanOrEqual(
+        severityOrder[alerts[i + 1]!.severity]!,
       );
     }
   });

@@ -75,7 +75,9 @@ function generateRawNonce(): string {
   const bytes = Crypto.getRandomBytes(32);
   let hex = '';
   for (let i = 0; i < bytes.length; i++) {
-    hex += bytes[i].toString(16).padStart(2, '0');
+    // i < bytes.length guarantees the element exists; assert for
+    // noUncheckedIndexedAccess without changing runtime behavior.
+    hex += bytes[i]!.toString(16).padStart(2, '0');
   }
   return hex;
 }

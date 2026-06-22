@@ -229,7 +229,9 @@ async function main(): Promise<void> {
   }> = [];
 
   for (let i = 0; i < TEST_CASES.length; i++) {
-    const test = TEST_CASES[i];
+    // i < TEST_CASES.length guarantees the element exists; assert for
+    // noUncheckedIndexedAccess without changing runtime behavior.
+    const test = TEST_CASES[i]!;
     console.log(`\n[${i + 1}/${TEST_CASES.length}] ${test.label}`);
 
     let sourceUrl = test.imageUrl;

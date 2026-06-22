@@ -64,18 +64,18 @@ export interface DiagnosisResult {
   id: string;
   user_id: string;
   crop: string;
-  pest_id?: string;
-  pest_name?: string;
-  confidence?: number;
-  severity?: SeverityLevel;
-  image_url?: string;
-  notes?: string;
-  metadata?: Record<string, unknown>;
-  location_lat?: number;
-  location_lng?: number;
-  location_name?: string;
+  pest_id?: string | undefined;
+  pest_name?: string | undefined;
+  confidence?: number | undefined;
+  severity?: SeverityLevel | undefined;
+  image_url?: string | undefined;
+  notes?: string | undefined;
+  metadata?: Record<string, unknown> | undefined;
+  location_lat?: number | undefined;
+  location_lng?: number | undefined;
+  location_name?: string | undefined;
   created_at: string;
-  parsedNotes?: AgrioNotesData;
+  parsedNotes?: AgrioNotesData | undefined;
 }
 
 // --- Helpers ---

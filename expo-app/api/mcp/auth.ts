@@ -31,7 +31,9 @@ function extractBearer(req: VercelRequest): string | null {
   if (!header) return null;
   const m = /^Bearer\s+(.+)$/i.exec(header.trim());
   if (!m) return null;
-  const token = m[1].trim();
+  // Capture group 1 is guaranteed present when the regex matched; assert for
+  // noUncheckedIndexedAccess without changing runtime behavior.
+  const token = m[1]!.trim();
   return token.length > 0 ? token : null;
 }
 

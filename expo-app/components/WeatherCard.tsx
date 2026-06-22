@@ -20,8 +20,8 @@ export interface WeatherCardData {
   dailyPrecipitationSum: number;
   description: string;
   icon: string;
-  location?: string;
-  forecast?: DailyForecast[];
+  location?: string | undefined;
+  forecast?: DailyForecast[] | undefined;
 }
 
 interface WeatherCardProps {

@@ -66,7 +66,7 @@ export interface InternalRequest {
   /** Multipart form (for vision uploads). */
   formData?: FormData;
   /** Request opts forwarded from the public method. */
-  options?: RequestOptions;
+  options?: RequestOptions | undefined;
   /** Tag for telemetry/error context. */
   endpoint: string;
   /** When true, return the raw Response (no JSON parse) — used by stream(). */
@@ -78,7 +78,7 @@ export class RumoIAHubClient {
   public readonly appSlug: AppSlug;
   public readonly timeoutMs: number;
   public readonly maxRetries: number;
-  public readonly userId?: string;
+  public readonly userId?: string | undefined;
   public readonly debug: boolean;
 
   private readonly apiKey: string;
@@ -180,7 +180,10 @@ export class RumoIAHubClient {
         const res = await this.fetchImpl(url, {
           method: req.method,
           headers,
-          body,
+          // Only set `body` when defined — omitting the key is the same as
+          // passing `undefined` to fetch at runtime, but satisfies
+          // exactOptionalPropertyTypes (RequestInit.body is BodyInit | null).
+          ...(body !== undefined ? { body } : {}),
           signal: ctl.signal,
         });
 

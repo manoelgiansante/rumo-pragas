@@ -57,9 +57,9 @@ export interface TranscribeResponse {
 }
 
 export interface TranscribeOptions {
-  language?: string;
-  model?: string;
-  signal?: AbortSignal;
+  language?: string | undefined;
+  model?: string | undefined;
+  signal?: AbortSignal | undefined;
 }
 
 export interface PushToTalkHandle {
@@ -83,7 +83,6 @@ export async function recordPushToTalk(
   // Lazy-require to keep this module browser-safe + dependency-light for unit tests.
   let expoAudio: typeof import('expo-audio');
   try {
-     
     expoAudio = require('expo-audio');
   } catch {
     throw new VoiceRecordError(
@@ -183,7 +182,6 @@ export async function transcribe(
       uri: input,
       name: 'audio.m4a',
       type: 'audio/m4a',
-       
     } as any);
   } else {
     fd.append('audio', input, 'audio.webm');

@@ -157,7 +157,9 @@ export default function PaywallScreen() {
   // 'free' always survives the filter above, so plansWithPrices is never empty
   // and `plan` is always defined. The `?? PLANS[0]` keeps TypeScript happy and
   // guards the (impossible) empty case so the screen never crashes on render.
-  const plan = plansWithPrices.find((p) => p.id === selected) ?? plansWithPrices[0] ?? PLANS[0];
+  // PLANS is a non-empty constant array, so PLANS[0] always exists; assert for
+  // noUncheckedIndexedAccess so `plan` is non-undefined (runtime unchanged).
+  const plan = plansWithPrices.find((p) => p.id === selected) ?? plansWithPrices[0] ?? PLANS[0]!;
 
   const handleSubscribe = useCallback(async () => {
     // Idempotency guard: never let a second tap fire mid-purchase.
