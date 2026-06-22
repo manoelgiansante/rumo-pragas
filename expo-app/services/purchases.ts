@@ -1,6 +1,7 @@
 import type { PurchasesPackage, CustomerInfo } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
+import { captureException } from './sentry-shim';
 
 // iOS 26 cold-start freeze defense (Apple Guideline 2.1(a)):
 // `react-native-purchases` is a StoreKit-backed native (Turbo)Module. A
@@ -77,6 +78,11 @@ export async function getOfferings(): Promise<PurchasesPackage[]> {
     return [];
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to get offerings:', e);
+    // ZERO-O: money-path failures must be observable in prod, not just __DEV__.
+    // Keep the graceful empty-array fallback for the UI.
+    if (isRevenueCatConfigured()) {
+      captureException(e, { tags: { area: 'revenuecat', fn: 'getOfferings' } });
+    }
     return [];
   }
 }
@@ -140,6 +146,11 @@ export async function checkSubscriptionStatus(): Promise<{
     return { plan: 'free', isActive: false };
   } catch (e) {
     if (__DEV__) console.error('[RevenueCat] Failed to check subscription status:', e);
+    // ZERO-O: a silent entitlement-check failure can silently downgrade a paying
+    // user to "free". Capture in prod; keep the graceful free fallback.
+    if (isRevenueCatConfigured()) {
+      captureException(e, { tags: { area: 'revenuecat', fn: 'checkSubscriptionStatus' } });
+    }
     return {
       plan: 'free',
       isActive: false,

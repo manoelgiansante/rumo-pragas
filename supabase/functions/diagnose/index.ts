@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -374,6 +375,30 @@ Deno.serve(async (req: Request) => {
 
     if (countError) {
       logJson("diagnose", requestId, "ERROR", "Count query error", { error: countError.message });
+      // ── Fail CLOSED on quota count failure (ZERO-O) ──
+      // If we cannot verify the monthly usage we must NOT grant a free diagnosis
+      // (fail-open would let any DB hiccup bypass the per-plan quota and burn
+      // Anthropic Vision spend). Capture to Sentry and return 503 so the client
+      // can retry, instead of silently treating usage as 0.
+      await captureException(countError, {
+        tags: { fn: "diagnose", step: "monthly_count" },
+        extra: { userId: user.id, plan },
+      });
+      return new Response(
+        JSON.stringify({
+          error: "Nao foi possivel verificar seu limite de diagnosticos. Tente novamente.",
+          requestId,
+        }),
+        {
+          status: 503,
+          headers: {
+            ...corsHeaders,
+            ...rlHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": "30",
+          },
+        },
+      );
     }
 
     const used = usedThisMonth ?? 0;
