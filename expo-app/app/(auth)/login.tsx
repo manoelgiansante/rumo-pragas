@@ -9,8 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -77,17 +77,17 @@ export default function LoginScreen() {
     if (submitGuardRef.current || isLoading) return;
 
     if (!email.trim() || !password.trim()) {
-      Alert.alert('', t('auth.fillAllFields'));
+      showAlert('', t('auth.fillAllFields'));
       return;
     }
 
     if (!isValidEmail(email.trim())) {
-      Alert.alert('', t('auth.invalidEmail'));
+      showAlert('', t('auth.invalidEmail'));
       return;
     }
 
     if (mode === 'signup' && !isStrongPassword(password)) {
-      Alert.alert('', t('auth.weakPassword'));
+      showAlert('', t('auth.weakPassword'));
       return;
     }
 
@@ -111,7 +111,7 @@ export default function LoginScreen() {
         // that downstream code might display as the user's name.
         const trimmedName = fullName.trim();
         await signUp(email.trim(), password, trimmedName ? trimmedName : undefined);
-        Alert.alert('', t('auth.checkEmail'));
+        showAlert('', t('auth.checkEmail'));
       }
     } catch (err) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -134,12 +134,12 @@ export default function LoginScreen() {
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('', t('auth.enterEmail'));
+      showAlert('', t('auth.enterEmail'));
       return;
     }
     try {
       await resetPassword(email.trim());
-      Alert.alert('', t('auth.emailSent'));
+      showAlert('', t('auth.emailSent'));
     } catch {
       // error is handled by the hook
     }
@@ -175,7 +175,7 @@ export default function LoginScreen() {
         Sentry.captureException(outcome.error, {
           tags: { feature: 'auth', action: 'google_signin' },
         });
-        Alert.alert(t('common.error'), outcome.error.message || t('auth.googleSignInError'));
+        showAlert(t('common.error'), outcome.error.message || t('auth.googleSignInError'));
         return;
       }
       Sentry.addBreadcrumb({
@@ -186,7 +186,7 @@ export default function LoginScreen() {
     } catch (err: unknown) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Sentry.captureException(err, { tags: { feature: 'auth', action: 'google_signin' } });
-      Alert.alert(t('common.error'), t('auth.googleSignInError'));
+      showAlert(t('common.error'), t('auth.googleSignInError'));
     }
   };
 
@@ -219,7 +219,7 @@ export default function LoginScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : t('auth.loginError');
       Sentry.captureException(err, { tags: { feature: 'auth', action: 'apple_signin' } });
-      Alert.alert(t('common.error'), message);
+      showAlert(t('common.error'), message);
     } finally {
       setAppleLoading(false);
     }

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   StyleSheet,
   useColorScheme,
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
   ActionSheetIOS,
   Linking,
 } from 'react-native';
+import { showAlert } from '../../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -340,7 +340,7 @@ export default function SettingsScreen() {
         },
       );
     } else {
-      Alert.alert(t('settings.languageTitle'), undefined, [
+      showAlert(t('settings.languageTitle'), undefined, [
         ...LANGUAGE_OPTIONS.map((opt) => ({
           text: opt.label,
           onPress: () => {
@@ -395,7 +395,7 @@ export default function SettingsScreen() {
         ? 'itms-apps://apps.apple.com/account/subscriptions'
         : 'https://play.google.com/store/account/subscriptions';
     Linking.openURL(url).catch(() => {
-      Alert.alert(t('common.error'), t('settings.manageSubscriptionError'));
+      showAlert(t('common.error'), t('settings.manageSubscriptionError'));
     });
   }, [t]);
 
@@ -409,16 +409,16 @@ export default function SettingsScreen() {
         const hasActive =
           customerInfo.entitlements.active['pro'] || customerInfo.entitlements.active['enterprise'];
         if (hasActive) {
-          Alert.alert(t('paywall.purchasesRestored'), t('paywall.subscriptionReactivated'), [
+          showAlert(t('paywall.purchasesRestored'), t('paywall.subscriptionReactivated'), [
             { text: 'OK', onPress: loadSubscriptionData },
           ]);
         } else {
-          Alert.alert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
+          showAlert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
         }
       }
     } catch (e) {
       Sentry.captureException(e, { tags: { feature: 'settings.restorePurchases' } });
-      Alert.alert(t('common.error'), t('paywall.restoreError'));
+      showAlert(t('common.error'), t('paywall.restoreError'));
     } finally {
       setRestoring(false);
     }
@@ -426,7 +426,7 @@ export default function SettingsScreen() {
 
   const handleSignOut = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    Alert.alert(t('settings.signOutConfirmTitle'), t('settings.signOutConfirmMessage'), [
+    showAlert(t('settings.signOutConfirmTitle'), t('settings.signOutConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       { text: t('settings.signOut'), style: 'destructive', onPress: signOut },
     ]);
@@ -434,7 +434,7 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    Alert.alert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
+    showAlert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       {
         text: t('settings.delete'),
@@ -445,7 +445,7 @@ export default function SettingsScreen() {
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError || !sessionData?.session?.access_token) {
-              Alert.alert(t('common.error'), t('settings.deletionError'));
+              showAlert(t('common.error'), t('settings.deletionError'));
               return;
             }
 
@@ -461,16 +461,16 @@ export default function SettingsScreen() {
                 level: 'error',
                 tags: { feature: 'settings.deleteAccount' },
               });
-              Alert.alert(t('common.error'), t('settings.deletionError'));
+              showAlert(t('common.error'), t('settings.deletionError'));
               return;
             }
 
             await signOut();
-            Alert.alert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
+            showAlert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
           } catch (e) {
             if (__DEV__) console.error('handleDeleteAccount exception:', e);
             Sentry.captureException(e, { tags: { feature: 'settings.deleteAccount' } });
-            Alert.alert(t('common.error'), t('settings.deletionError'));
+            showAlert(t('common.error'), t('settings.deletionError'));
           }
         },
       },
@@ -487,7 +487,7 @@ export default function SettingsScreen() {
         ),
       )
       .catch(() => {
-        Alert.alert(t('settings.support'), 'suporte@agrorumo.com');
+        showAlert(t('settings.support'), 'suporte@agrorumo.com');
       });
   };
 

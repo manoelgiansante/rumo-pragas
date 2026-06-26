@@ -26,11 +26,11 @@ import {
   StyleSheet,
   SafeAreaView,
   Image,
-  Alert,
   Platform,
   useColorScheme,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -107,10 +107,10 @@ export default function PestDetailScreen() {
         if (canOpen) {
           await Linking.openURL(url);
         } else {
-          Alert.alert(t('common.error'), t('diagnosis.pestDetailCannotOpenLink'));
+          showAlert(t('common.error'), t('diagnosis.pestDetailCannotOpenLink'));
         }
       } catch {
-        Alert.alert(t('common.error'), t('diagnosis.pestDetailCannotOpenLink'));
+        showAlert(t('common.error'), t('diagnosis.pestDetailCannotOpenLink'));
       }
     },
     [t],

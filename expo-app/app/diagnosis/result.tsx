@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Alert,
   Platform,
   Image,
   Share,
   useColorScheme,
 } from 'react-native';
+import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -532,18 +532,21 @@ export default function ResultScreen() {
     try {
       trackShareDiagnosis('pdf');
       const html = buildPdfHtml();
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      // Web: printToFileAsync is unsupported and throws. Use the browser print
+      // dialog BEFORE attempting the native file write, otherwise the web branch
+      // below is unreachable and the export fails silently.
       if (Platform.OS === 'web') {
         await Print.printAsync({ html });
         return;
       }
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
         dialogTitle: t('diagnosis.exportPdfDialogTitle'),
         UTI: 'com.adobe.pdf',
       });
     } catch {
-      Alert.alert(t('common.error'), t('diagnosis.exportPdfError'));
+      showAlert(t('common.error'), t('diagnosis.exportPdfError'));
     }
   }, [buildPdfHtml, t, isPro]);
 

@@ -6,9 +6,9 @@ import {
   ScrollView,
   StyleSheet,
   SafeAreaView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -173,7 +173,7 @@ export default function PaywallScreen() {
 
     // If RevenueCat is not configured, show "coming soon" fallback
     if (!configured) {
-      Alert.alert(t('paywall.comingSoonTitle'), t('paywall.comingSoonMsg'), [
+      showAlert(t('paywall.comingSoonTitle'), t('paywall.comingSoonMsg'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
       return;
@@ -185,7 +185,7 @@ export default function PaywallScreen() {
         level: 'warning',
         tags: { feature: 'paywall', action: 'subscribe', plan: selected },
       });
-      Alert.alert(t('paywall.planUnavailableTitle'), t('paywall.planUnavailableMsg'));
+      showAlert(t('paywall.planUnavailableTitle'), t('paywall.planUnavailableMsg'));
       return;
     }
 
@@ -206,7 +206,7 @@ export default function PaywallScreen() {
           level: 'info',
           data: { plan: selected },
         });
-        Alert.alert(t('paywall.subscriptionActivated'), t('paywall.enjoyFeatures'), [
+        showAlert(t('paywall.subscriptionActivated'), t('paywall.enjoyFeatures'), [
           { text: 'OK', onPress: () => router.back() },
         ]);
       }
@@ -216,7 +216,7 @@ export default function PaywallScreen() {
       Sentry.captureException(e, {
         tags: { feature: 'paywall', action: 'subscribe', plan: selected },
       });
-      Alert.alert(t('paywall.purchaseError'), message);
+      showAlert(t('paywall.purchaseError'), message);
     } finally {
       setPurchasing(false);
     }
@@ -228,7 +228,7 @@ export default function PaywallScreen() {
     // If RC is not configured (missing key), surface a graceful error instead
     // of crashing — keeps the Restore button always tappable for reviewers.
     if (!configured) {
-      Alert.alert(t('common.error'), t('paywall.restoreError'));
+      showAlert(t('common.error'), t('paywall.restoreError'));
       return;
     }
     setRestoring(true);
@@ -243,20 +243,20 @@ export default function PaywallScreen() {
         const hasActive =
           customerInfo.entitlements.active['pro'] || customerInfo.entitlements.active['enterprise'];
         if (hasActive) {
-          Alert.alert(t('paywall.purchasesRestored'), t('paywall.subscriptionReactivated'), [
+          showAlert(t('paywall.purchasesRestored'), t('paywall.subscriptionReactivated'), [
             { text: 'OK', onPress: () => router.back() },
           ]);
         } else {
-          Alert.alert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
+          showAlert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
         }
       } else {
-        Alert.alert(t('common.error'), t('paywall.restoreError'));
+        showAlert(t('common.error'), t('paywall.restoreError'));
       }
     } catch (e) {
       Sentry.captureException(e, {
         tags: { feature: 'paywall', action: 'restore' },
       });
-      Alert.alert(t('common.error'), t('paywall.restoreError'));
+      showAlert(t('common.error'), t('paywall.restoreError'));
     } finally {
       setRestoring(false);
     }

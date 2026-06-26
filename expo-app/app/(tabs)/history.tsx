@@ -4,13 +4,13 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   useColorScheme,
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showAlert } from '../../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -64,7 +64,7 @@ export default function HistoryScreen() {
   );
 
   const deleteDiagnosis = async (id: string) => {
-    Alert.alert(t('history.deleteTitle'), t('history.deleteConfirm'), [
+    showAlert(t('history.deleteTitle'), t('history.deleteConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('history.deleteTitle'),
@@ -74,13 +74,13 @@ export default function HistoryScreen() {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             const { error } = await supabase.from('pragas_diagnoses').delete().eq('id', id);
             if (error) {
-              Alert.alert(t('common.error'), t('history.deleteError'));
+              showAlert(t('common.error'), t('history.deleteError'));
               return;
             }
             setDiagnoses((d) => d.filter((x) => x.id !== id));
           } catch (err) {
             if (__DEV__) console.error('[History] Failed to delete diagnosis:', err);
-            Alert.alert(t('common.error'), t('history.deleteError'));
+            showAlert(t('common.error'), t('history.deleteError'));
           }
         },
       },
