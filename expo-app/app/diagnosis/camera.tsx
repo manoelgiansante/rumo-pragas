@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Alert,
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
+import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -66,7 +66,7 @@ export default function CameraScreen() {
     // accidentally taps "Don't Allow" on a fresh install needs a recovery path —
     // otherwise the core flow is gated behind a system Settings deep dive.
     const showPermissionAlert = (msg: string) => {
-      Alert.alert(t('diagnosis.permissionRequired'), msg, [
+      showAlert(t('diagnosis.permissionRequired'), msg, [
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('diagnosis.openSettings'),
@@ -140,7 +140,7 @@ export default function CameraScreen() {
           tags: { feature: 'diagnosis', action: 'image_compression', stage: 'image_compression' },
         });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-        Alert.alert(t('diagnosis.imageError'), t('diagnosis.imageErrorMsg'));
+        showAlert(t('diagnosis.imageError'), t('diagnosis.imageErrorMsg'));
       } finally {
         setProcessing(false);
       }

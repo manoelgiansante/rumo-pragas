@@ -8,8 +8,8 @@ import {
   SafeAreaView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -106,7 +106,7 @@ export default function ConsentLocationScreen() {
       finish();
     } catch {
       setIsSaving(false);
-      Alert.alert(t('common.error'), t('consent.location.saveError'), [{ text: t('common.ok') }]);
+      showAlert(t('common.error'), t('consent.location.saveError'), [{ text: t('common.ok') }]);
     }
   };
 

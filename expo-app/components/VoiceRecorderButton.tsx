@@ -28,7 +28,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { showAlert } from '../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useAudioRecorder,
@@ -139,7 +140,7 @@ function VoiceRecorderButtonImpl({
 
   const startRecording = useCallback(async () => {
     if (permissionGranted !== true) {
-      Alert.alert('Microfone', 'Permissão de microfone é necessária para gravar.');
+      showAlert('Microfone', 'Permissão de microfone é necessária para gravar.');
       return;
     }
     try {
@@ -177,7 +178,7 @@ function VoiceRecorderButtonImpl({
           const result = await transcribe(uri, { language });
           const text = (result.transcript ?? '').trim();
           if (text.length === 0) {
-            Alert.alert(
+            showAlert(
               'Áudio sem fala detectada',
               'Não capturei texto reconhecível. Tente novamente segurando o botão e falando próximo ao microfone.',
             );
@@ -195,7 +196,7 @@ function VoiceRecorderButtonImpl({
               : code === 'iahub_rate_limit'
                 ? 'Muitas gravações em sequência. Aguarde alguns segundos e tente de novo.'
                 : 'Não foi possível transcrever no momento. Digite a observação manualmente — o diagnóstico segue normal.';
-          Alert.alert('Transcrição indisponível', message);
+          showAlert('Transcrição indisponível', message);
         } finally {
           setIsTranscribing(false);
         }

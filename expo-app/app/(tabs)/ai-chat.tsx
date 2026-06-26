@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -158,7 +158,7 @@ export default function AIChatScreen() {
         const errCode =
           err instanceof Object && 'code' in err ? (err as { code: string }).code : undefined;
         if (errCode === 'CHAT_LIMIT_REACHED') {
-          Alert.alert(t('chat.limitReachedTitle'), t('chat.limitReachedMessage'), [
+          showAlert(t('chat.limitReachedTitle'), t('chat.limitReachedMessage'), [
             { text: t('common.cancel'), style: 'cancel' },
             { text: t('chat.upgradePlan'), onPress: () => router.push('/paywall') },
           ]);
@@ -188,7 +188,7 @@ export default function AIChatScreen() {
   );
 
   const clearChat = useCallback(() => {
-    Alert.alert(t('chat.clearChat'), t('chat.clearChatConfirm'), [
+    showAlert(t('chat.clearChat'), t('chat.clearChatConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('chat.clearChat'),

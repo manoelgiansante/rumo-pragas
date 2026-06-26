@@ -5,7 +5,6 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   useColorScheme,
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
   Platform,
   ActionSheetIOS,
 } from 'react-native';
+import { showAlert } from '../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -143,7 +143,7 @@ export default function EditProfileScreen() {
             : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!perm.granted) {
-          Alert.alert(t('editProfile.permissionDeniedTitle'), t('editProfile.permissionDeniedMsg'));
+          showAlert(t('editProfile.permissionDeniedTitle'), t('editProfile.permissionDeniedMsg'));
           return;
         }
 
@@ -205,7 +205,7 @@ export default function EditProfileScreen() {
       } catch (err) {
         if (__DEV__) console.error('Avatar upload failed:', err);
         Sentry.captureException(err, { tags: { feature: 'editProfile.avatarUpload' } });
-        Alert.alert(t('common.error'), t('editProfile.avatarUploadError'));
+        showAlert(t('common.error'), t('editProfile.avatarUploadError'));
       } finally {
         setUploadingAvatar(false);
       }
@@ -231,7 +231,7 @@ export default function EditProfileScreen() {
         },
       );
     } else {
-      Alert.alert(t('editProfile.avatarSheetTitle'), undefined, [
+      showAlert(t('editProfile.avatarSheetTitle'), undefined, [
         { text: options[0], onPress: () => uploadAvatar('camera') },
         { text: options[1], onPress: () => uploadAvatar('library') },
         { text: t('common.cancel'), style: 'cancel' },
@@ -244,7 +244,7 @@ export default function EditProfileScreen() {
 
     if (!profile.full_name.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      Alert.alert(t('settings.editProfile'), t('settings.nameRequired'));
+      showAlert(t('settings.editProfile'), t('settings.nameRequired'));
       return;
     }
 
@@ -276,14 +276,14 @@ export default function EditProfileScreen() {
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert(t('settings.editProfile'), t('settings.profileSaved'), [
+      showAlert(t('settings.editProfile'), t('settings.profileSaved'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err) {
       if (__DEV__) console.error('Failed to save profile:', err);
       Sentry.captureException(err, { tags: { feature: 'editProfile.save' } });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      Alert.alert(t('settings.editProfile'), t('settings.profileSaveError'));
+      showAlert(t('settings.editProfile'), t('settings.profileSaveError'));
     } finally {
       setSaving(false);
     }
