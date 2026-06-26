@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+// expo-file-system SDK 55: the barrel ('expo-file-system') exports the legacy file API
+// (getInfoAsync/makeDirectoryAsync/writeAsStringAsync/readAsStringAsync/deleteAsync) ONLY as
+// stubs that throw at runtime, and does NOT export documentDirectory. The '/legacy' subpath keeps
+// the same working API (incl. a typed documentDirectory). See react-native-knowledge memory.
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 
-// expo-file-system SDK 55: documentDirectory exists at runtime but is not in TS type definitions.
-const documentDirectory = (FileSystem as unknown as { documentDirectory: string | null })
-  .documentDirectory;
+const documentDirectory = FileSystem.documentDirectory;
 const ENCODING_BASE64 = 'base64' as const;
 
 const QUEUE_KEY = '@rumo_pragas_diagnosis_queue';
