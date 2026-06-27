@@ -11,7 +11,12 @@ import { getSentryRelease } from '../services/sentry-release';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { DiagnosisProvider } from '../contexts/DiagnosisContext';
 import { NavigationGateProvider, useNavigationGate } from '../contexts/NavigationGateContext';
-import { GATE_HREF, needsRedirect, resolveGateTarget } from '../services/navigationGate';
+import {
+  GATE_HREF,
+  isGateOwnedSegment,
+  needsRedirect,
+  resolveGateTarget,
+} from '../services/navigationGate';
 import { useNotifications } from '../hooks/useNotifications';
 import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
 import { useOTAUpdate } from '../hooks/useOTAUpdate';
@@ -306,6 +311,16 @@ function RootLayoutNav() {
       lastIssuedTargetRef.current = null;
       return;
     }
+
+    // Non-gate-owned route (e.g. `diagnosis`, `paywall`, `edit-profile`): the
+    // user deliberately pushed a modal/detail route ON TOP of the gate target.
+    // The gate must NOT touch them and — crucially — must NOT clear the arrival
+    // pin, otherwise returning to the gate target later could re-fire a replace.
+    // This is the Apple 2.1(a) fix: tapping "Diagnose Now" pushes `diagnosis`,
+    // and the gate now leaves it completely alone instead of bouncing it back to
+    // `(tabs)` ("returns to the same screen"). needsRedirect() also short-circuits
+    // here; the early-return keeps `arrivedTargetRef` intact as belt-and-braces.
+    if (currentSegment !== undefined && !isGateOwnedSegment(currentSegment)) return;
 
     // Transient `undefined` segment (Android Fabric store churn during a
     // navigation): this is NOT a real route the user is on — never treat it as

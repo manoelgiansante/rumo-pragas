@@ -12,6 +12,7 @@
  */
 import {
   GATE_HREF,
+  isGateOwnedSegment,
   needsRedirect,
   resolveGateTarget,
   type GateState,
@@ -118,6 +119,73 @@ describe('needsRedirect', () => {
   it('does NOT redirect once the current segment equals the target', () => {
     expect(needsRedirect('(tabs)', '(tabs)')).toBe(false);
     expect(needsRedirect('consent-location', 'consent-location')).toBe(false);
+  });
+
+  // Apple 2.1(a) regression: "App returns to the same screen after tapping
+  // Diagnose Now". An authenticated/onboarded/consented user is on `(tabs)`,
+  // taps the CTA → `router.push('/diagnosis/camera')` → segments[0] = 'diagnosis'.
+  // The gate target stays '(tabs)'. The gate MUST NOT bounce them off `diagnosis`.
+  it('does NOT redirect away from a deliberate non-gate route (diagnosis push)', () => {
+    expect(needsRedirect('diagnosis', '(tabs)')).toBe(false);
+  });
+
+  it('does NOT redirect away from any non-gate top-level route', () => {
+    for (const route of [
+      'diagnosis',
+      'edit-profile',
+      'paywall',
+      'terms',
+      'privacy',
+      '+not-found',
+    ]) {
+      expect(needsRedirect(route, '(tabs)')).toBe(false);
+      // ...even if the resolved target happens to be a different gate segment.
+      expect(needsRedirect(route, 'consent-location')).toBe(false);
+    }
+  });
+
+  it('STILL redirects between gate-owned segments (gate enforcement intact)', () => {
+    expect(needsRedirect('consent-location', '(tabs)')).toBe(true);
+    expect(needsRedirect('(auth)', '(tabs)')).toBe(true);
+    expect(needsRedirect('onboarding', '(auth)')).toBe(true);
+    // undefined (cold-start index / Fabric churn) is gate-owned → routes.
+    expect(needsRedirect(undefined, '(tabs)')).toBe(true);
+  });
+});
+
+describe('isGateOwnedSegment', () => {
+  it('treats the four gate segments as owned', () => {
+    for (const s of ['onboarding', '(auth)', 'consent-location', '(tabs)']) {
+      expect(isGateOwnedSegment(s)).toBe(true);
+    }
+  });
+
+  it('treats undefined (first frame / Fabric churn) as owned', () => {
+    expect(isGateOwnedSegment(undefined)).toBe(true);
+  });
+
+  it('treats deliberate modal/detail routes as NOT owned', () => {
+    for (const s of ['diagnosis', 'edit-profile', 'paywall', 'terms', 'privacy', '+not-found']) {
+      expect(isGateOwnedSegment(s)).toBe(false);
+    }
+  });
+});
+
+// Apple 2.1(a) full-flow regression: tapping "Diagnose Now" from (tabs) and
+// landing on the diagnosis flow must be a FIXED POINT — zero gate replaces.
+describe('Diagnose-Now flow is stable (Apple 2.1a regression)', () => {
+  const consentedState: GateState = {
+    isLoading: false,
+    isAuthenticated: true,
+    hasSeenOnboarding: true,
+    hasSeenLocationConsent: true,
+  };
+
+  it('user on diagnosis stays on diagnosis (no bounce to tabs)', () => {
+    const target = resolveGateTarget(consentedState);
+    expect(target).toBe('(tabs)');
+    // The reviewer is now on the diagnosis modal — gate issues no navigation.
+    expect(needsRedirect('diagnosis', target)).toBe(false);
   });
 });
 

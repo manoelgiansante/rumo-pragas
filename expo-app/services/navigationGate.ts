@@ -47,6 +47,39 @@ export const GATE_HREF: Record<GateSegment, string> = {
   '(tabs)': '/(tabs)',
 };
 
+/**
+ * The ONLY top-level segments the gate is allowed to route between. Every other
+ * concrete top-level route in the app (`diagnosis`, `edit-profile`, `paywall`,
+ * `terms`, `privacy`, `+not-found`) is a DELIBERATE user-initiated destination
+ * the gate must NOT interfere with.
+ */
+export const GATE_SEGMENTS: readonly GateSegment[] = [
+  'onboarding',
+  '(auth)',
+  'consent-location',
+  '(tabs)',
+];
+
+/**
+ * True when `segment` is one of the four gate-owned top-level routes.
+ *
+ * `undefined` (the transient first-frame / index segment, or the Fabric
+ * `useSegments` store-churn value on New Architecture) is treated as
+ * gate-owned: at cold start we DO want the gate to route the user from the
+ * blank index to the correct destination.
+ *
+ * Any OTHER concrete segment (e.g. `diagnosis`, `paywall`) is NOT gate-owned —
+ * the user navigated there on purpose (e.g. tapped "Diagnose Now"), and the
+ * gate must leave them alone. This is the structural fix for the Apple 2.1(a)
+ * "App returns to the same screen after tapping Diagnose Now" rejection: the
+ * old `needsRedirect` bounced `diagnosis` → `(tabs)` because `diagnosis` simply
+ * wasn't the resolved target, yanking the reviewer back to Home.
+ */
+export function isGateOwnedSegment(segment: string | undefined): boolean {
+  if (segment === undefined) return true;
+  return (GATE_SEGMENTS as readonly string[]).includes(segment);
+}
+
 export interface GateState {
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -88,12 +121,21 @@ export function resolveGateTarget(state: GateState): GateSegment | null {
  * Whether a navigation is required to move from `currentSegment` to `target`.
  * `currentSegment` is `useSegments()[0]` (may be undefined on first frame, e.g.
  * at the index route). A null target means "not ready" → never navigate.
+ *
+ * CRITICAL (Apple 2.1(a) — "returns to the same screen after tapping Diagnose
+ * Now"): the gate must ONLY redirect when the user is on a gate-owned segment
+ * that differs from the target. If the user is on a deliberate non-gate route
+ * (`diagnosis`, `paywall`, `edit-profile`, `terms`, `privacy`), we return false
+ * so the gate leaves them there. Otherwise pushing `/diagnosis/camera` would be
+ * instantly bounced back to `(tabs)` because `diagnosis !== target`.
  */
 export function needsRedirect(
   currentSegment: string | undefined,
   target: GateSegment | null,
 ): boolean {
   if (target === null) return false;
+  // Never pull the user off a route the gate does not own (intentional push).
+  if (!isGateOwnedSegment(currentSegment)) return false;
   return currentSegment !== target;
 }
 
