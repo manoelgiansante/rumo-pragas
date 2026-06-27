@@ -165,7 +165,17 @@ export function useDiagnosisSync() {
       await refreshCount();
     };
 
-    syncQueue();
+    syncQueue().catch((err) => {
+      // Never let an AsyncStorage read/write rejection deadlock the sync loop
+      // (isSyncingRef stuck true) or surface as an unhandled rejection (ZERO-O).
+      isSyncingRef.current = false;
+      setIsSyncing(false);
+      try {
+        captureException(err, { extra: { context: 'diagnosisSync_unhandled' } });
+      } catch {
+        // swallow — the sync path must never throw
+      }
+    });
   }, [isConnected, session?.access_token, refreshCount]);
 
   return { pendingCount, isSyncing, refreshCount };
