@@ -6,7 +6,7 @@ import type { DiagnosisResult, AgrioPrediction } from '../types/diagnosis';
 import { parseNotes } from '../types/diagnosis';
 import i18n from '../i18n';
 import { hasLocationConsent } from './userPreferences';
-import { getIAHubClient, isIAHubEnabled } from '../lib/ia-hub';
+import { getIAHubClient, isIAHubEnabled, isIAHubDiagnoseEnabled } from '../lib/ia-hub';
 import type { DiagnoseResponse } from '@agrorumo/ia-hub-client';
 
 export type { DiagnosisResult };
@@ -82,35 +82,44 @@ export async function sendDiagnosis(
     data: {
       cropType,
       hasLocation: !!(safeLatitude && safeLongitude),
-      provider: isIAHubEnabled() ? 'ia-hub' : 'supabase-edge',
+      provider: isIAHubDiagnoseEnabled() ? 'ia-hub' : 'supabase-edge',
+      iaHubAvailable: isIAHubEnabled(),
     },
   });
 
   // Validate image size before sending (applies to both transport paths)
   validateBase64ImageSize(imageBase64);
 
-  // ── Feature-flagged IA Hub path (IH-6) ───────────────────────────────
-  // When EXPO_PUBLIC_IA_HUB_ENABLED is on and a client can be constructed,
-  // route the vision request through the IA Hub. On any failure we throw
-  // the same shape of error the legacy path throws so the caller (loading
-  // screen) doesn't need to know which provider answered.
-  if (isIAHubEnabled()) {
+  // ── Feature-flagged IA Hub path (IH-6 / IH-7) ────────────────────────
+  // Gated by `isIAHubDiagnoseEnabled()` (NOT just `isIAHubEnabled()`): the
+  // diagnose flow only routes through the IA Hub once the server-side
+  // contract is attested (JWT verify + pragas_diagnoses persistence +
+  // monthly quota — see lib/ia-hub.ts header). Until then we keep the
+  // legacy edge function, which already enforces all three. On any IA Hub
+  // failure we throw the same error shape the legacy path throws so the
+  // caller (loading screen) doesn't need to know which provider answered.
+  if (isIAHubDiagnoseEnabled()) {
     const ia = getIAHubClient();
-    if (ia) {
+    // ZERO-X: never call the IA Hub without the user's Supabase JWT — the
+    // hub must derive identity/billing from `auth.getUser(jwt)`, never from
+    // a body `userId`. Missing token → fall back to the legacy path.
+    if (ia && token) {
       return sendDiagnosisViaIAHub(ia, {
         imageBase64,
         cropType,
         latitude: safeLatitude,
         longitude: safeLongitude,
         userId,
+        token,
       });
     }
-    // Flag on but client failed to construct → fall through to legacy with
-    // a Sentry breadcrumb so we notice the silent downgrade.
+    // Flag on but client unavailable OR no user JWT → fall through to legacy
+    // with a Sentry breadcrumb so we notice the silent downgrade.
     addBreadcrumb({
       category: 'diagnosis',
-      message: 'ia_hub_flag_on_but_client_unavailable_fallback_legacy',
+      message: 'ia_hub_diagnose_on_but_client_or_token_missing_fallback_legacy',
       level: 'warning',
+      data: { hasClient: !!ia, hasToken: !!token },
     });
   }
 
@@ -218,9 +227,11 @@ async function sendDiagnosisViaIAHub(
     latitude: number | null;
     longitude: number | null;
     userId?: string | undefined;
+    /** Supabase access token (JWT) — forwarded for server-side auth.getUser. */
+    token: string;
   },
 ): Promise<DiagnosisResult> {
-  const { imageBase64, cropType, latitude, longitude, userId } = args;
+  const { imageBase64, cropType, latitude, longitude, userId, token } = args;
 
   // Build a multipart-compatible file shape that works on both RN (FormData
   // accepts {uri,type,name} or Blob) and Hermes. We prefer Blob when the
@@ -250,21 +261,34 @@ async function sendDiagnosisViaIAHub(
 
   let response: DiagnoseResponse;
   try {
-    response = await ia.diagnose({
-      // The IA Hub uses `prompt` for free-text symptoms and `context` for
-      // structured signals (crop, geo). Pragas only has the photo; the
-      // prompt is a tiny hint the routing layer uses to pick the vision
-      // backend variant.
-      prompt: `Diagnose plant disease/pest in crop "${cropType}".`,
-      images: [imageFile],
-      context: {
-        crop: cropType,
-        latitude,
-        longitude,
-        userId,
-        app: 'rumo-pragas',
+    response = await ia.diagnose(
+      {
+        // The IA Hub uses `prompt` for free-text symptoms and `context` for
+        // structured signals (crop, geo). Pragas only has the photo; the
+        // prompt is a tiny hint the routing layer uses to pick the vision
+        // backend variant.
+        prompt: `Diagnose plant disease/pest in crop "${cropType}".`,
+        images: [imageFile],
+        // ZERO-X: `context` carries ONLY non-authoritative signals. The
+        // user's identity is NEVER passed here — the IA Hub must resolve it
+        // from the forwarded JWT via `auth.getUser(jwt)` and use that for
+        // scope, persistence (pragas_diagnoses), and quota/billing. Sending
+        // `userId` in the body would be trivially spoofable.
+        context: {
+          crop: cropType,
+          latitude,
+          longitude,
+          app: 'rumo-pragas',
+        },
       },
-    });
+      {
+        // Forward the caller's Supabase access token so the IA Hub can
+        // authenticate the end user server-side (ZERO-X). The app-scoped
+        // API key (bundled plaintext) only authenticates the *app*, never
+        // the *user*.
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
   } catch (err) {
     captureException(err, {
       tags: { stage: 'ia_hub_diagnose', provider: 'ia-hub' },
