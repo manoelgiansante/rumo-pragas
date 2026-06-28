@@ -64,7 +64,15 @@ export function useMonthlyUsage(): UseMonthlyUsageResult {
       firstOfMonth.setHours(0, 0, 0, 0);
 
       const [subResult, countResult] = await Promise.all([
-        supabase.from('subscriptions').select('plan, status').eq('user_id', user.id).maybeSingle(),
+        // `app` filter isolates Pragas entitlements on the shared jxcn
+        // subscriptions table (migration 20260628120000). Requires the
+        // `app` column to be live before this build ships.
+        supabase
+          .from('subscriptions')
+          .select('plan, status')
+          .eq('user_id', user.id)
+          .eq('app', 'rumo-pragas')
+          .maybeSingle(),
         supabase
           .from('pragas_diagnoses')
           .select('id', { count: 'exact', head: true })

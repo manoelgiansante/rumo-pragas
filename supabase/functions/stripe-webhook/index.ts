@@ -6,6 +6,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+// ── App discriminator for the shared jxcn `subscriptions` table ──
+// Keeps Stripe-sourced subscriptions isolated per app (see migration
+// 20260628120000_subscriptions_per_app_isolation.sql). DO NOT deploy
+// before that migration is applied (UNIQUE(user_id, app) must exist).
+const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
+
 // ── Security: Environment check for livemode enforcement (#13) ──
 const IS_PRODUCTION = (Deno.env.get("ENVIRONMENT") ?? Deno.env.get("DENO_ENV") ?? "production").toLowerCase() === "production";
 
@@ -359,6 +365,7 @@ Deno.serve(async (req: Request) => {
           await supabase.from("subscriptions").upsert(
             {
               user_id: userId,
+              app: APP_KEY,
               plan: plan,
               status: "active",
               stripe_customer_id: session.customer,
@@ -368,7 +375,7 @@ Deno.serve(async (req: Request) => {
                 Date.now() + 30 * 24 * 60 * 60 * 1000,
               ).toISOString(),
             },
-            { onConflict: "user_id" },
+            { onConflict: "user_id,app" },
           );
         }
         break;
@@ -402,7 +409,8 @@ Deno.serve(async (req: Request) => {
         await supabase
           .from("subscriptions")
           .update(updateData)
-          .eq("stripe_customer_id", customerId);
+          .eq("stripe_customer_id", customerId)
+          .eq("app", APP_KEY);
         break;
       }
 
@@ -411,7 +419,8 @@ Deno.serve(async (req: Request) => {
         await supabase
           .from("subscriptions")
           .update({ plan: "free", status: "canceled" })
-          .eq("stripe_customer_id", subscription.customer);
+          .eq("stripe_customer_id", subscription.customer)
+          .eq("app", APP_KEY);
         break;
       }
 
@@ -420,7 +429,8 @@ Deno.serve(async (req: Request) => {
         await supabase
           .from("subscriptions")
           .update({ status: "past_due" })
-          .eq("stripe_customer_id", invoice.customer);
+          .eq("stripe_customer_id", invoice.customer)
+          .eq("app", APP_KEY);
         break;
       }
     }

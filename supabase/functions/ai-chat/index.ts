@@ -6,6 +6,11 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+// App discriminator for the shared jxcn `subscriptions` table — read only
+// this app's row so cross-app Pro/Enterprise does not unlock Pragas. Pairs
+// with migration 20260628120000_subscriptions_per_app_isolation.sql.
+const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
+
 // ── Security: Fail-fast on missing critical secrets (#15) ──
 if (!CLAUDE_API_KEY) {
   console.error(JSON.stringify({ function: "ai-chat", level: "FATAL", message: "CLAUDE_API_KEY not set. Function will reject all requests." }));
@@ -249,6 +254,7 @@ Deno.serve(async (req: Request) => {
       .from("subscriptions")
       .select("plan, status")
       .eq("user_id", user.id)
+      .eq("app", APP_KEY)
       .maybeSingle();
 
     const plan =

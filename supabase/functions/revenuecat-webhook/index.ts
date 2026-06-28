@@ -34,6 +34,15 @@ const SUPABASE_SERVICE_ROLE_KEY =
 const REVENUECAT_WEBHOOK_SECRET =
   Deno.env.get("REVENUECAT_WEBHOOK_SECRET") ?? "";
 
+// ── App discriminator for the shared jxcn `subscriptions` table ──
+// This webhook serves Rumo Pragas. The shared table is keyed by
+// (user_id, app) so a subscription in another AgroRumo app cannot grant
+// or revoke Pro/Enterprise here. See migration
+// 20260628120000_subscriptions_per_app_isolation.sql.
+// Pairs with that migration — DO NOT deploy this until the migration is
+// applied (column `app` + UNIQUE(user_id, app) must exist).
+const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
+
 // ── Security: Environment check for sandbox enforcement ──
 // Mirrors stripe-webhook livemode check. Prevents attackers with a leaked
 // webhook secret from emitting SANDBOX events that would upsert active
@@ -127,6 +136,7 @@ type RevenueCatEventType =
   | "NON_RENEWING_PURCHASE";
 
 interface RevenueCatEvent {
+  id?: string;
   type: RevenueCatEventType;
   app_user_id: string;
   aliases?: string[];
@@ -450,6 +460,7 @@ Deno.serve(async (req: Request) => {
       .upsert(
         {
           user_id: userId,
+          app: APP_KEY,
           plan,
           status,
           provider,
@@ -459,7 +470,7 @@ Deno.serve(async (req: Request) => {
           revenuecat_product_id: safeProductId,
           revenuecat_environment: event.environment,
         },
-        { onConflict: "user_id" },
+        { onConflict: "user_id,app" },
       );
 
     if (upsertError) {
