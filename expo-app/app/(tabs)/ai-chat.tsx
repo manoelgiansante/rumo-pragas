@@ -157,19 +157,23 @@ export default function AIChatScreen() {
         // If chat limit reached, show upgrade prompt
         const errCode =
           err instanceof Object && 'code' in err ? (err as { code: string }).code : undefined;
+        const errSpecific = err instanceof Error && err.message ? err.message : undefined;
         if (errCode === 'CHAT_LIMIT_REACHED') {
           showAlert(t('chat.limitReachedTitle'), t('chat.limitReachedMessage'), [
             { text: t('common.cancel'), style: 'cancel' },
             { text: t('chat.upgradePlan'), onPress: () => router.push('/paywall') },
           ]);
         }
+        // Surface the actionable message produced by the chat service
+        // (login/session expired/too many messages/service unavailable/no permission)
+        // instead of collapsing every failure into a generic string.
         const errMsg: Message = {
           id: nextMessageId(),
           role: 'assistant',
           content:
             errCode === 'CHAT_LIMIT_REACHED'
               ? t('chat.limitReachedMessage')
-              : t('chat.errorMessage'),
+              : errSpecific || t('chat.errorMessage'),
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errMsg]);

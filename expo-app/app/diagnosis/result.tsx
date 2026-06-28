@@ -620,12 +620,20 @@ export default function ResultScreen() {
           <Text style={[styles.errorTitle, isDark && styles.textDark]}>{t('diagnosis.error')}</Text>
           <Text style={styles.errorMsg}>{error}</Text>
           <TouchableOpacity
-            style={styles.closeBtn}
+            style={[styles.closeBtn, { backgroundColor: Colors.warmAmber }]}
+            onPress={() => router.replace('/diagnosis/camera')}
+            accessibilityLabel={t('diagnosis.tryAgainA11y')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.closeBtnText}>{t('diagnosis.tryAgain')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
             onPress={() => router.dismissAll()}
             accessibilityLabel={t('diagnosis.closeDiagnosisA11y')}
             accessibilityRole="button"
           >
-            <Text style={styles.closeBtnText}>{t('diagnosis.close')}</Text>
+            <Text style={styles.secondaryBtnText}>{t('diagnosis.close')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1476,6 +1484,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   },
   closeBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
+  secondaryBtn: {
+    paddingHorizontal: 48,
+    paddingVertical: 14,
+    marginTop: Spacing.sm,
+  },
+  secondaryBtnText: {
+    fontSize: FontSize.subheadline,
+    fontWeight: '600',
+    color: Colors.systemGray,
+  },
   // --- Action buttons ---
   actionRow: {
     flexDirection: 'row',
