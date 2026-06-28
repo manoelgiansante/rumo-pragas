@@ -413,6 +413,7 @@ export default {
     success: 'Exito',
     cancel: 'Cancelar',
     confirm: 'Confirmar',
+    done: 'Listo',
     ok: 'OK',
     save: 'Guardar',
     noResults: 'No se encontraron resultados',

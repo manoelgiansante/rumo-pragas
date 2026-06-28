@@ -425,6 +425,7 @@ export default {
     success: 'Sucesso',
     cancel: 'Cancelar',
     confirm: 'Confirmar',
+    done: 'Concluir',
     ok: 'OK',
     save: 'Salvar',
     noResults: 'Nenhum resultado encontrado',

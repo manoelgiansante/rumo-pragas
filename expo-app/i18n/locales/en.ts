@@ -411,6 +411,7 @@ export default {
     success: 'Success',
     cancel: 'Cancel',
     confirm: 'Confirm',
+    done: 'Done',
     ok: 'OK',
     save: 'Save',
     noResults: 'No results found',

@@ -25,6 +25,7 @@ import { CROPS } from '../constants/crops';
 import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import { Avatar } from '../components/Avatar';
+import { KeyboardDoneAccessory, DONE_ACCESSORY_ID } from '../components/KeyboardDoneAccessory';
 
 const BRAZILIAN_STATES = [
   'AC',
@@ -345,6 +346,7 @@ export default function EditProfileScreen() {
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar editor */}
@@ -503,6 +505,9 @@ export default function EditProfileScreen() {
 
         <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* Renders a "Concluir" toolbar above number-style keyboards on iOS. */}
+      <KeyboardDoneAccessory />
     </KeyboardAvoidingView>
   );
 }
@@ -542,6 +547,11 @@ function Field({
   a11yLabel,
   testID,
 }: FieldProps) {
+  // Number-style keyboards (phone-pad/numeric) have no return key on iOS, so
+  // attach the shared "Concluir" accessory toolbar to let the user dismiss it.
+  const needsDoneAccessory =
+    Platform.OS === 'ios' && (keyboardType === 'phone-pad' || keyboardType === 'numeric');
+
   return (
     <View style={styles.field}>
       <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>
@@ -560,6 +570,7 @@ function Field({
         autoComplete={autoComplete}
         textContentType={textContentType}
         returnKeyType="next"
+        inputAccessoryViewID={needsDoneAccessory ? DONE_ACCESSORY_ID : undefined}
         accessibilityLabel={a11yLabel ?? label}
         accessibilityState={disabled ? { disabled: true } : undefined}
         testID={testID}
