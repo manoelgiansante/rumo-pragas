@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: analytics
@@ -304,6 +305,12 @@ Deno.serve(async (req: Request) => {
 
   if (insertError) {
     logJson("analytics", requestId, "ERROR", "Insert error", { error: insertError.message });
+    // (audit P2 / ZERO-O) The measurement sink was blind: a failing insert only
+    // hit console.error. Capture so dropped analytics batches are observable.
+    await captureException(insertError, {
+      tags: { fn: "analytics", step: "insert_events" },
+      extra: { userId: authenticatedUserId, count: rows.length },
+    });
     return new Response(
       JSON.stringify({ error: "Failed to store events", requestId }),
       {

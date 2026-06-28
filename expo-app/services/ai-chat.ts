@@ -26,6 +26,10 @@ export async function sendChatMessage(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      // Identify the calling app so the SHARED `ai-chat` slug (also used by
+      // rumo-vet) can detect/serve the correct persona. See edge fn comments
+      // on the shared-slug hazard. Durable fix = dedicated `ai-chat-pragas` slug.
+      'X-Rumo-App': 'rumo-pragas',
       Authorization: `Bearer ${session.access_token}`,
     },
     body: JSON.stringify({
