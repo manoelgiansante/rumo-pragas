@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActionSheetIOS,
+  ReturnKeyTypeOptions,
 } from 'react-native';
+import { formatPhoneBR } from '../utils/phone';
 import { showAlert } from '../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -77,6 +79,11 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Keyboard "Avançar"/"Próximo" focus chain: name → phone → city → done(save).
+  // Without onSubmitEditing/ref wiring the return key was inert (dead key).
+  const phoneRef = useRef<TextInput>(null);
+  const cityRef = useRef<TextInput>(null);
   const [profile, setProfile] = useState<ProfileData>({
     full_name: '',
     city: '',
@@ -241,7 +248,9 @@ export default function EditProfileScreen() {
   }, [uploadingAvatar, uploadAvatar, t]);
 
   const handleSave = useCallback(async () => {
-    if (!user) return;
+    // Re-entrancy guard: the in-flight request might not have flipped `saving`
+    // (and thus the header button's `disabled`) before a second tap lands.
+    if (!user || saving) return;
 
     if (!profile.full_name.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
@@ -288,7 +297,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [user, profile, t]);
+  }, [user, saving, profile, t]);
 
   if (loading) {
     return (
@@ -386,6 +395,9 @@ export default function EditProfileScreen() {
             autoCapitalize="words"
             a11yLabel={t('editProfile.fullNameA11y')}
             required
+            returnKeyType="next"
+            onSubmitEditing={() => phoneRef.current?.focus()}
+            blurOnSubmit={false}
             testID="edit-profile-input-name"
           />
           <Separator />
@@ -399,14 +411,18 @@ export default function EditProfileScreen() {
           <Separator />
           <Field
             isDark={isDark}
+            inputRef={phoneRef}
             label={t('editProfile.phone')}
             value={profile.phone}
-            onChangeText={(text) => setProfile((p) => ({ ...p, phone: text }))}
+            onChangeText={(text) => setProfile((p) => ({ ...p, phone: formatPhoneBR(text) }))}
             placeholder="(11) 9 9999-9999"
             keyboardType="phone-pad"
             autoComplete="tel"
             textContentType="telephoneNumber"
             a11yLabel={t('editProfile.phoneA11y')}
+            returnKeyType="next"
+            onSubmitEditing={() => cityRef.current?.focus()}
+            blurOnSubmit={false}
             testID="edit-profile-input-phone"
           />
         </View>
@@ -415,6 +431,7 @@ export default function EditProfileScreen() {
         <View style={[styles.card, isDark && styles.cardDark]}>
           <Field
             isDark={isDark}
+            inputRef={cityRef}
             label={t('settings.city')}
             value={profile.city}
             onChangeText={(text) => setProfile((p) => ({ ...p, city: text }))}
@@ -423,6 +440,8 @@ export default function EditProfileScreen() {
             autoComplete="postal-address-locality"
             textContentType="addressCity"
             a11yLabel={t('editProfile.cityA11y')}
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
             testID="edit-profile-input-city"
           />
           <Separator />
@@ -530,6 +549,10 @@ interface FieldProps {
   required?: boolean;
   a11yLabel?: string;
   testID?: string;
+  inputRef?: React.RefObject<TextInput | null>;
+  returnKeyType?: ReturnKeyTypeOptions;
+  onSubmitEditing?: () => void;
+  blurOnSubmit?: boolean;
 }
 
 function Field({
@@ -546,6 +569,10 @@ function Field({
   required,
   a11yLabel,
   testID,
+  inputRef,
+  returnKeyType,
+  onSubmitEditing,
+  blurOnSubmit,
 }: FieldProps) {
   // Number-style keyboards (phone-pad/numeric) have no return key on iOS, so
   // attach the shared "Concluir" accessory toolbar to let the user dismiss it.
@@ -559,6 +586,7 @@ function Field({
         {required ? ' *' : ''}
       </Text>
       <TextInput
+        ref={inputRef}
         style={[styles.input, isDark && styles.inputDark, disabled && styles.inputDisabled]}
         value={value}
         onChangeText={onChangeText}
@@ -569,7 +597,9 @@ function Field({
         autoCapitalize={autoCapitalize ?? 'sentences'}
         autoComplete={autoComplete}
         textContentType={textContentType}
-        returnKeyType="next"
+        returnKeyType={returnKeyType ?? 'next'}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={blurOnSubmit}
         inputAccessoryViewID={needsDoneAccessory ? DONE_ACCESSORY_ID : undefined}
         accessibilityLabel={a11yLabel ?? label}
         accessibilityState={disabled ? { disabled: true } : undefined}

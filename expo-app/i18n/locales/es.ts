@@ -338,6 +338,7 @@ export default {
     about: 'Acerca de',
     version: 'Version',
     checkUpdates: 'Buscar actualizaciones',
+    support: 'Soporte',
     contactSupport: 'Contactar soporte',
     supportSubject: 'Soporte Rumo Pragas IA',
     checking: 'Verificando...',

@@ -201,19 +201,30 @@ export default function HomeScreen() {
     () => [
       {
         icon: 'document-text',
-        value: diagnosisError ? '!' : diagnosisCount > 0 ? `${diagnosisCount}` : '\u2014',
+        // A real "0" reads as a fresh account; the em-dash looked like a failed
+        // load. On error we surface "!" + a tap-to-retry; otherwise the card
+        // deep-links into the history tab.
+        value: diagnosisError ? '!' : `${diagnosisCount}`,
         label: diagnosisError ? t('common.error') : t('home.diagnoses'),
         color: diagnosisError ? Colors.coral : Colors.accent,
+        onPress: diagnosisError ? loadData : () => router.push('/(tabs)/history'),
       },
-      { icon: 'shield-checkmark', value: 'MIP', label: t('home.strategy'), color: Colors.techBlue },
+      {
+        icon: 'shield-checkmark',
+        value: 'MIP',
+        label: t('home.strategy'),
+        color: Colors.techBlue,
+        onPress: undefined,
+      },
       {
         icon: 'trending-up',
         value: riskLevelText,
         label: t('home.monitoring'),
         color: Colors.warmAmber,
+        onPress: undefined,
       },
     ],
-    [diagnosisError, diagnosisCount, riskLevelText, t],
+    [diagnosisError, diagnosisCount, riskLevelText, t, loadData],
   );
 
   if (isInitialLoading) {
@@ -375,11 +386,11 @@ export default function HomeScreen() {
         )}
 
         <View style={styles.statsRow}>
-          {statsData.map((stat, i) => (
-            <PremiumCard key={i} style={{ flex: 1 }}>
+          {statsData.map((stat, i) => {
+            const card = (
               <View
                 style={styles.statCard}
-                accessible
+                accessible={!stat.onPress}
                 accessibilityLabel={`${stat.label}: ${stat.value}`}
                 accessibilityRole="summary"
               >
@@ -392,8 +403,25 @@ export default function HomeScreen() {
                 <Text style={[styles.statValue, isDark && styles.textDark]}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
               </View>
-            </PremiumCard>
-          ))}
+            );
+            return (
+              <PremiumCard key={i} style={{ flex: 1 }}>
+                {stat.onPress ? (
+                  <TouchableOpacity
+                    testID={`home-stat-${i}`}
+                    onPress={stat.onPress}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${stat.label}: ${stat.value}`}
+                  >
+                    {card}
+                  </TouchableOpacity>
+                ) : (
+                  card
+                )}
+              </PremiumCard>
+            );
+          })}
         </View>
 
         {alerts.length > 0 && (

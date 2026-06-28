@@ -335,6 +335,7 @@ export default {
     about: 'About',
     version: 'Version',
     checkUpdates: 'Check for updates',
+    support: 'Support',
     contactSupport: 'Contact support',
     supportSubject: 'Rumo Pragas IA Support',
     checking: 'Checking...',

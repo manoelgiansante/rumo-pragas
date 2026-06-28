@@ -270,6 +270,8 @@ export default function LibraryScreen() {
       <FlatList
         data={filtered}
         keyExtractor={keyExtractor}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         key={isTablet ? 'tablet' : 'phone'}
         contentContainerStyle={[
           { padding: Spacing.lg, paddingBottom: 100 },

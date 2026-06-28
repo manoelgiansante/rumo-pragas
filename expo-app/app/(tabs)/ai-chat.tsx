@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -154,15 +155,19 @@ export default function AIChatScreen() {
         };
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: unknown) {
-        // If chat limit reached, show upgrade prompt
         const errCode =
           err instanceof Object && 'code' in err ? (err as { code: string }).code : undefined;
         const errSpecific = err instanceof Error && err.message ? err.message : undefined;
+        // Chat limit reached: show the upgrade Alert ONLY. Previously we also
+        // pushed an assistant bubble with the same copy, so the user saw the
+        // limit message twice (modal + bubble). The Alert carries the actionable
+        // "Upgrade" CTA, so it's the single source of truth here.
         if (errCode === 'CHAT_LIMIT_REACHED') {
           showAlert(t('chat.limitReachedTitle'), t('chat.limitReachedMessage'), [
             { text: t('common.cancel'), style: 'cancel' },
             { text: t('chat.upgradePlan'), onPress: () => router.push('/paywall') },
           ]);
+          return;
         }
         // Surface the actionable message produced by the chat service
         // (login/session expired/too many messages/service unavailable/no permission)
@@ -170,10 +175,7 @@ export default function AIChatScreen() {
         const errMsg: Message = {
           id: nextMessageId(),
           role: 'assistant',
-          content:
-            errCode === 'CHAT_LIMIT_REACHED'
-              ? t('chat.limitReachedMessage')
-              : errSpecific || t('chat.errorMessage'),
+          content: errSpecific || t('chat.errorMessage'),
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errMsg]);
@@ -221,11 +223,14 @@ export default function AIChatScreen() {
           </Text>
         </View>
       ) : messages.length === 0 ? (
-        <View
-          style={[
+        <ScrollView
+          style={styles.emptyStateScroll}
+          contentContainerStyle={[
             styles.emptyState,
             isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
           ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <LinearGradient colors={Gradients.tech} style={styles.aiAvatar}>
             <Ionicons name="sparkles" size={34} color="#FFF" />
@@ -249,7 +254,7 @@ export default function AIChatScreen() {
               <Ionicons name="arrow-up-outline" size={12} color={Colors.systemGray3} />
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       ) : (
         <>
           <View style={styles.chatHeader}>
@@ -341,7 +346,14 @@ const styles = StyleSheet.create({
   containerDark: { backgroundColor: Colors.backgroundDark },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
-  emptyState: { flex: 1, alignItems: 'center', paddingTop: 50, paddingHorizontal: 20 },
+  emptyStateScroll: { flex: 1 },
+  emptyState: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
   aiAvatar: {
     width: 80,
     height: 80,

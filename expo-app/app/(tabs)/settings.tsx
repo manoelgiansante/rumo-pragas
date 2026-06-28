@@ -11,11 +11,12 @@ import {
   Platform,
   ActionSheetIOS,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
@@ -275,6 +276,7 @@ export default function SettingsScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const subLoadingRef = useRef(false);
   const [restoring, setRestoring] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { isChecking, checkForUpdate } = useOTAUpdate();
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
@@ -410,8 +412,21 @@ export default function SettingsScreen() {
     }
   }, [user]);
 
-  useEffect(() => {
-    loadSubscriptionData();
+  // Reload subscription/usage every time the tab regains focus so a plan that
+  // was just upgraded on the paywall (or restored) is never shown stale here.
+  useFocusEffect(
+    useCallback(() => {
+      loadSubscriptionData();
+    }, [loadSubscriptionData]),
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadSubscriptionData();
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadSubscriptionData]);
 
   // Apple 3.1.2 / Google Play: deep link to store-managed subscription
@@ -522,6 +537,14 @@ export default function SettingsScreen() {
       style={[styles.container, isDark && styles.containerDark]}
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={Colors.accent}
+          colors={[Colors.accent]}
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
