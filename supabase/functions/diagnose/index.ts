@@ -6,6 +6,11 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+// App discriminator for the shared jxcn `subscriptions` table — read only
+// this app's row so cross-app Pro/Enterprise does not unlock Pragas. Pairs
+// with migration 20260628120000_subscriptions_per_app_isolation.sql.
+const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
+
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 
 // ── Security: Fail-fast on missing critical secrets (#15) ──
@@ -329,6 +334,7 @@ Deno.serve(async (req: Request) => {
     .from("subscriptions")
     .select("plan, status")
     .eq("user_id", user.id)
+    .eq("app", APP_KEY)
     .maybeSingle();
 
   const plan =

@@ -28,7 +28,7 @@ import { getQueueCount } from '../../services/diagnosisQueue';
 import { schedulePestAlertNotifications } from '../../services/notifications';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
-import { checkSubscriptionStatus, isRevenueCatConfigured } from '../../services/purchases';
+import { useMonthlyUsage } from '../../hooks/useMonthlyUsage';
 
 const FREE_MONTHLY_DIAGNOSES = 3;
 
@@ -56,11 +56,20 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isTablet, contentMaxWidth } = useResponsive();
+  // Single source of truth for the subscription plan + monthly usage. Mirrors
+  // exactly what the camera/UsageCounter reads (the `subscriptions` table),
+  // so Home, camera, settings and cancellation can never disagree about
+  // whether the user is free or paying.
+  const {
+    plan,
+    remaining: monthlyRemaining,
+    limit: monthlyLimit,
+    refresh: refreshUsage,
+  } = useMonthlyUsage();
+  const isFreePlan = plan === 'free';
   const [weather, setWeather] = useState<WeatherCardData | null>(null);
   const [weatherRaw, setWeatherRaw] = useState<WeatherData | null>(null);
   const [diagnosisCount, setDiagnosisCount] = useState(0);
-  const [monthlyDiagnosisCount, setMonthlyDiagnosisCount] = useState(0);
-  const [isFreePlan, setIsFreePlan] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [weatherError, setWeatherError] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState(false);
@@ -150,42 +159,15 @@ export default function HomeScreen() {
         })(),
       );
 
-      // Month-scoped count for the free-plan remaining counter
-      promises.push(
-        (async () => {
-          try {
-            const firstOfMonth = new Date();
-            firstOfMonth.setDate(1);
-            firstOfMonth.setHours(0, 0, 0, 0);
-            const { count } = await supabase
-              .from('pragas_diagnoses')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .gte('created_at', firstOfMonth.toISOString());
-            setMonthlyDiagnosisCount(count ?? 0);
-          } catch (err) {
-            if (__DEV__) console.warn('[Home] Monthly count fetch failed:', err);
-          }
-        })(),
-      );
-
-      // Subscription status (don't block if RevenueCat not configured)
-      if (isRevenueCatConfigured()) {
-        promises.push(
-          (async () => {
-            try {
-              const { isActive } = await checkSubscriptionStatus();
-              setIsFreePlan(!isActive);
-            } catch (err) {
-              if (__DEV__) console.warn('[Home] Subscription check failed:', err);
-            }
-          })(),
-        );
-      }
+      // Plan + month-scoped usage are owned by useMonthlyUsage() (the shared
+      // source of truth read by the camera/UsageCounter). Refresh it here so
+      // pull-to-refresh keeps the trial pill in sync without duplicating the
+      // bespoke RevenueCat/Supabase logic that used to live in this screen.
+      promises.push(refreshUsage());
     }
 
     await Promise.all(promises);
-  }, [location, cityName, session, user]);
+  }, [location, cityName, session, user, refreshUsage]);
 
   // QW-1 (W16-1, 2026-05-22): Location prompt moved to consent-location.tsx#handleAccept.
   // Do NOT fire getCurrentLocation() here — it would re-prompt users who already
@@ -219,19 +201,30 @@ export default function HomeScreen() {
     () => [
       {
         icon: 'document-text',
-        value: diagnosisError ? '!' : diagnosisCount > 0 ? `${diagnosisCount}` : '\u2014',
+        // A real "0" reads as a fresh account; the em-dash looked like a failed
+        // load. On error we surface "!" + a tap-to-retry; otherwise the card
+        // deep-links into the history tab.
+        value: diagnosisError ? '!' : `${diagnosisCount}`,
         label: diagnosisError ? t('common.error') : t('home.diagnoses'),
         color: diagnosisError ? Colors.coral : Colors.accent,
+        onPress: diagnosisError ? loadData : () => router.push('/(tabs)/history'),
       },
-      { icon: 'shield-checkmark', value: 'MIP', label: t('home.strategy'), color: Colors.techBlue },
+      {
+        icon: 'shield-checkmark',
+        value: 'MIP',
+        label: t('home.strategy'),
+        color: Colors.techBlue,
+        onPress: undefined,
+      },
       {
         icon: 'trending-up',
         value: riskLevelText,
         label: t('home.monitoring'),
         color: Colors.warmAmber,
+        onPress: undefined,
       },
     ],
-    [diagnosisError, diagnosisCount, riskLevelText, t],
+    [diagnosisError, diagnosisCount, riskLevelText, t, loadData],
   );
 
   if (isInitialLoading) {
@@ -337,7 +330,8 @@ export default function HomeScreen() {
         {isFreePlan &&
           !diagnosisError &&
           (() => {
-            const remaining = Math.max(0, FREE_MONTHLY_DIAGNOSES - monthlyDiagnosisCount);
+            const total = monthlyLimit ?? FREE_MONTHLY_DIAGNOSES;
+            const remaining = monthlyRemaining ?? total;
             const exhausted = remaining === 0;
             return (
               <TouchableOpacity
@@ -351,7 +345,7 @@ export default function HomeScreen() {
                     ? t('home.freeDiagnosesUsed')
                     : t('home.freeDiagnosesRemaining', {
                         count: remaining,
-                        total: FREE_MONTHLY_DIAGNOSES,
+                        total,
                       })
                 }
               >
@@ -370,7 +364,7 @@ export default function HomeScreen() {
                     ? t('home.freeDiagnosesUsed')
                     : t('home.freeDiagnosesRemaining', {
                         count: remaining,
-                        total: FREE_MONTHLY_DIAGNOSES,
+                        total,
                       })}
                 </Text>
                 <Ionicons
@@ -392,11 +386,11 @@ export default function HomeScreen() {
         )}
 
         <View style={styles.statsRow}>
-          {statsData.map((stat, i) => (
-            <PremiumCard key={i} style={{ flex: 1 }}>
+          {statsData.map((stat, i) => {
+            const card = (
               <View
                 style={styles.statCard}
-                accessible
+                accessible={!stat.onPress}
                 accessibilityLabel={`${stat.label}: ${stat.value}`}
                 accessibilityRole="summary"
               >
@@ -409,8 +403,25 @@ export default function HomeScreen() {
                 <Text style={[styles.statValue, isDark && styles.textDark]}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
               </View>
-            </PremiumCard>
-          ))}
+            );
+            return (
+              <PremiumCard key={i} style={{ flex: 1 }}>
+                {stat.onPress ? (
+                  <TouchableOpacity
+                    testID={`home-stat-${i}`}
+                    onPress={stat.onPress}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${stat.label}: ${stat.value}`}
+                  >
+                    {card}
+                  </TouchableOpacity>
+                ) : (
+                  card
+                )}
+              </PremiumCard>
+            );
+          })}
         </View>
 
         {alerts.length > 0 && (

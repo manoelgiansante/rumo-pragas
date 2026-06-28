@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -238,6 +238,30 @@ export default function LoadingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Let the user abort a slow/stuck analysis instead of being trapped on the
+  // spinner (no nav chrome here; iOS swipe-back is disabled during diagnosis).
+  // Marking unmounted + clearing timers makes any in-flight response a no-op
+  // (every continuation is guarded by isMountedRef), then we pop the screen.
+  const handleCancel = useCallback(() => {
+    isMountedRef.current = false;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    timeoutsRef.current.forEach((id) => clearTimeout(id));
+    timeoutsRef.current = [];
+    addBreadcrumb({
+      category: 'diagnosis.loading',
+      message: 'analyze_cancelled_by_user',
+      level: 'info',
+    });
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  }, []);
+
   const progressAnimatedStyle = useAnimatedStyle(() => ({
     width: `${progress.value * 100}%`,
   }));
@@ -253,6 +277,17 @@ export default function LoadingScreen() {
           the result as "already on the way". pointerEvents=none in the
           component itself; we don't want it stealing taps. */}
       <DiagnosisSkeleton />
+
+      <TouchableOpacity
+        testID="diagnosis-loading-cancel"
+        style={styles.cancelBtn}
+        onPress={handleCancel}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        accessibilityRole="button"
+        accessibilityLabel={t('common.cancel')}
+      >
+        <Ionicons name="close" size={26} color="#FFF" />
+      </TouchableOpacity>
 
       <View
         style={styles.center}
@@ -289,6 +324,18 @@ export default function LoadingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  cancelBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 24,
+    left: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
   center: { alignItems: 'center', paddingHorizontal: 40 },
   iconCircle: {
     width: 100,

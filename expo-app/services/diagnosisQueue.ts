@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // the same working API (incl. a typed documentDirectory). See react-native-knowledge memory.
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
+// iOS 26 TurboModule crash defense — see services/sentry-shim.ts
+import { captureException } from './sentry-shim';
 
 const documentDirectory = FileSystem.documentDirectory;
 const ENCODING_BASE64 = 'base64' as const;
@@ -131,7 +133,12 @@ export async function getQueue(): Promise<PendingDiagnosis[]> {
     const raw = await AsyncStorage.getItem(QUEUE_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as PendingDiagnosis[];
-  } catch {
+  } catch (err) {
+    // Returning [] on corrupt JSON silently DROPS the offline queue (the user's
+    // pending diagnoses) — instrument it so we learn when persistence corrupts
+    // instead of losing data invisibly.
+    if (__DEV__) console.error('[DiagnosisQueue] getQueue read/parse failed:', err);
+    captureException(err, { tags: { feature: 'diagnosisQueue.getQueue' } });
     return [];
   }
 }

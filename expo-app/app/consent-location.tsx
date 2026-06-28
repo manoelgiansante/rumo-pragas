@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Platform,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { showAlert } from '../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,6 +44,16 @@ export default function ConsentLocationScreen() {
   const { markLocationConsentSeen } = useNavigationGate();
   const { requestPermission, getCurrentLocation } = useLocation();
   const [isSaving, setIsSaving] = useState(false);
+
+  // Harden the LGPD consent gate on Android: the hardware/gesture back button
+  // must NOT let the user skip the consent decision (gestureEnabled:false in the
+  // Stack only blocks the iOS swipe). Returning true consumes the event so the
+  // user has to make an explicit choice via "Continuar".
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
   // RUMO-PRAGAS-7/8 fix: this screen NO LONGER self-navigates. It only records
   // the consent flag via the reactive navigation gate. The single source-of-truth

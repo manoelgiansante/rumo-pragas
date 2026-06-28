@@ -87,12 +87,14 @@ describe('IA Hub wiring (IH-6)', () => {
     delete process.env.EXPO_PUBLIC_IA_HUB_API_KEY;
     delete process.env.EXPO_PUBLIC_IA_HUB_URL;
     delete process.env.EXPO_PUBLIC_IA_HUB_ENABLED;
+    delete process.env.EXPO_PUBLIC_IA_HUB_DIAGNOSE_READY;
   });
 
   afterAll(() => {
     delete process.env.EXPO_PUBLIC_IA_HUB_API_KEY;
     delete process.env.EXPO_PUBLIC_IA_HUB_URL;
     delete process.env.EXPO_PUBLIC_IA_HUB_ENABLED;
+    delete process.env.EXPO_PUBLIC_IA_HUB_DIAGNOSE_READY;
   });
 
   describe('feature flag OFF (default)', () => {
@@ -117,11 +119,43 @@ describe('IA Hub wiring (IH-6)', () => {
     });
   });
 
+  describe('feature flag ON but diagnose NOT ready (dead-man gate)', () => {
+    // `..._ENABLED=true` alone must NOT route diagnose through the IA Hub —
+    // the server-side persistence/quota/JWT contract is attested separately
+    // by `..._DIAGNOSE_READY`. Until then the safe legacy path is used.
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_IA_HUB_API_KEY = 'test-iahub-key';
+      process.env.EXPO_PUBLIC_IA_HUB_URL = 'https://iahub.example.com';
+      process.env.EXPO_PUBLIC_IA_HUB_ENABLED = 'true';
+      // EXPO_PUBLIC_IA_HUB_DIAGNOSE_READY intentionally unset.
+    });
+
+    it('still uses the legacy Supabase edge function', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => makeLegacyResponse(),
+      });
+
+      const { sendDiagnosis } = require(SERVICE_PATH);
+      const { __resetIAHubClientForTests } = require(IAHUB_PATH);
+      __resetIAHubClientForTests();
+
+      const result = await sendDiagnosis(smallBase64(), 'soja', null, null, 'token', 'user-1');
+
+      expect(mockDiagnose).not.toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toContain('/functions/v1/diagnose');
+      expect(result.id).toBe('diag-legacy-1');
+    });
+  });
+
   describe('feature flag ON', () => {
     beforeEach(() => {
       process.env.EXPO_PUBLIC_IA_HUB_API_KEY = 'test-iahub-key';
       process.env.EXPO_PUBLIC_IA_HUB_URL = 'https://iahub.example.com';
       process.env.EXPO_PUBLIC_IA_HUB_ENABLED = 'true';
+      process.env.EXPO_PUBLIC_IA_HUB_DIAGNOSE_READY = 'true';
     });
 
     it('routes the diagnose call through the IA Hub SDK', async () => {
@@ -136,6 +170,13 @@ describe('IA Hub wiring (IH-6)', () => {
       // Legacy fetch must NOT be called when the SDK is in charge.
       expect(mockFetch).not.toHaveBeenCalled();
       expect(mockDiagnose).toHaveBeenCalledTimes(1);
+
+      // ZERO-X: the user's JWT is forwarded as Authorization, and the body
+      // context carries NO userId (must be derived from the JWT server-side).
+      const [input, opts] = mockDiagnose.mock.calls[0];
+      expect(opts?.headers?.Authorization).toBe('Bearer token');
+      expect(input?.context?.userId).toBeUndefined();
+      expect(input?.context?.app).toBe('rumo-pragas');
 
       // Adapter contract: top candidate is surfaced as pest, recommendations
       // land on enrichment.chemical_treatment, parsedNotes is populated.

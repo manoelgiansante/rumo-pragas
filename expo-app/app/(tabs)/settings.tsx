@@ -11,12 +11,14 @@ import {
   Platform,
   ActionSheetIOS,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import * as Sentry from '@sentry/react-native';
@@ -32,7 +34,11 @@ import {
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
-import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
+import {
+  restorePurchases,
+  isRevenueCatConfigured,
+  checkSubscriptionStatus,
+} from '../../services/purchases';
 import { Avatar } from '../../components/Avatar';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
@@ -260,12 +266,18 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [plan, setPlan] = useState<string>('free');
+  // Live RevenueCat entitlement, independent of the Supabase `subscriptions`
+  // row (which is populated asynchronously by the RC webhook). Gives a real
+  // subscriber the cancellation entry point even if the webhook hasn't synced
+  // their row yet — the deep link to the store sub page is harmless either way.
+  const [rcActive, setRcActive] = useState(false);
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
   const [subLoading, setSubLoading] = useState(true);
   const [subError, setSubError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const subLoadingRef = useRef(false);
   const [restoring, setRestoring] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { isChecking, checkForUpdate } = useOTAUpdate();
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
@@ -363,7 +375,15 @@ export default function SettingsScreen() {
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
       const [subResult, countResult] = await Promise.all([
-        supabase.from('subscriptions').select('plan, status').eq('user_id', user.id).maybeSingle(),
+        // `app` filter isolates Pragas entitlements on the shared jxcn
+        // subscriptions table (migration 20260628120000). Requires the
+        // `app` column to be live before this build ships.
+        supabase
+          .from('subscriptions')
+          .select('plan, status')
+          .eq('user_id', user.id)
+          .eq('app', 'rumo-pragas')
+          .maybeSingle(),
         supabase
           .from('pragas_diagnoses')
           .select('id', { count: 'exact', head: true })
@@ -374,6 +394,15 @@ export default function SettingsScreen() {
       const currentPlan = (subResult.data?.status === 'active' && subResult.data?.plan) || 'free';
       setPlan(currentPlan);
       setUsedThisMonth(countResult.count ?? 0);
+
+      // Cross-check the live entitlement so a webhook-drifted subscriber still
+      // sees "Gerenciar Assinatura". Non-blocking and best-effort: a failure
+      // here just falls back to the Supabase plan (captured inside the service).
+      if (isRevenueCatConfigured()) {
+        checkSubscriptionStatus()
+          .then(({ isActive }) => setRcActive(isActive))
+          .catch(() => {});
+      }
     } catch (e) {
       if (__DEV__) console.error('Failed to load subscription data:', e);
       Sentry.captureException(e, { tags: { feature: 'settings.subscription' } });
@@ -384,8 +413,21 @@ export default function SettingsScreen() {
     }
   }, [user]);
 
-  useEffect(() => {
-    loadSubscriptionData();
+  // Reload subscription/usage every time the tab regains focus so a plan that
+  // was just upgraded on the paywall (or restored) is never shown stale here.
+  useFocusEffect(
+    useCallback(() => {
+      loadSubscriptionData();
+    }, [loadSubscriptionData]),
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadSubscriptionData();
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadSubscriptionData]);
 
   // Apple 3.1.2 / Google Play: deep link to store-managed subscription
@@ -496,6 +538,14 @@ export default function SettingsScreen() {
       style={[styles.container, isDark && styles.containerDark]}
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={Colors.accent}
+          colors={[Colors.accent]}
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
@@ -566,7 +616,7 @@ export default function SettingsScreen() {
             testID="settings-row-restore"
           />
         )}
-        {!subLoading && plan !== 'free' && (
+        {!subLoading && (plan !== 'free' || rcActive) && (
           <Row
             isDark={isDark}
             icon="card-outline"
@@ -658,7 +708,7 @@ export default function SettingsScreen() {
           isDark={isDark}
           icon="information-circle-outline"
           label={t('settings.version')}
-          value="1.0.0"
+          value={Constants.expoConfig?.version ?? '1.0.7'}
           isLast
         />
       </Section>

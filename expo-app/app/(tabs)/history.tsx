@@ -24,6 +24,7 @@ import { HistorySkeleton } from '../../components/HistorySkeleton';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
 import * as Haptics from 'expo-haptics';
+import * as Sentry from '@sentry/react-native';
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
@@ -51,6 +52,7 @@ export default function HistoryScreen() {
       setDiagnoses(data ?? []);
     } catch (err) {
       if (__DEV__) console.error('[History] Erro ao buscar diagnosticos:', err);
+      Sentry.captureException(err, { tags: { feature: 'history.load' } });
       setError(true);
     }
     setLoading(false);
@@ -74,12 +76,14 @@ export default function HistoryScreen() {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             const { error } = await supabase.from('pragas_diagnoses').delete().eq('id', id);
             if (error) {
+              Sentry.captureException(error, { tags: { feature: 'history.delete' } });
               showAlert(t('common.error'), t('history.deleteError'));
               return;
             }
             setDiagnoses((d) => d.filter((x) => x.id !== id));
           } catch (err) {
             if (__DEV__) console.error('[History] Failed to delete diagnosis:', err);
+            Sentry.captureException(err, { tags: { feature: 'history.delete' } });
             showAlert(t('common.error'), t('history.deleteError'));
           }
         },
@@ -156,6 +160,8 @@ export default function HistoryScreen() {
       <FlatList
         data={filtered}
         keyExtractor={keyExtractor}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={[
           { padding: Spacing.lg, paddingBottom: 100 },
           isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },

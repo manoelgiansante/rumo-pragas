@@ -77,7 +77,7 @@ export default {
     signInWithGoogle: 'Continuar com Google',
     googleA11y: 'Continuar com Google',
     googleSignInError: 'Erro ao entrar com Google. Tente novamente.',
-    appName: 'Rumo Praga',
+    appName: 'Rumo Pragas IA',
     appTagline: 'Diagnóstico inteligente de pragas agrícolas',
     loginError: 'Erro ao entrar. Tente novamente.',
     hidePassword: 'Ocultar senha',
@@ -194,7 +194,7 @@ export default {
     noTreatmentRecorded: 'Nenhum tratamento registrado',
     noPreventionRecorded: 'Nenhuma prevenção registrada',
     noInfoAvailable: 'Nenhuma informação disponível.',
-    shareTitle: 'Diagnóstico Rumo Praga',
+    shareTitle: 'Diagnóstico Rumo Pragas IA',
     sharePest: 'Praga',
     shareConfidence: 'Confiança',
     shareSeverity: 'Severidade',
@@ -202,15 +202,15 @@ export default {
     shareSymptoms: 'Sintomas',
     shareTreatment: 'Tratamento Recomendado',
     sharePrevention: 'Prevenção',
-    shareFooter: 'Diagnosticado por Rumo Praga',
+    shareFooter: 'Diagnosticado por Rumo Pragas IA',
     shareCulturalControl: 'Controle Cultural',
     shareChemicalControl: 'Controle Químico',
     shareBiologicalControl: 'Controle Biológico',
-    pdfTitle: 'Rumo Praga - Relatório de Diagnóstico',
+    pdfTitle: 'Rumo Pragas IA - Relatório de Diagnóstico',
     pdfPestIdentified: 'Praga Identificada',
     pdfSeverity: 'Severidade',
     pdfCrop: 'Cultura',
-    pdfFooter: 'Diagnóstico gerado pelo app Rumo Praga - IA para proteção da lavoura',
+    pdfFooter: 'Diagnóstico gerado pelo app Rumo Pragas IA - proteção da lavoura',
     pdfChemicalWarning: '* Consulte um agrônomo para receituário agronômico',
     backToHomeA11y: 'Voltar para a tela inicial',
     errorIconA11y: 'Ícone de erro',
@@ -279,6 +279,23 @@ export default {
     pestDetailFavorableEmpty: 'Condições de favorecimento não cadastradas.',
     pestDetailProductsEmpty: 'Nenhum produto comercial cadastrado. Consulte um agrônomo.',
     pestDetailMonitoringEmpty: 'Sem método de monitoramento cadastrado.',
+    // Loading screen step counter (e.g. "Passo 2 de 4")
+    stepCounter: 'Passo {{current}} de {{total}}',
+    // Premium usage gate (camera entry pill)
+    usageFree: '{{used}}/{{limit}} grátis este mês',
+    usagePro: '{{used}}/{{limit}} do Pro este mês',
+    usageBlocked: 'Limite mensal atingido ({{limit}}) — toque para Pro',
+    usageLoadingA11y: 'Carregando uso mensal',
+    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mês',
+    usageBlockedA11y: 'Limite de {{limit}} diagnósticos atingido. Toque para fazer upgrade.',
+    usageUpgradeHint: 'Toque duas vezes para ver os planos Pro',
+    // Top-3 alternatives card
+    topAlternatives: 'Outras possibilidades',
+    topAlternativesHint:
+      'A IA também considerou estas opções. Se a principal não bate com o que você vê, talvez seja uma delas.',
+    topAlternativesDisclaimer:
+      'Compare os sintomas e, em caso de dúvida, consulte um agrônomo antes de tratar.',
+    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por cento de confiança.',
   },
   // MIP knowledge card (Manejo Integrado de Pragas — EMBRAPA/MAPA references)
   mip: {
@@ -314,23 +331,6 @@ export default {
     upgradeCtaSubtitle:
       '{{count}} nível(is) bloqueado(s) — assine Pro para acesso a manejo médio/alto + químicos.',
     upgradeCtaA11y: 'Ver planos para desbloquear níveis de manejo Pro',
-    // Loading screen step counter (e.g. "Passo 2 de 4")
-    stepCounter: 'Passo {{current}} de {{total}}',
-    // Premium usage gate (camera entry pill)
-    usageFree: '{{used}}/{{limit}} grátis este mês',
-    usagePro: '{{used}}/{{limit}} do Pro este mês',
-    usageBlocked: 'Limite mensal atingido ({{limit}}) — toque para Pro',
-    usageLoadingA11y: 'Carregando uso mensal',
-    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mês',
-    usageBlockedA11y: 'Limite de {{limit}} diagnósticos atingido. Toque para fazer upgrade.',
-    usageUpgradeHint: 'Toque duas vezes para ver os planos Pro',
-    // Top-3 alternatives card
-    topAlternatives: 'Outras possibilidades',
-    topAlternativesHint:
-      'A IA também considerou estas opções. Se a principal não bate com o que você vê, talvez seja uma delas.',
-    topAlternativesDisclaimer:
-      'Compare os sintomas e, em caso de dúvida, consulte um agrônomo antes de tratar.',
-    alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por cento de confiança.',
   },
   // Settings
   settings: {
@@ -360,7 +360,7 @@ export default {
     delete: 'Excluir',
     support: 'Suporte',
     contactSupport: 'Contato / Suporte',
-    supportSubject: 'Suporte Rumo Praga',
+    supportSubject: 'Suporte Rumo Pragas IA',
     fullName: 'Nome completo',
     city: 'Cidade',
     state: 'Estado',
@@ -375,9 +375,9 @@ export default {
     darkModeActive: 'Ativo',
     darkModeInactive: 'Inativo',
     languageTitle: 'Idioma / Language',
-    deletionReceived: 'Solicitação Recebida',
+    deletionReceived: 'Conta Excluída',
     deletionReceivedMessage:
-      'Sua solicitação de exclusão de conta foi registrada. Seus dados serão removidos em até 15 dias conforme a LGPD.',
+      'Sua conta e todos os seus dados foram excluídos permanentemente. Você será desconectado agora.',
     deletionError: 'Não foi possível processar a solicitação. Tente novamente.',
     diagnosticsCountUnlimited: '{{used}} diagnósticos',
     diagnosticsCountLimited: '{{used}}/{{limit}} diagnósticos',
@@ -425,6 +425,7 @@ export default {
     success: 'Sucesso',
     cancel: 'Cancelar',
     confirm: 'Confirmar',
+    done: 'Concluir',
     ok: 'OK',
     save: 'Salvar',
     noResults: 'Nenhum resultado encontrado',
