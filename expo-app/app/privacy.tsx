@@ -37,12 +37,12 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Ultima atualizacao: 26 de marco de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 26 de março de 2026</Text>
 
         <Text style={styles.intro}>
-          A AgroRumo ("nos") se compromete a proteger a privacidade dos usuarios do aplicativo Rumo
-          Pragas. Esta Politica de Privacidade descreve como coletamos, usamos, armazenamos e
-          protegemos seus dados pessoais, em conformidade com a Lei Geral de Protecao de Dados (LGPD
+          A AgroRumo ("nós") se compromete a proteger a privacidade dos usuários do aplicativo Rumo
+          Pragas IA. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e
+          protegemos seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD
           - Lei n. 13.709/2018).
         </Text>
 
@@ -50,7 +50,7 @@ export default function PrivacyScreen() {
           1. Dados Coletados
         </Text>
         <Text style={styles.paragraph}>
-          Coletamos os seguintes dados para fornecer e melhorar nossos servicos:
+          Coletamos os seguintes dados para fornecer e melhorar nossos serviços:
         </Text>
         <View style={styles.list}>
           <View style={styles.listItem}>
@@ -63,8 +63,8 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Email:</Text> utilizado para autenticacao, comunicacao e
-              recuperacao de conta.
+              <Text style={styles.bold}>Email:</Text> utilizado para autenticação, comunicação e
+              recuperação de conta.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -77,7 +77,7 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Nome:</Text> utilizado para personalizacao da experiencia no
+              <Text style={styles.bold}>Nome:</Text> utilizado para personalização da experiência no
               aplicativo.
             </Text>
           </View>
@@ -91,8 +91,8 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Localizacao (opcional):</Text> utilizada para
-              georreferenciar diagnosticos e gerar relatorios com coordenadas da lavoura.
+              <Text style={styles.bold}>Localização (opcional):</Text> utilizada para
+              georreferenciar diagnósticos e gerar relatórios com coordenadas da lavoura.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -105,8 +105,8 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Fotos de plantas:</Text> enviadas para analise por
-              inteligencia artificial para identificacao de pragas, doencas e deficiencias.
+              <Text style={styles.bold}>Fotos de plantas:</Text> enviadas para análise por
+              inteligência artificial para identificação de pragas, doenças e deficiências.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -119,8 +119,8 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Dados de uso:</Text> informacoes sobre como voce interage
-              com o App (telas visitadas, funcionalidades utilizadas) para melhoria do servico.
+              <Text style={styles.bold}>Dados de uso:</Text> informações sobre como você interage
+              com o App (telas visitadas, funcionalidades utilizadas) para melhoria do serviço.
             </Text>
           </View>
         </View>
@@ -129,42 +129,42 @@ export default function PrivacyScreen() {
           2. Como Usamos seus Dados
         </Text>
         <Text style={styles.paragraph}>
-          Seus dados sao utilizados para:{'\n\n'}- Fornecer os servicos de diagnostico de pragas;
-          {'\n'}- Personalizar sua experiencia no App;{'\n'}- Gerar relatorios e historico de
-          diagnosticos;{'\n'}- Enviar comunicacoes sobre o servico (atualizacoes, novidades);{'\n'}-
-          Melhorar nossos modelos de inteligencia artificial;{'\n'}- Cumprir obrigacoes legais.
+          Seus dados são utilizados para:{'\n\n'}- Fornecer os serviços de diagnóstico de pragas;
+          {'\n'}- Personalizar sua experiência no App;{'\n'}- Gerar relatórios e histórico de
+          diagnósticos;{'\n'}- Enviar comunicações sobre o serviço (atualizações, novidades);{'\n'}-
+          Melhorar nossos modelos de inteligência artificial;{'\n'}- Cumprir obrigações legais.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           3. Armazenamento de Dados
         </Text>
         <Text style={styles.paragraph}>
-          Seus dados sao armazenados de forma segura utilizando a plataforma Supabase, com
-          servidores protegidos por criptografia em transito (TLS) e em repouso. As imagens enviadas
-          para analise sao armazenadas em buckets seguros com controle de acesso por usuario.
+          Seus dados são armazenados de forma segura utilizando a plataforma Supabase, com
+          servidores protegidos por criptografia em trânsito (TLS) e em repouso. As imagens enviadas
+          para análise são armazenadas em buckets seguros com controle de acesso por usuário.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           4. Compartilhamento com Terceiros
         </Text>
         <Text style={styles.importantBox}>
-          As imagens de plantas sao enviadas para o servico Claude, da Anthropic (inteligencia
-          artificial), exclusivamente para fins de analise e diagnostico. Nenhum dado pessoal que
-          identifique o usuario (nome, email, localizacao) e enviado junto com as imagens. A
-          Anthropic processa as imagens de acordo com sua propria politica de privacidade e nao
+          As imagens de plantas são enviadas para o serviço Claude, da Anthropic (inteligência
+          artificial), exclusivamente para fins de análise e diagnóstico. Nenhum dado pessoal que
+          identifique o usuário (nome, email, localização) é enviado junto com as imagens. A
+          Anthropic processa as imagens de acordo com sua própria política de privacidade e não
           utiliza os dados enviados via API para treinar seus modelos.
         </Text>
         <Text style={styles.importantBox}>
-          Suas coordenadas de localizacao (latitude e longitude), quando fornecidas, sao enviadas
-          para o servico Open-Meteo para obter dados meteorologicos da sua regiao (temperatura,
-          umidade, precipitacao). O Open-Meteo e um servico de dados climaticos abertos que nao
-          requer autenticacao e nao armazena dados pessoais dos usuarios. Nenhuma informacao que
-          identifique o usuario e transmitida junto com as coordenadas.
+          Suas coordenadas de localização (latitude e longitude), quando fornecidas, são enviadas
+          para o serviço Open-Meteo para obter dados meteorológicos da sua região (temperatura,
+          umidade, precipitação). O Open-Meteo é um serviço de dados climáticos abertos que não
+          requer autenticação e não armazena dados pessoais dos usuários. Nenhuma informação que
+          identifique o usuário é transmitida junto com as coordenadas.
         </Text>
         <Text style={styles.paragraph}>
-          Nao vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros para fins de
-          marketing. Podemos compartilhar dados apenas nas seguintes situacoes:{'\n\n'}- Com
-          provedores de servico essenciais (hospedagem, processamento de pagamentos);{'\n'}- Quando
+          Não vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros para fins de
+          marketing. Podemos compartilhar dados apenas nas seguintes situações:{'\n\n'}- Com
+          provedores de serviço essenciais (hospedagem, processamento de pagamentos);{'\n'}- Quando
           exigido por lei ou ordem judicial;{'\n'}- Para proteger nossos direitos legais.
         </Text>
 
@@ -185,8 +185,8 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Confirmacao e acesso:</Text> saber se tratamos seus dados e
-              obter uma copia.
+              <Text style={styles.bold}>Confirmação e acesso:</Text> saber se tratamos seus dados e
+              obter uma cópia.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -199,7 +199,7 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Correcao:</Text> solicitar a correcao de dados incompletos
+              <Text style={styles.bold}>Correção:</Text> solicitar a correção de dados incompletos
               ou desatualizados.
             </Text>
           </View>
@@ -213,7 +213,7 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Eliminacao:</Text> solicitar a exclusao de dados pessoais
+              <Text style={styles.bold}>Eliminação:</Text> solicitar a exclusão de dados pessoais
               tratados com seu consentimento.
             </Text>
           </View>
@@ -227,7 +227,7 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Portabilidade:</Text> solicitar a transferencia de seus
+              <Text style={styles.bold}>Portabilidade:</Text> solicitar a transferência de seus
               dados para outro fornecedor.
             </Text>
           </View>
@@ -241,30 +241,30 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Revogacao:</Text> revogar o consentimento a qualquer
+              <Text style={styles.bold}>Revogação:</Text> revogar o consentimento a qualquer
               momento.
             </Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          6. Seguranca
+          6. Segurança
         </Text>
         <Text style={styles.paragraph}>
-          Implementamos medidas tecnicas e organizacionais para proteger seus dados, incluindo:
-          {'\n\n'}- Criptografia de dados em transito e em repouso;{'\n'}- Autenticacao segura com
-          tokens JWT;{'\n'}- Armazenamento de credenciais sensiveis em SecureStore;{'\n'}- Controle
-          de acesso baseado em politicas (Row Level Security);{'\n'}- Monitoramento continuo de
-          seguranca.
+          Implementamos medidas técnicas e organizacionais para proteger seus dados, incluindo:
+          {'\n\n'}- Criptografia de dados em trânsito e em repouso;{'\n'}- Autenticação segura com
+          tokens JWT;{'\n'}- Armazenamento de credenciais sensíveis em SecureStore;{'\n'}- Controle
+          de acesso baseado em políticas (Row Level Security);{'\n'}- Monitoramento contínuo de
+          segurança.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          7. Retencao de Dados
+          7. Retenção de Dados
         </Text>
         <Text style={styles.paragraph}>
-          Mantemos seus dados pessoais pelo tempo necessario para fornecer os servicos contratados
-          ou conforme exigido por lei. Apos o encerramento da conta, seus dados serao eliminados em
-          ate 30 dias, exceto quando houver obrigacao legal de retencao.
+          Mantemos seus dados pessoais pelo tempo necessário para fornecer os serviços contratados
+          ou conforme exigido por lei. Ao solicitar a exclusão da conta no aplicativo, sua conta e
+          seus dados são eliminados imediatamente, exceto quando houver obrigação legal de retenção.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -272,16 +272,16 @@ export default function PrivacyScreen() {
         </Text>
         <Text style={styles.paragraph}>
           O App pode utilizar tecnologias de rastreamento local (AsyncStorage) para manter
-          preferencias do usuario e estado da sessao. Esses dados sao armazenados apenas no
-          dispositivo do usuario.
+          preferências do usuário e estado da sessão. Esses dados são armazenados apenas no
+          dispositivo do usuário.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          9. Alteracoes nesta Politica
+          9. Alterações nesta Política
         </Text>
         <Text style={styles.paragraph}>
-          Podemos atualizar esta Politica de Privacidade periodicamente. Notificaremos voce sobre
-          alteracoes significativas atraves do App. Recomendamos que revise esta politica
+          Podemos atualizar esta Política de Privacidade periodicamente. Notificaremos você sobre
+          alterações significativas através do App. Recomendamos que revise esta política
           regularmente.
         </Text>
 
@@ -289,7 +289,7 @@ export default function PrivacyScreen() {
           10. Contato e Encarregado de Dados
         </Text>
         <Text style={styles.paragraph}>
-          Para exercer seus direitos ou esclarecer duvidas sobre o tratamento de seus dados
+          Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de seus dados
           pessoais, entre em contato conosco:{'\n\n'}
           Email: privacidade@agrorumo.com{'\n'}
           Encarregado de Dados (DPO): dpo@agrorumo.com
