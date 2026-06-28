@@ -9,9 +9,10 @@ URL privacidade: https://pragas.agrorumo.com/privacy
 > **REGRA DE OURO:** a declaracao deve bater 1:1 com as permissoes do AAB
 > (`app.json` -> `android.permissions`). Mismatch = REJEICAO.
 > AAB atual declara: `CAMERA`, `ACCESS_FINE_LOCATION` (precisa),
-> `ACCESS_COARSE_LOCATION` (aproximada), `READ_MEDIA_IMAGES`, `RECORD_AUDIO`,
-> `MODIFY_AUDIO_SETTINGS`, `POST_NOTIFICATIONS`.
-> Conferido contra o codigo em 2026-06-27 (branch `audit/golive-2026-06-27`).
+> `ACCESS_COARSE_LOCATION` (aproximada), `READ_MEDIA_IMAGES`, `POST_NOTIFICATIONS`.
+> `RECORD_AUDIO` e `MODIFY_AUDIO_SETTINGS` estao em `android.blockedPermissions`
+> (app.json) -> NAO entram no AAB -> NAO declarar audio/voz no Data Safety.
+> Conferido contra o codigo em 2026-06-28 (branch `audit/golive-2026-06-27`).
 
 ---
 
@@ -100,11 +101,13 @@ do diagnostico. Opcional: o app funciona sem localizacao (sem consentimento, nad
 
 - `EXPO_PUBLIC_VOICE_ENABLED=false` (default em `.env.example`; gate em `components/voiceFlag.ts`).
   Com a voz OFF, nenhum audio e gravado/transmitido -> **nao declarar "Voice or sound recordings".**
-- ⚠️ **CONFLITO A RESOLVER ANTES DO UPLOAD:** o AAB ainda inclui `RECORD_AUDIO` +
-  `MODIFY_AUDIO_SETTINGS` (`app.json`). Se a voz ficar OFF em producao, **remover essas
-  permissoes do AAB** (ver item de microfone). Se a voz for ON, declarar aqui:
-  **Voice or sound recordings — Collected SIM, Shared SIM** (audio vai ao servico de
-  transcricao), Purpose `App functionality`, Optional SIM. Declaracao e permissao precisam casar 1:1.
+- ✅ **CONFLITO RESOLVIDO (2026-06-28):** `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS` estao
+  em `android.blockedPermissions` no `app.json` -> NAO entram no AAB final. Como a voz
+  esta OFF e o microfone esta bloqueado, **nao declarar "Voice or sound recordings"** —
+  declaracao e permissao agora casam 1:1. Se um dia a voz for ligada (ON), sera preciso:
+  (1) remover `RECORD_AUDIO`/`MODIFY_AUDIO_SETTINGS` de `blockedPermissions` + adiciona-las
+  em `android.permissions`, e (2) declarar aqui **Voice or sound recordings — Collected SIM,
+  Shared SIM** (audio vai ao servico de transcricao), Purpose `App functionality`, Optional SIM.
 
 ---
 

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import * as Sentry from '@sentry/react-native';
@@ -707,7 +708,7 @@ export default function SettingsScreen() {
           isDark={isDark}
           icon="information-circle-outline"
           label={t('settings.version')}
-          value="1.0.0"
+          value={Constants.expoConfig?.version ?? '1.0.7'}
           isLast
         />
       </Section>
