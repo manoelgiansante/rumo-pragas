@@ -32,7 +32,11 @@ import {
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
-import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
+import {
+  restorePurchases,
+  isRevenueCatConfigured,
+  checkSubscriptionStatus,
+} from '../../services/purchases';
 import { Avatar } from '../../components/Avatar';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
@@ -260,6 +264,11 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [plan, setPlan] = useState<string>('free');
+  // Live RevenueCat entitlement, independent of the Supabase `subscriptions`
+  // row (which is populated asynchronously by the RC webhook). Gives a real
+  // subscriber the cancellation entry point even if the webhook hasn't synced
+  // their row yet — the deep link to the store sub page is harmless either way.
+  const [rcActive, setRcActive] = useState(false);
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
   const [subLoading, setSubLoading] = useState(true);
   const [subError, setSubError] = useState(false);
@@ -382,6 +391,15 @@ export default function SettingsScreen() {
       const currentPlan = (subResult.data?.status === 'active' && subResult.data?.plan) || 'free';
       setPlan(currentPlan);
       setUsedThisMonth(countResult.count ?? 0);
+
+      // Cross-check the live entitlement so a webhook-drifted subscriber still
+      // sees "Gerenciar Assinatura". Non-blocking and best-effort: a failure
+      // here just falls back to the Supabase plan (captured inside the service).
+      if (isRevenueCatConfigured()) {
+        checkSubscriptionStatus()
+          .then(({ isActive }) => setRcActive(isActive))
+          .catch(() => {});
+      }
     } catch (e) {
       if (__DEV__) console.error('Failed to load subscription data:', e);
       Sentry.captureException(e, { tags: { feature: 'settings.subscription' } });
@@ -574,7 +592,7 @@ export default function SettingsScreen() {
             testID="settings-row-restore"
           />
         )}
-        {!subLoading && plan !== 'free' && (
+        {!subLoading && (plan !== 'free' || rcActive) && (
           <Row
             isDark={isDark}
             icon="card-outline"
