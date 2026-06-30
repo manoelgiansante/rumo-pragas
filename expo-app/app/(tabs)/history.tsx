@@ -240,6 +240,10 @@ export default function HistoryScreen() {
           <TouchableOpacity
             testID={`history-item-${item.id}`}
             onLongPress={() => deleteDiagnosis(item.id)}
+            accessibilityActions={[{ name: 'delete', label: t('history.deleteTitle') }]}
+            onAccessibilityAction={(event) => {
+              if (event.nativeEvent.actionName === 'delete') deleteDiagnosis(item.id);
+            }}
             activeOpacity={0.8}
             accessibilityLabel={t('history.itemA11y', {
               pest: item.pest_name || t('history.noName'),
