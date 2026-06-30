@@ -1,6 +1,5 @@
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { addBreadcrumb, captureException } from './sentry-shim';
-import { router } from 'expo-router';
 import { Config } from '../constants/config';
 import type { DiagnosisResult, AgrioPrediction } from '../types/diagnosis';
 import { parseNotes } from '../types/diagnosis';
@@ -176,17 +175,14 @@ async function sendDiagnosisLegacy(args: {
   clearTimeout(timeoutId);
 
   if (!response.ok) {
-    // Handle 403 with subscription limit details — navigate to paywall
+    // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
+    // FREE (Apple Guideline 2.3.2) with UNLIMITED diagnoses, so there is no
+    // paywall to send the user to. Should the backend ever still return a 403
+    // limit, surface it as a plain error — NEVER navigate to a paywall/buy flow.
     if (response.status === 403) {
       try {
         const errorData = await response.json();
         if (errorData?.limit !== undefined && errorData?.plan) {
-          // Fire-and-forget navigation to paywall so user can upgrade immediately.
-          try {
-            router.push('/paywall');
-          } catch (navErr) {
-            if (__DEV__) console.warn('[diagnosis] paywall navigation failed:', navErr);
-          }
           const planLabel = errorData.plan === 'free' ? i18n.t('errors.planFree') : errorData.plan;
           throw new Error(i18n.t('errors.planLimit', { limit: errorData.limit, plan: planLabel }));
         }

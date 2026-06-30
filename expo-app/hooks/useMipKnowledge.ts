@@ -36,9 +36,17 @@ import type { AgrioEnrichment } from '../types/diagnosis';
 /** Plan tier as returned by RevenueCat / subscription sync. */
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
 
-/** Levels visible to a given tier. */
+/**
+ * Levels visible to a given tier.
+ *
+ * FREE BUILD OVERRIDE (2026-06-30) — fix/pragas-free-2026-06-30: the app ships
+ * 100% FREE (Apple Guideline 2.3.2), so the full MIP/EMBRAPA treatment-protocol
+ * library (baixo/medio/alto) is unlocked for EVERY tier. With no locked levels,
+ * <MipCard/> shows no lock chips and no "upgrade" CTA. Revert this commit to
+ * restore the metered (free = `baixo` only) gate.
+ */
 export const TIER_LEVELS: Record<SubscriptionTier, InfestationLevel[]> = {
-  free: ['baixo'],
+  free: ['baixo', 'medio', 'alto'],
   pro: ['baixo', 'medio', 'alto'],
   enterprise: ['baixo', 'medio', 'alto'],
 };

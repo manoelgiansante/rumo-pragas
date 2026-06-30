@@ -119,13 +119,13 @@ export default function TermsScreen() {
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          9. Planos e Assinatura
+          9. Planos
         </Text>
         <Text style={styles.paragraph}>
-          O App oferece um plano gratuito com funcionalidades limitadas e planos pagos com recursos
-          adicionais. Os detalhes de cada plano, incluindo preços e funcionalidades, estão
-          disponíveis na seção de assinatura do App. O cancelamento pode ser feito a qualquer
-          momento, mas não gera direito a reembolso proporcional do período já pago.
+          O App é oferecido gratuitamente, com todas as funcionalidades disponíveis sem custo. Caso
+          planos pagos venham a ser oferecidos no futuro, os detalhes — incluindo preços e recursos
+          — serão apresentados no próprio App, e nenhuma cobrança será realizada sem o seu
+          consentimento expresso.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
