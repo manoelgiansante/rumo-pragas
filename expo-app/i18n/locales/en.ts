@@ -658,6 +658,7 @@ export default {
     deleteConfirm: 'Are you sure you want to delete this diagnosis?',
     deleteError: 'Could not delete. Check your connection.',
     deleteHint: 'Long press to delete this diagnosis',
+    openHint: 'Tap to view details. Long press to delete.',
     diagnosisCount: '{{count}} diagnoses',
     itemA11y: 'Diagnosis: {{pest}}, crop {{crop}}, confidence {{confidence}} percent',
     noName: 'Unnamed',

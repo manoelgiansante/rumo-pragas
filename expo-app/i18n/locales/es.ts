@@ -664,6 +664,7 @@ export default {
     deleteConfirm: '¿Está seguro de que desea eliminar este diagnóstico?',
     deleteError: 'No se pudo eliminar. Verifique su conexión.',
     deleteHint: 'Mantenga presionado para eliminar este diagnóstico',
+    openHint: 'Toque para ver los detalles. Mantenga presionado para eliminar.',
     diagnosisCount: '{{count}} diagnósticos',
     itemA11y: 'Diagnóstico: {{pest}}, cultivo {{crop}}, confianza {{confidence}} por ciento',
     noName: 'Sin nombre',
