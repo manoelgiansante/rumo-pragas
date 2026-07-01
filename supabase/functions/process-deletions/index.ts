@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException, captureMessage, withSentry } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: process-deletions
@@ -65,7 +66,7 @@ function logJson(fn: string, requestId: string, level: string, message: string, 
   }
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withSentry("process-deletions", async (req: Request) => {
   const requestId = generateRequestId();
   const corsHeaders = getCorsHeaders(req);
 
@@ -186,6 +187,11 @@ Deno.serve(async (req: Request) => {
 
         if (authError) {
           logJson("process-deletions", requestId, "ERROR", "Auth delete error", { error: authError.message });
+          // A failed purge is a compliance risk — make it Sentry-visible.
+          // (#11) LGPD: no userId in tags/extra.
+          await captureException(new Error(authError.message), {
+            tags: { fn: "process-deletions", step: "auth_delete" },
+          });
           // (#11) LGPD: Do not log userId in success path — only log that deletion completed
           results.push({ success: false, error: authError.message });
         } else {
@@ -195,6 +201,9 @@ Deno.serve(async (req: Request) => {
         }
       } catch (err) {
         logJson("process-deletions", requestId, "ERROR", "Processing error for user", { error: String(err) });
+        await captureException(err, {
+          tags: { fn: "process-deletions", step: "process_user" },
+        });
         results.push({
           success: false,
           error: "Processing error",
@@ -204,6 +213,20 @@ Deno.serve(async (req: Request) => {
 
     const successful = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
+
+    // ── Run summary (ZERO-O): a silently partial-purging compliance cron is a
+    // legal risk. Surface any failure count to Sentry as a warning so a stuck
+    // deletion queue is observable without reading logs.
+    if (failed > 0) {
+      await captureMessage(
+        `process-deletions: ${failed}/${results.length} account deletions FAILED`,
+        {
+          level: "warning",
+          tags: { fn: "process-deletions" },
+          extra: { processed: results.length, successful, failed },
+        },
+      );
+    }
 
     return new Response(
       JSON.stringify({
@@ -230,7 +253,7 @@ Deno.serve(async (req: Request) => {
       },
     );
   }
-});
+}));
 
 // ── Security: Constant-time string comparison ──
 function timingSafeEqual(a: string, b: string): boolean {

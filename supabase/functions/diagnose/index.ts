@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { captureException } from "../_shared/sentry.ts";
+import { captureException, captureGenAiRequest } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -605,6 +605,7 @@ Deno.serve(async (req: Request) => {
     const userPrompt = `Analise esta imagem de uma planta/lavoura e faca o diagnostico fitossanitario completo.${cropContext}${locationContext}\n\nRetorne APENAS o JSON conforme o formato especificado, sem nenhum texto adicional.`;
 
     // Call Claude Vision API
+    const claudeStart = Date.now();
     const claudeResponse = await fetch(
       "https://api.anthropic.com/v1/messages",
       {
@@ -644,6 +645,14 @@ Deno.serve(async (req: Request) => {
     if (!claudeResponse.ok) {
       const errText = await claudeResponse.text();
       logJson("diagnose", requestId, "ERROR", "Claude API error", { status: claudeResponse.status, errorText: errText });
+      // Core product route failing upstream — instrument it (ZERO-O), mirroring ai-chat.
+      await captureException(
+        new Error(`Claude API ${claudeResponse.status}`),
+        {
+          tags: { fn: "diagnose", step: "claude_api", status: String(claudeResponse.status) },
+          extra: { userId: user.id, errorText: errText.slice(0, 500) },
+        },
+      );
       return new Response(
         JSON.stringify({
           error: "Erro na analise da imagem. Tente novamente.",
@@ -657,6 +666,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const claudeData = await claudeResponse.json();
+
+    // ── AI telemetry (ZERO-O / observability) ──
+    // Emit a gen_ai.request span with Anthropic token usage so cost/latency of
+    // the app's core product is observable. No prompt/image content is captured
+    // (PII). Best-effort — never blocks the response.
+    captureGenAiRequest({
+      model: CLAUDE_MODEL,
+      operation: "vision",
+      inputTokens: claudeData?.usage?.input_tokens,
+      outputTokens: claudeData?.usage?.output_tokens,
+      durationMs: Date.now() - claudeStart,
+      tags: { fn: "diagnose" },
+    }).catch(() => {});
 
     const rawText = claudeData?.content?.[0]?.text;
     if (!rawText) {
@@ -763,6 +785,10 @@ Deno.serve(async (req: Request) => {
 
     if (dbError) {
       logJson("diagnose", requestId, "ERROR", "DB insert error", { error: dbError.message });
+      await captureException(dbError, {
+        tags: { fn: "diagnose", step: "db_insert" },
+        extra: { userId: user.id },
+      });
       return new Response(
         JSON.stringify({ error: "Erro ao salvar diagnostico", requestId }),
         {
@@ -782,6 +808,10 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     // Never leak stack traces to client
     logJson("diagnose", requestId, "ERROR", "Unexpected error", { error: String(error) });
+    await captureException(error, {
+      tags: { fn: "diagnose", step: "unhandled" },
+      extra: { requestId },
+    });
     return new Response(
       JSON.stringify({ error: "Erro interno. Tente novamente.", requestId }),
       {

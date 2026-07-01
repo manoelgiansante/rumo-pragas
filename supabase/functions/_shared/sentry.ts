@@ -44,6 +44,13 @@ function parseDsn(dsn: string): SentryDsn | null {
 const DSN = Deno.env.get('SENTRY_DSN') ?? '';
 const ENVIRONMENT = Deno.env.get('SENTRY_ENVIRONMENT') ?? 'production';
 const RELEASE = Deno.env.get('SENTRY_RELEASE') ?? 'rumo-pragas-edge';
+// App discriminator tag stamped on EVERY event/transaction. The jxcn project
+// ships a single project-level SENTRY_DSN secret shared across all AgroRumo
+// apps' edge functions, so this project can receive events from sibling apps
+// and vice-versa. Tagging every event with `app` lets Sentry triage filter by
+// app even before a dedicated per-app DSN/project is provisioned (the durable
+// fix — a CEO-gated jxcn secret change). Override per function via SENTRY_APP.
+const APP = Deno.env.get('SENTRY_APP') ?? Deno.env.get('APP_KEY') ?? 'rumo-pragas';
 const parsed = DSN ? parseDsn(DSN) : null;
 
 async function sendToSentry(
@@ -51,13 +58,24 @@ async function sendToSentry(
 ): Promise<void> {
   if (!parsed) return; // No DSN configured — silent no-op (dev / tests)
   try {
+    // Stamp the app discriminator onto every event's tags (see APP note).
+    const taggedPayload: Record<string, unknown> = {
+      ...payload,
+      tags: {
+        app: APP,
+        ...(payload.tags as Record<string, string> | undefined),
+      },
+    };
     const envelopeHeader = JSON.stringify({
-      event_id: payload.event_id,
+      event_id: taggedPayload.event_id,
       sent_at: new Date().toISOString(),
       dsn: DSN,
     });
-    const itemHeader = JSON.stringify({ type: 'event' });
-    const body = `${envelopeHeader}\n${itemHeader}\n${JSON.stringify(payload)}`;
+    // Envelope item type must match the event kind: 'transaction' for spans
+    // (AI monitoring), 'event' for errors/messages.
+    const itemType = (taggedPayload.type as string | undefined) ?? 'event';
+    const itemHeader = JSON.stringify({ type: itemType });
+    const body = `${envelopeHeader}\n${itemHeader}\n${JSON.stringify(taggedPayload)}`;
     const url = `${parsed.protocol}://${parsed.host}/api/${parsed.projectId}/envelope/?sentry_key=${parsed.publicKey}&sentry_version=7`;
     // We deliberately do NOT await this in the hot path — but the caller
     // already awaits us with a short timeout. AbortController guarantees we
@@ -140,6 +158,79 @@ export async function captureMessage(
  */
 export async function logError(error: unknown, context: CaptureContext = {}): Promise<void> {
   await captureException(error, context);
+}
+
+function randomHex(bytes: number): string {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export interface GenAiRequest {
+  /** Model identifier, e.g. 'claude-haiku-4-5-20251001'. */
+  model: string;
+  /** Anthropic usage.input_tokens (undefined → 0). */
+  inputTokens?: number;
+  /** Anthropic usage.output_tokens (undefined → 0). */
+  outputTokens?: number;
+  /** Wall-clock latency of the LLM call, in ms. */
+  durationMs?: number;
+  /** gen_ai.operation.name — 'chat' (text) or 'vision' (image), etc. */
+  operation?: string;
+  /** Extra tags (e.g. { fn: 'diagnose' }). */
+  tags?: Record<string, string>;
+  /** false → span status internal_error (upstream failure). */
+  ok?: boolean;
+}
+
+/**
+ * Manual gen_ai.request instrumentation for Sentry AI Agent Monitoring.
+ *
+ * These edge functions call the Anthropic Messages API via raw `fetch` (not
+ * @anthropic-ai/sdk), so Sentry's auto-integration is unavailable — we emit a
+ * `transaction` envelope whose root span carries the gen_ai.* attributes Sentry
+ * aggregates into token/cost/latency dashboards.
+ *
+ * PII: we deliberately capture ONLY the model + token counts + latency. Prompt
+ * text, user images and completions are NEVER recorded (they are PII).
+ * Best-effort; never throws.
+ */
+export async function captureGenAiRequest(usage: GenAiRequest): Promise<void> {
+  const now = Date.now() / 1000;
+  const start = now - (usage.durationMs ?? 0) / 1000;
+  const inputTokens = usage.inputTokens ?? 0;
+  const outputTokens = usage.outputTokens ?? 0;
+  const operation = usage.operation ?? 'chat';
+  await sendToSentry({
+    event_id: uuid(),
+    type: 'transaction',
+    transaction: `gen_ai ${operation} ${usage.model}`,
+    platform: 'javascript',
+    environment: ENVIRONMENT,
+    release: RELEASE,
+    start_timestamp: start,
+    timestamp: now,
+    tags: usage.tags,
+    contexts: {
+      trace: {
+        trace_id: randomHex(16),
+        span_id: randomHex(8),
+        op: 'gen_ai.request',
+        origin: 'manual',
+        status: usage.ok === false ? 'internal_error' : 'ok',
+        data: {
+          'gen_ai.system': 'anthropic',
+          'gen_ai.operation.name': operation,
+          'gen_ai.request.model': usage.model,
+          'gen_ai.response.model': usage.model,
+          'gen_ai.usage.input_tokens': inputTokens,
+          'gen_ai.usage.output_tokens': outputTokens,
+          'gen_ai.usage.total_tokens': inputTokens + outputTokens,
+        },
+      },
+    },
+    spans: [],
+  });
 }
 
 /**

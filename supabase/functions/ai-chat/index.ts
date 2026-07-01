@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { captureException, captureMessage } from "../_shared/sentry.ts";
+import { captureException, captureGenAiRequest, captureMessage } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -460,6 +460,7 @@ Deno.serve(async (req: Request) => {
     ];
 
     // Call Claude API
+    const claudeStart = Date.now();
     const claudeResponse = await fetch(
       "https://api.anthropic.com/v1/messages",
       {
@@ -499,6 +500,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await claudeResponse.json();
+
+    // ── AI telemetry (ZERO-O / observability) ──
+    // Emit a gen_ai.request span with Anthropic token usage (previously
+    // discarded) so chat cost/latency is observable. No message content is
+    // captured (PII). Best-effort — never blocks the response.
+    captureGenAiRequest({
+      model: "claude-haiku-4-5-20251001",
+      operation: "chat",
+      inputTokens: data?.usage?.input_tokens,
+      outputTokens: data?.usage?.output_tokens,
+      durationMs: Date.now() - claudeStart,
+      tags: { fn: "ai-chat" },
+    }).catch(() => {});
 
     if (!data.content || data.content.length === 0) {
       return new Response(

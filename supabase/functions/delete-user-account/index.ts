@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException, captureMessage } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: delete-user-account
@@ -344,6 +345,10 @@ Deno.serve(async (req: Request) => {
         "Auth delete error",
         { error: authDeleteError.message },
       );
+      // Hard failure of the point-of-no-return step — instrument it (ZERO-O).
+      await captureException(new Error(authDeleteError.message), {
+        tags: { fn: "delete-user-account", step: "auth_delete" },
+      });
       return new Response(
         JSON.stringify({
           error: "Failed to delete auth user",
@@ -365,6 +370,21 @@ Deno.serve(async (req: Request) => {
       { partialErrors: errors.length },
     );
 
+    // ── ZERO-O: the account was auth-deleted but one or more data tables/storage
+    // failed to purge — an LGPD partial-erasure that the HTTP 200 would otherwise
+    // hide. Surface it to Sentry (no userId — LGPD). errors[] carries only table
+    // names + DB messages, no personal data.
+    if (errors.length > 0) {
+      await captureMessage(
+        `delete-user-account: ${errors.length} partial deletion error(s)`,
+        {
+          level: "warning",
+          tags: { fn: "delete-user-account" },
+          extra: { errorCount: errors.length, errors },
+        },
+      );
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -380,6 +400,10 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     logJson("delete-user-account", requestId, "ERROR", "Unexpected error", {
       error: String(err),
+    });
+    await captureException(err, {
+      tags: { fn: "delete-user-account", step: "unhandled" },
+      extra: { requestId },
     });
     return new Response(
       JSON.stringify({ error: "Internal server error", requestId }),
