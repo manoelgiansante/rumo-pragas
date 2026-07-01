@@ -132,9 +132,20 @@ function rateLimitHeaders(limit: number, remaining: number, resetAt: number): Re
   };
 }
 
-// Chat limits by plan (monthly message cap enforced on history length)
+// ── FREE MODE (2026-06-30, fix/pragas-free-2026-06-30) ──
+// The app ships 100% FREE (CEO decision — re-monetize later). While FREE_MODE is
+// on, the monthly chat-message cap for the `free` plan is UNLIMITED (-1), so real
+// signups (plan='free' via handle_new_user) never hit the 403 CHAT_LIMIT_REACHED
+// dead-end the neutralized paywall can no longer resolve. The per-minute burst
+// limit (RATE_LIMIT_BY_PLAN.free via checkRateLimit) STILL protects Anthropic API
+// spend against abuse. To re-enable paid monthly caps later: set FREE_MODE=false.
+const FREE_MODE =
+  (Deno.env.get("FREE_MODE") ?? "true").toLowerCase() !== "false";
+
+// Chat limits by plan (monthly message cap enforced via chat_usage counter).
+// FREE_MODE → free plan is unlimited (-1); paid caps preserved for re-monetization.
 const CHAT_LIMITS: Record<string, number> = {
-  free: 10,
+  free: FREE_MODE ? -1 : 10,
   pro: -1,
   enterprise: -1,
 };

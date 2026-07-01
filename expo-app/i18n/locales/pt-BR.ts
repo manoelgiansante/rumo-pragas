@@ -467,7 +467,7 @@ export default {
     clearChatConfirm: 'Tem certeza que deseja limpar toda a conversa?',
     limitReachedTitle: 'Limite atingido',
     limitReachedMessage:
-      'Você atingiu o limite de mensagens do plano gratuito. Faça upgrade para continuar usando o Chat IA.',
+      'Muitas mensagens em sequência. Aguarde alguns instantes e tente novamente.',
     upgradePlan: 'Fazer upgrade',
     suggestion1: 'Como identificar ferrugem asiática na soja?',
     suggestion2: 'Qual o melhor manejo para lagarta do cartucho?',
@@ -505,8 +505,7 @@ export default {
       'A análise demorou mais de 60 segundos. Verifique sua conexão e tente novamente.',
     networkError: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.',
     weatherUnavailable: 'Não foi possível obter dados meteorológicos. Verifique sua conexão.',
-    planLimit:
-      'Você atingiu o limite de {{limit}} diagnósticos do plano {{plan}}. Faça upgrade para continuar.',
+    planLimit: 'Muitos diagnósticos em sequência. Aguarde alguns instantes e tente novamente.',
     planFree: 'gratuito',
     fetchDiagnoses: 'Falha ao buscar diagnósticos',
     deleteDiagnosis: 'Falha ao excluir diagnóstico',
@@ -646,7 +645,7 @@ export default {
   aiChat: {
     loginRequired: 'Você precisa estar logado para usar o chat IA',
     sessionExpired: 'Sessão expirada. Faça login novamente.',
-    chatLimitReached: 'Limite de mensagens atingido. Faça upgrade para continuar.',
+    chatLimitReached: 'Muitas mensagens em sequência. Aguarde um momento e tente novamente.',
     noPermission: 'Você não tem permissão para usar o chat IA. Verifique sua assinatura.',
     tooManyMessages: 'Muitas mensagens enviadas. Aguarde um momento e tente novamente.',
     serviceUnavailable:

@@ -455,7 +455,7 @@ export default {
     clearChatConfirm: '¿Está seguro de que desea limpiar toda la conversación?',
     limitReachedTitle: 'Límite alcanzado',
     limitReachedMessage:
-      'Ha alcanzado el límite de mensajes del plan gratuito. Actualice para continuar usando el Chat IA.',
+      'Demasiados mensajes seguidos. Espere unos instantes e inténtelo de nuevo.',
     upgradePlan: 'Actualizar plan',
     suggestion1: '¿Cómo identificar la roya asiática en la soja?',
     suggestion2: '¿Cuál es el mejor manejo para el gusano cogollero?',
@@ -493,8 +493,7 @@ export default {
       'El análisis tardó más de 60 segundos. Verifique su conexión e intente de nuevo.',
     networkError: 'No se pudo conectar al servidor. Verifique su conexión e intente de nuevo.',
     weatherUnavailable: 'No se pudieron obtener datos meteorológicos. Verifique su conexión.',
-    planLimit:
-      'Ha alcanzado el límite de {{limit}} diagnósticos del plan {{plan}}. Actualice para continuar.',
+    planLimit: 'Demasiados diagnósticos seguidos. Espere unos instantes e inténtelo de nuevo.',
     planFree: 'gratuito',
     fetchDiagnoses: 'Error al buscar diagnósticos',
     deleteDiagnosis: 'Error al eliminar diagnóstico',
@@ -635,7 +634,7 @@ export default {
   aiChat: {
     loginRequired: 'Necesita iniciar sesión para usar el chat IA',
     sessionExpired: 'Sesión expirada. Inicie sesión nuevamente.',
-    chatLimitReached: 'Límite de mensajes alcanzado. Actualice para continuar.',
+    chatLimitReached: 'Demasiados mensajes seguidos. Espere un momento e inténtelo de nuevo.',
     noPermission: 'No tiene permiso para usar el chat IA. Verifique su suscripción.',
     tooManyMessages: 'Demasiados mensajes enviados. Espere un momento e intente de nuevo.',
     serviceUnavailable:
