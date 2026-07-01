@@ -56,3 +56,6 @@ bun.lock
 .claude/worktrees/
 
 supabase/.temp/
+
+# Debris: raw device captures (NEVER upload to stores). Canonical = expo-app/store-assets/
+store-screenshots/

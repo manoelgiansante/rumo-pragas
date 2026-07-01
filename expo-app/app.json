@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#0D2B1E"
     },
     "assetBundlePatterns": [
       "assets/icon.png",
@@ -98,7 +98,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF",
+        "backgroundColor": "#0D2B1E",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.agrorumo.rumopragas",

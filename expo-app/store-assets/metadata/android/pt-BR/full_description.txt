@@ -2,7 +2,7 @@ Diagnostico de pragas agricolas com inteligencia artificial. Tire uma foto da la
 
 Rumo Pragas e o aplicativo que todo produtor rural precisa pra proteger a safra. Usando IA de ultima geracao, identifica pragas, doencas fungicas, bacterianas, virais e deficiencias nutricionais a partir de uma simples foto — mesmo em areas com sinal fraco.
 
-82,5% DE ACURACIA VALIDADA
+VALIDADA COM ESPECIALISTA
 
 Nossa IA foi construida com especialista senior em fitossanidade tropical e testada contra imagens reais de ferrugem asiatica, lagarta-do-cartucho, percevejo-verde, bicho-mineiro do cafe e mancha-alvo. Validacao documentada pre-lancamento.
 
@@ -53,11 +53,9 @@ SEGURANCA E PRIVACIDADE
 
 Dados protegidos com criptografia em transito e em repouso. Imagens processadas com seguranca e nunca vendidas a terceiros. Voce controla tudo — pode apagar o historico a qualquer momento.
 
-PLANOS
+GRATIS PARA USAR
 
-- Gratis: 3 diagnosticos por mes
-- Pro: 30 diagnosticos/mes + chat ilimitado + alertas + PDF
-- Enterprise: diagnosticos ilimitados + multi-usuario
+O Rumo Pragas esta 100% gratuito: diagnosticos por IA, chat com a agronoma virtual, biblioteca de pragas, historico e exportacao em PDF — sem cobranca e sem assinatura.
 
 AVISO AGRONOMICO
 
