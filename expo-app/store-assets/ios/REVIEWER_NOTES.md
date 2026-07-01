@@ -12,9 +12,9 @@ testing instructions so you can fully evaluate the app.
 - **Email:** reviewer@agrorumo.com
 - **Password:** `rCrelvopjjIY2OYJlFytkFdz`
 
-> The demo account has an **active Pro subscription** (RevenueCat sandbox) so
-> you can test all premium features (unlimited diagnoses, history, advanced
-> recommendations).
+> The app ships **100% free**. Every feature (unlimited diagnoses, history,
+> AI chat, advanced recommendations) is unlocked for all accounts, including
+> the demo account. There is no paywall and no In-App Purchase.
 
 ---
 
@@ -31,7 +31,7 @@ Target audience: farmers, agronomists, and agricultural consultants.
 ## How to Test the Main Flow
 
 1. **Login** with the demo credentials above (or create a new account — signup
-   takes <30 seconds and grants a 3-day free trial of Pro).
+   takes <30 seconds and immediately unlocks every feature for free).
 2. **Onboarding:** select a crop (e.g. "Soja" / soybean), accept location
    permission when prompted (used to enrich diagnoses with weather data —
    optional and can be denied).
@@ -50,18 +50,13 @@ Target audience: farmers, agronomists, and agricultural consultants.
 
 ---
 
-## Paywall / In-App Purchase Testing
+## In-App Purchases
 
-- The paywall screen is reachable from `Configuracoes > Gerenciar Assinatura`
-  or by attempting a 4th diagnosis on a free account.
-- IAP is provided via **RevenueCat** (sandbox-configured for review builds).
-- Products offered: Monthly Pro (R$ 19.90/mo) and Annual Pro (R$ 149.00/yr)
-  with a 3-day free trial for new users.
-- "Restore Purchases" is available on the paywall and in Settings.
-
-If the paywall shows "Em breve" (coming soon), the RevenueCat API key is not
-configured — please reach out to support before rejecting and we will
-immediately provide an updated build.
+- This build has **no In-App Purchase and no subscription**. There is no
+  paywall, no "Subscribe"/"Assinar" button and no "Restore Purchases" flow
+  anywhere in the app.
+- All functionality is free and unlimited. Diagnoses are not capped.
+- Please do not attempt to test IAP — none is offered in this version.
 
 ---
 
@@ -81,9 +76,12 @@ immediately provide an updated build.
 
 ## Location Permission
 
-Location is used only to fetch local weather conditions (temperature, humidity,
-rainfall) which improve the accuracy of pest diagnoses. It is **optional** and
-the app works fully without it.
+Location (latitude/longitude) is used only as regional context to improve the
+accuracy of pest diagnoses — to fetch local weather conditions (temperature,
+humidity, rainfall) and to inform the AI about pest occurrence in the region.
+When provided, the coordinates are sent together with the diagnosis request. It
+is **optional**: if the permission is denied, no coordinates are sent and the
+app works fully without it.
 
 ---
 
@@ -103,7 +101,6 @@ If you encounter any issue during review:
 - **Email:** support@agrorumo.com
 - **Support web:** https://pragas.agrorumo.com/
 - **Response time:** under 4 business hours (Brasilia time, UTC-3)
-- **Developer:** Manoel Nascimento
-- **Company:** AgroRumo
+- **Company:** MM CAMPO FORTE LTDA. (CNPJ 57.169.838/0001-20), operating under the AgroRumo brand
 
 Thank you for your time and feedback!

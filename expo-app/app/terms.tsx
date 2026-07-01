@@ -37,7 +37,7 @@ export default function TermsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 25 de março de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 1 de julho de 2026</Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           1. Aceitação dos Termos
@@ -122,10 +122,13 @@ export default function TermsScreen() {
           9. Planos
         </Text>
         <Text style={styles.paragraph}>
-          O App é oferecido gratuitamente, com todas as funcionalidades disponíveis sem custo. Caso
-          planos pagos venham a ser oferecidos no futuro, os detalhes — incluindo preços e recursos
-          — serão apresentados no próprio App, e nenhuma cobrança será realizada sem o seu
-          consentimento expresso.
+          O App é oferecido gratuitamente, com todas as funcionalidades disponíveis sem custo. No
+          momento não há assinatura, compra dentro do aplicativo nem qualquer cobrança. Caso planos
+          pagos venham a ser oferecidos no futuro, os detalhes — incluindo preços, forma de
+          renovação e cancelamento — serão apresentados de forma clara no próprio App e na
+          respectiva loja (App Store / Google Play), e nenhuma cobrança será realizada sem o seu
+          consentimento expresso, respeitado o direito de arrependimento previsto no art. 49 do
+          Código de Defesa do Consumidor.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -160,10 +163,10 @@ export default function TermsScreen() {
           13. Contato Legal
         </Text>
         <Text style={styles.paragraph}>
-          Razão Social: AgroRumo (Manoel Nascimento - Pessoa Física){'\n'}
-          CNPJ: Em processo de registro como MEI{'\n'}
+          Razão Social: MM CAMPO FORTE LTDA.{'\n'}
+          CNPJ: 57.169.838/0001-20{'\n'}
           Email: contato@agrorumo.com{'\n'}
-          DPO: dpo@agrorumo.com
+          Encarregado de Proteção de Dados (DPO): contato@agrorumo.com
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
