@@ -99,6 +99,18 @@ export default {
     termsA11y: 'Aceitar termos de uso e política de privacidade',
     appleA11y: 'Entrar com Apple',
   },
+  // Update password (reached from the recovery e-mail deep link)
+  updatePassword: {
+    title: 'Criar nova senha',
+    subtitle: 'Defina uma nova senha para sua conta.',
+    newPasswordPlaceholder: 'Nova senha',
+    confirmPlaceholder: 'Confirme a nova senha',
+    submit: 'Salvar nova senha',
+    success: 'Senha alterada com sucesso!',
+    mismatch: 'As senhas não coincidem.',
+    error: 'Não foi possível alterar a senha. Solicite um novo link.',
+    backToLogin: 'Voltar para o login',
+  },
   // Diagnosis
   diagnosis: {
     defaultName: 'Diagnóstico',
@@ -355,7 +367,7 @@ export default {
     deleteAccount: 'Excluir Conta',
     deleteConfirmTitle: 'Excluir Conta',
     deleteConfirmMessage:
-      'Tem certeza? Todos os seus dados serão permanentemente excluídos. Esta ação não pode ser desfeita.',
+      'Tem certeza? Isto exclui permanentemente sua conta AgroRumo (usada para entrar em todos os apps AgroRumo) e todos os seus dados do Rumo Pragas IA. Esta ação não pode ser desfeita.',
     cancel: 'Cancelar',
     delete: 'Excluir',
     support: 'Suporte',

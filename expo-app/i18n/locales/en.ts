@@ -96,6 +96,17 @@ export default {
     termsA11y: 'Accept terms of use and privacy policy',
     appleA11y: 'Sign in with Apple',
   },
+  updatePassword: {
+    title: 'Create new password',
+    subtitle: 'Set a new password for your account.',
+    newPasswordPlaceholder: 'New password',
+    confirmPlaceholder: 'Confirm new password',
+    submit: 'Save new password',
+    success: 'Password changed successfully!',
+    mismatch: 'Passwords do not match.',
+    error: 'Could not change your password. Please request a new link.',
+    backToLogin: 'Back to login',
+  },
   diagnosis: {
     defaultName: 'Diagnosis',
     takePhoto: 'Take Photo',
@@ -343,7 +354,7 @@ export default {
     deleteAccount: 'Delete Account',
     deleteConfirmTitle: 'Delete Account',
     deleteConfirmMessage:
-      'Are you sure? All your data will be permanently deleted. This action cannot be undone.',
+      'Are you sure? This permanently deletes your AgroRumo account (used to sign in to every AgroRumo app) and all your Rumo Pragas IA data. This action cannot be undone.',
     cancel: 'Cancel',
     delete: 'Delete',
     editProfile: 'Edit Profile',

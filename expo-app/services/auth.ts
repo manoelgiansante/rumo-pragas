@@ -1,6 +1,17 @@
+import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { addBreadcrumb } from './sentry-shim';
+
+/**
+ * Deep link the password-recovery e-mail should send the user back to. In a
+ * standalone build `Linking.createURL('/update-password')` resolves to
+ * `rumopragas://update-password` (the scheme is declared in app.json). Supabase
+ * only honours this when the URL is in the project's "Redirect URLs" allow
+ * list; otherwise it safely falls back to the hosted Site URL page (the prior
+ * behaviour), so passing it can only improve the flow, never break it.
+ */
+export const PASSWORD_RECOVERY_REDIRECT = Linking.createURL('/update-password');
 
 export async function signIn(email: string, password: string) {
   addBreadcrumb({ category: 'auth', message: 'Sign in attempt', level: 'info' });
@@ -43,8 +54,24 @@ export async function signOut() {
 }
 
 export async function resetPassword(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  addBreadcrumb({ category: 'auth', message: 'Reset password request', level: 'info' });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: PASSWORD_RECOVERY_REDIRECT,
+  });
   if (error) throw error;
+}
+
+/**
+ * Sets a new password for the CURRENTLY authenticated user. Used by the in-app
+ * update-password screen after the recovery deep link establishes a session.
+ * The user must already be signed in (recovery session), otherwise Supabase
+ * returns an AuthSessionMissingError which the caller surfaces.
+ */
+export async function updatePassword(newPassword: string) {
+  addBreadcrumb({ category: 'auth', message: 'Update password', level: 'info' });
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+  return data;
 }
 
 export async function getSession() {

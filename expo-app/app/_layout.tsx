@@ -376,6 +376,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="update-password" />
         <Stack.Screen name="consent-location" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen

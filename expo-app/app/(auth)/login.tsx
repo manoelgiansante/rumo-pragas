@@ -110,8 +110,15 @@ export default function LoginScreen() {
         // of an empty string in profiles.full_name. Avoids "" as a sentinel
         // that downstream code might display as the user's name.
         const trimmedName = fullName.trim();
-        await signUp(email.trim(), password, trimmedName ? trimmedName : undefined);
-        showAlert('', t('auth.checkEmail'));
+        const result = await signUp(email.trim(), password, trimmedName ? trimmedName : undefined);
+        // Only nudge the user to confirm their e-mail when confirmation is
+        // actually pending (no session yet). If Supabase auto-confirmed the
+        // account, a session is already present and the navigation gate logs
+        // them straight in — showing "check your email" then would be
+        // misleading and leaves them stuck on this modal.
+        if (!result?.session) {
+          showAlert('', t('auth.checkEmail'));
+        }
       }
     } catch (err) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

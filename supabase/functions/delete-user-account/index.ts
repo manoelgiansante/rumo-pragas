@@ -36,10 +36,14 @@ const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
 // NOTE — intentionally NOT listed:
 //  • pragas_push_notifications → system-wide broadcast audit log (no user_id
 //    column, not personal data); deleting it by user_id would error.
-//  • push_token → stored as a COLUMN on pragas_profiles, already erased in
-//    Step 6 (delete pragas_profiles where id = userId).
 const USER_SCOPED_TABLES: { name: string; appScoped?: boolean }[] = [
   { name: "pragas_diagnoses" },
+  // Per-device Expo push token audit table (user_id + expo_token + device
+  // fingerprint). expo_token is a personal identifier tied to the device, so
+  // LGPD erasure MUST purge it. It has a user_id FK to auth.users; we delete
+  // it up front regardless of whether the FK is ON DELETE CASCADE (idempotent,
+  // fail-safe — a stale token row must never survive an account deletion).
+  { name: "pragas_push_tokens" },
   // per-(user, app, month) ai-chat counter — explicit LGPD erasure (also
   // ON DELETE CASCADE on auth.users, but we scope + purge it up front).
   { name: "chat_usage", appScoped: true },

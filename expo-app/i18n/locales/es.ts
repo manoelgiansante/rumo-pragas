@@ -96,6 +96,17 @@ export default {
     termsA11y: 'Aceptar términos de uso y política de privacidad',
     appleA11y: 'Iniciar sesión con Apple',
   },
+  updatePassword: {
+    title: 'Crear nueva contraseña',
+    subtitle: 'Define una nueva contraseña para tu cuenta.',
+    newPasswordPlaceholder: 'Nueva contraseña',
+    confirmPlaceholder: 'Confirma la nueva contraseña',
+    submit: 'Guardar nueva contraseña',
+    success: '¡Contraseña cambiada con éxito!',
+    mismatch: 'Las contraseñas no coinciden.',
+    error: 'No se pudo cambiar la contraseña. Solicita un nuevo enlace.',
+    backToLogin: 'Volver al inicio de sesión',
+  },
   diagnosis: {
     defaultName: 'Diagnóstico',
     takePhoto: 'Tomar Foto',
@@ -346,7 +357,7 @@ export default {
     deleteAccount: 'Eliminar Cuenta',
     deleteConfirmTitle: 'Eliminar Cuenta',
     deleteConfirmMessage:
-      'Esta seguro? Todos sus datos seran eliminados permanentemente. Esta accion no se puede deshacer.',
+      'Esta seguro? Esto elimina permanentemente su cuenta AgroRumo (usada para iniciar sesion en todas las apps AgroRumo) y todos sus datos de Rumo Pragas IA. Esta accion no se puede deshacer.',
     cancel: 'Cancelar',
     delete: 'Eliminar',
     editProfile: 'Editar Perfil',
