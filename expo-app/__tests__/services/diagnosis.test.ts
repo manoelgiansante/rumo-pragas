@@ -140,6 +140,32 @@ describe('sendDiagnosis', () => {
     );
   });
 
+  it('handles 403 plan limit for a NON-free plan (regression: not swallowed into generic 403)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ limit: 50, plan: 'pro' }),
+    });
+
+    const smallImage = makeBase64(100);
+    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
+      /limite de 50/,
+    );
+  });
+
+  it('handles a generic 403 without limit/plan as sanitized noPermission', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: 'forbidden' }),
+    });
+
+    const smallImage = makeBase64(100);
+    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
+      /permiss/i,
+    );
+  });
+
   it('handles 401 with sanitized message', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,

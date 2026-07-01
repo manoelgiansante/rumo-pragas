@@ -178,20 +178,25 @@ async function sendDiagnosisLegacy(args: {
   if (!response.ok) {
     // Handle 403 with subscription limit details — navigate to paywall
     if (response.status === 403) {
+      // Parse the body defensively: a non-JSON 403 (e.g. a generic auth
+      // reject) must fall through to the sanitized message below — the
+      // plan-limit throw must NOT sit inside a try that catches (and would
+      // then swallow) it for non-"free" plans.
+      let errorData: { limit?: number; plan?: string } | null;
       try {
-        const errorData = await response.json();
-        if (errorData?.limit !== undefined && errorData?.plan) {
-          // Fire-and-forget navigation to paywall so user can upgrade immediately.
-          try {
-            router.push('/paywall');
-          } catch (navErr) {
-            if (__DEV__) console.warn('[diagnosis] paywall navigation failed:', navErr);
-          }
-          const planLabel = errorData.plan === 'free' ? i18n.t('errors.planFree') : errorData.plan;
-          throw new Error(i18n.t('errors.planLimit', { limit: errorData.limit, plan: planLabel }));
+        errorData = await response.json();
+      } catch {
+        errorData = null;
+      }
+      if (errorData && errorData.limit !== undefined && errorData.plan) {
+        // Fire-and-forget navigation to paywall so user can upgrade immediately.
+        try {
+          router.push('/paywall');
+        } catch (navErr) {
+          if (__DEV__) console.warn('[diagnosis] paywall navigation failed:', navErr);
         }
-      } catch (e) {
-        if (e instanceof Error && e.message.includes(String(i18n.t('errors.planFree')))) throw e;
+        const planLabel = errorData.plan === 'free' ? i18n.t('errors.planFree') : errorData.plan;
+        throw new Error(i18n.t('errors.planLimit', { limit: errorData.limit, plan: planLabel }));
       }
     }
     throw new Error(sanitizeErrorMessage(response.status));
