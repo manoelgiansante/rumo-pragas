@@ -13,6 +13,16 @@ const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
 
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 
+// ── FREE MODE (2026-06-30, fix/pragas-free-2026-06-30) ──
+// The app ships 100% FREE (CEO decision — re-monetize later). While FREE_MODE is
+// on, the monthly diagnosis cap for the `free` plan is UNLIMITED (-1), so real
+// signups (plan='free' via handle_new_user) never hit the 403 dead-end the
+// neutralized paywall can no longer resolve. The per-hour burst limit
+// (RATE_LIMIT_BY_PLAN.free via checkRateLimit) STILL protects Anthropic Vision
+// spend against abuse. To re-enable paid monthly caps later: set FREE_MODE=false.
+const FREE_MODE =
+  (Deno.env.get("FREE_MODE") ?? "true").toLowerCase() !== "false";
+
 // ── Security: Fail-fast on missing critical secrets (#15) ──
 if (!CLAUDE_API_KEY) {
   console.error(JSON.stringify({ function: "diagnose", level: "FATAL", message: "CLAUDE_API_KEY not set. Function will reject all requests." }));
@@ -324,8 +334,9 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Subscription lookup (needed for per-plan rate limit) ──
+  // FREE_MODE → free plan is unlimited (-1); paid caps preserved for re-monetization.
   const PLAN_LIMITS: Record<string, number> = {
-    free: 3,
+    free: FREE_MODE ? -1 : 3,
     pro: 30,
     enterprise: -1,
   };

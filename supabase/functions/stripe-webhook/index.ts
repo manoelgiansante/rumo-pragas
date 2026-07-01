@@ -166,6 +166,10 @@ interface StripeEventObject {
   subscription?: string;
   metadata?: Record<string, string>;
   status?: string;
+  // Checkout Session payment state — 'paid' | 'unpaid' | 'no_payment_required'.
+  payment_status?: string;
+  // Checkout Session mode — 'payment' | 'subscription' | 'setup'.
+  mode?: string;
   current_period_start?: number;
   current_period_end?: number;
 }
@@ -358,6 +362,39 @@ Deno.serve(async (req: Request) => {
         // ── Security: Validate user_id is UUID format (#7) ──
         if (userId && !UUID_REGEX.test(userId)) {
           logJson("stripe-webhook", requestId, "WARN", "Invalid user_id format in checkout metadata", { userId });
+          break;
+        }
+
+        // ── Verify payment before granting entitlement (all branches) ──
+        // Never write status='active' without proof the money moved. A Checkout
+        // Session only reaches payment_status='paid' once the (first) invoice is
+        // settled — 'unpaid'/async/no_payment_required must NOT unlock a paid
+        // plan. Fail closed: ignore the event (no downgrade of an existing active
+        // row) and flag it to Sentry for triage.
+        if (userId && session.payment_status !== "paid") {
+          logJson(
+            "stripe-webhook",
+            requestId,
+            "WARN",
+            "checkout.session.completed without confirmed payment — entitlement NOT granted",
+            {
+              userId,
+              paymentStatus: session.payment_status ?? null,
+              mode: session.mode ?? null,
+            },
+          );
+          await captureException(
+            new Error("checkout.session.completed with unconfirmed payment"),
+            {
+              tags: { fn: "stripe-webhook", op: "checkout_unpaid", requestId },
+              extra: {
+                userId,
+                paymentStatus: session.payment_status ?? null,
+                mode: session.mode ?? null,
+                eventId: event.id,
+              },
+            },
+          );
           break;
         }
 
