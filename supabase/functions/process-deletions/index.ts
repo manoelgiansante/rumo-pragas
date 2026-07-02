@@ -4,10 +4,20 @@ import { captureException, captureMessage, withSentry } from "../_shared/sentry.
 /**
  * Edge Function: process-deletions
  *
- * Processes account deletion requests that are older than 15 days
- * (LGPD compliance). Can be triggered via:
- * - Supabase cron (pg_cron extension)
+ * Processes LGPD account-deletion requests off the `public.deletion_requests`
+ * queue. Can be triggered via:
+ * - Supabase cron (pg_cron extension) — runs daily
  * - Manual invocation with service_role key
+ *
+ * Real data flow:
+ *   web / support inserts a row into `public.deletion_requests`
+ *     (status='pending', scheduled_hard_delete_at = requested_at + grace period)
+ *   → this cron picks up every request whose `scheduled_hard_delete_at` has
+ *     passed and still has status='pending', purges the user, and flips the row
+ *     to 'processed' (or 'error' on a partial failure — see below).
+ *
+ * The `deletion_requests` table (jxcn prod) columns used here:
+ *   id, user_id, email, status, scheduled_hard_delete_at, processed_at.
  *
  * Actions performed per user (mirrors delete-user-account, ff46713):
  * 1. Cancel RevenueCat subscriber (best-effort)
@@ -16,6 +26,7 @@ import { captureException, captureMessage, withSentry } from "../_shared/sentry.
  *    on SHARED jxcn tables (subscriptions, chat_usage)
  * 4. Delete profile from pragas_profiles
  * 5. Delete auth user via admin API
+ * 6. Mark the queue row as processed / error
  */
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -27,8 +38,9 @@ const REVENUECAT_SECRET_KEY = Deno.env.get("REVENUECAT_SECRET_KEY") ?? "";
 // Pairs with migration 20260628120000_subscriptions_per_app_isolation.sql.
 const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
 
-// LGPD: process deletions after 15 days
-const DELETION_GRACE_PERIOD_DAYS = 15;
+// LGPD grace period (~15 days) is NOT applied here — it is baked into each
+// request's `scheduled_hard_delete_at` at insert time (web/support). This cron
+// only honours that deadline via `.lte("scheduled_hard_delete_at", now)`.
 
 // Tables that have a user_id column belonging to the deleted user.
 // Order matters — children before parents to respect FK constraints.
@@ -189,6 +201,34 @@ async function deleteUserStorage(
   }
 }
 
+// Flip a queue row to its terminal (or retry) status. `setProcessedAt` stamps
+// `processed_at` only once the purge has actually run (processed/error), never
+// when we leave the row 'pending' for a retry.
+async function markRequest(
+  admin: SupabaseClient,
+  requestRowId: string,
+  status: "processed" | "error" | "pending",
+  requestId: string,
+  setProcessedAt: boolean,
+): Promise<void> {
+  const patch: Record<string, unknown> = { status };
+  if (setProcessedAt) patch.processed_at = new Date().toISOString();
+
+  const { error } = await admin
+    .from("deletion_requests")
+    .update(patch)
+    .eq("id", requestRowId);
+
+  if (error) {
+    // The purge already happened — failing to update the queue row would only
+    // cause a benign re-pick next run (idempotent purge), but it IS observable.
+    logJson("process-deletions", requestId, "WARN", "Queue status update failed", {
+      status,
+      error: error.message,
+    });
+  }
+}
+
 Deno.serve(withSentry("process-deletions", async (req: Request) => {
   const requestId = generateRequestId();
   const corsHeaders = getCorsHeaders(req);
@@ -262,15 +302,16 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
   });
 
   try {
-    // Find profiles with deletion_requested_at older than grace period
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - DELETION_GRACE_PERIOD_DAYS);
+    // Pull every pending request whose hard-delete deadline has already passed.
+    // The grace period is enforced at insert time via `scheduled_hard_delete_at`
+    // (requested_at + N days), so here we simply honour that timestamp.
+    const nowIso = new Date().toISOString();
 
-    const { data: profilesForDeletion, error: fetchError } = await supabase
-      .from("pragas_profiles")
-      .select("id, full_name, deletion_requested_at")
-      .not("deletion_requested_at", "is", null)
-      .lte("deletion_requested_at", cutoffDate.toISOString());
+    const { data: pendingRequests, error: fetchError } = await supabase
+      .from("deletion_requests")
+      .select("id, user_id, email, scheduled_hard_delete_at")
+      .eq("status", "pending")
+      .lte("scheduled_hard_delete_at", nowIso);
 
     if (fetchError) {
       logJson("process-deletions", requestId, "ERROR", "Fetch error", { error: fetchError.message });
@@ -283,7 +324,7 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
       );
     }
 
-    if (!profilesForDeletion || profilesForDeletion.length === 0) {
+    if (!pendingRequests || pendingRequests.length === 0) {
       return new Response(
         JSON.stringify({ message: "No pending deletions", processed: 0, requestId }),
         {
@@ -295,9 +336,12 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
 
     const results: { success: boolean; error?: string; partialErrors?: number }[] = [];
 
-    for (const profile of profilesForDeletion) {
+    for (const request of pendingRequests) {
       try {
-        const userId = profile.id;
+        const userId = request.user_id;
+        // `email` is used only for operational logging correlation (LGPD: the
+        // request is being erased, so it is the subject's own data being purged).
+        const requestEmail = request.email ?? "unknown";
         const partialErrors: string[] = [];
 
         // 1. Cancel RevenueCat subscriber (best-effort — mirrors delete-user-account)
@@ -346,11 +390,18 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
           await captureException(new Error(authError.message), {
             tags: { fn: "process-deletions", step: "auth_delete" },
           });
+          // The auth user still exists → leave the queue row 'pending' so the
+          // next cron run retries the whole purge. This is the SAFE choice: a
+          // stuck row that keeps retrying is a visible, recoverable state,
+          // whereas flipping to 'error' here would strand a user who was never
+          // actually deleted (LGPD erasure never completed).
+          await markRequest(supabase, request.id, "pending", requestId, false);
           // (#11) LGPD: Do not log userId — only that the deletion completed
           results.push({ success: false, error: authError.message, partialErrors: partialErrors.length });
         } else {
           // (#11) LGPD compliance: Do not log userId — just that the deletion completed
           logJson("process-deletions", requestId, "INFO", "User deletion completed", {
+            email: requestEmail,
             partialErrors: partialErrors.length,
           });
           // ── ZERO-O: auth-deleted but one or more tables/storage failed to purge —
@@ -366,6 +417,13 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
               },
             );
           }
+          // Auth user is gone (point of no return crossed). Mark the queue row
+          // 'processed' when the purge was clean, or 'error' when residual
+          // table/storage deletes failed — the auth user can no longer be
+          // retried, so 'error' flags it for human follow-up rather than
+          // looping forever on 'pending'.
+          const finalStatus = partialErrors.length > 0 ? "error" : "processed";
+          await markRequest(supabase, request.id, finalStatus, requestId, true);
           results.push({ success: true, partialErrors: partialErrors.length });
         }
       } catch (err) {
