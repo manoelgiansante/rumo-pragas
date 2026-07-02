@@ -638,6 +638,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.caption,
     fontWeight: '600',
-    color: Colors.warmAmber,
+    color: Colors.earthText,
   },
 });

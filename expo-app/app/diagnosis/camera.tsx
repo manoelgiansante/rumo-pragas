@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   btnSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
   tips: { width: '100%', marginTop: 24 },
   tipsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  tipsTitle: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.warmAmber },
+  tipsTitle: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.earthText },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   tipText: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
   processingOverlay: {

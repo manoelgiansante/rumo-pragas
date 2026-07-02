@@ -6,7 +6,8 @@ export const Colors = {
   accentLight: '#145A45',
   techBlue: '#435044', // support tone (de-emphasized, was bright blue = AI slop)
   techIndigo: '#7A5C2E',
-  warmAmber: '#C89B3C',
+  warmAmber: '#C89B3C', // ochre — ICON/BG/BORDER only (fails WCAG AA as small text)
+  earthText: '#8A6A1F', // darkened ochre for TEXT on light bg (~4.6:1, WCAG AA)
   coral: '#B3462E',
   white: '#FFFFFF',
   black: '#000000',
@@ -17,7 +18,7 @@ export const Colors = {
   text: '#0F1A14',
   textDark: '#F2F7F4',
   textSecondary: '#435044',
-  textTertiary: '#8A8373',
+  textTertiary: '#6B6455',
   separator: '#E5DECD',
   separatorDark: '#1F2F29',
   systemGray: '#8A8373',

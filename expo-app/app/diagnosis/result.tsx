@@ -1410,7 +1410,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  treatmentLevelLockedText: { fontSize: 10, fontWeight: '800', color: Colors.warmAmber },
+  treatmentLevelLockedText: { fontSize: 10, fontWeight: '800', color: Colors.earthText },
   viewDetailsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1435,7 +1435,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  warningText: { fontSize: FontSize.caption, color: Colors.warmAmber, flex: 1 },
+  warningText: { fontSize: FontSize.caption, color: Colors.earthText, flex: 1 },
   // --- Details card ---
   detailTitle: {
     fontSize: FontSize.subheadline,

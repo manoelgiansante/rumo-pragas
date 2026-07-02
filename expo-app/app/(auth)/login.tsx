@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: FontSize.subheadline,
     fontWeight: FontWeight.medium,
-    color: Colors.systemGray,
+    color: Colors.textTertiary,
   },
   segmentTextActive: {
     color: Colors.accent,
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: FontSize.caption,
-    color: Colors.systemGray,
+    color: Colors.textTertiary,
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: FontSize.footnote,
-    color: Colors.systemGray,
+    color: Colors.textTertiary,
     fontWeight: FontWeight.medium,
   },
   appleButton: {

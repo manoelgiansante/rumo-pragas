@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  warningText: { fontSize: FontSize.caption, color: Colors.warmAmber, flex: 1 },
+  warningText: { fontSize: FontSize.caption, color: Colors.earthText, flex: 1 },
   // --- Product cards ---
   productCard: {
     backgroundColor: Colors.card,
