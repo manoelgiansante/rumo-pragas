@@ -135,11 +135,12 @@ export default function TermsScreen() {
           10. Cancelamento e Encerramento
         </Text>
         <Text style={styles.paragraph}>
-          Você pode encerrar sua conta e excluir todos os seus dados a qualquer momento diretamente
-          no aplicativo, em Ajustes {'>'} Excluir conta, ou pela página
-          https://pragas.agrorumo.com/delete-account. A exclusão é imediata e irreversível. A
-          AgroRumo reserva-se o direito de suspender ou encerrar contas que violem estes Termos de
-          Uso, sem aviso prévio.
+          Você pode encerrar sua conta e excluir todos os seus dados a qualquer momento. Pelo
+          próprio aplicativo, em Ajustes {'>'} Excluir conta, a exclusão é imediata e irreversível.
+          Alternativamente, você pode solicitar a exclusão pela página
+          https://pragas.agrorumo.com/delete-account; nesse caso o pedido é processado e concluído
+          em até 15 (quinze) dias. A AgroRumo reserva-se o direito de suspender ou encerrar contas
+          que violem estes Termos de Uso, sem aviso prévio.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -175,8 +176,10 @@ export default function TermsScreen() {
         <Text style={styles.paragraph}>
           Este Termo é regido pelas leis da República Federativa do Brasil, incluindo o Código de
           Defesa do Consumidor (Lei 8.078/1990) e a LGPD (Lei 13.709/2018). Fica eleito o foro da
-          Comarca de Ribeirão Preto - SP para dirimir quaisquer disputas, renunciando as partes a
-          qualquer outro, por mais privilegiado que seja.
+          Comarca de Ribeirão Preto - SP para dirimir quaisquer disputas. Tratando-se de relação de
+          consumo, fica assegurado ao consumidor o direito de, a seu critério, ajuizar a demanda no
+          foro de seu próprio domicílio, nos termos do art. 101, inciso I, do Código de Defesa do
+          Consumidor.
         </Text>
 
         <View style={styles.bottomSpacer} />
