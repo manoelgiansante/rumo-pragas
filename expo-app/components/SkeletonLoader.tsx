@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, useColorScheme, ViewStyle, DimensionValue } from 'react-native';
+import { Colors } from '../constants/theme';
 
 interface SkeletonLoaderProps {
   width: DimensionValue;
@@ -39,7 +40,7 @@ export function SkeletonLoader({ width, height, borderRadius = 8, style }: Skele
           width,
           height,
           borderRadius,
-          backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA',
+          backgroundColor: isDark ? '#2C2C2E' : Colors.systemGray5,
           opacity,
         },
         style,

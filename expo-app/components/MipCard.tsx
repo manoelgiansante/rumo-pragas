@@ -245,7 +245,7 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
               title={t('mip.biologicalActions')}
               items={rec.acoesBiologicas}
               icon="bug"
-              iconColor="#4CAF50"
+              iconColor={Colors.accentLight}
               isDark={isDark}
             />
           )}

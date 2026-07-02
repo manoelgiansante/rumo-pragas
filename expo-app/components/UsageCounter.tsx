@@ -50,7 +50,7 @@ const VARIANT_STYLES: Record<Variant, VariantStyle> = {
   warning: {
     bg: Colors.warmAmber + '1A',
     border: Colors.warmAmber + '4D',
-    fg: '#8a6a1f',
+    fg: Colors.earthText,
     icon: 'flash',
   },
   blocked: {
@@ -62,7 +62,7 @@ const VARIANT_STYLES: Record<Variant, VariantStyle> = {
   pro: {
     bg: Colors.warmAmber + '14',
     border: Colors.warmAmber + '33',
-    fg: '#8a6a1f',
+    fg: Colors.earthText,
     icon: 'sparkles',
   },
 };

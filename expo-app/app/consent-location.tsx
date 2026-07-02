@@ -125,7 +125,7 @@ export default function ConsentLocationScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LinearGradient
-          colors={['#0F6B4D', '#1A966B']}
+          colors={[Colors.brand, Colors.accent]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.iconGradient}

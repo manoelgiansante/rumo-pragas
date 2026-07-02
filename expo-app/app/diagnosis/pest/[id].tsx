@@ -300,11 +300,11 @@ export default function PestDetailScreen() {
             <CollapsibleSection
               title={t('diagnosis.biologicalControl')}
               icon="bug"
-              iconColor="#4CAF50"
+              iconColor={Colors.accentLight}
             >
               {enrichment.biological_treatment!.map((s: string, i: number) => (
                 <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: '#4CAF50' }]} />
+                  <View style={[styles.bullet, { backgroundColor: Colors.accentLight }]} />
                   <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
                 </View>
               ))}
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   textDark: { color: Colors.textDark },
   loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   // --- Hero ---
-  heroWrap: { height: HERO_HEIGHT, backgroundColor: '#06281D', position: 'relative' },
+  heroWrap: { height: HERO_HEIGHT, backgroundColor: Colors.brandDark, position: 'relative' },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroGradient: { ...StyleSheet.absoluteFillObject },
   heroTopRow: {

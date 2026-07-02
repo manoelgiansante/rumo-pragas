@@ -63,7 +63,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message }: ChatBubble
             style={[
               styles.bubble,
               styles.bubbleAI,
-              { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' },
+              { backgroundColor: isDark ? '#2C2C2E' : Colors.systemGray6 },
             ]}
           >
             <Text selectable style={[styles.aiText, isDark && { color: Colors.textDark }]}>
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.systemGray6,
   },
   userText: {
     fontSize: FontSize.subheadline,

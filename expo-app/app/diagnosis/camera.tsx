@@ -284,8 +284,8 @@ export default function CameraScreen() {
           </View>
           <PremiumCard>
             {[
-              { icon: 'sunny', color: '#FFD600', text: t('diagnosis.tipLight') },
-              { icon: 'expand', color: '#00BCD4', text: t('diagnosis.tipFocus') },
+              { icon: 'sunny', color: Colors.warmAmber, text: t('diagnosis.tipLight') },
+              { icon: 'expand', color: Colors.info, text: t('diagnosis.tipFocus') },
               {
                 icon: 'leaf',
                 color: Colors.accent,

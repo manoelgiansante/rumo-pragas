@@ -117,7 +117,7 @@ export default function ResultScreen() {
 
   const getSeverityColor = () => {
     const severity = enrichment?.severity;
-    if (severity === 'critical') return '#D32F2F';
+    if (severity === 'critical') return Colors.coral;
     if (severity === 'high') return Colors.coral;
     if (severity === 'medium') return Colors.warmAmber;
     if (severity === 'low' || severity === 'none' || isHealthy) return Colors.accent;
@@ -450,7 +450,7 @@ export default function ResultScreen() {
 <meta charset="utf-8">
 <style>
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 32px; color: #1a1a1a; line-height: 1.6; }
-  .header { background: linear-gradient(135deg, #0F6B4D, #1A966B); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+  .header { background: linear-gradient(135deg, ${Colors.brand}, ${Colors.accent}); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
   .header h1 { margin: 0 0 4px 0; font-size: 22px; }
   .header .date { font-size: 13px; opacity: 0.85; }
   .summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
@@ -458,15 +458,15 @@ export default function ResultScreen() {
   .summary-item .label { font-size: 11px; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
   .summary-item .value { font-size: 16px; font-weight: 700; }
   .confidence-bar { height: 8px; background: #E5E5EA; border-radius: 4px; margin-top: 8px; overflow: hidden; }
-  .confidence-fill { height: 100%; background: #1A966B; border-radius: 4px; }
-  h2 { color: #1A966B; font-size: 16px; border-bottom: 2px solid #1A966B20; padding-bottom: 6px; margin-top: 28px; }
+  .confidence-fill { height: 100%; background: ${Colors.accent}; border-radius: 4px; }
+  h2 { color: ${Colors.accent}; font-size: 16px; border-bottom: 2px solid ${Colors.accent}20; padding-bottom: 6px; margin-top: 28px; }
   ul { padding-left: 20px; }
   li { margin-bottom: 6px; }
   .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5E5EA; font-size: 11px; color: #8E8E93; text-align: center; }
   .severity-critical { color: #D32F2F; }
   .severity-high { color: #F06652; }
   .severity-medium { color: #EBB026; }
-  .severity-low { color: #1A966B; }
+  .severity-low { color: ${Colors.accent}; }
 </style>
 </head>
 <body>
@@ -782,7 +782,7 @@ export default function ResultScreen() {
             accessibilityLabel={t('diagnosis.lowConfidenceBanner')}
             testID="result-low-confidence-banner"
           >
-            <Ionicons name="warning" size={20} color="#B45309" />
+            <Ionicons name="warning" size={20} color={Colors.earthText} />
             <Text style={styles.lowConfidenceText}>{t('diagnosis.lowConfidenceBanner')}</Text>
           </View>
         )}
@@ -866,7 +866,7 @@ export default function ResultScreen() {
               />
               <TreatmentLevelRow
                 icon="bug"
-                color="#4CAF50"
+                color={Colors.accentLight}
                 title={t('diagnosis.treatmentLevelBiological')}
                 hint={t('diagnosis.treatmentLevelBiologicalHint')}
                 count={enrichment.biological_treatment?.length ?? 0}
@@ -984,11 +984,11 @@ export default function ResultScreen() {
             <CollapsibleSection
               title={t('diagnosis.biologicalControl')}
               icon="bug"
-              iconColor="#4CAF50"
+              iconColor={Colors.accentLight}
             >
               {enrichment.biological_treatment!.map((s: string, i: number) => (
                 <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: '#4CAF50' }]} />
+                  <View style={[styles.bullet, { backgroundColor: Colors.accentLight }]} />
                   <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
                 </View>
               ))}
@@ -998,11 +998,11 @@ export default function ResultScreen() {
             <CollapsibleSection
               title={t('diagnosis.prevention')}
               icon="shield-checkmark"
-              iconColor="#00BCD4"
+              iconColor={Colors.info}
             >
               {enrichment.prevention!.map((s: string, i: number) => (
                 <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: '#00BCD4' }]} />
+                  <View style={[styles.bullet, { backgroundColor: Colors.info }]} />
                   <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
                 </View>
               ))}
@@ -1213,7 +1213,7 @@ const styles = StyleSheet.create({
   // --- HERO ---
   heroWrap: {
     height: HERO_HEIGHT,
-    backgroundColor: '#06281D',
+    backgroundColor: Colors.brandDark,
     position: 'relative',
   },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },

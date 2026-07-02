@@ -40,7 +40,7 @@ interface Props {
 
 function getConfidenceTone(value: number): { bg: string; fg: string; label: string } {
   if (value >= 0.7) return { bg: Colors.accent + '1A', fg: Colors.accent, label: 'high' };
-  if (value >= 0.4) return { bg: Colors.warmAmber + '1A', fg: '#8a6a1f', label: 'medium' };
+  if (value >= 0.4) return { bg: Colors.warmAmber + '1A', fg: Colors.earthText, label: 'medium' };
   return { bg: Colors.systemGray5, fg: Colors.systemGray, label: 'low' };
 }
 
