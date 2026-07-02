@@ -368,11 +368,15 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
           }
         }
 
-        // 4. Delete profile (id = auth.users.id)
+        // 4. Delete profile
+        // pragas_profiles PK `id` is a random uuid; the auth uid lives in
+        // `user_id` (unique). Delete by user_id — `.eq("id", userId)` matched
+        // 0 rows in prod (DB-C1). The auth-user delete below still CASCADEs
+        // the row, but scoping this explicitly makes the erasure correct.
         const { error: profileError } = await supabase
           .from("pragas_profiles")
           .delete()
-          .eq("id", userId);
+          .eq("user_id", userId);
 
         if (profileError) {
           logJson("process-deletions", requestId, "WARN", "Profile delete error", { error: profileError.message });
