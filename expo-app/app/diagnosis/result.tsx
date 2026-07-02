@@ -44,7 +44,6 @@ import {
 import { useSubscription } from '../../hooks/useSubscription';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { savePestToCache } from '../../services/pestRegistry';
-import { checkSubscriptionStatus, isRevenueCatConfigured } from '../../services/purchases';
 import { useMipKnowledge, type SubscriptionTier } from '../../hooks/useMipKnowledge';
 import { addBreadcrumb } from '../../services/sentry-shim';
 import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
@@ -199,24 +198,11 @@ export default function ResultScreen() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Subscription tier — drives MIP premium gating. Default to 'free' until
-  // RevenueCat confirms; never block the rest of the screen on this fetch.
-  const [tier, setTier] = useState<SubscriptionTier>('free');
-  useEffect(() => {
-    let cancelled = false;
-    if (!isRevenueCatConfigured()) return;
-    (async () => {
-      try {
-        const status = await checkSubscriptionStatus();
-        if (!cancelled && status.isActive) setTier(status.plan as SubscriptionTier);
-      } catch (e) {
-        if (__DEV__) console.warn('[Result] tier check failed:', e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
+  // FREE (Apple Guideline 2.3.2). The full MIP/EMBRAPA treatment-protocol
+  // library is unlocked for everyone, so the tier is forced to the top
+  // (enterprise) — no level is gated and <MipCard/> shows no upgrade CTA.
+  const [tier] = useState<SubscriptionTier>('enterprise');
 
   // Resolve MIP catalog entry from pest/symptoms. Disabled when no useful
   // diagnosis is on screen (healthy plant / no pest_name).

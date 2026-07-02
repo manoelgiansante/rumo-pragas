@@ -96,6 +96,17 @@ export default {
     termsA11y: 'Accept terms of use and privacy policy',
     appleA11y: 'Sign in with Apple',
   },
+  updatePassword: {
+    title: 'Create new password',
+    subtitle: 'Set a new password for your account.',
+    newPasswordPlaceholder: 'New password',
+    confirmPlaceholder: 'Confirm new password',
+    submit: 'Save new password',
+    success: 'Password changed successfully!',
+    mismatch: 'Passwords do not match.',
+    error: 'Could not change your password. Please request a new link.',
+    backToLogin: 'Back to login',
+  },
   diagnosis: {
     defaultName: 'Diagnosis',
     takePhoto: 'Take Photo',
@@ -343,7 +354,7 @@ export default {
     deleteAccount: 'Delete Account',
     deleteConfirmTitle: 'Delete Account',
     deleteConfirmMessage:
-      'Are you sure? All your data will be permanently deleted. This action cannot be undone.',
+      'Are you sure? This permanently deletes your AgroRumo account (used to sign in to every AgroRumo app) and all your Rumo Pragas IA data. This action cannot be undone.',
     cancel: 'Cancel',
     delete: 'Delete',
     editProfile: 'Edit Profile',
@@ -452,8 +463,7 @@ export default {
     clearChat: 'Clear conversation',
     clearChatConfirm: 'Are you sure you want to clear the entire conversation?',
     limitReachedTitle: 'Limit reached',
-    limitReachedMessage:
-      'You have reached the message limit on the free plan. Upgrade to continue using AI Chat.',
+    limitReachedMessage: 'Too many messages in a row. Please wait a moment and try again.',
     upgradePlan: 'Upgrade',
     suggestion1: 'How to identify Asian soybean rust?',
     suggestion2: 'What is the best management for fall armyworm?',
@@ -489,8 +499,7 @@ export default {
     requestTimeout: 'Analysis took longer than 60 seconds. Check your connection and try again.',
     networkError: 'Unable to reach the server. Check your connection and try again.',
     weatherUnavailable: 'Unable to retrieve weather data. Check your connection.',
-    planLimit:
-      'You have reached the limit of {{limit}} diagnoses on the {{plan}} plan. Upgrade to continue.',
+    planLimit: 'Too many diagnoses in a row. Please wait a moment and try again.',
     planFree: 'free',
     fetchDiagnoses: 'Failed to fetch diagnoses',
     deleteDiagnosis: 'Failed to delete diagnosis',
@@ -630,7 +639,7 @@ export default {
   aiChat: {
     loginRequired: 'You need to be logged in to use the AI chat',
     sessionExpired: 'Session expired. Please log in again.',
-    chatLimitReached: 'Message limit reached. Upgrade to continue.',
+    chatLimitReached: 'Too many messages in a row. Please wait a moment and try again.',
     noPermission: 'You do not have permission to use AI chat. Check your subscription.',
     tooManyMessages: 'Too many messages sent. Please wait a moment and try again.',
     serviceUnavailable:
@@ -649,6 +658,7 @@ export default {
     deleteConfirm: 'Are you sure you want to delete this diagnosis?',
     deleteError: 'Could not delete. Check your connection.',
     deleteHint: 'Long press to delete this diagnosis',
+    openHint: 'Tap to view details. Long press to delete.',
     diagnosisCount: '{{count}} diagnoses',
     itemA11y: 'Diagnosis: {{pest}}, crop {{crop}}, confidence {{confidence}} percent',
     noName: 'Unnamed',

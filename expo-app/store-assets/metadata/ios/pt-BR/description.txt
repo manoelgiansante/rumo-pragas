@@ -4,7 +4,7 @@ Rumo Pragas coloca um agronomo de fitossanidade no seu bolso. Voce aponta a came
 
 POR QUE MILHARES DE PRODUTORES JA CONFIAM
 
-Nossa IA foi construida com um especialista senior em fitossanidade tropical e validada em testes reais contra imagens de ferrugem asiatica, lagarta-do-cartucho, percevejo-verde, bicho-mineiro e mancha-alvo. Resultado: 82,5% de acuracia ponderada (maior do que muito agronomo de campo acerta no olho).
+Nossa IA foi construida com um especialista senior em fitossanidade tropical e validada em testes reais contra imagens de ferrugem asiatica, lagarta-do-cartucho, percevejo-verde, bicho-mineiro e mancha-alvo — para entregar uma primeira leitura rapida e confiavel direto no campo.
 
 COMO FUNCIONA (em 3 passos)
 
@@ -40,11 +40,9 @@ PARA QUEM E
 - Tecnicos agricolas e cooperativas
 - Estudantes de agronomia e cursos tecnicos
 
-PLANOS
+GRATIS PARA USAR
 
-- Gratis: 3 diagnosticos por mes pra experimentar
-- Pro: 30 diagnosticos/mes, chat IA ilimitado, alertas regionais, exportacao PDF
-- Enterprise: diagnosticos ilimitados, multi-usuario, suporte prioritario
+O Rumo Pragas esta 100% gratuito: diagnosticos por IA, chat com a agronoma virtual, biblioteca de pragas, historico geolocalizado e exportacao em PDF — sem cobranca e sem assinatura.
 
 SEGURANCA E PRIVACIDADE
 

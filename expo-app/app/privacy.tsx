@@ -37,7 +37,7 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 26 de março de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 1 de julho de 2026</Text>
 
         <Text style={styles.intro}>
           A AgroRumo ("nós") se compromete a proteger a privacidade dos usuários do aplicativo Rumo
@@ -148,11 +148,15 @@ export default function PrivacyScreen() {
           4. Compartilhamento com Terceiros
         </Text>
         <Text style={styles.importantBox}>
-          As imagens de plantas são enviadas para o serviço Claude, da Anthropic (inteligência
-          artificial), exclusivamente para fins de análise e diagnóstico. Nenhum dado pessoal que
-          identifique o usuário (nome, email, localização) é enviado junto com as imagens. A
-          Anthropic processa as imagens de acordo com sua própria política de privacidade e não
-          utiliza os dados enviados via API para treinar seus modelos.
+          As imagens de plantas são enviadas, por meio do nosso servidor de diagnóstico, ao serviço
+          Claude, da Anthropic (inteligência artificial), exclusivamente para fins de análise e
+          diagnóstico. Quando você autoriza o uso da localização, as coordenadas (latitude e
+          longitude) são enviadas no mesmo pedido de diagnóstico e utilizadas apenas como contexto
+          regional (condições climáticas e ocorrência de pragas na sua região) para melhorar o
+          resultado. Se você não autorizar a localização, nenhuma coordenada é enviada
+          (comportamento restritivo por padrão). Seu nome e email NÃO são enviados junto com as
+          imagens. A Anthropic processa os dados de acordo com sua própria política de privacidade e
+          não utiliza os dados enviados via API para treinar seus modelos.
         </Text>
         <Text style={styles.importantBox}>
           Suas coordenadas de localização (latitude e longitude), quando fornecidas, são enviadas
@@ -286,13 +290,17 @@ export default function PrivacyScreen() {
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          10. Contato e Encarregado de Dados
+          10. Controlador e Encarregado de Dados (DPO)
         </Text>
         <Text style={styles.paragraph}>
+          O controlador dos seus dados pessoais é a MM CAMPO FORTE LTDA., inscrita no CNPJ sob o n.
+          57.169.838/0001-20, que opera o aplicativo Rumo Pragas IA sob a marca AgroRumo.{'\n\n'}A
+          MM CAMPO FORTE LTDA. designou um Encarregado de Proteção de Dados (DPO), responsável por
+          receber e atender as solicitações dos titulares, que serão respondidas em até 15 dias.
+          {'\n\n'}
           Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de seus dados
-          pessoais, entre em contato conosco:{'\n\n'}
-          Email: privacidade@agrorumo.com{'\n'}
-          Encarregado de Dados (DPO): dpo@agrorumo.com
+          pessoais, entre em contato com o Encarregado (DPO):{'\n\n'}
+          Email: contato@agrorumo.com
         </Text>
 
         <View style={styles.bottomSpacer} />

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Platform,
   ActionSheetIOS,
-  Linking,
   RefreshControl,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
@@ -34,11 +33,7 @@ import {
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
-import {
-  restorePurchases,
-  isRevenueCatConfigured,
-  checkSubscriptionStatus,
-} from '../../services/purchases';
+import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
 import { Avatar } from '../../components/Avatar';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
@@ -265,12 +260,10 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuthContext();
   const { t, i18n } = useTranslation();
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [plan, setPlan] = useState<string>('free');
-  // Live RevenueCat entitlement, independent of the Supabase `subscriptions`
-  // row (which is populated asynchronously by the RC webhook). Gives a real
-  // subscriber the cancellation entry point even if the webhook hasn't synced
-  // their row yet — the deep link to the store sub page is harmless either way.
-  const [rcActive, setRcActive] = useState(false);
+  // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: forced to the top
+  // (enterprise/unlimited) plan inside loadSubscriptionData so no usage limit
+  // or upgrade CTA is ever shown.
+  const [plan, setPlan] = useState<string>('enterprise');
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
   const [subLoading, setSubLoading] = useState(true);
   const [subError, setSubError] = useState(false);
@@ -374,35 +367,20 @@ export default function SettingsScreen() {
       const now = new Date();
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const [subResult, countResult] = await Promise.all([
-        // `app` filter isolates Pragas entitlements on the shared jxcn
-        // subscriptions table (migration 20260628120000). Requires the
-        // `app` column to be live before this build ships.
-        supabase
-          .from('subscriptions')
-          .select('plan, status')
-          .eq('user_id', user.id)
-          .eq('app', 'rumo-pragas')
-          .maybeSingle(),
-        supabase
-          .from('pragas_diagnoses')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .gte('created_at', firstOfMonth),
-      ]);
+      // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
+      // FREE (Apple Guideline 2.3.2) with UNLIMITED diagnoses for everyone. We
+      // present the top (enterprise/unlimited) plan so the subscription card
+      // shows NO usage limit and NO "upgrade"/buy CTA, and we no longer depend
+      // on the shared `subscriptions` table. The monthly count is still loaded
+      // for the (purely informational) "X diagnoses" label.
+      const countResult = await supabase
+        .from('pragas_diagnoses')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', firstOfMonth);
 
-      const currentPlan = (subResult.data?.status === 'active' && subResult.data?.plan) || 'free';
-      setPlan(currentPlan);
+      setPlan('enterprise');
       setUsedThisMonth(countResult.count ?? 0);
-
-      // Cross-check the live entitlement so a webhook-drifted subscriber still
-      // sees "Gerenciar Assinatura". Non-blocking and best-effort: a failure
-      // here just falls back to the Supabase plan (captured inside the service).
-      if (isRevenueCatConfigured()) {
-        checkSubscriptionStatus()
-          .then(({ isActive }) => setRcActive(isActive))
-          .catch(() => {});
-      }
     } catch (e) {
       if (__DEV__) console.error('Failed to load subscription data:', e);
       Sentry.captureException(e, { tags: { feature: 'settings.subscription' } });
@@ -429,17 +407,6 @@ export default function SettingsScreen() {
       setRefreshing(false);
     }
   }, [loadSubscriptionData]);
-
-  // Apple 3.1.2 / Google Play: deep link to store-managed subscription
-  const openManageSubscription = useCallback(() => {
-    const url =
-      Platform.OS === 'ios'
-        ? 'itms-apps://apps.apple.com/account/subscriptions'
-        : 'https://play.google.com/store/account/subscriptions';
-    Linking.openURL(url).catch(() => {
-      showAlert(t('common.error'), t('settings.manageSubscriptionError'));
-    });
-  }, [t]);
 
   const handleRestorePurchases = useCallback(async () => {
     if (!isRevenueCatConfigured()) return;
@@ -591,7 +558,9 @@ export default function SettingsScreen() {
           loading={subLoading}
           error={subError}
           onRetry={loadSubscriptionData}
-          onUpgrade={() => router.push('/paywall')}
+          // FREE BUILD: upgrade CTA is never rendered (plan is enterprise →
+          // isPro), but keep the handler inert so no paywall can be reached.
+          onUpgrade={() => {}}
         />
       </View>
 
@@ -604,6 +573,11 @@ export default function SettingsScreen() {
           onPress={() => router.push('/edit-profile')}
           testID="settings-row-edit-profile"
         />
+        {/* FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: no subscription
+            to manage and no purchases to restore (no IAP shipped). The Restore
+            row stays gated behind `isRevenueCatConfigured()` (false in the free
+            build) so it is hidden; the "Manage Subscription" deep link is
+            removed entirely. */}
         {isRevenueCatConfigured() && (
           <Row
             isDark={isDark}
@@ -613,17 +587,8 @@ export default function SettingsScreen() {
             trailing={
               restoring ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
             }
-            testID="settings-row-restore"
-          />
-        )}
-        {!subLoading && (plan !== 'free' || rcActive) && (
-          <Row
-            isDark={isDark}
-            icon="card-outline"
-            label={t('settings.manageSubscription')}
-            onPress={openManageSubscription}
             isLast
-            testID="settings-row-manage-sub"
+            testID="settings-row-restore"
           />
         )}
       </Section>

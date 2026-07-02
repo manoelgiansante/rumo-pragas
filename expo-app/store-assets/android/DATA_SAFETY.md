@@ -8,8 +8,10 @@ URL privacidade: https://pragas.agrorumo.com/privacy
 
 > **REGRA DE OURO:** a declaracao deve bater 1:1 com as permissoes do AAB
 > (`app.json` -> `android.permissions`). Mismatch = REJEICAO.
-> AAB atual declara: `CAMERA`, `ACCESS_FINE_LOCATION` (precisa),
-> `ACCESS_COARSE_LOCATION` (aproximada), `READ_MEDIA_IMAGES`, `POST_NOTIFICATIONS`.
+> AAB atual declara: `CAMERA`, `ACCESS_COARSE_LOCATION` (aproximada),
+> `READ_MEDIA_IMAGES`, `POST_NOTIFICATIONS`. `ACCESS_FINE_LOCATION` esta em
+> `android.blockedPermissions` (app.json, desde o commit a882f84) -> NAO entra no
+> AAB -> a localizacao e APENAS aproximada; NAO declarar "Precise location".
 > `RECORD_AUDIO` e `MODIFY_AUDIO_SETTINGS` estao em `android.blockedPermissions`
 > (app.json) -> NAO entram no AAB -> NAO declarar audio/voz no Data Safety.
 > Conferido contra o codigo em 2026-06-28 (branch `audit/golive-2026-06-27`).
@@ -56,14 +58,17 @@ que repassa a imagem ao provedor de IA (Anthropic). Permissoes no AAB: `CAMERA` 
 
 ### Location
 
-> **CORRIGIDO 2026-06-27:** o AAB declara `ACCESS_FINE_LOCATION` (precisa) +
-> `ACCESS_COARSE_LOCATION` (aproximada), e a coordenada e ENVIADA a terceiros.
-> Antes este doc dizia "Precise = No / Shared = No" — era MISMATCH e causaria rejeicao.
+> **CORRIGIDO 2026-07-02:** o AAB declara SOMENTE `ACCESS_COARSE_LOCATION`
+> (aproximada) — `ACCESS_FINE_LOCATION` foi movida para `android.blockedPermissions`
+> (app.json) no commit a882f84, e o codigo usa `Location.Accuracy.Balanced`
+> (compativel com COARSE). A coordenada aproximada e ENVIADA a terceiros.
+> Declarar APENAS "Approximate location" — NAO declarar "Precise location":
+> o binario e coarse-only, entao marcar Precise seria MISMATCH e causaria rejeicao.
 
 | Data type            | Collected | Shared                                             | Purpose                            | Optional? |
 | -------------------- | --------- | -------------------------------------------------- | ---------------------------------- | --------- |
 | Approximate location | Yes       | Yes (API de clima Open-Meteo + backend `diagnose`) | App functionality (clima regional) | Optional  |
-| Precise location     | Yes       | Yes (API de clima Open-Meteo + backend `diagnose`) | App functionality (clima regional) | Optional  |
+| Precise location     | No        | -                                                  | -                                  | -         |
 
 Origem: `hooks/useLocation.ts` captura a posicao; `services/weather.ts` envia
 `latitude`/`longitude` para `api.open-meteo.com` (terceiro); `services/diagnosis.ts`

@@ -27,6 +27,13 @@ jest.mock('@sentry/react-native', () => ({
   addBreadcrumb: jest.fn(),
 }));
 
+// expo-linking's createURL needs the native constants manifest, which is
+// unavailable under Jest. Mock it so resetPassword can resolve its lazy
+// PASSWORD_RECOVERY_REDIRECT deep link without a native runtime.
+jest.mock('expo-linking', () => ({
+  createURL: jest.fn((path: string) => `rumopragas://${path.replace(/^\//, '')}`),
+}));
+
 import {
   signIn,
   signUp,
@@ -152,7 +159,10 @@ describe('resetPassword', () => {
 
     await resetPassword('user@example.com');
 
-    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('user@example.com');
+    // Now sends the email with the recovery deep link as redirectTo.
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: expect.stringContaining('update-password'),
+    });
   });
 
   it('throws on error', async () => {

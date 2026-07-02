@@ -16,8 +16,10 @@ import { useFocusEffect, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { DiagnosisCard } from '../../components/DiagnosisCard';
-import type { DiagnosisResult } from '../../types/diagnosis';
+import type { DiagnosisResult, AgrioPrediction } from '../../types/diagnosis';
+import { parseNotes } from '../../types/diagnosis';
 import { SearchInput } from '../../components/SearchInput';
+import { savePestToCache } from '../../services/pestRegistry';
 import { supabase } from '../../services/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { HistorySkeleton } from '../../components/HistorySkeleton';
@@ -90,6 +92,43 @@ export default function HistoryScreen() {
       },
     ]);
   };
+
+  // Tap a history row → open its diagnosis. For real pests we warm the offline
+  // pest cache from the stored record first, so the fact sheet always renders
+  // even on a fresh install / different device (the cache is otherwise only
+  // populated by result.tsx on the device that ran the diagnosis). Healthy /
+  // invalid-image records have no pest fact sheet, so we rebuild the full result
+  // screen from the record instead (it is self-contained via the `data` param).
+  const openDiagnosis = useCallback((item: DiagnosisResult) => {
+    void Haptics.selectionAsync().catch(() => {
+      /* haptics best-effort */
+    });
+    const pestId = item.pest_id;
+    const isHealthy =
+      !pestId || pestId === 'Healthy' || (item.pest_name || '').toLowerCase().includes('healthy');
+    const isInvalid = pestId === 'invalid_image';
+
+    if (!pestId || isHealthy || isInvalid) {
+      router.push({ pathname: '/diagnosis/result', params: { data: JSON.stringify(item) } });
+      return;
+    }
+
+    const notes = item.parsedNotes ?? parseNotes(item.notes);
+    const enrichment = notes?.enrichment ?? {};
+    const predictions: AgrioPrediction[] = notes?.predictions ?? notes?.id_array ?? [];
+    const alternatives = predictions.filter((p) => p.id !== pestId).slice(0, 3);
+    void savePestToCache({
+      id: pestId,
+      pest_name: item.pest_name,
+      scientific_name: enrichment.scientific_name,
+      crop: item.crop,
+      image_uri: item.image_url,
+      confidence: item.confidence,
+      enrichment,
+      alternatives,
+    });
+    router.push(`/diagnosis/pest/${encodeURIComponent(pestId)}`);
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -239,6 +278,7 @@ export default function HistoryScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             testID={`history-item-${item.id}`}
+            onPress={() => openDiagnosis(item)}
             onLongPress={() => deleteDiagnosis(item.id)}
             activeOpacity={0.8}
             accessibilityLabel={t('history.itemA11y', {
@@ -247,7 +287,7 @@ export default function HistoryScreen() {
               confidence: Math.round((item.confidence ?? 0) * 100),
             })}
             accessibilityRole="button"
-            accessibilityHint={t('history.deleteHint')}
+            accessibilityHint={t('history.openHint')}
           >
             <DiagnosisCard diagnosis={item} />
           </TouchableOpacity>

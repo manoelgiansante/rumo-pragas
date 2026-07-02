@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { captureException, captureMessage } from "../_shared/sentry.ts";
+import { captureException, captureGenAiRequest, captureMessage } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -132,9 +132,20 @@ function rateLimitHeaders(limit: number, remaining: number, resetAt: number): Re
   };
 }
 
-// Chat limits by plan (monthly message cap enforced on history length)
+// ── FREE MODE (2026-06-30, fix/pragas-free-2026-06-30) ──
+// The app ships 100% FREE (CEO decision — re-monetize later). While FREE_MODE is
+// on, the monthly chat-message cap for the `free` plan is UNLIMITED (-1), so real
+// signups (plan='free' via handle_new_user) never hit the 403 CHAT_LIMIT_REACHED
+// dead-end the neutralized paywall can no longer resolve. The per-minute burst
+// limit (RATE_LIMIT_BY_PLAN.free via checkRateLimit) STILL protects Anthropic API
+// spend against abuse. To re-enable paid monthly caps later: set FREE_MODE=false.
+const FREE_MODE =
+  (Deno.env.get("FREE_MODE") ?? "true").toLowerCase() !== "false";
+
+// Chat limits by plan (monthly message cap enforced via chat_usage counter).
+// FREE_MODE → free plan is unlimited (-1); paid caps preserved for re-monetization.
 const CHAT_LIMITS: Record<string, number> = {
-  free: 10,
+  free: FREE_MODE ? -1 : 10,
   pro: -1,
   enterprise: -1,
 };
@@ -449,6 +460,7 @@ Deno.serve(async (req: Request) => {
     ];
 
     // Call Claude API
+    const claudeStart = Date.now();
     const claudeResponse = await fetch(
       "https://api.anthropic.com/v1/messages",
       {
@@ -488,6 +500,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await claudeResponse.json();
+
+    // ── AI telemetry (ZERO-O / observability) ──
+    // Emit a gen_ai.request span with Anthropic token usage (previously
+    // discarded) so chat cost/latency is observable. No message content is
+    // captured (PII). Best-effort — never blocks the response.
+    captureGenAiRequest({
+      model: "claude-haiku-4-5-20251001",
+      operation: "chat",
+      inputTokens: data?.usage?.input_tokens,
+      outputTokens: data?.usage?.output_tokens,
+      durationMs: Date.now() - claudeStart,
+      tags: { fn: "ai-chat" },
+    }).catch(() => {});
 
     if (!data.content || data.content.length === 0) {
       return new Response(

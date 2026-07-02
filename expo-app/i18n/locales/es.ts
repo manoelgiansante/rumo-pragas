@@ -96,6 +96,17 @@ export default {
     termsA11y: 'Aceptar términos de uso y política de privacidad',
     appleA11y: 'Iniciar sesión con Apple',
   },
+  updatePassword: {
+    title: 'Crear nueva contraseña',
+    subtitle: 'Define una nueva contraseña para tu cuenta.',
+    newPasswordPlaceholder: 'Nueva contraseña',
+    confirmPlaceholder: 'Confirma la nueva contraseña',
+    submit: 'Guardar nueva contraseña',
+    success: '¡Contraseña cambiada con éxito!',
+    mismatch: 'Las contraseñas no coinciden.',
+    error: 'No se pudo cambiar la contraseña. Solicita un nuevo enlace.',
+    backToLogin: 'Volver al inicio de sesión',
+  },
   diagnosis: {
     defaultName: 'Diagnóstico',
     takePhoto: 'Tomar Foto',
@@ -346,7 +357,7 @@ export default {
     deleteAccount: 'Eliminar Cuenta',
     deleteConfirmTitle: 'Eliminar Cuenta',
     deleteConfirmMessage:
-      'Esta seguro? Todos sus datos seran eliminados permanentemente. Esta accion no se puede deshacer.',
+      'Esta seguro? Esto elimina permanentemente su cuenta AgroRumo (usada para iniciar sesion en todas las apps AgroRumo) y todos sus datos de Rumo Pragas IA. Esta accion no se puede deshacer.',
     cancel: 'Cancelar',
     delete: 'Eliminar',
     editProfile: 'Editar Perfil',
@@ -455,7 +466,7 @@ export default {
     clearChatConfirm: '¿Está seguro de que desea limpiar toda la conversación?',
     limitReachedTitle: 'Límite alcanzado',
     limitReachedMessage:
-      'Ha alcanzado el límite de mensajes del plan gratuito. Actualice para continuar usando el Chat IA.',
+      'Demasiados mensajes seguidos. Espere unos instantes e inténtelo de nuevo.',
     upgradePlan: 'Actualizar plan',
     suggestion1: '¿Cómo identificar la roya asiática en la soja?',
     suggestion2: '¿Cuál es el mejor manejo para el gusano cogollero?',
@@ -493,8 +504,7 @@ export default {
       'El análisis tardó más de 60 segundos. Verifique su conexión e intente de nuevo.',
     networkError: 'No se pudo conectar al servidor. Verifique su conexión e intente de nuevo.',
     weatherUnavailable: 'No se pudieron obtener datos meteorológicos. Verifique su conexión.',
-    planLimit:
-      'Ha alcanzado el límite de {{limit}} diagnósticos del plan {{plan}}. Actualice para continuar.',
+    planLimit: 'Demasiados diagnósticos seguidos. Espere unos instantes e inténtelo de nuevo.',
     planFree: 'gratuito',
     fetchDiagnoses: 'Error al buscar diagnósticos',
     deleteDiagnosis: 'Error al eliminar diagnóstico',
@@ -635,7 +645,7 @@ export default {
   aiChat: {
     loginRequired: 'Necesita iniciar sesión para usar el chat IA',
     sessionExpired: 'Sesión expirada. Inicie sesión nuevamente.',
-    chatLimitReached: 'Límite de mensajes alcanzado. Actualice para continuar.',
+    chatLimitReached: 'Demasiados mensajes seguidos. Espere un momento e inténtelo de nuevo.',
     noPermission: 'No tiene permiso para usar el chat IA. Verifique su suscripción.',
     tooManyMessages: 'Demasiados mensajes enviados. Espere un momento e intente de nuevo.',
     serviceUnavailable:
@@ -654,6 +664,7 @@ export default {
     deleteConfirm: '¿Está seguro de que desea eliminar este diagnóstico?',
     deleteError: 'No se pudo eliminar. Verifique su conexión.',
     deleteHint: 'Mantenga presionado para eliminar este diagnóstico',
+    openHint: 'Toque para ver los detalles. Mantenga presionado para eliminar.',
     diagnosisCount: '{{count}} diagnósticos',
     itemA11y: 'Diagnóstico: {{pest}}, cultivo {{crop}}, confianza {{confidence}} por ciento',
     noName: 'Sin nombre',

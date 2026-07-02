@@ -37,7 +37,7 @@ export default function TermsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 25 de março de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 1 de julho de 2026</Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           1. Aceitação dos Termos
@@ -119,24 +119,28 @@ export default function TermsScreen() {
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          9. Planos e Assinatura
+          9. Planos
         </Text>
         <Text style={styles.paragraph}>
-          O App oferece um plano gratuito com funcionalidades limitadas e planos pagos com recursos
-          adicionais. Os detalhes de cada plano, incluindo preços e funcionalidades, estão
-          disponíveis na seção de assinatura do App. O cancelamento pode ser feito a qualquer
-          momento, mas não gera direito a reembolso proporcional do período já pago.
+          O App é oferecido gratuitamente, com todas as funcionalidades disponíveis sem custo. No
+          momento não há assinatura, compra dentro do aplicativo nem qualquer cobrança. Caso planos
+          pagos venham a ser oferecidos no futuro, os detalhes — incluindo preços, forma de
+          renovação e cancelamento — serão apresentados de forma clara no próprio App e na
+          respectiva loja (App Store / Google Play), e nenhuma cobrança será realizada sem o seu
+          consentimento expresso, respeitado o direito de arrependimento previsto no art. 49 do
+          Código de Defesa do Consumidor.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           10. Cancelamento e Encerramento
         </Text>
         <Text style={styles.paragraph}>
-          Você pode encerrar sua conta e excluir todos os seus dados a qualquer momento diretamente
-          no aplicativo, em Ajustes {'>'} Excluir conta, ou pela página
-          https://pragas.agrorumo.com/delete-account. A exclusão é imediata e irreversível. A
-          AgroRumo reserva-se o direito de suspender ou encerrar contas que violem estes Termos de
-          Uso, sem aviso prévio.
+          Você pode encerrar sua conta e excluir todos os seus dados a qualquer momento. Pelo
+          próprio aplicativo, em Ajustes {'>'} Excluir conta, a exclusão é imediata e irreversível.
+          Alternativamente, você pode solicitar a exclusão pela página
+          https://pragas.agrorumo.com/delete-account; nesse caso o pedido é processado e concluído
+          em até 15 (quinze) dias. A AgroRumo reserva-se o direito de suspender ou encerrar contas
+          que violem estes Termos de Uso, sem aviso prévio.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -160,10 +164,10 @@ export default function TermsScreen() {
           13. Contato Legal
         </Text>
         <Text style={styles.paragraph}>
-          Razão Social: AgroRumo (Manoel Nascimento - Pessoa Física){'\n'}
-          CNPJ: Em processo de registro como MEI{'\n'}
+          Razão Social: MM CAMPO FORTE LTDA.{'\n'}
+          CNPJ: 57.169.838/0001-20{'\n'}
           Email: contato@agrorumo.com{'\n'}
-          DPO: dpo@agrorumo.com
+          Encarregado de Proteção de Dados (DPO): contato@agrorumo.com
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -172,8 +176,10 @@ export default function TermsScreen() {
         <Text style={styles.paragraph}>
           Este Termo é regido pelas leis da República Federativa do Brasil, incluindo o Código de
           Defesa do Consumidor (Lei 8.078/1990) e a LGPD (Lei 13.709/2018). Fica eleito o foro da
-          Comarca de Ribeirão Preto - SP para dirimir quaisquer disputas, renunciando as partes a
-          qualquer outro, por mais privilegiado que seja.
+          Comarca de Ribeirão Preto - SP para dirimir quaisquer disputas. Tratando-se de relação de
+          consumo, fica assegurado ao consumidor o direito de, a seu critério, ajuizar a demanda no
+          foro de seu próprio domicílio, nos termos do art. 101, inciso I, do Código de Defesa do
+          Consumidor.
         </Text>
 
         <View style={styles.bottomSpacer} />

@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 import { supabase } from '../services/supabase';
 import * as authService from '../services/auth';
+import { handleRecoveryDeepLink } from '../services/passwordRecovery';
 import i18n from '../i18n';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -75,7 +78,7 @@ export function useAuth() {
     // Listen for auth changes (also resolves isLoading -> belt and suspenders)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       setState((prev) => ({
         ...prev,
@@ -84,6 +87,29 @@ export function useAuth() {
         isAuthenticated: !!session,
         isLoading: false,
       }));
+      // Belt-and-braces: if supabase-js ever surfaces PASSWORD_RECOVERY on its
+      // own (e.g. a future flow with detectSessionInUrl enabled), route the
+      // user to the in-app screen to set a new password instead of dropping
+      // them on Home with a live recovery session.
+      if (event === 'PASSWORD_RECOVERY') {
+        router.replace('/update-password');
+      }
+    });
+
+    // ── Password-recovery deep link handling ──
+    // The recovery e-mail opens `rumopragas://update-password#…tokens…`. With
+    // detectSessionInUrl:false we must exchange the token ourselves, then route
+    // to the update-password screen. Handles both cold start (getInitialURL)
+    // and warm resume (url event).
+    Linking.getInitialURL()
+      .then((url) => {
+        if (mounted) return handleRecoveryDeepLink(url);
+      })
+      .catch(() => {
+        /* never block boot on a deep-link parse failure */
+      });
+    const linkSub = Linking.addEventListener('url', ({ url }) => {
+      if (mounted) void handleRecoveryDeepLink(url);
     });
 
     return () => {
@@ -93,6 +119,7 @@ export function useAuth() {
         sessionTimeoutTimer = null;
       }
       subscription.unsubscribe();
+      linkSub.remove();
     };
   }, []);
 
@@ -114,7 +141,12 @@ export function useAuth() {
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      await authService.signUp(email, password, fullName);
+      // Return the result so the caller can distinguish auto-confirm (session
+      // present → the gate logs the user straight in) from "confirm email"
+      // (session null → we must tell the user to check their inbox). Showing
+      // the "check your email" alert unconditionally stranded already-signed-in
+      // users on the login modal when e-mail confirmation is OFF.
+      return await authService.signUp(email, password, fullName);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : i18n.t('auth.signUpError');
       setState((prev) => ({ ...prev, isLoading: false, error: message }));

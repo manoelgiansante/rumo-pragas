@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { captureException, captureMessage } from "../_shared/sentry.ts";
 
 /**
  * Edge Function: delete-user-account
@@ -20,14 +21,37 @@ const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const REVENUECAT_SECRET_KEY = Deno.env.get("REVENUECAT_SECRET_KEY") ?? "";
 
+// App discriminator for tables SHARED across AgroRumo apps in the jxcn project.
+// Pairs with migration 20260628120000_subscriptions_per_app_isolation.sql.
+const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
+
 // Tables that have a user_id column belonging to the calling user.
 // Order matters — children before parents to respect FK constraints.
-const USER_SCOPED_TABLES = [
-  "pragas_diagnoses",
-  "analytics_events",
-  "audit_log",
-  "user_preferences",
-  "subscriptions",
+//
+// `appScoped: true` → the table is SHARED across AgroRumo apps in the jxcn
+// project and carries an `app` discriminator column. We MUST additionally
+// filter by APP_KEY so a Pragas deletion does not wipe the SAME user's rows in
+// sibling apps (Vet/Finance/…). Without the filter, `subscriptions`/`chat_usage`
+// were deleted for every app the user had — cross-app data loss.
+//
+// NOTE — intentionally NOT listed:
+//  • pragas_push_notifications → system-wide broadcast audit log (no user_id
+//    column, not personal data); deleting it by user_id would error.
+const USER_SCOPED_TABLES: { name: string; appScoped?: boolean }[] = [
+  { name: "pragas_diagnoses" },
+  // Per-device Expo push token audit table (user_id + expo_token + device
+  // fingerprint). expo_token is a personal identifier tied to the device, so
+  // LGPD erasure MUST purge it. It has a user_id FK to auth.users; we delete
+  // it up front regardless of whether the FK is ON DELETE CASCADE (idempotent,
+  // fail-safe — a stale token row must never survive an account deletion).
+  { name: "pragas_push_tokens" },
+  // per-(user, app, month) ai-chat counter — explicit LGPD erasure (also
+  // ON DELETE CASCADE on auth.users, but we scope + purge it up front).
+  { name: "chat_usage", appScoped: true },
+  { name: "analytics_events" },
+  { name: "audit_log" },
+  { name: "user_preferences" },
+  { name: "subscriptions", appScoped: true },
 ];
 
 // Storage buckets that may contain user files under a `${userId}/` prefix.
@@ -278,8 +302,12 @@ Deno.serve(async (req: Request) => {
     await deleteUserStorage(admin, userId, requestId);
 
     // ── Step 5: Delete from user-scoped tables ──
-    for (const table of USER_SCOPED_TABLES) {
-      const { error } = await admin.from(table).delete().eq("user_id", userId);
+    for (const { name: table, appScoped } of USER_SCOPED_TABLES) {
+      const query = admin.from(table).delete().eq("user_id", userId);
+      // App-scoped shared tables: only remove THIS app's rows (see APP_KEY note).
+      const { error } = appScoped
+        ? await query.eq("app", APP_KEY)
+        : await query;
       if (error) {
         logJson("delete-user-account", requestId, "WARN", "Table delete error", {
           table,
@@ -317,6 +345,10 @@ Deno.serve(async (req: Request) => {
         "Auth delete error",
         { error: authDeleteError.message },
       );
+      // Hard failure of the point-of-no-return step — instrument it (ZERO-O).
+      await captureException(new Error(authDeleteError.message), {
+        tags: { fn: "delete-user-account", step: "auth_delete" },
+      });
       return new Response(
         JSON.stringify({
           error: "Failed to delete auth user",
@@ -338,6 +370,21 @@ Deno.serve(async (req: Request) => {
       { partialErrors: errors.length },
     );
 
+    // ── ZERO-O: the account was auth-deleted but one or more data tables/storage
+    // failed to purge — an LGPD partial-erasure that the HTTP 200 would otherwise
+    // hide. Surface it to Sentry (no userId — LGPD). errors[] carries only table
+    // names + DB messages, no personal data.
+    if (errors.length > 0) {
+      await captureMessage(
+        `delete-user-account: ${errors.length} partial deletion error(s)`,
+        {
+          level: "warning",
+          tags: { fn: "delete-user-account" },
+          extra: { errorCount: errors.length, errors },
+        },
+      );
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -353,6 +400,10 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     logJson("delete-user-account", requestId, "ERROR", "Unexpected error", {
       error: String(err),
+    });
+    await captureException(err, {
+      tags: { fn: "delete-user-account", step: "unhandled" },
+      extra: { requestId },
     });
     return new Response(
       JSON.stringify({ error: "Internal server error", requestId }),
