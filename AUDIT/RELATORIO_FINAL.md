@@ -100,3 +100,31 @@ Adicionalmente (docs-only, working tree): nota de supersedência no §7 de `PESQ
 ---
 
 *Relatórios-fonte: `AUDIT/00`–`09`, `11`, `13` · Plano de execução: `AUDIT/10_PLANO_MESTRE.md` · Skill canônica: `.claude/skills/rumo-pragas-launch-audit/SKILL.md` (atenção: estado iOS do skill está desatualizado — REJECTED, não WAITING_FOR_REVIEW).*
+
+---
+
+# ADDENDUM — Execução "faça tudo" (02/jul, pós-relatório)
+
+O CEO autorizou execução total. Itens do plano mestre EXECUTADOS nesta mesma sessão:
+
+| Item | Status | Evidência |
+|---|---|---|
+| DB-C1 perfil quebrado (100% users) | ✅ migration aditiva aplicada jxcn + sweep client `id→user_id` | `pragas_profiles_push_contract_align_20260702`, commit `75f19ce` |
+| DB-A1 push morto fim-a-fim | ✅ RPC `touch_push_token` criada + `pragas-send-push` (slug DEDICADO — o `send-push` live é do Confinamento, clobber evitado) deployada v1 | smoke 401 fail-closed |
+| LGPD delete por chave errada | ✅ `delete-user-account` + `process-deletions` corrigidas e redeployadas | commit `e4177e7` |
+| DB-A2 storage aberto | ✅ policies por dono + 10MB + mimes de imagem (bucket vazio) | `pragas_images_storage_hardening_20260702` |
+| DB-M1 trigger outbreaks quebrado | ✅ consertado pela migration (coluna `state` agora existe); fila validada | pg_proc/queue check |
+| L1/L2/L3 legal web contraditório | ✅ /termos, /privacidade, /excluir-conta reescritos (grátis, Araraquara+CDC 101 I, sub-operadores reais) e LIVE; páginas não-legais byte-idênticas | pragas.agrorumo.com |
+| L2-store Review Notes vendiam IAP | ✅ reescritas via API ASC (modelo grátis) | reviewDetail c1f175c7 |
+| W1 web atrás de SSO | ✅ **WEB LANÇADO**: https://app.pragas.agrorumo.com público | smoke Playwright PASS |
+| W2 CSP ausente | ✅ CSP restritiva no ar, X-XSS-Protection removido | commit `f39d4ce` |
+| W3 secrets órfãs | ✅ SUPABASE_SERVICE_ROLE_KEY + MCP_API_TOKEN + STRIPE_SECRET_KEY + debris removidos | vercel env ls |
+| Onda 2 design system | ✅ re-skin por tokens (#FAFAF7 / verde-campo #2E7D32 / dourado-trigo; WCAG AA calculado) | commits `d7c56f5`..`d16e43b` |
+| Smoke web navegador real | ✅ PASS — 0 violações CSP, onboarding renderiza | `AUDIT/evidencia-web-smoke-2026-07-02.png` |
+
+Gate final da branch: typecheck 0 · lint 0 · jest 48/48 suites, 440/440 testes.
+
+**Nota revisada pós-execução: 8.0/10** (Banco 6→8.5, Design/UX 7→8, Prontidão 5.5→7).
+Prontidão só não é maior porque: iOS 1.0.7 REJECTED aguardando leitura do Resolution Center (UI-only, CEO) e os fixes desta branch ainda não viraram build 1.0.8.
+
+**Dívidas registradas (não bloqueiam):** D3 refactor dark-mode (126 overrides), D5 touch targets <44pt em ícones, D9 Poppins via expo-font (gate — adiciona asset), exclusão de conta deleta auth.users global do jxcn (decisão de portfólio), features novas top-10 (gate CEO).
