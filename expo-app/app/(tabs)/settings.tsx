@@ -306,7 +306,7 @@ export default function SettingsScreen() {
         const { data } = await supabase
           .from('pragas_profiles')
           .select('avatar_url')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
         if (mounted && data?.avatar_url) setAvatarUrl(data.avatar_url);
       } catch {

@@ -104,7 +104,7 @@ describe('loadNotificationPreferences', () => {
     expect(mockSelectCalls[0]).toEqual({
       table: 'pragas_profiles',
       column: 'notification_preferences',
-      equ: { col: 'id', val: 'user-1' },
+      equ: { col: 'user_id', val: 'user-1' },
     });
   });
 

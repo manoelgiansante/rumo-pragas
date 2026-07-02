@@ -85,7 +85,7 @@ export async function loadNotificationPreferences(
     const { data, error } = await supabase
       .from('pragas_profiles')
       .select('notification_preferences')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (error) {
@@ -140,7 +140,7 @@ export async function saveNotificationPreferences(
       .update({
         notification_preferences: { ...next, updated_at: new Date().toISOString() },
       })
-      .eq('id', userId);
+      .eq('user_id', userId);
 
     if (error) {
       // rollback cache so UI shows real server state on next reload
