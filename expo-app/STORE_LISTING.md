@@ -1,5 +1,12 @@
 # Rumo Pragas — Store Listing (ASO Master)
 
+> ⛔ **DEPRECATED (2026-07-02) — MODELO PAGO OBSOLETO. NÃO USAR ESTE DOC PARA PUBLICAR EM CONSOLE.**
+> O Rumo Pragas é **100% GRÁTIS** (decisão CEO 01/jul, pós-rejeição Apple 2.3.2/2.1b). As 3 subscriptions
+> do ASC foram DELETADAS em 02/jul (product IDs queimados de propósito). **NÃO reintroduzir IAP, paywall,
+> trial ou preço** — qualquer menção histórica a "R$ 49,90", "7 dias grátis", planos Pro/Enterprise ou
+> "IAP: Yes" neste doc estava ERRADA e foi corrigida abaixo.
+> **Fonte canônica do metadata de loja (grátis):** `expo-app/store-assets/metadata/` (iOS + Android, pt-BR).
+
 > Atualizado: 2026-04-13 (pre-launch 1.0.0)
 > Validacao de API: 82.5% weighted accuracy (ver `scripts/validate-diagnose.ts`)
 > Bundle ID: com.agrorumo.rumopragas
@@ -18,7 +25,7 @@
 | **Primary Category**   | Utilities                   | —     |
 | **Secondary Category** | Productivity                | —     |
 | **Age Rating**         | 4+                          | —     |
-| **Price**              | Free (com IAP)              | —     |
+| **Price**              | Free (100% grátis, SEM IAP) | —     |
 
 > OBS: App Store iOS nao tem categoria "Agriculture". Melhor escolha: **Utilities** (primary) + **Productivity** (secondary). Alguns apps agro classificam como **Reference**. Utilities tem menos concorrencia direta.
 
@@ -107,11 +114,9 @@ PARA QUEM E
 - Tecnicos agricolas e cooperativas
 - Estudantes de agronomia e cursos tecnicos
 
-PLANOS
+GRATIS PARA USAR
 
-- Gratis: 3 diagnosticos por mes pra experimentar
-- Pro: 30 diagnosticos/mes, chat IA ilimitado, alertas regionais, exportacao PDF
-- Enterprise: diagnosticos ilimitados, multi-usuario, suporte prioritario
+O Rumo Pragas esta 100% gratuito: diagnosticos por IA, chat com a agronoma virtual, biblioteca de pragas, historico geolocalizado e exportacao em PDF — sem cobranca e sem assinatura.
 
 SEGURANCA E PRIVACIDADE
 
@@ -245,7 +250,7 @@ Nenhum (todos dados estao vinculados ao User ID)
 | **Content Rating**    | Everyone                                                                     | —     |
 | **Target Audience**   | 18+                                                                          | —     |
 | **Contains Ads**      | No                                                                           | —     |
-| **In-app purchases**  | Yes (R$ 49,90/mês ou R$ 499/ano)                                             | —     |
+| **In-app purchases**  | **No** (app 100% grátis — subscriptions deletadas 02/jul)                    | —     |
 
 > Google Play TEM categoria Agriculture? **Nao oficialmente.** Melhor: **Tools** com tags secundarias. Alternativa: Business (se focar em consultores) ou Education.
 
@@ -307,11 +312,9 @@ SEGURANCA E PRIVACIDADE
 
 Dados protegidos com criptografia em transito e em repouso. Imagens processadas com seguranca e nunca vendidas a terceiros. Voce controla tudo — pode apagar o historico a qualquer momento.
 
-PLANOS
+GRATIS PARA USAR
 
-- Gratis: 3 diagnosticos por mes
-- Pro: 30 diagnosticos/mes + chat ilimitado + alertas + PDF
-- Enterprise: diagnosticos ilimitados + multi-usuario
+O Rumo Pragas esta 100% gratuito: diagnosticos por IA, chat com a agronoma virtual, biblioteca de pragas, historico e exportacao em PDF — sem cobranca e sem assinatura.
 
 AVISO AGRONOMICO
 
@@ -529,23 +532,24 @@ o ano inteiro
 Todos os diagnosticos com GPS, data e foto
 ```
 
-### Screenshot 5 — Paywall / Planos
+### Screenshot 5 — Login / Grátis
 
-**Tela capturada:** paywall com 3 planos (Free/Pro/Enterprise)
+> ⛔ Screenshot de paywall REMOVIDO do plano (app é 100% grátis; paywall é no-op).
+> Asset real já em uso: `05-login.png` — "Seu agronomo de bolso. Gratis." (ver `docs/aso/play-metadata.md`).
+
+**Tela capturada:** tela de login/boas-vindas
 **Overlay headline (top):**
 
 ```
-Proteja sua safra.
-Comece gratis.
+Seu agronomo de bolso.
+100% gratis.
 ```
 
 **Subhead:**
 
 ```
-3 diagnosticos gratis por mes. Cancele quando quiser.
+Sem assinatura, sem cobranca. Baixe e use.
 ```
-
-**Badge destaque no plano Pro:** "Mais Popular" / "Recomendado pra produtor"
 
 ### Design system dos overlays (consistencia entre screenshots)
 
@@ -564,7 +568,7 @@ Comece gratis.
 2. Resultado (Screenshot 3) — prova o que o app faz
 3. Camera (Screenshot 2) — como e facil
 4. Historico (Screenshot 4) — valor continuo
-5. Paywall (Screenshot 5) — social proof + pricing
+5. Login / Grátis (Screenshot 5) — reforço "100% grátis"
 
 ---
 
@@ -597,12 +601,12 @@ Comece gratis.
 - [ ] App icon 1024x1024 sem transparencia nem cantos arredondados (Apple arredonda)
 - [ ] Build com `version: 1.0.0` e `buildNumber/versionCode` incrementados
 - [ ] Privacy Manifest iOS validado (ja esta em app.json)
-- [ ] Test IAP sandbox funcionando (Apple exige review com compra real testada)
+- [x] ~~Test IAP sandbox funcionando~~ — N/A: app 100% grátis, SEM IAP (NÃO publicar SKUs; subscriptions deletadas 02/jul)
 
 ### Bloqueios Apple especificos
 
 - [ ] Demo account (email + senha) pra reviewer testar — OBRIGATORIO
-- [ ] Notes for Reviewer incluindo: "Para testar diagnostico IA, use a foto de exemplo na biblioteca em [tela X] ou envie qualquer foto de folha. IAP em sandbox: user test@agrorumo.com / senha Test1234!"
+- [ ] Notes for Reviewer incluindo: "Para testar diagnostico IA, use a foto de exemplo na biblioteca em [tela X] ou envie qualquer foto de folha. O app e 100% gratuito — nao ha IAP, paywall ou assinatura." (Review Notes do ASC já corrigidas via API 02/jul para o modelo grátis)
 - [ ] Screenshots NAO podem ter status bar real (usar 9:41 padrao Apple)
 - [ ] Screenshots NAO podem mencionar Android/Google Play
 
@@ -667,6 +671,7 @@ Post-launch, testar:
 | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-04-13 | 1.0    | Primeira versao pre-launch                                                                                                                                                                                                                                    |
 | 2026-04-13 | 2.0    | Polish ASO master — subtitle 25 chars, keywords otimizadas 96/100, Privacy Labels iOS + Data Safety Android completos, 5 screenshots briefing, feature graphic SVG, URLs validadas (404 detectado em rumopragas.vercel.app → ajustar pra rumo-pragas-landing) |
+| 2026-07-02 | 3.0    | ⛔ DEPRECATED como fonte de copy — app virou 100% GRÁTIS (decisão CEO 01/jul). Removidas TODAS as menções a IAP/preço/planos/paywall; screenshot 5 trocado paywall→login; checklist IAP neutralizado. Fonte canônica: `expo-app/store-assets/metadata/`       |
 
 ## 9. Validacao de API (pre-launch)
 
