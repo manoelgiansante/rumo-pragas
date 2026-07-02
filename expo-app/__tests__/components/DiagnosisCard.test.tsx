@@ -85,7 +85,9 @@ describe('DiagnosisCard', () => {
       <DiagnosisCard diagnosis={makeDiagnosis({ severity: 'critical' })} />,
     );
     const tree = JSON.stringify(toJSON());
-    expect(tree).toContain('#D32F2F');
+    // Critical severity now uses the shared danger token (Colors.coral) instead of a
+    // hardcoded #D32F2F — mock maps coral to #F06652 (design token consolidation, D4).
+    expect(tree).toContain('#F06652');
   });
 
   it('renders in compact mode', () => {

@@ -18,7 +18,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
           "shadowRadius": 10,
         },
         {
-          "backgroundColor": "#FFFDF7",
+          "backgroundColor": "#FFFFFF",
           "padding": 16,
           "shadowColor": "#000",
         },
@@ -40,7 +40,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
       }
     >
       <Ionicons
-        color="#0B3D2E"
+        color="#2E7D32"
         name="leaf"
         size={18}
       />
@@ -48,7 +48,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         style={
           [
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "flex": 1,
               "fontSize": 17,
               "fontWeight": "700",
@@ -63,7 +63,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         style={
           {
             "alignItems": "center",
-            "backgroundColor": "#0B3D2E14",
+            "backgroundColor": "#2E7D3214",
             "borderRadius": 999,
             "flexDirection": "row",
             "gap": 4,
@@ -73,14 +73,14 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         }
       >
         <Ionicons
-          color="#0B3D2E"
+          color="#2E7D32"
           name="shield-checkmark"
           size={10}
         />
         <Text
           style={
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "fontSize": 9,
               "fontWeight": "700",
               "letterSpacing": 0.4,
@@ -181,8 +181,8 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
               "paddingVertical": 8,
             },
             {
-              "backgroundColor": "#0B3D2E",
-              "borderColor": "#0B3D2EFF",
+              "backgroundColor": "#2E7D32",
+              "borderColor": "#2E7D32FF",
               "opacity": 1,
             },
           ]
@@ -365,7 +365,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
             "paddingVertical": 8,
           },
           {
-            "borderLeftColor": "#0B3D2E",
+            "borderLeftColor": "#2E7D32",
           },
         ]
       }
@@ -449,7 +449,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
           }
         >
           <Ionicons
-            color="#0B3D2E"
+            color="#2E7D32"
             name="hand-left"
             size={14}
           />
@@ -485,7 +485,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
@@ -525,7 +525,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
@@ -857,7 +857,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#0B3D2E",
+          "backgroundColor": "#2E7D32",
           "borderRadius": 12,
           "flexDirection": "row",
           "gap": 8,
@@ -1144,7 +1144,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           "shadowRadius": 10,
         },
         {
-          "backgroundColor": "#FFFDF7",
+          "backgroundColor": "#FFFFFF",
           "padding": 16,
           "shadowColor": "#000",
         },
@@ -1166,7 +1166,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
       }
     >
       <Ionicons
-        color="#0B3D2E"
+        color="#2E7D32"
         name="leaf"
         size={18}
       />
@@ -1174,7 +1174,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
         style={
           [
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "flex": 1,
               "fontSize": 17,
               "fontWeight": "700",
@@ -1189,7 +1189,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
         style={
           {
             "alignItems": "center",
-            "backgroundColor": "#0B3D2E14",
+            "backgroundColor": "#2E7D3214",
             "borderRadius": 999,
             "flexDirection": "row",
             "gap": 4,
@@ -1199,14 +1199,14 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
         }
       >
         <Ionicons
-          color="#0B3D2E"
+          color="#2E7D32"
           name="shield-checkmark"
           size={10}
         />
         <Text
           style={
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "fontSize": 9,
               "fontWeight": "700",
               "letterSpacing": 0.4,
@@ -1307,8 +1307,8 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
               "paddingVertical": 8,
             },
             {
-              "backgroundColor": "#0B3D2E",
-              "borderColor": "#0B3D2EFF",
+              "backgroundColor": "#2E7D32",
+              "borderColor": "#2E7D32FF",
               "opacity": 1,
             },
           ]
@@ -1481,7 +1481,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
             "paddingVertical": 8,
           },
           {
-            "borderLeftColor": "#0B3D2E",
+            "borderLeftColor": "#2E7D32",
           },
         ]
       }
@@ -1565,7 +1565,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           }
         >
           <Ionicons
-            color="#0B3D2E"
+            color="#2E7D32"
             name="hand-left"
             size={14}
           />
@@ -1601,7 +1601,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
@@ -1641,7 +1641,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
