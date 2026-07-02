@@ -6,6 +6,34 @@
 
 ---
 
+## ATUALIZACAO 2026-07-01 — REVALIDACAO + MUDANCA DE POSICIONAMENTO (100% GRATIS)
+
+> Revalidado via firecrawl-search (Google Play, App Store, sites oficiais). Os dados de mercado abaixo (Plantix, Agrio, Aegro, Cropwise, Farmbox, Pragueiro) permanecem VALIDOS. Mudanca principal e no NOSSO app.
+
+### MUDANCA CRITICA: Rumo Pragas agora e 100% GRATIS, sem paywall
+- Codigo (`expo-app/app/(tabs)/index.tsx`, `app/paywall.tsx`, `app/(tabs)/settings.tsx`): **diagnosticos ILIMITADOS para todos**, paywall NEUTRALIZADO (rota inerte, sem botao de compra em lugar nenhum), motivado por Apple Guideline 2.3.2. O `FREE_MONTHLY_DIAGNOSES = 3` ainda existe como fallback mas o gate de Pro esta desligado.
+- Consequencia: a tabela de precos Free/Basico/Pro (R$19,90 / R$49,90) das secoes abaixo esta **SUPERADA**. Nao ha upsell hoje. O posicionamento deixa de ser "freemium generoso" e passa a ser **"gratis de verdade, ilimitado, sem pegadinha"**.
+
+### Mapa GRATIS vs PAGO do mercado BR (o eixo que importa agora)
+| App | ID por foto (IA) | Preco real | Limite no gratis |
+|---|---|---|---|
+| **Rumo Pragas** | **Sim** | **GRATIS total** | **Nenhum (ilimitado)** |
+| Plantix | Sim | Gratis **com anuncios** | Diagnostico ok, mas monetiza com ads + venda de insumo |
+| Agrio | Sim | **Freemium PAGO** ($4–$32/mes por hectare) | Individual basico so |
+| Aegro | Nao (registro manual) | **PAGO forte** (planos a partir de ~R$500+/mes; Plano Premium/BI) | So teste gratis |
+| Cropwise Protector (Syngenta) | Parcial (IA prioriza) | **B2B via canal** (nao self-serve) | Nao ha gratis publico |
+| Farmbox (Checkplant) | Nao (georref. manual) | **Pago** (via Conecta.ag; "monitoramento gratuito" e chamariz, plataforma e paga) | Limitado |
+| Pragueiro (upCampo) | Nao | **Gratis ate 1.000 ha** | Acima de 1.000 ha e pago |
+| Apps Embrapa (InNat, Bioinsumos, AgroPragas) | Nao (comparacao manual) | Gratis | Especificos por cultura, sem gestao |
+| manejo.app (CNA/Agrolink — NOVO 2025) | A confirmar | Gratis (institucional) | Foco MIP, recem-lancado |
+
+**Leitura estrategica:** o unico concorrente que hoje entrega **ID de praga por foto com IA + 100% gratis + ilimitado + PT-BR** e o Plantix — e o Plantix monetiza com anuncios e empurra venda de insumo, tem rating baixo (3.89) e foco India/hortalicas. Todos os apps BR fortes em pragas (Aegro, Cropwise, Farmbox) ou sao PAGOS/B2B ou NAO tem IA de foto. **A vaga "app de IA de pragas, gratis de verdade, feito pro produtor brasileiro" esta aberta.** Esse e o angulo de aquisicao.
+
+### NOVO concorrente detectado (2025)
+- **manejo.app** (CNA/Senar + Agrolink) — app de MIP para produtores, lancado em 2025, institucional/gratuito. Monitorar: pela distribuicao CNA/Senar pode ganhar base rapido (mesmo modelo do Conecta Produtor, que fez 100k produtores em 6 meses). Nao parece ter IA de foto — nossa vantagem se mantem.
+
+---
+
 ## 1. PLANTIX (PEAT GmbH) - Lider Global
 
 **Site:** plantix.net | **Origem:** Alemanha
