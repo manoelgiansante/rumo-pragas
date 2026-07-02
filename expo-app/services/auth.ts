@@ -10,8 +10,20 @@ import { addBreadcrumb } from './sentry-shim';
  * only honours this when the URL is in the project's "Redirect URLs" allow
  * list; otherwise it safely falls back to the hosted Site URL page (the prior
  * behaviour), so passing it can only improve the flow, never break it.
+ *
+ * Resolved LAZILY (memoised) rather than at module load: `Linking.createURL`
+ * has a native side-effect that throws under non-native runtimes (e.g. Jest),
+ * which would break the entire module import. Computing it on first use keeps
+ * importing this module side-effect-free.
  */
-export const PASSWORD_RECOVERY_REDIRECT = Linking.createURL('/update-password');
+let cachedPasswordRecoveryRedirect: string | undefined;
+
+export function getPasswordRecoveryRedirect(): string {
+  if (cachedPasswordRecoveryRedirect === undefined) {
+    cachedPasswordRecoveryRedirect = Linking.createURL('/update-password');
+  }
+  return cachedPasswordRecoveryRedirect;
+}
 
 export async function signIn(email: string, password: string) {
   addBreadcrumb({ category: 'auth', message: 'Sign in attempt', level: 'info' });
@@ -56,7 +68,7 @@ export async function signOut() {
 export async function resetPassword(email: string) {
   addBreadcrumb({ category: 'auth', message: 'Reset password request', level: 'info' });
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: PASSWORD_RECOVERY_REDIRECT,
+    redirectTo: getPasswordRecoveryRedirect(),
   });
   if (error) throw error;
 }

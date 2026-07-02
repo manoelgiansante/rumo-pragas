@@ -56,7 +56,10 @@ describe('useMipKnowledge', () => {
     expect(result.current.levels.map((l) => l.level)).toEqual(['baixo', 'medio', 'alto']);
   });
 
-  it('only unlocks baixo for free tier', async () => {
+  // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the whole MIP
+  // recommendation library (baixo/medio/alto) is unlocked for EVERY tier,
+  // including free. There are no locked levels anymore.
+  it('unlocks all three levels for free tier', async () => {
     const { result } = renderHook(() =>
       useMipKnowledge({
         pestName: 'Ferrugem asiática',
@@ -66,11 +69,9 @@ describe('useMipKnowledge', () => {
       }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    const unlockedLevels = result.current.levels
-      .filter((l) => l.unlocked)
-      .map((l) => l.level);
-    expect(unlockedLevels).toEqual(['baixo']);
-    expect(TIER_LEVELS.free).toEqual(['baixo']);
+    const unlockedLevels = result.current.levels.filter((l) => l.unlocked).map((l) => l.level);
+    expect(unlockedLevels).toEqual(['baixo', 'medio', 'alto']);
+    expect(TIER_LEVELS.free).toEqual(['baixo', 'medio', 'alto']);
   });
 
   it('unlocks all three levels for pro tier', async () => {
@@ -83,9 +84,7 @@ describe('useMipKnowledge', () => {
       }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    const unlockedLevels = result.current.levels
-      .filter((l) => l.unlocked)
-      .map((l) => l.level);
+    const unlockedLevels = result.current.levels.filter((l) => l.unlocked).map((l) => l.level);
     expect(unlockedLevels).toEqual(['baixo', 'medio', 'alto']);
   });
 
@@ -119,7 +118,7 @@ describe('useMipKnowledge', () => {
     expect(result.current.entry?.id).toContain('cafe');
   });
 
-  it('omits chemical actions when free user is gated to baixo', async () => {
+  it('omits chemical actions from the baixo level by design', async () => {
     const { result } = renderHook(() =>
       useMipKnowledge({
         pestName: 'Ferrugem asiática',
@@ -130,8 +129,8 @@ describe('useMipKnowledge', () => {
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     const baixo = result.current.levels.find((l) => l.level === 'baixo');
-    // Even for free, the recommendation object exists — but its
-    // acoesQuimicas should be undefined for "baixo" by design.
+    // The "baixo" recommendation never carries chemical actions by design,
+    // independent of tier (all tiers are unlocked in the free build).
     expect(baixo).toBeDefined();
     expect(baixo?.recommendation.acoesQuimicas).toBeUndefined();
   });

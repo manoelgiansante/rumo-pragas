@@ -127,7 +127,10 @@ describe('sendDiagnosis', () => {
     expect(options.headers.Authorization).toBe('Bearer token');
   });
 
-  it('handles 403 with subscription limit details', async () => {
+  // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
+  // FREE with UNLIMITED diagnoses, so a 403 must surface as a plain error and
+  // NEVER a paywall/upgrade prompt ("limite de X, faça upgrade") or redirect.
+  it('handles 403 as a plain error without a paywall/upgrade prompt', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -135,9 +138,15 @@ describe('sendDiagnosis', () => {
     });
 
     const smallImage = makeBase64(100);
-    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
-      /limite de 5/,
-    );
+    let caught: unknown;
+    await sendDiagnosis(smallImage, 'soja', null, null, 'token').catch((e) => {
+      caught = e;
+    });
+
+    expect(caught).toBeInstanceOf(Error);
+    // No metered-limit / upgrade wording — just a plain permission error.
+    expect((caught as Error).message).not.toMatch(/limite de/i);
+    expect((caught as Error).message).not.toMatch(/upgrade|assinar|comprar/i);
   });
 
   it('handles 401 with sanitized message', async () => {
