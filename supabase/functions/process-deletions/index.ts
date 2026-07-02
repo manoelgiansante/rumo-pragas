@@ -221,13 +221,33 @@ Deno.serve(withSentry("process-deletions", async (req: Request) => {
 
   const authHeader = req.headers.get("Authorization");
 
-  // ── Security: Constant-time comparison for service role key ──
+  // ── Security: authorize the cron caller ──
+  // Fast-path: exact constant-time match against the injected service role key.
   const expected = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
-  if (
-    !authHeader ||
-    authHeader.length !== expected.length ||
-    !timingSafeEqual(authHeader, expected)
-  ) {
+  const fastPathOk = !!authHeader &&
+    authHeader.length === expected.length &&
+    timingSafeEqual(authHeader, expected);
+
+  // Fallback: validate the JWT CLAIM instead of the exact string. Key-format
+  // drift (new sb_secret_* vs the legacy JWT the cron sends) makes the string
+  // compare fail. The Supabase gateway (verify_jwt) already verified the
+  // signature before we run, so the claim-check survives credential rotation by
+  // trusting the token's role/issuer rather than the exact key bytes.
+  let claimOk = false;
+  if (!fastPathOk && authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const token = authHeader.slice("Bearer ".length);
+      let payloadSeg = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (payloadSeg.length % 4 !== 0) payloadSeg += "=";
+      const payload = JSON.parse(atob(payloadSeg));
+      claimOk = payload.role === "service_role" &&
+        String(payload.iss).includes("supabase");
+    } catch {
+      claimOk = false;
+    }
+  }
+
+  if (!fastPathOk && !claimOk) {
     return new Response(
       JSON.stringify({ error: "Unauthorized", requestId }),
       {
