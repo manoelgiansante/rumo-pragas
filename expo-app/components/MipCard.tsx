@@ -1,16 +1,16 @@
 /**
  * MipCard
  *
- * Premium-gated catalog card rendered after the diagnosis enrichment
- * sections. Shows three infestation-level chips (baixo / medio / alto)
- * with the recommendation for the selected level inside a collapsible.
+ * Catalog card rendered after the diagnosis enrichment sections. Shows three
+ * infestation-level chips (baixo / medio / alto) with the recommendation for
+ * the selected level inside a collapsible.
  *
- * Free users: only `baixo` chip is interactive — the other two are
- * locked behind a paywall CTA. Pro/Enterprise: all three unlocked.
+ * The app is 100% free, so every level is available to every user — tapping any
+ * chip simply selects it. No locked chips and no CTA.
  *
  * Always-visible compliance:
- *  - CREA disclaimer (MIP_CREA_DISCLAIMER) — never gated.
- *  - References (EMBRAPA / MAPA / IRAC / FRAC) — citable to all tiers.
+ *  - CREA disclaimer (MIP_CREA_DISCLAIMER).
+ *  - References (EMBRAPA / MAPA / IRAC / FRAC) — citable to everyone.
  *
  * Three runtime states:
  *  - `loading`: skeleton matching the rest of the screen
@@ -20,19 +20,10 @@
  * Renders nothing when `enabled` is false (healthy plant / errors).
  */
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
-import { router } from 'expo-router';
+import { Linking, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { Colors, FontSize, FontWeight, Spacing } from '../constants/theme';
 import { PremiumCard } from './PremiumCard';
 import { SkeletonLoader } from './SkeletonLoader';
 import type { InfestationLevel, MipReference } from '../data/mip';
@@ -45,13 +36,13 @@ import type {
 interface MipCardProps {
   /** Hook output — pass straight through. */
   knowledge: UseMipKnowledgeResult;
-  /** Subscription tier — used for upsell copy. */
+  /** Plan tier — retained only as an analytics dimension. */
   tier: SubscriptionTier;
   /** Hide the whole card (healthy plant, error states). */
   enabled?: boolean;
   /**
-   * Optional analytics hook. Fired when user toggles a level, opens a
-   * reference URL or taps the paywall CTA.
+   * Optional analytics hook. Fired when the user toggles a level or opens a
+   * reference URL.
    */
   onAnalyticsEvent?: (event: string, properties?: Record<string, unknown>) => void;
 }
@@ -68,12 +59,11 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
   const { t } = useTranslation();
   const isDark = useColorScheme() === 'dark';
 
-  // Selected level defaults to the first unlocked one — free user lands on
-  // "baixo", pro lands on "baixo" by default but can swap to medio/alto.
-  const initialLevel: InfestationLevel = useMemo(() => {
-    const firstUnlocked = knowledge.levels.find((l) => l.unlocked);
-    return firstUnlocked?.level ?? 'baixo';
-  }, [knowledge.levels]);
+  // Selected level defaults to the first available one ("baixo").
+  const initialLevel: InfestationLevel = useMemo(
+    () => knowledge.levels[0]?.level ?? 'baixo',
+    [knowledge.levels],
+  );
 
   const [selectedLevel, setSelectedLevel] = useState<InfestationLevel>(initialLevel);
 
@@ -86,15 +76,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
     (level: InfestationLevel) => {
       const found = knowledge.levels.find((l) => l.level === level);
       if (!found) return;
-      if (!found.unlocked) {
-        onAnalyticsEvent?.('mip_paywall_tap', {
-          level,
-          entry_id: knowledge.entry?.id,
-          tier,
-        });
-        router.push('/paywall');
-        return;
-      }
       setSelectedLevel(level);
       onAnalyticsEvent?.('mip_level_selected', {
         level,
@@ -114,15 +95,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
     },
     [onAnalyticsEvent],
   );
-
-  const handleUpgradePress = useCallback(() => {
-    onAnalyticsEvent?.('mip_paywall_tap', {
-      level: 'cta',
-      entry_id: knowledge.entry?.id,
-      tier,
-    });
-    router.push('/paywall');
-  }, [knowledge.entry?.id, onAnalyticsEvent, tier]);
 
   if (!enabled) return null;
 
@@ -165,7 +137,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
 
   const rec = selected.recommendation;
   const selectedColor = LEVEL_COLORS[selectedLevel];
-  const lockedCount = knowledge.levels.filter((l) => !l.unlocked).length;
 
   return (
     <View testID="mip-card">
@@ -187,30 +158,25 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
           {LEVEL_ORDER.map((level) => {
             const data = knowledge.levels.find((l) => l.level === level);
             if (!data) return null;
-            const isActive = data.unlocked && selectedLevel === level;
+            const isActive = selectedLevel === level;
             const color = LEVEL_COLORS[level];
             return (
               <Pressable
                 key={level}
                 onPress={() => handleSelectLevel(level)}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  data.unlocked
-                    ? t('mip.chipA11yUnlocked', { level: t(`mip.level.${level}`) })
-                    : t('mip.chipA11yLocked', { level: t(`mip.level.${level}`) })
-                }
-                accessibilityState={{ selected: isActive, disabled: !data.unlocked }}
+                accessibilityLabel={t('mip.chipA11yUnlocked', { level: t(`mip.level.${level}`) })}
+                accessibilityState={{ selected: isActive }}
                 testID={`mip-chip-${level}`}
                 style={({ pressed }) => [
                   styles.chip,
                   {
                     backgroundColor: isActive ? color : color + '14',
                     borderColor: color + (isActive ? 'FF' : '33'),
-                    opacity: data.unlocked ? (pressed ? 0.8 : 1) : 0.75,
+                    opacity: pressed ? 0.8 : 1,
                   },
                 ]}
               >
-                {!data.unlocked && <Ionicons name="lock-closed" size={11} color={color} />}
                 <Text style={[styles.chipText, { color: isActive ? '#FFF' : color }]}>
                   {t(`mip.level.${level}`)}
                 </Text>
@@ -296,27 +262,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
             </View>
           )}
         </View>
-
-        {/* Paywall upsell — only when at least one level is locked */}
-        {tier === 'free' && lockedCount > 0 && (
-          <TouchableOpacity
-            onPress={handleUpgradePress}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t('mip.upgradeCtaA11y')}
-            testID="mip-upgrade-cta"
-            style={styles.upgradeCta}
-          >
-            <Ionicons name="lock-open" size={16} color="#FFF" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.upgradeCtaTitle}>{t('mip.upgradeCtaTitle')}</Text>
-              <Text style={styles.upgradeCtaSubtitle}>
-                {t('mip.upgradeCtaSubtitle', { count: lockedCount })}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#FFF" />
-          </TouchableOpacity>
-        )}
 
         {/* References — visible to everyone (compliance + scientific credibility) */}
         {rec.referencias.length > 0 && (
@@ -629,27 +574,6 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 16,
     marginBottom: 2,
-  },
-  upgradeCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.accent,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  upgradeCtaTitle: {
-    color: '#FFF',
-    fontSize: FontSize.footnote,
-    fontWeight: FontWeight.bold,
-  },
-  upgradeCtaSubtitle: {
-    color: '#FFF',
-    fontSize: 11,
-    opacity: 0.85,
-    marginTop: 1,
   },
   referencesBlock: {
     marginTop: Spacing.sm,

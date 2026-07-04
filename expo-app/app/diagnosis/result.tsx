@@ -34,32 +34,24 @@ import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { MipCard } from '../../components/MipCard';
 import { TopAlternatives } from '../../components/TopAlternatives';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
-import {
-  trackShareDiagnosis,
-  trackPestDetailViewed,
-  trackProGateShown,
-  trackProGateTapped,
-  trackEvent,
-} from '../../services/analytics';
-import { useSubscription } from '../../hooks/useSubscription';
+import { trackShareDiagnosis, trackPestDetailViewed, trackEvent } from '../../services/analytics';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { savePestToCache } from '../../services/pestRegistry';
 import { useMipKnowledge, type SubscriptionTier } from '../../hooks/useMipKnowledge';
 import { addBreadcrumb } from '../../services/sentry-shim';
 import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
 
-// --- Free vs Pro gate ------------------------------------------------------
-// Free users see the hero, treatment summary (cultural level only), and may
-// share via WhatsApp. Pro features: PDF export, alternative diagnoses, full
-// pest fact sheet, biological + chemical levels, save to history.
-const FREE_ALTERNATIVES_VISIBLE = 0;
-const PRO_ALTERNATIVES_VISIBLE = 3;
+// --- Alternatives cap ------------------------------------------------------
+// The app ships 100% FREE (Apple Guideline 3.1.1): every result surface — the
+// hero, all three IPM treatment levels, alternative diagnoses, the full pest
+// fact sheet and PDF export — is available to every user. We only cap how many
+// alternative candidates we render, purely to keep the card compact.
+const MAX_ALTERNATIVES_VISIBLE = 3;
 
 export default function ResultScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { isPro } = useSubscription();
   const { imageUri } = useDiagnosis();
   const { data, error, queued } = useLocalSearchParams<{
     data?: string;
@@ -109,7 +101,7 @@ export default function ResultScreen() {
         (typeof result.notes === 'string' ? JSON.parse(result.notes) : result.notes || {});
       const list: AgrioPrediction[] = notes?.predictions ?? notes?.id_array ?? [];
       // Drop the winning pest from alternatives to avoid duplicate UI rows.
-      return list.filter((p) => p.id !== result.pest_id).slice(0, PRO_ALTERNATIVES_VISIBLE);
+      return list.filter((p) => p.id !== result.pest_id).slice(0, MAX_ALTERNATIVES_VISIBLE);
     } catch {
       return [];
     }
@@ -198,10 +190,10 @@ export default function ResultScreen() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
-  // FREE (Apple Guideline 2.3.2). The full MIP/EMBRAPA treatment-protocol
-  // library is unlocked for everyone, so the tier is forced to the top
-  // (enterprise) — no level is gated and <MipCard/> shows no upgrade CTA.
+  // FREE BUILD (Apple Guideline 3.1.1): the app is 100% free. The full
+  // MIP/EMBRAPA treatment-protocol library is available to everyone, so the
+  // MipCard tier is fixed to the top (enterprise) — every level is open and the
+  // card renders no locked chips.
   const [tier] = useState<SubscriptionTier>('enterprise');
 
   // Resolve MIP catalog entry from pest/symptoms. Disabled when no useful
@@ -506,12 +498,6 @@ export default function ResultScreen() {
   }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
 
   const handlePdfExport = useCallback(async () => {
-    // Premium gate: free users see a paywall CTA instead of PDF generation.
-    if (!isPro) {
-      trackProGateTapped('pdf');
-      router.push('/paywall');
-      return;
-    }
     void Haptics.selectionAsync().catch(() => {
       /* best-effort */
     });
@@ -534,36 +520,17 @@ export default function ResultScreen() {
     } catch {
       showAlert(t('common.error'), t('diagnosis.exportPdfError'));
     }
-  }, [buildPdfHtml, t, isPro]);
+  }, [buildPdfHtml, t]);
 
   const handleViewDetails = useCallback(() => {
     if (!result.pest_id) return;
-    if (!isPro) {
-      trackProGateTapped('details');
-      router.push('/paywall');
-      return;
-    }
     trackPestDetailViewed(result.pest_id, 'result');
     router.push(`/diagnosis/pest/${encodeURIComponent(result.pest_id)}`);
-  }, [result.pest_id, isPro]);
+  }, [result.pest_id]);
 
   const handleToggleAlternatives = useCallback(() => {
-    if (!isPro && alternatives.length > FREE_ALTERNATIVES_VISIBLE) {
-      trackProGateTapped('alternatives');
-      router.push('/paywall');
-      return;
-    }
     setShowAlternatives((v) => !v);
-  }, [isPro, alternatives.length]);
-
-  // Track that a pro gate was *shown* (vs tapped) for funnel analysis.
-  useEffect(() => {
-    if (!isPro && !error && !queued && result.pest_id && !isHealthy && !isInvalidImage) {
-      if (alternatives.length > 0) trackProGateShown('alternatives');
-      trackProGateShown('pdf');
-      trackProGateShown('details');
-    }
-  }, [isPro, error, queued, result.pest_id, isHealthy, isInvalidImage, alternatives.length]);
+  }, []);
 
   // Early returns AFTER all hooks have been called
   if (queued === 'true') {
@@ -804,20 +771,14 @@ export default function ResultScreen() {
                 <Text style={[styles.alternativesTitle, isDark && styles.textDark]}>
                   {t('diagnosis.alternativeDiagnoses')}
                 </Text>
-                {!isPro && (
-                  <View style={styles.proPill}>
-                    <Ionicons name="star" size={9} color="#FFF" />
-                    <Text style={styles.proPillText}>PRO</Text>
-                  </View>
-                )}
               </View>
               <Ionicons
-                name={showAlternatives && isPro ? 'chevron-up' : 'chevron-down'}
+                name={showAlternatives ? 'chevron-up' : 'chevron-down'}
                 size={20}
                 color={Colors.textSecondary}
               />
             </TouchableOpacity>
-            {showAlternatives && isPro && (
+            {showAlternatives && (
               <View style={styles.alternativesList}>
                 {alternatives.map((alt) => (
                   <View
@@ -861,8 +822,6 @@ export default function ResultScreen() {
                 title={t('diagnosis.treatmentLevelCultural')}
                 hint={t('diagnosis.treatmentLevelCulturalHint')}
                 count={enrichment.cultural_treatment?.length ?? 0}
-                isPro={isPro}
-                proGated={false}
               />
               <TreatmentLevelRow
                 icon="bug"
@@ -870,8 +829,6 @@ export default function ResultScreen() {
                 title={t('diagnosis.treatmentLevelBiological')}
                 hint={t('diagnosis.treatmentLevelBiologicalHint')}
                 count={enrichment.biological_treatment?.length ?? 0}
-                isPro={isPro}
-                proGated={!isPro}
               />
               <TreatmentLevelRow
                 icon="flask"
@@ -879,8 +836,6 @@ export default function ResultScreen() {
                 title={t('diagnosis.treatmentLevelChemical')}
                 hint={t('diagnosis.treatmentLevelChemicalHint')}
                 count={enrichment.chemical_treatment?.length ?? 0}
-                isPro={isPro}
-                proGated={!isPro}
               />
             </View>
             <TouchableOpacity
@@ -962,7 +917,7 @@ export default function ResultScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {isPro && (enrichment.chemical_treatment?.length ?? 0) > 0 && (
+          {(enrichment.chemical_treatment?.length ?? 0) > 0 && (
             <CollapsibleSection
               title={t('diagnosis.chemicalControl')}
               icon="flask"
@@ -980,7 +935,7 @@ export default function ResultScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {isPro && (enrichment.biological_treatment?.length ?? 0) > 0 && (
+          {(enrichment.biological_treatment?.length ?? 0) > 0 && (
             <CollapsibleSection
               title={t('diagnosis.biologicalControl')}
               icon="bug"
@@ -1036,7 +991,7 @@ export default function ResultScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {isPro && enrichment.economic_impact && (
+          {enrichment.economic_impact && (
             <CollapsibleSection
               title={t('diagnosis.economicImpact')}
               icon="trending-down"
@@ -1047,7 +1002,7 @@ export default function ResultScreen() {
               </Text>
             </CollapsibleSection>
           )}
-          {isPro && enrichment.mip_strategy && (
+          {enrichment.mip_strategy && (
             <CollapsibleSection
               title={t('diagnosis.mipStrategy')}
               icon="leaf"
@@ -1060,7 +1015,7 @@ export default function ResultScreen() {
           )}
         </View>
 
-        {/* MIP knowledge base card — premium-gated EMBRAPA/MAPA protocols.
+        {/* MIP knowledge base card — EMBRAPA/MAPA protocols, available to all.
             Hidden when the plant is healthy or no pest was identified. */}
         <MipCard
           knowledge={mipKnowledge}
@@ -1086,27 +1041,20 @@ export default function ResultScreen() {
             style={styles.pdfBtn}
             onPress={handlePdfExport}
             activeOpacity={0.75}
-            accessibilityLabel={
-              isPro ? t('diagnosis.exportPdfA11y') : t('diagnosis.proLockedShare')
-            }
+            accessibilityLabel={t('diagnosis.exportPdfA11y')}
             accessibilityRole="button"
             accessibilityHint={t('diagnosis.exportPdfHint')}
             testID="result-pdf-button"
           >
             <Ionicons
-              name={isPro ? 'document-text' : 'lock-closed'}
+              name="document-text"
               size={20}
               color={Colors.accent}
               accessibilityElementsHidden
             />
             <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
-              {isPro ? t('diagnosis.exportPdf') : t('diagnosis.sharePdf')}
+              {t('diagnosis.exportPdf')}
             </Text>
-            {!isPro && (
-              <View style={styles.proPillSmall}>
-                <Text style={styles.proPillSmallText}>PRO</Text>
-              </View>
-            )}
           </TouchableOpacity>
         </View>
 
@@ -1153,35 +1101,19 @@ interface TreatmentLevelRowProps {
   title: string;
   hint: string;
   count: number;
-  isPro: boolean;
-  proGated: boolean;
 }
 
 /**
- * One MIP level row in the treatment summary card.
- * - When `proGated && !isPro`, replaces count with a lock icon + PRO pill.
- * - Always shows the level (transparency) so the user knows what they're missing.
+ * One MIP level row in the treatment summary card. Every level is available to
+ * every user (the app is 100% free), so the row always shows the item count.
  */
-function TreatmentLevelRow({
-  icon,
-  color,
-  title,
-  hint,
-  count,
-  isPro,
-  proGated,
-}: TreatmentLevelRowProps) {
-  const locked = proGated && !isPro;
+function TreatmentLevelRow({ icon, color, title, hint, count }: TreatmentLevelRowProps) {
   return (
     <View
       style={styles.treatmentLevelRow}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={
-        locked
-          ? `${title}. ${hint}. ${count} itens. Recurso Pro.`
-          : `${title}. ${hint}. ${count} itens.`
-      }
+      accessibilityLabel={`${title}. ${hint}. ${count} itens.`}
     >
       <View style={[styles.treatmentLevelIcon, { backgroundColor: color + '1F' }]}>
         <Ionicons name={icon} size={16} color={color} />
@@ -1192,14 +1124,7 @@ function TreatmentLevelRow({
           {hint}
         </Text>
       </View>
-      {locked ? (
-        <View style={styles.treatmentLevelLocked}>
-          <Ionicons name="lock-closed" size={12} color={Colors.warmAmber} />
-          <Text style={styles.treatmentLevelLockedText}>PRO</Text>
-        </View>
-      ) : (
-        <Text style={[styles.treatmentLevelCount, { color }]}>{count}</Text>
-      )}
+      <Text style={[styles.treatmentLevelCount, { color }]}>{count}</Text>
     </View>
   );
 }
@@ -1332,16 +1257,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  proPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: Colors.warmAmber,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  proPillText: { color: '#FFF', fontSize: 9, fontWeight: '800', letterSpacing: 0.4 },
   alternativesList: {
     borderTopWidth: 1,
     borderTopColor: Colors.separator,
@@ -1401,16 +1316,6 @@ const styles = StyleSheet.create({
     minWidth: 24,
     textAlign: 'right',
   },
-  treatmentLevelLocked: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.warmAmber + '1F',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  treatmentLevelLockedText: { fontSize: 10, fontWeight: '800', color: Colors.earthText },
   viewDetailsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1516,14 +1421,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent + '40',
   },
   actionBtnText: { fontSize: FontSize.caption, fontWeight: '700', color: '#FFF' },
-  proPillSmall: {
-    marginLeft: 4,
-    backgroundColor: Colors.warmAmber,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 3,
-  },
-  proPillSmallText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
   // --- Legal disclaimer ---
   legalDisclaimer: {
     flexDirection: 'row',

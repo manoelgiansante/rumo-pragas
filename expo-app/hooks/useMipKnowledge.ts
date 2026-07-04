@@ -15,9 +15,9 @@
  *    `enrichment.symptoms` array, and runs `searchByKeywords` filtered by
  *    the selected crop (when present). Returns the top match if score >=
  *    a configurable threshold (default 2 — at least one strong hit).
- *  - Premium gate: free users only get the `baixo` level recommendation
- *    (cultural + biological — `getRecommendation` already omits chemical
- *    at level "baixo" so there's no risk of leaking chemical info to free).
+ *  - Every infestation level (baixo / medio / alto) is available to every user
+ *    — the app is 100% free. `getRecommendation` still omits chemical actions
+ *    at level "baixo" by agronomic design, not by tier.
  *
  * NEVER call `setState` in render path → all writes happen inside
  * `useEffect`s.
@@ -33,17 +33,15 @@ import {
 import { CROPS } from '../constants/crops';
 import type { AgrioEnrichment } from '../types/diagnosis';
 
-/** Plan tier as returned by RevenueCat / subscription sync. */
+/** Plan tier — retained only as an analytics/label dimension. */
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
 
 /**
  * Levels visible to a given tier.
  *
- * FREE BUILD OVERRIDE (2026-06-30) — fix/pragas-free-2026-06-30: the app ships
- * 100% FREE (Apple Guideline 2.3.2), so the full MIP/EMBRAPA treatment-protocol
- * library (baixo/medio/alto) is unlocked for EVERY tier. With no locked levels,
- * <MipCard/> shows no lock chips and no "upgrade" CTA. Revert this commit to
- * restore the metered (free = `baixo` only) gate.
+ * FREE BUILD (Apple Guideline 3.1.1): the app is 100% free, so the full
+ * MIP/EMBRAPA treatment-protocol library (baixo/medio/alto) is available for
+ * EVERY tier. With no gated levels, <MipCard/> renders no locked chips.
  */
 export const TIER_LEVELS: Record<SubscriptionTier, InfestationLevel[]> = {
   free: ['baixo', 'medio', 'alto'],

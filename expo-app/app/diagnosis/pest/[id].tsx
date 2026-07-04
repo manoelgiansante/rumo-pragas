@@ -7,9 +7,8 @@
  *  - History (future)
  *  - Deep links (future)
  *
- * Premium gate: this entire screen is Pro-only. The Result CTA already
- * checks `isPro` before navigating here, but we also enforce it here so
- * that deep links / history links can't bypass.
+ * The app ships 100% FREE (Apple Guideline 3.1.1): this screen is reachable by
+ * every user — from the result CTA, history or a deep link. No entitlement gate.
  *
  * Data flow:
  *   mount → loadPestFromCache(id) → render hero, sections, products
@@ -17,7 +16,7 @@
  *   for pest fact sheets ships, add `fetchPestFromRemote` as fallback.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -39,7 +38,6 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../../constants/theme';
 import { PremiumCard } from '../../../components/PremiumCard';
 import { CollapsibleSection } from '../../../components/CollapsibleSection';
-import { useSubscription } from '../../../hooks/useSubscription';
 import { loadPestFromCache, type PestCacheEntry } from '../../../services/pestRegistry';
 
 const HERO_HEIGHT = 320;
@@ -62,7 +60,6 @@ export default function PestDetailScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isPro, isLoading: subLoading } = useSubscription();
   const [entry, setEntry] = useState<PestCacheEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,26 +77,6 @@ export default function PestDetailScreen() {
     };
   }, [id]);
 
-  // Premium gate redirect — never reachable in V1 (Result already gates),
-  // but defensive against deep links / future history surface.
-  //
-  // `/paywall` is a MODAL, so this screen stays mounted UNDERNEATH it after the
-  // replace. A one-shot ref guarantees we never re-fire the replace toward the
-  // modal (which would feed the navigation store and risk an update loop) if
-  // this effect re-runs for any reason while the paywall is open.
-  const paywallRedirectedRef = useRef(false);
-  useEffect(() => {
-    if (subLoading) return;
-    if (!isPro && !paywallRedirectedRef.current) {
-      paywallRedirectedRef.current = true;
-      router.replace('/paywall');
-    } else if (isPro) {
-      // Entitlement arrived (e.g. user purchased on the paywall) — re-arm so a
-      // future downgrade can gate again.
-      paywallRedirectedRef.current = false;
-    }
-  }, [subLoading, isPro]);
-
   const handleOpenLink = useCallback(
     async (url: string) => {
       try {
@@ -116,7 +93,7 @@ export default function PestDetailScreen() {
     [t],
   );
 
-  if (loading || subLoading) {
+  if (loading) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
         <View style={styles.loadingCenter}>
