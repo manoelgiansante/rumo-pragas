@@ -140,9 +140,7 @@ describe('resolveNotificationRoute', () => {
   it('rejects diagnosis payloads with missing or malformed UUID', () => {
     expect(resolveNotificationRoute({ screen: 'diagnosis' })).toBeNull();
     expect(resolveNotificationRoute({ screen: 'diagnosis', diagnosisId: '' })).toBeNull();
-    expect(
-      resolveNotificationRoute({ screen: 'diagnosis', diagnosisId: 'not-a-uuid' }),
-    ).toBeNull();
+    expect(resolveNotificationRoute({ screen: 'diagnosis', diagnosisId: 'not-a-uuid' })).toBeNull();
     expect(
       resolveNotificationRoute({
         screen: 'diagnosis',
@@ -166,9 +164,12 @@ describe('resolveNotificationRoute', () => {
   });
 
   it('maps each whitelisted screen to its static route', () => {
-    expect(resolveNotificationRoute({ screen: 'paywall' })).toBe('/paywall');
     expect(resolveNotificationRoute({ screen: 'settings' })).toBe('/(tabs)/settings');
     expect(resolveNotificationRoute({ screen: 'history' })).toBe('/(tabs)/history');
     expect(resolveNotificationRoute({ screen: 'home' })).toBe('/(tabs)');
+  });
+
+  it('rejects the removed paywall screen (app is 100% free)', () => {
+    expect(resolveNotificationRoute({ screen: 'paywall' })).toBeNull();
   });
 });

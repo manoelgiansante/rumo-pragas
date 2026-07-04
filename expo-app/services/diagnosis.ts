@@ -175,10 +175,10 @@ async function sendDiagnosisLegacy(args: {
   clearTimeout(timeoutId);
 
   if (!response.ok) {
-    // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
-    // FREE (Apple Guideline 2.3.2) with UNLIMITED diagnoses, so there is no
-    // paywall to send the user to. Should the backend ever still return a 403
-    // limit, surface it as a plain error — NEVER navigate to a paywall/buy flow.
+    // FREE BUILD (Apple Guideline 3.1.1): the app is 100% free with UNLIMITED
+    // diagnoses, so there is nowhere to send the user to buy. Should the backend
+    // ever still return a 403 limit, surface it as a plain error — NEVER
+    // navigate to any buy flow.
     if (response.status === 403) {
       try {
         const errorData = await response.json();

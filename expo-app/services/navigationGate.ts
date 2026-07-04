@@ -49,7 +49,7 @@ export const GATE_HREF: Record<GateSegment, string> = {
 
 /**
  * The ONLY top-level segments the gate is allowed to route between. Every other
- * concrete top-level route in the app (`diagnosis`, `edit-profile`, `paywall`,
+ * concrete top-level route in the app (`diagnosis`, `edit-profile`,
  * `terms`, `privacy`, `+not-found`) is a DELIBERATE user-initiated destination
  * the gate must NOT interfere with.
  */
@@ -68,7 +68,7 @@ export const GATE_SEGMENTS: readonly GateSegment[] = [
  * gate-owned: at cold start we DO want the gate to route the user from the
  * blank index to the correct destination.
  *
- * Any OTHER concrete segment (e.g. `diagnosis`, `paywall`) is NOT gate-owned —
+ * Any OTHER concrete segment (e.g. `diagnosis`, `edit-profile`) is NOT gate-owned —
  * the user navigated there on purpose (e.g. tapped "Diagnose Now"), and the
  * gate must leave them alone. This is the structural fix for the Apple 2.1(a)
  * "App returns to the same screen after tapping Diagnose Now" rejection: the
@@ -125,7 +125,7 @@ export function resolveGateTarget(state: GateState): GateSegment | null {
  * CRITICAL (Apple 2.1(a) — "returns to the same screen after tapping Diagnose
  * Now"): the gate must ONLY redirect when the user is on a gate-owned segment
  * that differs from the target. If the user is on a deliberate non-gate route
- * (`diagnosis`, `paywall`, `edit-profile`, `terms`, `privacy`), we return false
+ * (`diagnosis`, `edit-profile`, `terms`, `privacy`), we return false
  * so the gate leaves them there. Otherwise pushing `/diagnosis/camera` would be
  * instantly bounced back to `(tabs)` because `diagnosis !== target`.
  */

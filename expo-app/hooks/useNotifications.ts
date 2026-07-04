@@ -40,10 +40,9 @@ interface UseNotificationsReturn {
 // leaks that occasionally ship in dev pushes.
 const UUID_STRICT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type AllowedScreen = 'diagnosis' | 'paywall' | 'settings' | 'history' | 'home';
+type AllowedScreen = 'diagnosis' | 'settings' | 'history' | 'home';
 const ALLOWED_SCREENS: ReadonlySet<AllowedScreen> = new Set([
   'diagnosis',
-  'paywall',
   'settings',
   'history',
   'home',
@@ -73,8 +72,6 @@ export function resolveNotificationRoute(data: unknown): string | null {
       if (!isStrictUuid(id)) return null;
       return `/diagnosis/${id}`;
     }
-    case 'paywall':
-      return '/paywall';
     case 'settings':
       return '/(tabs)/settings';
     case 'history':

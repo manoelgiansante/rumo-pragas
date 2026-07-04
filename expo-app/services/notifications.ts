@@ -216,7 +216,7 @@ function buildDeviceFingerprint(): DeviceFingerprint {
  * the SECURITY DEFINER RPC `touch_push_token`. Idempotent server-side.
  *
  * `force=true` bypasses the 30-day cool-down and always hits the server.
- * Use it on explicit login or on app version upgrade. On every cold start
+ * Use it on explicit login or on app version update. On every cold start
  * the hook layer also calls this with force=false, which only hits the
  * network if the last sync is stale.
  *

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Gradients, FontSize, FontWeight } from '../constants/theme';
 
 /**
- * Premium avatar component used in Settings + Edit Profile.
+ * Avatar component used in Settings + Edit Profile.
  * Falls back to a green-gradient circle with the user's initial when no
  * `uri` is provided — this matches Apple/Google Material guidance for
  * personal profile avatars (always recognisable, never empty).
