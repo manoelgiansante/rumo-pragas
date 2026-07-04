@@ -28,9 +28,6 @@ import { getQueueCount } from '../../services/diagnosisQueue';
 import { schedulePestAlertNotifications } from '../../services/notifications';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
-import { useMonthlyUsage } from '../../hooks/useMonthlyUsage';
-
-const FREE_MONTHLY_DIAGNOSES = 3;
 
 const TIP_KEYS = [
   { icon: 'leaf', titleKey: 'home.tips.monitorTitle', descKey: 'home.tips.monitorDesc' },
@@ -56,17 +53,6 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { isTablet, contentMaxWidth } = useResponsive();
-  // Single source of truth for the subscription plan + monthly usage. Mirrors
-  // exactly what the camera/UsageCounter reads (the `subscriptions` table),
-  // so Home, camera, settings and cancellation can never disagree about
-  // whether the user is free or paying.
-  const {
-    plan,
-    remaining: monthlyRemaining,
-    limit: monthlyLimit,
-    refresh: refreshUsage,
-  } = useMonthlyUsage();
-  const isFreePlan = plan === 'free';
   const [weather, setWeather] = useState<WeatherCardData | null>(null);
   const [weatherRaw, setWeatherRaw] = useState<WeatherData | null>(null);
   const [diagnosisCount, setDiagnosisCount] = useState(0);
@@ -158,16 +144,10 @@ export default function HomeScreen() {
           }
         })(),
       );
-
-      // Plan + month-scoped usage are owned by useMonthlyUsage() (the shared
-      // source of truth read by the camera/UsageCounter). Refresh it here so
-      // pull-to-refresh keeps the trial pill in sync without duplicating the
-      // bespoke RevenueCat/Supabase logic that used to live in this screen.
-      promises.push(refreshUsage());
     }
 
     await Promise.all(promises);
-  }, [location, cityName, session, user, refreshUsage]);
+  }, [location, cityName, session, user]);
 
   // QW-1 (W16-1, 2026-05-22): Location prompt moved to consent-location.tsx#handleAccept.
   // Do NOT fire getCurrentLocation() here — it would re-prompt users who already
@@ -327,55 +307,6 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {isFreePlan &&
-          !diagnosisError &&
-          (() => {
-            const total = monthlyLimit ?? FREE_MONTHLY_DIAGNOSES;
-            const remaining = monthlyRemaining ?? total;
-            const exhausted = remaining === 0;
-            return (
-              <TouchableOpacity
-                testID={exhausted ? 'home-trial-exhausted' : 'home-trial-remaining'}
-                onPress={() => router.push('/paywall')}
-                activeOpacity={0.8}
-                style={[styles.trialCounter, exhausted && styles.trialCounterExhausted]}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  exhausted
-                    ? t('home.freeDiagnosesUsed')
-                    : t('home.freeDiagnosesRemaining', {
-                        count: remaining,
-                        total,
-                      })
-                }
-              >
-                <Ionicons
-                  name={exhausted ? 'alert-circle' : 'sparkles'}
-                  size={16}
-                  color={exhausted ? Colors.coral : Colors.accent}
-                />
-                <Text
-                  style={[
-                    styles.trialCounterText,
-                    { color: exhausted ? Colors.coral : Colors.accent },
-                  ]}
-                >
-                  {exhausted
-                    ? t('home.freeDiagnosesUsed')
-                    : t('home.freeDiagnosesRemaining', {
-                        count: remaining,
-                        total,
-                      })}
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color={exhausted ? Colors.coral : Colors.accent}
-                />
-              </TouchableOpacity>
-            );
-          })()}
-
         {pendingQueueCount > 0 && (
           <View style={styles.pendingCard} accessible accessibilityRole="alert">
             <Ionicons name="cloud-upload-outline" size={18} color={Colors.warmAmber} />
@@ -534,28 +465,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  trialCounter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'flex-start',
-    marginTop: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.accent + '14',
-    borderWidth: 1,
-    borderColor: Colors.accent + '33',
-  },
-  trialCounterExhausted: {
-    backgroundColor: Colors.coral + '14',
-    borderColor: Colors.coral + '33',
-  },
-  trialCounterText: {
-    fontSize: FontSize.caption,
-    fontWeight: '600',
-    flexShrink: 1,
   },
   statsRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   statCard: { alignItems: 'center', gap: 6 },
