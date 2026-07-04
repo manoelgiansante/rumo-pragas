@@ -40,9 +40,6 @@ export default {
     diagnosePestHint: 'Toque duas vezes para abrir a câmera',
     diagnoseNow: 'Diagnosticar agora',
     scanCtaHint: 'Resultado em segundos',
-    freeDiagnosesRemaining: '{{count}} de {{total}} diagnósticos grátis restantes este mês',
-    freeDiagnosesUsed: 'Você usou todos os diagnósticos grátis deste mês',
-    upgradeNow: 'Fazer upgrade',
     tips: {
       monitorTitle: 'Monitore regularmente',
       monitorDesc: 'Faça inspeções semanais nas áreas mais vulneráveis da lavoura',
@@ -240,7 +237,7 @@ export default {
       '⚠️ Confiança baixa — consulte um agrônomo antes de aplicar qualquer tratamento.',
     legalDisclaimer:
       'Este diagnóstico é auxiliar e não substitui receituário agronômico obrigatório por Lei 7.802/89. Consulte um agrônomo com CREA ativo antes de aplicar defensivos.',
-    // Premium redesign 2026-05-21 — Result + Pest Detail
+    // Redesign 2026-05-21 — Result + Pest Detail
     alternativeDiagnoses: 'Outras possibilidades',
     alternativeDiagnosesHint: 'Veja outros candidatos detectados pela IA',
     treatmentSummary: 'Resumo do tratamento (MIP)',
@@ -252,15 +249,8 @@ export default {
     treatmentLevelChemicalHint: 'Defensivos com receituário',
     viewDetails: 'Ver detalhes completos',
     viewDetailsHint: 'Abre a ficha técnica completa da praga',
-    sharePdf: 'Compartilhar PDF',
     saveToHistory: 'Salvar no histórico',
     savedToHistory: 'Diagnóstico salvo no histórico',
-    proLockedAlt: 'Recurso Pro — desbloqueie para ver alternativas',
-    proLockedShare: 'PDF é um recurso Pro',
-    proLockedHistory: 'Histórico ilimitado é Pro',
-    proLockedDetails: 'Ficha técnica completa é Pro',
-    proCtaUpgrade: 'Assinar Pro',
-    proCtaSee: 'Ver planos',
     confidenceBarA11y: 'Nível de confiança {{pct}} por cento',
     pestDetailTitle: 'Ficha técnica',
     pestDetailLifecycle: 'Ciclo de vida',
@@ -293,14 +283,6 @@ export default {
     pestDetailMonitoringEmpty: 'Sem método de monitoramento cadastrado.',
     // Loading screen step counter (e.g. "Passo 2 de 4")
     stepCounter: 'Passo {{current}} de {{total}}',
-    // Premium usage gate (camera entry pill)
-    usageFree: '{{used}}/{{limit}} grátis este mês',
-    usagePro: '{{used}}/{{limit}} do Pro este mês',
-    usageBlocked: 'Limite mensal atingido ({{limit}}) — toque para Pro',
-    usageLoadingA11y: 'Carregando uso mensal',
-    usageRemainingA11y: '{{remaining}} de {{limit}} diagnósticos restantes este mês',
-    usageBlockedA11y: 'Limite de {{limit}} diagnósticos atingido. Toque para fazer upgrade.',
-    usageUpgradeHint: 'Toque duas vezes para ver os planos Pro',
     // Top-3 alternatives card
     topAlternatives: 'Outras possibilidades',
     topAlternativesHint:
@@ -338,23 +320,12 @@ export default {
     referencesLabel: 'Fontes',
     referenceA11y: 'Fonte {{source}}, {{year}}',
     chipA11yUnlocked: 'Nível {{level}}, desbloqueado',
-    chipA11yLocked: 'Nível {{level}}, exclusivo para assinantes Pro. Toque para ver os planos.',
-    upgradeCtaTitle: 'Desbloquear protocolos completos',
-    upgradeCtaSubtitle:
-      '{{count}} nível(is) bloqueado(s) — assine Pro para acesso a manejo médio/alto + químicos.',
-    upgradeCtaA11y: 'Ver planos para desbloquear níveis de manejo Pro',
   },
   // Settings
   settings: {
     profile: 'Perfil',
     editProfile: 'Editar Perfil',
     farmerRole: 'Produtor Rural',
-    subscription: 'Assinatura',
-    currentPlan: 'Plano Atual',
-    monthlyUsage: 'Uso Mensal',
-    upgradePlan: 'Upgrade de Plano',
-    manageSubscription: 'Gerenciar Assinatura',
-    manageSubscriptionError: 'Não foi possível abrir a tela de assinaturas.',
     appearance: 'Aparência e Preferências',
     darkMode: 'Modo Escuro',
     language: 'Idioma',
@@ -381,9 +352,6 @@ export default {
     nameRequired: 'O nome é obrigatório.',
     profileSaved: 'Perfil atualizado com sucesso!',
     profileSaveError: 'Não foi possível salvar o perfil. Tente novamente.',
-    planFree: 'Gratuito',
-    planPro: 'Pro',
-    planEnterprise: 'Enterprise',
     darkModeActive: 'Ativo',
     darkModeInactive: 'Inativo',
     languageTitle: 'Idioma / Language',
@@ -391,10 +359,6 @@ export default {
     deletionReceivedMessage:
       'Sua conta e todos os seus dados foram excluídos permanentemente. Você será desconectado agora.',
     deletionError: 'Não foi possível processar a solicitação. Tente novamente.',
-    diagnosticsCountUnlimited: '{{used}} diagnósticos',
-    diagnosticsCountLimited: '{{used}}/{{limit}} diagnósticos',
-    subLoadError: 'Erro ao carregar assinatura',
-    subLoadRetry: 'Toque para tentar novamente',
     pushNotifA11y: 'Notificações push',
     pushNotifications: 'Notificações push',
     signOutA11y: 'Sair da conta',
@@ -414,7 +378,7 @@ export default {
       marketingA11y: 'Ofertas promocionais e descontos',
       saveError: 'Não foi possível salvar a preferência. Tente novamente.',
     },
-    // Premium polish — 2026-05-21
+    // Refined settings layout — 2026-05-21
     headerTitle: 'Ajustes',
     sectionAccount: 'Conta',
     sectionPreferences: 'Preferências',
@@ -423,9 +387,6 @@ export default {
     sectionAbout: 'Sobre',
     privacyFooter:
       'Em conformidade com a LGPD (Lei 13.709/2018). Você pode revogar permissões a qualquer momento.',
-    subTaglineFree: 'Faça upgrade para diagnósticos ilimitados e suporte prioritário.',
-    subTaglinePro: 'Você tem acesso completo ao agrônomo IA. Obrigado por apoiar o Rumo Pragas IA.',
-    diagnosticsRemaining: '{{remaining}} diagnósticos restantes este mês',
   },
   // Common
   common: {
@@ -480,7 +441,6 @@ export default {
     limitReachedTitle: 'Limite atingido',
     limitReachedMessage:
       'Muitas mensagens em sequência. Aguarde alguns instantes e tente novamente.',
-    upgradePlan: 'Fazer upgrade',
     suggestion1: 'Como identificar ferrugem asiática na soja?',
     suggestion2: 'Qual o melhor manejo para lagarta do cartucho?',
     suggestion3: 'Quando aplicar fungicida preventivo no café?',
@@ -507,7 +467,7 @@ export default {
       'A imagem é muito grande ({{size}}MB). O tamanho máximo permitido é 5MB. Tente reduzir a resolução da foto.',
     invalidServer: 'Configuração de servidor inválida. Verifique as variáveis de ambiente.',
     sessionExpired: 'Sessão expirada. Faça login novamente.',
-    noPermission: 'Você não tem permissão para esta ação. Verifique sua assinatura.',
+    noPermission: 'Você não tem permissão para esta ação.',
     imageTooLargeServer: 'A imagem enviada é muito grande. Tente reduzir a resolução.',
     tooManyRequests: 'Muitas solicitações. Aguarde um momento e tente novamente.',
     serverUnavailable:
@@ -524,9 +484,6 @@ export default {
     fetchCount: 'Falha ao buscar contagem',
     locationPermissionDenied: 'Permissão de localização negada',
     locationError: 'Erro ao obter localização',
-    subscriptionCheckFailed: 'Não foi possível verificar sua assinatura. Tente novamente.',
-    restorePurchasesFailed:
-      'Não foi possível restaurar suas compras. Verifique sua conexão e tente novamente.',
   },
   errorBoundary: {
     title: 'Algo deu errado',
@@ -658,7 +615,7 @@ export default {
     loginRequired: 'Você precisa estar logado para usar o chat IA',
     sessionExpired: 'Sessão expirada. Faça login novamente.',
     chatLimitReached: 'Muitas mensagens em sequência. Aguarde um momento e tente novamente.',
-    noPermission: 'Você não tem permissão para usar o chat IA. Verifique sua assinatura.',
+    noPermission: 'Você não tem permissão para usar o chat IA.',
     tooManyMessages: 'Muitas mensagens enviadas. Aguarde um momento e tente novamente.',
     serviceUnavailable:
       'O serviço de IA está temporariamente indisponível. Tente novamente em alguns minutos.',
@@ -779,67 +736,6 @@ export default {
     uva: 'Uva',
     banana: 'Banana',
   },
-  // Paywall
-  paywall: {
-    title: 'Rumo Pragas IA Pro',
-    subtitle: 'Desbloqueie todo o potencial da IA para proteção da sua lavoura',
-    subscribe: 'Assinar',
-    continueFree: 'Continuar Gratuito',
-    restorePurchases: 'Restaurar compras',
-    perMonth: '/mês',
-    closeA11y: 'Fechar paywall',
-    comingSoonTitle: 'Em breve!',
-    comingSoonMsg: 'Integração de pagamento em breve! Por enquanto, aproveite o plano gratuito.',
-    planUnavailableTitle: 'Plano indisponível',
-    planUnavailableMsg:
-      'Este plano ainda não está disponível na sua loja. Tente novamente mais tarde.',
-    subscriptionActivated: 'Assinatura ativada com sucesso!',
-    enjoyFeatures: 'Aproveite todos os recursos.',
-    purchaseError: 'Erro na compra',
-    purchaseErrorMsg: 'Ocorreu um erro ao processar a compra.',
-    purchasesRestored: 'Compras restauradas!',
-    subscriptionReactivated: 'Sua assinatura foi reativada.',
-    noSubscriptionFound: 'Nenhuma assinatura encontrada',
-    noSubscriptionFoundMsg: 'Não encontramos compras anteriores.',
-    restoreError: 'Não foi possível restaurar as compras.',
-    restoreA11y: 'Restaurar compras anteriores',
-    featuresIncluded: 'Recursos incluídos',
-    cancelNote: 'Cancele a qualquer momento. Sem compromisso.',
-    legalDisclosure:
-      'Pagamento será cobrado na sua conta da App Store/Google Play na confirmação da compra. A assinatura é renovada automaticamente, salvo se cancelada com pelo menos 24 horas de antecedência ao fim do período atual. A renovação é cobrada nas 24 horas anteriores ao fim do período pelo mesmo valor. Você pode gerenciar e cancelar suas assinaturas indo para as configurações da sua conta na loja após a compra.',
-    legalPrivacy: 'Política de Privacidade',
-    legalTerms: 'Termos de Uso',
-    legalLinksA11y: 'Abrir documentos legais',
-    unlimited: 'ilimitado',
-    diagPerMonth: 'diag/mês',
-    popular: 'Popular',
-    continueFreePlanA11y: 'Continuar com plano gratuito',
-    subscribePlanA11y: 'Assinar plano {{name}} por {{price}}',
-    planA11y: 'Plano {{name}}, {{price}}, {{limit}}',
-    unlimitedDiagnoses: 'diagnósticos ilimitados',
-    limitedDiagnoses: '{{count}} diagnósticos por mês',
-    plans: {
-      free: 'Gratuito',
-      freeDiag: '3 diagnósticos/mês',
-      pestLibrary: 'Biblioteca de pragas',
-      limitedChat: 'Chat IA limitado',
-      pro: 'Pro',
-      proDiag: '30 diagnósticos/mês',
-      fullLibrary: 'Biblioteca completa',
-      unlimitedChat: 'Chat IA ilimitado',
-      fullHistory: 'Histórico completo',
-      prioritySupport: 'Suporte prioritário',
-      enterprise: 'Enterprise',
-      unlimitedDiag: 'Diagnósticos ilimitados',
-      allPro: 'Tudo do Pro',
-      apiIntegration: 'API de integração',
-      advancedDashboard: 'Dashboard avançado',
-      dedicatedSupport: 'Suporte dedicado',
-      freePrice: 'R$ 0',
-      proPrice: 'R$ 29/mês',
-      enterprisePrice: 'R$ 69/mês',
-    },
-  },
   // Onboarding
   onboarding: {
     page1Title: 'Diagnóstico com IA',
@@ -889,7 +785,7 @@ export default {
     stateSelectA11y: 'Selecionar estado {{state}}',
     cropToggleA11y: 'Alternar cultura {{crop}}',
     emailReadOnlyA11y: 'Email (somente leitura)',
-    // Premium polish — 2026-05-21
+    // Polished UI — 2026-05-21
     phone: 'Telefone',
     phoneA11y: 'Telefone (opcional)',
     avatarHint: 'Toque na foto para alterar',
