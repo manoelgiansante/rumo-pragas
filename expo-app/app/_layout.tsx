@@ -170,46 +170,15 @@ function RootLayoutNav() {
   // If ads/cross-app tracking are added in the future: reintroduce with a pre-prompt
   // screen explaining the purpose + gate call behind a post-login guard + AsyncStorage flag.
 
-  // Initialise RevenueCat for in-app purchases (never blocks startup).
-  // The purchases service is loaded LAZILY via require() inside the effect —
-  // NOT imported at module scope — so `react-native-purchases` (a StoreKit
-  // TurboModule) is never pulled into the root layout's bundle-eval path. On
-  // iPad/iOS 26 New Architecture, evaluating that native module during cold
-  // start was a freeze/SIGABRT risk. Deferring to a post-mount effect means it
-  // only runs once React is alive and the splash watchdog is armed.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { initializePurchases } = await import('../services/purchases');
-        if (cancelled) return;
-        await initializePurchases(user?.id);
-      } catch (e) {
-        if (__DEV__) console.warn('[RevenueCat] Init failed (non-blocking):', e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
+  // The app ships 100% FREE (Apple Guideline 3.1.1) — there is no In-App
+  // Purchase, no RevenueCat init and no subscription sync. Entitlement plumbing
+  // was removed in fix/pragas-3-1-1-free-sweep-2026-07-03.
 
-  // Initialize analytics and subscription sync when user is authenticated.
-  // subscriptionSync (also a react-native-purchases consumer) is lazy-loaded
-  // for the same iPad cold-start reason as above.
+  // Initialize analytics + Sentry user context when the user is authenticated.
   useEffect(() => {
     if (user?.id) {
       const uid = user.id;
       initAnalytics(uid);
-      (async () => {
-        try {
-          const { syncSubscriptionToSupabase, startSubscriptionListener } =
-            await import('../services/subscriptionSync');
-          await syncSubscriptionToSupabase(uid);
-          startSubscriptionListener(uid);
-        } catch (err: unknown) {
-          if (__DEV__) console.error('[Layout] Subscription sync failed:', err);
-        }
-      })();
       // Set Sentry user context for crash reports — ID ONLY, no PII (no email).
       // beforeSend strips email defensively, but we also avoid passing it here.
       Sentry.setUser({ id: uid });
@@ -217,14 +186,6 @@ function RootLayoutNav() {
       Sentry.setTag('app.version', Constants.expoConfig?.version ?? 'unknown');
     } else {
       resetAnalytics();
-      (async () => {
-        try {
-          const { stopSubscriptionListener } = await import('../services/subscriptionSync');
-          stopSubscriptionListener();
-        } catch {
-          /* non-fatal */
-        }
-      })();
       Sentry.setUser(null);
     }
   }, [user?.id, user?.email]);
@@ -312,7 +273,7 @@ function RootLayoutNav() {
       return;
     }
 
-    // Non-gate-owned route (e.g. `diagnosis`, `paywall`, `edit-profile`): the
+    // Non-gate-owned route (e.g. `diagnosis`, `edit-profile`, `terms`): the
     // user deliberately pushed a modal/detail route ON TOP of the gate target.
     // The gate must NOT touch them and — crucially — must NOT clear the arrival
     // pin, otherwise returning to the gate target later could re-fire a replace.
