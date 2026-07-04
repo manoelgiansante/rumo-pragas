@@ -2,7 +2,7 @@
  * VoiceRecorderButton — push-to-talk recorder, gated behind EXPO_PUBLIC_VOICE_ENABLED.
  *
  * Wave AA5 voice integration 2026-05-24 (retry of Y12):
- *   Upgrades the prior STUB (which just Alert-ed the local URI) to wire the
+ *   Replaces the prior STUB (which just Alert-ed the local URI) to wire the
  *   real IA Hub voice contract through `lib/voice-sdk.ts`. On release of the
  *   press, the recorded audio file URI is POSTed to `/api/v1/voice/transcribe`;
  *   the resolved transcript is handed to the caller via `onTranscribed`, which

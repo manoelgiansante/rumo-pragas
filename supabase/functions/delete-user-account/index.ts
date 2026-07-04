@@ -317,11 +317,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ── Step 6: Delete profile (id = auth.users.id) ──
+    // ── Step 6: Delete profile ──
+    // pragas_profiles PK `id` is a random uuid; the auth uid lives in
+    // `user_id` (unique). Delete by user_id — `.eq("id", userId)` matched 0
+    // rows in prod (DB-C1). The auth-user delete below still CASCADEs the row,
+    // but scoping this explicitly makes the erasure correct + observable.
     const { error: profileError } = await admin
       .from("pragas_profiles")
       .delete()
-      .eq("id", userId);
+      .eq("user_id", userId);
 
     if (profileError) {
       logJson(

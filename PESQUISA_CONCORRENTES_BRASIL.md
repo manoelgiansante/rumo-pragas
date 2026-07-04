@@ -833,6 +833,8 @@
 
 ## 7. MODELO DE MONETIZACAO PROPOSTO
 
+> ⛔ **SUPERADO (nota 2026-07-02):** por decisão do CEO em 01/jul (pós-rejeição Apple 2.3.2/2.1b), o Rumo Pragas é **100% GRÁTIS** — sem paywall, sem IAP (subscriptions do ASC deletadas), sem planos pagos. A seção abaixo é registro histórico e NÃO deve ser usada como fonte para reintroduzir cobrança; re-monetização é update futuro com decisão explícita do CEO e product IDs novos. Ver `AUDIT/06_CONCORRENTES.md` (02/jul) para a leitura competitiva atual sob o eixo grátis.
+
 ### Plano Gratuito (FREEMIUM)
 - Identificacao por IA: ate 10 fotos/mes
 - Catalogo completo de pragas

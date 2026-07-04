@@ -34,7 +34,7 @@ function getSeverityColor(severity: string): string {
     case 'high':
       return Colors.coral;
     case 'critical':
-      return '#D32F2F';
+      return Colors.coral;
     default:
       return Colors.systemGray;
   }

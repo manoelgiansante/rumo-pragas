@@ -19,7 +19,6 @@ import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
-import { UsageCounter } from '../../components/UsageCounter';
 import { VoiceRecorderButton } from '../../components/VoiceRecorderButton';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
@@ -49,7 +48,7 @@ export default function CameraScreen() {
   const pickImage = async (useCamera: boolean) => {
     // Idempotency guard: never let processing overlap with re-entry.
     if (processing) return;
-    // Medium impact on the capture path (camera) gives a more "premium" tactile
+    // Medium impact on the capture path (camera) gives a more pronounced tactile
     // feedback than the previous Light. Gallery selection keeps Light because
     // the user expects a quieter affordance for "pick existing photo".
     Haptics.impactAsync(
@@ -205,9 +204,6 @@ export default function CameraScreen() {
           <Text style={styles.frameGuideHint}>{t('diagnosis.frameLeafHint')}</Text>
         </View>
 
-        {/* Premium gate: monthly usage pill (free=3/mo, pro=30/mo, enterprise=hidden) */}
-        <UsageCounter />
-
         <View style={styles.buttons}>
           <TouchableOpacity
             testID="diagnosis-camera-capture"
@@ -284,8 +280,8 @@ export default function CameraScreen() {
           </View>
           <PremiumCard>
             {[
-              { icon: 'sunny', color: '#FFD600', text: t('diagnosis.tipLight') },
-              { icon: 'expand', color: '#00BCD4', text: t('diagnosis.tipFocus') },
+              { icon: 'sunny', color: Colors.warmAmber, text: t('diagnosis.tipLight') },
+              { icon: 'expand', color: Colors.info, text: t('diagnosis.tipFocus') },
               {
                 icon: 'leaf',
                 color: Colors.accent,
@@ -429,7 +425,7 @@ const styles = StyleSheet.create({
   btnSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
   tips: { width: '100%', marginTop: 24 },
   tipsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  tipsTitle: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.warmAmber },
+  tipsTitle: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.earthText },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   tipText: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
   processingOverlay: {

@@ -1,5 +1,11 @@
 # ASO Final — Rumo Pragas
 
+> ⛔ **DEPRECATED (2026-07-02) — MODELO PAGO OBSOLETO. NÃO USAR ESTE DOC PARA PUBLICAR EM CONSOLE.**
+> O Rumo Pragas é **100% GRÁTIS** (decisão CEO 01/jul, pós-rejeição Apple 2.3.2/2.1b). As 3 subscriptions
+> do ASC foram DELETADAS em 02/jul. **NÃO reintroduzir IAP, paywall, trial ou preço** — as menções antigas
+> a "7 dias grátis" e "R$ 49,90/mês" neste doc foram corrigidas abaixo e NÃO devem voltar.
+> **Fonte canônica do metadata de loja (grátis):** `expo-app/store-assets/metadata/` (iOS + Android, pt-BR).
+
 App: **Rumo Pragas** (Rumo Pragas IA)
 Categoria primária: **Utilitários** (iOS) / **Ferramentas** (Android)
 Categoria secundária sugerida: **Produtividade**
@@ -25,9 +31,9 @@ Diagnóstico de praga por foto
 
 ### Promotional Text (até 170 caracteres, editável sem review)
 ```
-Tire uma foto da praga e receba o diagnóstico em segundos. IA treinada com lavouras brasileiras. 7 dias grátis, sem cartão. Funciona até sem internet.
+Tire uma foto da praga e receba o diagnóstico em segundos. IA treinada com lavouras brasileiras. 100% grátis, sem assinatura. Funciona até sem internet.
 ```
-*(165 caracteres)*
+*(152 caracteres)*
 
 ### Keywords (até 100 caracteres, separado por vírgula, sem espaços após vírgula, sem palavras já no Name/Subtitle)
 ```
@@ -61,11 +67,8 @@ PARA QUEM É
 • Gerentes de fazenda e encarregados de campo
 • Cooperativas e revendas agropecuárias
 
-PLANO E PREÇO
-• 7 dias grátis para testar todas as funcionalidades Pro (sem cadastrar cartão)
-• Após o trial: R$ 49,90/mês ou R$ 499/ano (2 meses grátis)
-• Plano Enterprise sob consulta para fazendas grandes e cooperativas
-• Cancelamento sem multa via app ou App Store a qualquer momento
+GRÁTIS PARA USAR
+• O Rumo Pragas está 100% gratuito: diagnósticos por IA, chat com a agrônoma virtual, biblioteca de pragas, histórico geolocalizado e exportação em PDF — sem cobrança e sem assinatura
 
 PRIVACIDADE E SEGURANÇA
 • 100% aderente à LGPD (Lei Geral de Proteção de Dados)
@@ -93,7 +96,7 @@ Versão 1.0 — estreia do Rumo Pragas no Brasil.
 • Mais de 30 culturas e 500 pragas catalogadas
 • Laudo em PDF profissional
 • Histórico da fazenda e alertas anônimos da sua região
-• 7 dias grátis para testar, sem cartão de crédito
+• 100% grátis: sem cobrança e sem assinatura
 Obrigado por confiar no nosso trabalho. Qualquer feedback, fale no WhatsApp do suporte.
 ```
 
@@ -162,11 +165,8 @@ Para quem é:
 • Gerentes e encarregados de fazenda
 • Cooperativas e revendas agropecuárias
 
-Plano e preço:
-• 7 dias grátis para testar as funcionalidades Pro (sem cartão de crédito)
-• Depois: R$ 49,90/mês ou R$ 499/ano (2 meses grátis no plano anual)
-• Plano Enterprise sob consulta para fazendas grandes e cooperativas
-• Cancelamento sem multa, a qualquer momento
+Grátis para usar:
+• O Rumo Pragas está 100% gratuito: diagnósticos por IA, chat com a agrônoma virtual, biblioteca de pragas, histórico e exportação em PDF — sem cobrança e sem assinatura
 
 Privacidade e segurança:
 • 100% aderente à LGPD (Lei Geral de Proteção de Dados)

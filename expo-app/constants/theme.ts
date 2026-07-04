@@ -1,23 +1,32 @@
-// Design tokens: Rumo Pragas palette (@agrorumo/tokens — pragas)
-// Deep leaf green (#0B3D2E) + ochre earth (#C89B3C) + warm off-white (not SaaS grey).
+// Design tokens: Rumo Pragas IA — DS claro/profissional p/ agronegócio (diretriz CEO 02/jul).
+// Fundo claro #FAFAF7 (legível no sol), verde-campo #2E7D32→#4CAF50 como cor PRIMÁRIA/ação,
+// terra/dourado-trigo (#C89B3C) como acento da vertical. A folha profunda (#0B3D2E) permanece
+// só como MARCA em gradiente/hero — nunca como CTA. Contraste AA garantido para texto.
 export const Colors = {
-  accent: '#0B3D2E',
-  accentDark: '#06281D',
-  accentLight: '#145A45',
-  techBlue: '#435044', // support tone (de-emphasized, was bright blue = AI slop)
+  // AÇÃO / primária — verde-campo (diretriz CEO #2E7D32→#4CAF50)
+  accent: '#2E7D32', // 4.98:1 como texto sobre #FAFAF7 (AA); 5.13:1 white sobre accent (AA)
+  accentDark: '#1B5E20', // ponta escura do verde-campo (gradiente/sombra de ação)
+  accentLight: '#4CAF50', // ponta clara do verde-campo
+  // MARCA — folha profunda (base de gradiente/hero; NÃO usar como CTA/ícone de ação)
+  brand: '#0B3D2E',
+  brandDark: '#06281D',
+  brandLight: '#145A45',
+  techBlue: '#435044', // tom de suporte terroso (de-emphasized; NÃO é azul — evita AI slop)
   techIndigo: '#7A5C2E',
-  warmAmber: '#C89B3C',
+  warmAmber: '#C89B3C', // ocre/dourado-trigo — ÍCONE/FUNDO/BORDA (falha WCAG AA como texto pequeno)
+  earthText: '#8A6A1F', // ocre escurecido p/ TEXTO em fundo claro (~4.6:1, WCAG AA)
   coral: '#B3462E',
+  info: '#3E6B7A', // suporte frio terroso (substitui teal/ciano #00BCD4/#009688 = AI slop)
   white: '#FFFFFF',
   black: '#000000',
-  background: '#F7F3EC',
-  card: '#FFFDF7',
+  background: '#FAFAF7', // diretriz CEO — branco quase puro, legível no sol
+  card: '#FFFFFF', // cartão limpo sobre o off-white
   cardDark: '#14201B',
   backgroundDark: '#0A130F',
   text: '#0F1A14',
   textDark: '#F2F7F4',
   textSecondary: '#435044',
-  textTertiary: '#8A8373',
+  textTertiary: '#6B6455',
   separator: '#E5DECD',
   separatorDark: '#1F2F29',
   systemGray: '#8A8373',
@@ -25,7 +34,7 @@ export const Colors = {
   systemGray3: '#BAB097',
   systemGray4: '#CEC7B4',
   systemGray5: '#E5DECD',
-  systemGray6: '#F7F3EC',
+  systemGray6: '#F2EFE6', // superfície cinza clara (grouped lists) distinta do bg #FAFAF7
 };
 
 export const DarkColors = {

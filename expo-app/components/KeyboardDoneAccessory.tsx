@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.systemGray6,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.separator,
   },

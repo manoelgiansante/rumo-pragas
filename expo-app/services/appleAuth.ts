@@ -157,7 +157,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
           await supabase
             .from('pragas_profiles')
             .update({ full_name: fullName })
-            .eq('id', data.user.id);
+            .eq('user_id', data.user.id);
         } catch {
           // swallowed on purpose — auth must not be blocked by profile drift
         }

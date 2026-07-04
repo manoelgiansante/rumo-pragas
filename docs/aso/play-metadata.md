@@ -1,5 +1,11 @@
 # Google Play Console — Rumo Pragas (pt-BR)
 
+> ⛔ **DEPRECATED (2026-07-02) — SEÇÕES DE IAP/PREÇO OBSOLETAS. NÃO PUBLICAR SKUs.**
+> O Rumo Pragas é **100% GRÁTIS** (decisão CEO 01/jul, pós-rejeição Apple 2.3.2/2.1b). As 3 subscriptions
+> do ASC foram DELETADAS em 02/jul e NENHUM SKU de IAP deve ser publicado na Play (Monetization > Products).
+> As menções antigas a "IAP: Yes (R$ 49,90/mês)" neste doc foram corrigidas abaixo e NÃO devem voltar.
+> **Fonte canônica do metadata de loja (grátis):** `expo-app/store-assets/metadata/` (iOS + Android, pt-BR).
+
 **Package name:** com.agrorumo.rumopragas
 **Track target:** Internal → Closed → Production
 **Primary Locale:** pt-BR
@@ -31,7 +37,7 @@
 - Content Rating: Everyone (IARC)
 - Target Audience: 18+
 - Contains Ads: No
-- In-app purchases: Yes (R$ 49,90/mês ou R$ 499/ano)
+- In-app purchases: **No** (app 100% grátis — subscriptions deletadas 02/jul; NÃO publicar SKUs)
 
 ---
 
@@ -148,4 +154,4 @@
 - [ ] Content rating questionnaire completo
 - [ ] Privacy policy URL validada (200 OK)
 - [ ] Contains ads? marcado como No
-- [ ] IAP SKUs publicados em Monetization > Products
+- [x] ~~IAP SKUs publicados em Monetization > Products~~ — N/A: app 100% grátis, **NÃO publicar SKUs** (subscriptions deletadas 02/jul)

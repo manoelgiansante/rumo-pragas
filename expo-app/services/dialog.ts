@@ -7,7 +7,7 @@ import type { AlertButton, AlertOptions } from 'react-native';
  * react-native-web ships `Alert` as a no-op (`static alert() {}`) — it renders
  * nothing and NEVER invokes the buttons' `onPress`. That silently breaks every
  * confirmation / feedback flow on the web target (sign-out, account deletion,
- * login validation, restore purchases, etc.).
+ * login validation, form errors, etc.).
  *
  * On native this delegates to `Alert.alert` unchanged. On web it maps to the
  * browser primitives while preserving button `onPress` semantics:

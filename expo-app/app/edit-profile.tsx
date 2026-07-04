@@ -102,7 +102,7 @@ export default function EditProfileScreen() {
         const { data } = await supabase
           .from('pragas_profiles')
           .select('full_name, city, state, phone, crops, avatar_url')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .single();
 
         if (mounted && data) {
@@ -206,7 +206,7 @@ export default function EditProfileScreen() {
         // no-op (0 rows, no error) and the avatar would appear to save but vanish.
         await supabase
           .from('pragas_profiles')
-          .upsert({ id: user.id, avatar_url: finalUrl }, { onConflict: 'id' });
+          .upsert({ user_id: user.id, avatar_url: finalUrl }, { onConflict: 'user_id' });
 
         setProfile((p) => ({ ...p, avatar_url: finalUrl }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -269,14 +269,14 @@ export default function EditProfileScreen() {
       // the row already exists, creates it when absent.
       const { error } = await supabase.from('pragas_profiles').upsert(
         {
-          id: user.id,
+          user_id: user.id,
           full_name: profile.full_name.trim(),
           city: profile.city.trim() || null,
           state: profile.state || null,
           phone: profile.phone.trim() || null,
           crops: profile.crops.length > 0 ? profile.crops : null,
         },
-        { onConflict: 'id' },
+        { onConflict: 'user_id' },
       );
 
       if (error) throw error;

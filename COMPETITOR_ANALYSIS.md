@@ -6,6 +6,15 @@
 
 ---
 
+## ATUALIZACAO 2026-07-02 — MEGA-AUDIT LANÇAMENTO (delta rápido)
+
+> Revalidação completa + tabela nova + TOP 10 features priorizadas em `AUDIT/06_CONCORRENTES.md`. Resumo do delta:
+> - **Aegro EM ACELERAÇÃO:** cresceu >30% no 1º tri/2026, meta anual revisada R$38M→R$42M. Segue R$500+/mês e SEM IA de foto.
+> - **ADICIONADOS ao radar:** **InCeres** (precisão BR, satélite/fertilidade/monitoramento manual, B2B, sem IA de foto) e **FarmSense** (FlightSensor — sensor óptico de contagem de insetos, hardware B2B EUA, sem presença BR; tendência, não ameaça).
+> - **Agrio** tem listing PT-BR na App Store BR ("Agrio: fitossanitário") — presença BR crescente, freemium pago US$4–32/mês confirmado.
+> - **Plantix, Cropwise, Farmbox, Pragueiro, manejo.app, Embrapa:** sem mudança de modelo. Nenhum concorrente novo com IA de foto grátis PT-BR detectado.
+> - **Código atual JÁ cobre** P0.5, P0.7 (share texto) e P0.8 (confiança+alternativas) do roadmap abaixo, além de clima (Open-Meteo), alertas clima→risco com push, chat IA e fila offline de diagnóstico — checar `AUDIT/06_CONCORRENTES.md` §4 antes de citar gaps deste doc.
+
 ## ATUALIZACAO 2026-07-01 — REVALIDACAO + MUDANCA DE POSICIONAMENTO (100% GRATIS)
 
 > Revalidado via firecrawl-search (Google Play, App Store, sites oficiais). Os dados de mercado abaixo (Plantix, Agrio, Aegro, Cropwise, Farmbox, Pragueiro) permanecem VALIDOS. Mudanca principal e no NOSSO app.

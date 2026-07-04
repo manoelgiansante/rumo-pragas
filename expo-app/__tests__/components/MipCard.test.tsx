@@ -1,5 +1,6 @@
 /**
- * Tests for MipCard — premium gating, loading/empty states, paywall CTA.
+ * Tests for MipCard — loading/empty states, level selection, references.
+ * The app is 100% free, so every level is selectable and there is no CTA.
  */
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
@@ -171,39 +172,29 @@ describe('MipCard', () => {
   });
 
   it('renders all three chips with one unlocked for free tier', () => {
-    const { getByTestId } = render(
-      <MipCard knowledge={makeKnowledge('free')} tier="free" />,
-    );
+    const { getByTestId } = render(<MipCard knowledge={makeKnowledge('free')} tier="free" />);
     expect(getByTestId('mip-chip-baixo')).toBeTruthy();
     expect(getByTestId('mip-chip-medio')).toBeTruthy();
     expect(getByTestId('mip-chip-alto')).toBeTruthy();
   });
 
-  it('routes to paywall when free user taps a locked chip', () => {
+  it('selects the tapped level and never navigates away (free build)', () => {
     const onAnalytics = jest.fn();
     const { getByTestId } = render(
-      <MipCard
-        knowledge={makeKnowledge('free')}
-        tier="free"
-        onAnalyticsEvent={onAnalytics}
-      />,
+      <MipCard knowledge={makeKnowledge('free')} tier="free" onAnalyticsEvent={onAnalytics} />,
     );
     fireEvent.press(getByTestId('mip-chip-medio'));
-    expect(mockRouterPush).toHaveBeenCalledWith('/paywall');
+    expect(mockRouterPush).not.toHaveBeenCalled();
     expect(onAnalytics).toHaveBeenCalledWith(
-      'mip_paywall_tap',
+      'mip_level_selected',
       expect.objectContaining({ level: 'medio', tier: 'free' }),
     );
   });
 
-  it('does NOT route to paywall when pro user taps any chip', () => {
+  it('selects any chip without navigating for pro users', () => {
     const onAnalytics = jest.fn();
     const { getByTestId } = render(
-      <MipCard
-        knowledge={makeKnowledge('pro')}
-        tier="pro"
-        onAnalyticsEvent={onAnalytics}
-      />,
+      <MipCard knowledge={makeKnowledge('pro')} tier="pro" onAnalyticsEvent={onAnalytics} />,
     );
     fireEvent.press(getByTestId('mip-chip-alto'));
     expect(mockRouterPush).not.toHaveBeenCalled();
@@ -213,46 +204,29 @@ describe('MipCard', () => {
     );
   });
 
-  it('shows upgrade CTA when free user has locked levels', () => {
-    const { getByTestId } = render(
-      <MipCard knowledge={makeKnowledge('free')} tier="free" />,
-    );
-    expect(getByTestId('mip-upgrade-cta')).toBeTruthy();
-  });
-
-  it('hides upgrade CTA for pro users', () => {
-    const { queryByTestId } = render(
-      <MipCard knowledge={makeKnowledge('pro')} tier="pro" />,
-    );
+  it('never renders an upgrade CTA', () => {
+    const { queryByTestId } = render(<MipCard knowledge={makeKnowledge('free')} tier="free" />);
     expect(queryByTestId('mip-upgrade-cta')).toBeNull();
   });
 
   it('always renders the CREA disclaimer', () => {
-    const { getByText } = render(
-      <MipCard knowledge={makeKnowledge('free')} tier="free" />,
-    );
+    const { getByText } = render(<MipCard knowledge={makeKnowledge('free')} tier="free" />);
     expect(getByText(/Disclaimer CREA fixo de teste/i)).toBeTruthy();
   });
 
   it('renders the source references', () => {
-    const { getByText } = render(
-      <MipCard knowledge={makeKnowledge('pro')} tier="pro" />,
-    );
+    const { getByText } = render(<MipCard knowledge={makeKnowledge('pro')} tier="pro" />);
     expect(getByText('EMBRAPA')).toBeTruthy();
     expect(getByText('MAPA')).toBeTruthy();
   });
 
-  it('matches snapshot for free tier locked state', () => {
-    const { toJSON } = render(
-      <MipCard knowledge={makeKnowledge('free')} tier="free" />,
-    );
+  it('matches snapshot for free tier', () => {
+    const { toJSON } = render(<MipCard knowledge={makeKnowledge('free')} tier="free" />);
     expect(toJSON()).toMatchSnapshot();
   });
 
-  it('matches snapshot for pro tier unlocked state', () => {
-    const { toJSON } = render(
-      <MipCard knowledge={makeKnowledge('pro')} tier="pro" />,
-    );
+  it('matches snapshot for pro tier', () => {
+    const { toJSON } = render(<MipCard knowledge={makeKnowledge('pro')} tier="pro" />);
     expect(toJSON()).toMatchSnapshot();
   });
 });

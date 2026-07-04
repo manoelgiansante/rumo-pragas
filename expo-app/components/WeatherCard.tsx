@@ -102,7 +102,7 @@ export const WeatherCard = React.memo(function WeatherCard({
           <MetricRow
             icon="water"
             value={`${Math.round(weather.humidity)}%`}
-            color="#00BCD4"
+            color={Colors.info}
             isDark={isDark}
           />
           <MetricRow
@@ -114,7 +114,7 @@ export const WeatherCard = React.memo(function WeatherCard({
           <MetricRow
             icon="leaf"
             value={`${Math.round(weather.windSpeed)} km/h`}
-            color="#009688"
+            color={Colors.accent}
             isDark={isDark}
           />
         </View>

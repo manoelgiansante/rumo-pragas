@@ -138,9 +138,9 @@ export default function TermsScreen() {
           Você pode encerrar sua conta e excluir todos os seus dados a qualquer momento. Pelo
           próprio aplicativo, em Ajustes {'>'} Excluir conta, a exclusão é imediata e irreversível.
           Alternativamente, você pode solicitar a exclusão pela página
-          https://pragas.agrorumo.com/delete-account; nesse caso o pedido é processado e concluído
-          em até 15 (quinze) dias. A AgroRumo reserva-se o direito de suspender ou encerrar contas
-          que violem estes Termos de Uso, sem aviso prévio.
+          https://pragas.agrorumo.com/excluir-conta; nesse caso o pedido é processado e concluído em
+          até 15 (quinze) dias. A AgroRumo reserva-se o direito de suspender ou encerrar contas que
+          violem estes Termos de Uso, sem aviso prévio.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">

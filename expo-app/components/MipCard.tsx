@@ -1,16 +1,16 @@
 /**
  * MipCard
  *
- * Premium-gated catalog card rendered after the diagnosis enrichment
- * sections. Shows three infestation-level chips (baixo / medio / alto)
- * with the recommendation for the selected level inside a collapsible.
+ * Catalog card rendered after the diagnosis enrichment sections. Shows three
+ * infestation-level chips (baixo / medio / alto) with the recommendation for
+ * the selected level inside a collapsible.
  *
- * Free users: only `baixo` chip is interactive — the other two are
- * locked behind a paywall CTA. Pro/Enterprise: all three unlocked.
+ * The app is 100% free, so every level is available to every user — tapping any
+ * chip simply selects it. No locked chips and no CTA.
  *
  * Always-visible compliance:
- *  - CREA disclaimer (MIP_CREA_DISCLAIMER) — never gated.
- *  - References (EMBRAPA / MAPA / IRAC / FRAC) — citable to all tiers.
+ *  - CREA disclaimer (MIP_CREA_DISCLAIMER).
+ *  - References (EMBRAPA / MAPA / IRAC / FRAC) — citable to everyone.
  *
  * Three runtime states:
  *  - `loading`: skeleton matching the rest of the screen
@@ -20,34 +20,29 @@
  * Renders nothing when `enabled` is false (healthy plant / errors).
  */
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
-import { router } from 'expo-router';
+import { Linking, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { Colors, FontSize, FontWeight, Spacing } from '../constants/theme';
 import { PremiumCard } from './PremiumCard';
 import { SkeletonLoader } from './SkeletonLoader';
 import type { InfestationLevel, MipReference } from '../data/mip';
-import type { MipLevelData, SubscriptionTier, UseMipKnowledgeResult } from '../hooks/useMipKnowledge';
+import type {
+  MipLevelData,
+  SubscriptionTier,
+  UseMipKnowledgeResult,
+} from '../hooks/useMipKnowledge';
 
 interface MipCardProps {
   /** Hook output — pass straight through. */
   knowledge: UseMipKnowledgeResult;
-  /** Subscription tier — used for upsell copy. */
+  /** Plan tier — retained only as an analytics dimension. */
   tier: SubscriptionTier;
   /** Hide the whole card (healthy plant, error states). */
   enabled?: boolean;
   /**
-   * Optional analytics hook. Fired when user toggles a level, opens a
-   * reference URL or taps the paywall CTA.
+   * Optional analytics hook. Fired when the user toggles a level or opens a
+   * reference URL.
    */
   onAnalyticsEvent?: (event: string, properties?: Record<string, unknown>) => void;
 }
@@ -64,12 +59,11 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
   const { t } = useTranslation();
   const isDark = useColorScheme() === 'dark';
 
-  // Selected level defaults to the first unlocked one — free user lands on
-  // "baixo", pro lands on "baixo" by default but can swap to medio/alto.
-  const initialLevel: InfestationLevel = useMemo(() => {
-    const firstUnlocked = knowledge.levels.find((l) => l.unlocked);
-    return firstUnlocked?.level ?? 'baixo';
-  }, [knowledge.levels]);
+  // Selected level defaults to the first available one ("baixo").
+  const initialLevel: InfestationLevel = useMemo(
+    () => knowledge.levels[0]?.level ?? 'baixo',
+    [knowledge.levels],
+  );
 
   const [selectedLevel, setSelectedLevel] = useState<InfestationLevel>(initialLevel);
 
@@ -82,15 +76,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
     (level: InfestationLevel) => {
       const found = knowledge.levels.find((l) => l.level === level);
       if (!found) return;
-      if (!found.unlocked) {
-        onAnalyticsEvent?.('mip_paywall_tap', {
-          level,
-          entry_id: knowledge.entry?.id,
-          tier,
-        });
-        router.push('/paywall');
-        return;
-      }
       setSelectedLevel(level);
       onAnalyticsEvent?.('mip_level_selected', {
         level,
@@ -110,15 +95,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
     },
     [onAnalyticsEvent],
   );
-
-  const handleUpgradePress = useCallback(() => {
-    onAnalyticsEvent?.('mip_paywall_tap', {
-      level: 'cta',
-      entry_id: knowledge.entry?.id,
-      tier,
-    });
-    router.push('/paywall');
-  }, [knowledge.entry?.id, onAnalyticsEvent, tier]);
 
   if (!enabled) return null;
 
@@ -161,200 +137,166 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
 
   const rec = selected.recommendation;
   const selectedColor = LEVEL_COLORS[selectedLevel];
-  const lockedCount = knowledge.levels.filter((l) => !l.unlocked).length;
 
   return (
     <View testID="mip-card">
       <PremiumCard style={styles.cardWrap}>
-      <View style={styles.titleRow}>
-        <Ionicons name="leaf" size={18} color={Colors.accent} />
-        <Text style={[styles.title, isDark && styles.textDark]}>{t('mip.title')}</Text>
-        <View style={styles.tierBadge}>
-          <Ionicons name="shield-checkmark" size={10} color={Colors.accent} />
-          <Text style={styles.tierBadgeText}>EMBRAPA / MAPA</Text>
+        <View style={styles.titleRow}>
+          <Ionicons name="leaf" size={18} color={Colors.accent} />
+          <Text style={[styles.title, isDark && styles.textDark]}>{t('mip.title')}</Text>
+          <View style={styles.tierBadge}>
+            <Ionicons name="shield-checkmark" size={10} color={Colors.accent} />
+            <Text style={styles.tierBadgeText}>EMBRAPA / MAPA</Text>
+          </View>
         </View>
-      </View>
 
-      <Text style={styles.entryName}>{knowledge.entry.nomeComum}</Text>
-      <Text style={styles.entryScientific}>{knowledge.entry.nomeCientifico}</Text>
+        <Text style={styles.entryName}>{knowledge.entry.nomeComum}</Text>
+        <Text style={styles.entryScientific}>{knowledge.entry.nomeCientifico}</Text>
 
-      <Text style={styles.sectionLabel}>{t('mip.levelPickerLabel')}</Text>
-      <View style={styles.chipsRow}>
-        {LEVEL_ORDER.map((level) => {
-          const data = knowledge.levels.find((l) => l.level === level);
-          if (!data) return null;
-          const isActive = data.unlocked && selectedLevel === level;
-          const color = LEVEL_COLORS[level];
-          return (
-            <Pressable
-              key={level}
-              onPress={() => handleSelectLevel(level)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                data.unlocked
-                  ? t('mip.chipA11yUnlocked', { level: t(`mip.level.${level}`) })
-                  : t('mip.chipA11yLocked', { level: t(`mip.level.${level}`) })
-              }
-              accessibilityState={{ selected: isActive, disabled: !data.unlocked }}
-              testID={`mip-chip-${level}`}
-              style={({ pressed }) => [
-                styles.chip,
-                {
-                  backgroundColor: isActive ? color : color + '14',
-                  borderColor: color + (isActive ? 'FF' : '33'),
-                  opacity: data.unlocked ? (pressed ? 0.8 : 1) : 0.75,
-                },
-              ]}
-            >
-              {!data.unlocked && (
-                <Ionicons name="lock-closed" size={11} color={color} />
-              )}
-              <Text
-                style={[
-                  styles.chipText,
-                  { color: isActive ? '#FFF' : color },
-                ]}
-              >
-                {t(`mip.level.${level}`)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Recommendation panel for the selected unlocked level */}
-      <View style={[styles.panel, { borderLeftColor: selectedColor }]}>
-        <Text style={styles.panelHeader}>{t('mip.criterionLabel')}</Text>
-        <Text style={[styles.panelBody, isDark && styles.textDark]}>
-          {knowledge.entry.niveisDano[selectedLevel].criterio}
-        </Text>
-
-        <Text style={[styles.panelHeader, styles.panelHeaderSpaced]}>
-          {t('mip.recommendedActionLabel')}
-        </Text>
-        <Text style={[styles.panelBody, isDark && styles.textDark]}>{rec.acaoPrincipal}</Text>
-
-        {rec.acoesCulturais.length > 0 && (
-          <RecBullets
-            title={t('mip.culturalActions')}
-            items={rec.acoesCulturais}
-            icon="hand-left"
-            iconColor={Colors.accent}
-            isDark={isDark}
-          />
-        )}
-        {rec.acoesBiologicas.length > 0 && (
-          <RecBullets
-            title={t('mip.biologicalActions')}
-            items={rec.acoesBiologicas}
-            icon="bug"
-            iconColor="#4CAF50"
-            isDark={isDark}
-          />
-        )}
-        {rec.acoesMecanicas.length > 0 && (
-          <RecBullets
-            title={t('mip.mechanicalActions')}
-            items={rec.acoesMecanicas}
-            icon="construct"
-            iconColor={Colors.techBlue}
-            isDark={isDark}
-          />
-        )}
-        {rec.acoesQuimicas && (
-          <ChemicalBlock
-            classes={rec.acoesQuimicas.classes}
-            ingredientes={rec.acoesQuimicas.ingredientesAtivosSugeridos}
-            observacoes={rec.acoesQuimicas.observacoes}
-            entry={knowledge.entry}
-            level={selectedLevel}
-            isDark={isDark}
-          />
-        )}
-
-        {rec.monitoramento && (
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>{t('mip.monitoringLabel')}</Text>
-            <Text style={[styles.panelBody, isDark && styles.textDark]}>
-              <Text style={styles.metaLabel}>{t('mip.monitoringMethod')}: </Text>
-              {rec.monitoramento.metodo}
-            </Text>
-            <Text style={[styles.panelBody, isDark && styles.textDark]}>
-              <Text style={styles.metaLabel}>{t('mip.monitoringFrequency')}: </Text>
-              {rec.monitoramento.frequencia}
-            </Text>
-            <Text style={[styles.panelBody, isDark && styles.textDark]}>
-              <Text style={styles.metaLabel}>{t('mip.monitoringControlLevel')}: </Text>
-              {rec.monitoramento.nivelControle}
-            </Text>
-          </View>
-        )}
-
-        {rec.rotacaoResistencia && (
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>{t('mip.resistanceRotation')}</Text>
-            <Text style={[styles.panelBody, isDark && styles.textDark]}>
-              {rec.rotacaoResistencia}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Paywall upsell — only when at least one level is locked */}
-      {tier === 'free' && lockedCount > 0 && (
-        <TouchableOpacity
-          onPress={handleUpgradePress}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={t('mip.upgradeCtaA11y')}
-          testID="mip-upgrade-cta"
-          style={styles.upgradeCta}
-        >
-          <Ionicons name="lock-open" size={16} color="#FFF" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.upgradeCtaTitle}>{t('mip.upgradeCtaTitle')}</Text>
-            <Text style={styles.upgradeCtaSubtitle}>
-              {t('mip.upgradeCtaSubtitle', { count: lockedCount })}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#FFF" />
-        </TouchableOpacity>
-      )}
-
-      {/* References — visible to everyone (compliance + scientific credibility) */}
-      {rec.referencias.length > 0 && (
-        <View style={styles.referencesBlock}>
-          <Text style={styles.subsectionTitle}>{t('mip.referencesLabel')}</Text>
-          <View style={styles.refRow}>
-            {rec.referencias.map((ref, i) => (
+        <Text style={styles.sectionLabel}>{t('mip.levelPickerLabel')}</Text>
+        <View style={styles.chipsRow}>
+          {LEVEL_ORDER.map((level) => {
+            const data = knowledge.levels.find((l) => l.level === level);
+            if (!data) return null;
+            const isActive = selectedLevel === level;
+            const color = LEVEL_COLORS[level];
+            return (
               <Pressable
-                key={`${ref.source}-${i}`}
-                onPress={() => handleOpenReference(ref)}
-                disabled={!ref.url}
-                accessibilityRole={ref.url ? 'link' : 'text'}
-                accessibilityLabel={t('mip.referenceA11y', {
-                  source: ref.source,
-                  year: ref.ano,
-                })}
+                key={level}
+                onPress={() => handleSelectLevel(level)}
+                accessibilityRole="button"
+                accessibilityLabel={t('mip.chipA11yUnlocked', { level: t(`mip.level.${level}`) })}
+                accessibilityState={{ selected: isActive }}
+                testID={`mip-chip-${level}`}
                 style={({ pressed }) => [
-                  styles.refChip,
-                  { opacity: ref.url ? (pressed ? 0.7 : 1) : 0.8 },
+                  styles.chip,
+                  {
+                    backgroundColor: isActive ? color : color + '14',
+                    borderColor: color + (isActive ? 'FF' : '33'),
+                    opacity: pressed ? 0.8 : 1,
+                  },
                 ]}
               >
-                <Text style={styles.refSource}>{ref.source}</Text>
-                <Text style={styles.refYear}>{ref.ano}</Text>
-                {ref.url && <Ionicons name="open-outline" size={11} color={Colors.techBlue} />}
+                <Text style={[styles.chipText, { color: isActive ? '#FFF' : color }]}>
+                  {t(`mip.level.${level}`)}
+                </Text>
               </Pressable>
-            ))}
-          </View>
+            );
+          })}
         </View>
-      )}
 
-      {/* CREA disclaimer — ALWAYS visible regardless of tier */}
-      <View style={styles.disclaimerBlock} accessible accessibilityRole="text">
-        <Ionicons name="shield-checkmark" size={14} color={Colors.warmAmber} />
-        <Text style={styles.disclaimerText}>{rec.disclaimerCREA}</Text>
-      </View>
+        {/* Recommendation panel for the selected unlocked level */}
+        <View style={[styles.panel, { borderLeftColor: selectedColor }]}>
+          <Text style={styles.panelHeader}>{t('mip.criterionLabel')}</Text>
+          <Text style={[styles.panelBody, isDark && styles.textDark]}>
+            {knowledge.entry.niveisDano[selectedLevel].criterio}
+          </Text>
+
+          <Text style={[styles.panelHeader, styles.panelHeaderSpaced]}>
+            {t('mip.recommendedActionLabel')}
+          </Text>
+          <Text style={[styles.panelBody, isDark && styles.textDark]}>{rec.acaoPrincipal}</Text>
+
+          {rec.acoesCulturais.length > 0 && (
+            <RecBullets
+              title={t('mip.culturalActions')}
+              items={rec.acoesCulturais}
+              icon="hand-left"
+              iconColor={Colors.accent}
+              isDark={isDark}
+            />
+          )}
+          {rec.acoesBiologicas.length > 0 && (
+            <RecBullets
+              title={t('mip.biologicalActions')}
+              items={rec.acoesBiologicas}
+              icon="bug"
+              iconColor={Colors.accentLight}
+              isDark={isDark}
+            />
+          )}
+          {rec.acoesMecanicas.length > 0 && (
+            <RecBullets
+              title={t('mip.mechanicalActions')}
+              items={rec.acoesMecanicas}
+              icon="construct"
+              iconColor={Colors.techBlue}
+              isDark={isDark}
+            />
+          )}
+          {rec.acoesQuimicas && (
+            <ChemicalBlock
+              classes={rec.acoesQuimicas.classes}
+              ingredientes={rec.acoesQuimicas.ingredientesAtivosSugeridos}
+              observacoes={rec.acoesQuimicas.observacoes}
+              entry={knowledge.entry}
+              level={selectedLevel}
+              isDark={isDark}
+            />
+          )}
+
+          {rec.monitoramento && (
+            <View style={styles.subsection}>
+              <Text style={styles.subsectionTitle}>{t('mip.monitoringLabel')}</Text>
+              <Text style={[styles.panelBody, isDark && styles.textDark]}>
+                <Text style={styles.metaLabel}>{t('mip.monitoringMethod')}: </Text>
+                {rec.monitoramento.metodo}
+              </Text>
+              <Text style={[styles.panelBody, isDark && styles.textDark]}>
+                <Text style={styles.metaLabel}>{t('mip.monitoringFrequency')}: </Text>
+                {rec.monitoramento.frequencia}
+              </Text>
+              <Text style={[styles.panelBody, isDark && styles.textDark]}>
+                <Text style={styles.metaLabel}>{t('mip.monitoringControlLevel')}: </Text>
+                {rec.monitoramento.nivelControle}
+              </Text>
+            </View>
+          )}
+
+          {rec.rotacaoResistencia && (
+            <View style={styles.subsection}>
+              <Text style={styles.subsectionTitle}>{t('mip.resistanceRotation')}</Text>
+              <Text style={[styles.panelBody, isDark && styles.textDark]}>
+                {rec.rotacaoResistencia}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* References — visible to everyone (compliance + scientific credibility) */}
+        {rec.referencias.length > 0 && (
+          <View style={styles.referencesBlock}>
+            <Text style={styles.subsectionTitle}>{t('mip.referencesLabel')}</Text>
+            <View style={styles.refRow}>
+              {rec.referencias.map((ref, i) => (
+                <Pressable
+                  key={`${ref.source}-${i}`}
+                  onPress={() => handleOpenReference(ref)}
+                  disabled={!ref.url}
+                  accessibilityRole={ref.url ? 'link' : 'text'}
+                  accessibilityLabel={t('mip.referenceA11y', {
+                    source: ref.source,
+                    year: ref.ano,
+                  })}
+                  style={({ pressed }) => [
+                    styles.refChip,
+                    { opacity: ref.url ? (pressed ? 0.7 : 1) : 0.8 },
+                  ]}
+                >
+                  <Text style={styles.refSource}>{ref.source}</Text>
+                  <Text style={styles.refYear}>{ref.ano}</Text>
+                  {ref.url && <Ionicons name="open-outline" size={11} color={Colors.techBlue} />}
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* CREA disclaimer — ALWAYS visible regardless of tier */}
+        <View style={styles.disclaimerBlock} accessible accessibilityRole="text">
+          <Ionicons name="shield-checkmark" size={14} color={Colors.warmAmber} />
+          <Text style={styles.disclaimerText}>{rec.disclaimerCREA}</Text>
+        </View>
       </PremiumCard>
     </View>
   );
@@ -406,7 +348,15 @@ function ChemicalBlock({
   classes: string[];
   ingredientes: string[];
   observacoes: string[];
-  entry: { mip: { quimico: { ingredientesAtivos: ReadonlyArray<{ produtosComerciais: ReadonlyArray<{ nome: string; formulacao: string; dosagem: string }> }> } } };
+  entry: {
+    mip: {
+      quimico: {
+        ingredientesAtivos: ReadonlyArray<{
+          produtosComerciais: ReadonlyArray<{ nome: string; formulacao: string; dosagem: string }>;
+        }>;
+      };
+    };
+  };
   level: InfestationLevel;
   isDark: boolean;
 }) {
@@ -601,7 +551,7 @@ const styles = StyleSheet.create({
   chemWarningText: {
     flex: 1,
     fontSize: 11,
-    color: Colors.warmAmber,
+    color: Colors.earthText,
     fontWeight: FontWeight.semibold,
   },
   productRow: {
@@ -624,27 +574,6 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 16,
     marginBottom: 2,
-  },
-  upgradeCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.accent,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  upgradeCtaTitle: {
-    color: '#FFF',
-    fontSize: FontSize.footnote,
-    fontWeight: FontWeight.bold,
-  },
-  upgradeCtaSubtitle: {
-    color: '#FFF',
-    fontSize: 11,
-    opacity: 0.85,
-    marginTop: 1,
   },
   referencesBlock: {
     marginTop: Spacing.sm,

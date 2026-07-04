@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Colors } from '../constants/theme';
 
 export default function NotFoundScreen() {
   const { t } = useTranslation();
@@ -40,27 +41,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#FAFAF7',
+    backgroundColor: Colors.background,
   },
   title: {
     fontSize: 48,
     fontWeight: '800',
-    color: '#1B7A3D',
+    color: Colors.accent,
     marginBottom: 8,
   },
   message: {
     fontSize: 16,
-    color: '#6B7164',
+    color: Colors.textTertiary,
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#1B7A3D',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
   },

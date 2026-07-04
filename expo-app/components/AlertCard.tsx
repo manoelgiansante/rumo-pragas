@@ -12,19 +12,19 @@ const SEVERITY_CONFIG: Record<
   high: {
     bg: 'rgba(240, 102, 82, 0.10)',
     border: 'rgba(240, 102, 82, 0.30)',
-    text: '#D94432',
+    text: Colors.coral,
     labelKey: 'severity.high',
   },
   medium: {
     bg: 'rgba(235, 176, 38, 0.10)',
     border: 'rgba(235, 176, 38, 0.30)',
-    text: '#C49520',
+    text: Colors.warmAmber,
     labelKey: 'severity.medium',
   },
   low: {
     bg: 'rgba(26, 150, 107, 0.10)',
     border: 'rgba(26, 150, 107, 0.30)',
-    text: '#0F6B4D',
+    text: Colors.accent,
     labelKey: 'severity.low',
   },
 };
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   forecastBadgeText: {
     fontSize: FontSize.caption2,
     fontWeight: FontWeight.semibold,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   timestamp: {
     fontSize: FontSize.caption2,

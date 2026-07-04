@@ -40,10 +40,9 @@ interface UseNotificationsReturn {
 // leaks that occasionally ship in dev pushes.
 const UUID_STRICT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type AllowedScreen = 'diagnosis' | 'paywall' | 'settings' | 'history' | 'home';
+type AllowedScreen = 'diagnosis' | 'settings' | 'history' | 'home';
 const ALLOWED_SCREENS: ReadonlySet<AllowedScreen> = new Set([
   'diagnosis',
-  'paywall',
   'settings',
   'history',
   'home',
@@ -73,8 +72,6 @@ export function resolveNotificationRoute(data: unknown): string | null {
       if (!isStrictUuid(id)) return null;
       return `/diagnosis/${id}`;
     }
-    case 'paywall':
-      return '/paywall';
     case 'settings':
       return '/(tabs)/settings';
     case 'history':
@@ -122,16 +119,29 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
       } = await supabase.auth.getUser();
       if (!user) return;
       // 1. Legacy single-column write (still consumed by old send-push paths
-      //    until they migrate). Cheap, idempotent.
-      //    Supabase `.update()` does NOT throw on RLS/row-missing errors — it
-      //    resolves with `{ error }`. Surface it so the catch below reports to
-      //    Sentry instead of the sync silently appearing to succeed.
+      //    until they migrate). Cheap, idempotent. Keyed by `user_id` (the
+      //    pragas_profiles PK is `id`, unique on `user_id` = the auth uid).
+      //    This is a best-effort side write: its failure (RLS / missing row /
+      //    missing column mid-migration) must NEVER abort step 2, which is the
+      //    canonical path. Supabase `.update()` resolves with `{ error }` rather
+      //    than throwing, so we log it to Sentry and keep going instead of
+      //    letting it short-circuit the RPC persist below.
       const { error: updateError } = await supabase
         .from('pragas_profiles')
         .update({ push_token: token })
-        .eq('id', user.id);
-      if (updateError) throw updateError;
+        .eq('user_id', user.id);
+      if (updateError) {
+        if (__DEV__) console.warn('Legacy push_token write failed (non-fatal):', updateError);
+        try {
+          Sentry.captureException(updateError, {
+            tags: { feature: 'push', step: 'legacyTokenWrite' },
+          });
+        } catch {
+          /* swallow */
+        }
+      }
       // 2. New audit table — multi-device, soft-revocable, last_seen tracked.
+      //    This is the canonical persistence path (RPC touch_push_token).
       //    force=true so login always refreshes server state, regardless of
       //    the 30-day cool-down.
       await persistPushTokenToServer(token, { force: true });

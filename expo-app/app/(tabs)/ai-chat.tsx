@@ -157,10 +157,9 @@ export default function AIChatScreen() {
         const errCode =
           err instanceof Object && 'code' in err ? (err as { code: string }).code : undefined;
         const errSpecific = err instanceof Error && err.message ? err.message : undefined;
-        // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships
-        // 100% FREE (Apple Guideline 2.3.2). Should the backend ever still
-        // signal a chat limit, we surface an informational message ONLY — never
-        // an "upgrade"/paywall CTA. No buy button anywhere in the app.
+        // FREE BUILD (Apple Guideline 3.1.1): the app is 100% free. Should the
+        // backend ever still signal a chat limit, we surface an informational
+        // message ONLY — no plans, no buy button and no CTA anywhere in the app.
         if (errCode === 'CHAT_LIMIT_REACHED') {
           showAlert(t('chat.limitReachedTitle'), t('chat.limitReachedMessage'), [
             { text: t('common.ok'), style: 'cancel' },

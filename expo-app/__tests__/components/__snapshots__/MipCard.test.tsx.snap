@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`MipCard matches snapshot for free tier locked state 1`] = `
+exports[`MipCard matches snapshot for free tier 1`] = `
 <View
   testID="mip-card"
 >
@@ -18,7 +18,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
           "shadowRadius": 10,
         },
         {
-          "backgroundColor": "#FFFDF7",
+          "backgroundColor": "#FFFFFF",
           "padding": 16,
           "shadowColor": "#000",
         },
@@ -40,7 +40,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
       }
     >
       <Ionicons
-        color="#0B3D2E"
+        color="#2E7D32"
         name="leaf"
         size={18}
       />
@@ -48,7 +48,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         style={
           [
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "flex": 1,
               "fontSize": 17,
               "fontWeight": "700",
@@ -63,7 +63,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         style={
           {
             "alignItems": "center",
-            "backgroundColor": "#0B3D2E14",
+            "backgroundColor": "#2E7D3214",
             "borderRadius": 999,
             "flexDirection": "row",
             "gap": 4,
@@ -73,14 +73,14 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         }
       >
         <Ionicons
-          color="#0B3D2E"
+          color="#2E7D32"
           name="shield-checkmark"
           size={10}
         />
         <Text
           style={
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "fontSize": 9,
               "fontWeight": "700",
               "letterSpacing": 0.4,
@@ -144,7 +144,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
           {
             "busy": undefined,
             "checked": undefined,
-            "disabled": false,
+            "disabled": undefined,
             "expanded": undefined,
             "selected": true,
           }
@@ -181,8 +181,8 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
               "paddingVertical": 8,
             },
             {
-              "backgroundColor": "#0B3D2E",
-              "borderColor": "#0B3D2EFF",
+              "backgroundColor": "#2E7D32",
+              "borderColor": "#2E7D32FF",
               "opacity": 1,
             },
           ]
@@ -207,13 +207,13 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         </Text>
       </View>
       <View
-        accessibilityLabel="mip.chipA11yLocked"
+        accessibilityLabel="mip.chipA11yUnlocked"
         accessibilityRole="button"
         accessibilityState={
           {
             "busy": undefined,
             "checked": undefined,
-            "disabled": true,
+            "disabled": undefined,
             "expanded": undefined,
             "selected": false,
           }
@@ -252,17 +252,12 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
             {
               "backgroundColor": "#C89B3C14",
               "borderColor": "#C89B3C33",
-              "opacity": 0.75,
+              "opacity": 1,
             },
           ]
         }
         testID="mip-chip-medio"
       >
-        <Ionicons
-          color="#C89B3C"
-          name="lock-closed"
-          size={11}
-        />
         <Text
           style={
             [
@@ -281,13 +276,13 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
         </Text>
       </View>
       <View
-        accessibilityLabel="mip.chipA11yLocked"
+        accessibilityLabel="mip.chipA11yUnlocked"
         accessibilityRole="button"
         accessibilityState={
           {
             "busy": undefined,
             "checked": undefined,
-            "disabled": true,
+            "disabled": undefined,
             "expanded": undefined,
             "selected": false,
           }
@@ -326,17 +321,12 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
             {
               "backgroundColor": "#B3462E14",
               "borderColor": "#B3462E33",
-              "opacity": 0.75,
+              "opacity": 1,
             },
           ]
         }
         testID="mip-chip-alto"
       >
-        <Ionicons
-          color="#B3462E"
-          name="lock-closed"
-          size={11}
-        />
         <Text
           style={
             [
@@ -365,7 +355,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
             "paddingVertical": 8,
           },
           {
-            "borderLeftColor": "#0B3D2E",
+            "borderLeftColor": "#2E7D32",
           },
         ]
       }
@@ -449,7 +439,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
           }
         >
           <Ionicons
-            color="#0B3D2E"
+            color="#2E7D32"
             name="hand-left"
             size={14}
           />
@@ -485,7 +475,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
@@ -525,7 +515,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
@@ -825,93 +815,6 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
       </View>
     </View>
     <View
-      accessibilityLabel="mip.upgradeCtaA11y"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": undefined,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onClick={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
-      style={
-        {
-          "alignItems": "center",
-          "backgroundColor": "#0B3D2E",
-          "borderRadius": 12,
-          "flexDirection": "row",
-          "gap": 8,
-          "marginBottom": 12,
-          "opacity": 1,
-          "paddingHorizontal": 12,
-          "paddingVertical": 12,
-        }
-      }
-      testID="mip-upgrade-cta"
-    >
-      <Ionicons
-        color="#FFF"
-        name="lock-open"
-        size={16}
-      />
-      <View
-        style={
-          {
-            "flex": 1,
-          }
-        }
-      >
-        <Text
-          style={
-            {
-              "color": "#FFF",
-              "fontSize": 13,
-              "fontWeight": "700",
-            }
-          }
-        >
-          mip.upgradeCtaTitle
-        </Text>
-        <Text
-          style={
-            {
-              "color": "#FFF",
-              "fontSize": 11,
-              "marginTop": 1,
-              "opacity": 0.85,
-            }
-          }
-        >
-          mip.upgradeCtaSubtitle
-        </Text>
-      </View>
-      <Ionicons
-        color="#FFF"
-        name="chevron-forward"
-        size={18}
-      />
-    </View>
-    <View
       style={
         {
           "marginBottom": 12,
@@ -1126,7 +1029,7 @@ exports[`MipCard matches snapshot for free tier locked state 1`] = `
 </View>
 `;
 
-exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
+exports[`MipCard matches snapshot for pro tier 1`] = `
 <View
   testID="mip-card"
 >
@@ -1144,7 +1047,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           "shadowRadius": 10,
         },
         {
-          "backgroundColor": "#FFFDF7",
+          "backgroundColor": "#FFFFFF",
           "padding": 16,
           "shadowColor": "#000",
         },
@@ -1166,7 +1069,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
       }
     >
       <Ionicons
-        color="#0B3D2E"
+        color="#2E7D32"
         name="leaf"
         size={18}
       />
@@ -1174,7 +1077,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
         style={
           [
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "flex": 1,
               "fontSize": 17,
               "fontWeight": "700",
@@ -1189,7 +1092,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
         style={
           {
             "alignItems": "center",
-            "backgroundColor": "#0B3D2E14",
+            "backgroundColor": "#2E7D3214",
             "borderRadius": 999,
             "flexDirection": "row",
             "gap": 4,
@@ -1199,14 +1102,14 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
         }
       >
         <Ionicons
-          color="#0B3D2E"
+          color="#2E7D32"
           name="shield-checkmark"
           size={10}
         />
         <Text
           style={
             {
-              "color": "#0B3D2E",
+              "color": "#2E7D32",
               "fontSize": 9,
               "fontWeight": "700",
               "letterSpacing": 0.4,
@@ -1270,7 +1173,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           {
             "busy": undefined,
             "checked": undefined,
-            "disabled": false,
+            "disabled": undefined,
             "expanded": undefined,
             "selected": true,
           }
@@ -1307,8 +1210,8 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
               "paddingVertical": 8,
             },
             {
-              "backgroundColor": "#0B3D2E",
-              "borderColor": "#0B3D2EFF",
+              "backgroundColor": "#2E7D32",
+              "borderColor": "#2E7D32FF",
               "opacity": 1,
             },
           ]
@@ -1339,7 +1242,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           {
             "busy": undefined,
             "checked": undefined,
-            "disabled": false,
+            "disabled": undefined,
             "expanded": undefined,
             "selected": false,
           }
@@ -1408,7 +1311,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           {
             "busy": undefined,
             "checked": undefined,
-            "disabled": false,
+            "disabled": undefined,
             "expanded": undefined,
             "selected": false,
           }
@@ -1481,7 +1384,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
             "paddingVertical": 8,
           },
           {
-            "borderLeftColor": "#0B3D2E",
+            "borderLeftColor": "#2E7D32",
           },
         ]
       }
@@ -1565,7 +1468,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
           }
         >
           <Ionicons
-            color="#0B3D2E"
+            color="#2E7D32"
             name="hand-left"
             size={14}
           />
@@ -1601,7 +1504,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
@@ -1641,7 +1544,7 @@ exports[`MipCard matches snapshot for pro tier unlocked state 1`] = `
                   "width": 5,
                 },
                 {
-                  "backgroundColor": "#0B3D2E",
+                  "backgroundColor": "#2E7D32",
                 },
               ]
             }
