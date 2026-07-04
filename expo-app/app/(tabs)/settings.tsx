@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,42 +7,25 @@ import {
   Switch,
   StyleSheet,
   useColorScheme,
-  ActivityIndicator,
   Platform,
   ActionSheetIOS,
-  RefreshControl,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import * as Sentry from '@sentry/react-native';
 import { LANGUAGE_KEY } from '../../i18n';
-import {
-  Colors,
-  Spacing,
-  BorderRadius,
-  FontSize,
-  FontWeight,
-  Gradients,
-} from '../../constants/theme';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
-import { restorePurchases, isRevenueCatConfigured } from '../../services/purchases';
 import { Avatar } from '../../components/Avatar';
 
 const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
-
-const PLAN_LIMITS: Record<string, number> = {
-  free: 3,
-  pro: 30,
-  enterprise: -1,
-};
 
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
   { code: 'pt-BR', label: 'Português' },
@@ -57,7 +40,7 @@ const LANGUAGE_DISPLAY: Record<string, string> = {
 };
 
 // ============================================================================
-// Section primitives (premium native-feel layout)
+// Section primitives (native-feel layout)
 // ============================================================================
 
 interface SectionProps {
@@ -150,108 +133,6 @@ function Row({
 }
 
 // ============================================================================
-// Subscription hero card (top of Settings)
-// ============================================================================
-
-interface SubCardProps {
-  plan: string;
-  planLabel: string;
-  used: number;
-  limit: number;
-  loading: boolean;
-  error: boolean;
-  onUpgrade: () => void;
-  onRetry: () => void;
-}
-
-function SubscriptionCard({
-  plan,
-  planLabel,
-  used,
-  limit,
-  loading,
-  error,
-  onUpgrade,
-  onRetry,
-}: SubCardProps) {
-  const { t } = useTranslation();
-  const isPro = plan !== 'free';
-  const remaining = limit === -1 ? Infinity : Math.max(0, limit - used);
-
-  if (error && !loading) {
-    return (
-      <TouchableOpacity style={styles.subErrorCard} onPress={onRetry} activeOpacity={0.7}>
-        <Ionicons name="cloud-offline-outline" size={22} color={Colors.coral} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.subErrorTitle}>{t('settings.subLoadError')}</Text>
-          <Text style={styles.subErrorSub}>{t('settings.subLoadRetry')}</Text>
-        </View>
-        <Ionicons name="refresh" size={20} color={Colors.coral} />
-      </TouchableOpacity>
-    );
-  }
-
-  return (
-    <LinearGradient
-      colors={Gradients.hero}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.subCard}
-    >
-      <View style={styles.subCardHeader}>
-        <View style={styles.subBadge}>
-          <Ionicons
-            name={isPro ? 'diamond' : 'leaf-outline'}
-            size={14}
-            color={isPro ? Colors.warmAmber : '#FFF'}
-          />
-          <Text style={styles.subBadgeText}>{planLabel}</Text>
-        </View>
-        {loading ? (
-          <ActivityIndicator size="small" color="#FFF" />
-        ) : (
-          <Text style={styles.subUsage}>
-            {limit === -1
-              ? t('settings.diagnosticsCountUnlimited', { used })
-              : t('settings.diagnosticsCountLimited', { used, limit })}
-          </Text>
-        )}
-      </View>
-
-      {limit !== -1 && !loading ? (
-        <View style={styles.usageBarTrack}>
-          <View
-            style={[styles.usageBarFill, { width: `${Math.min(100, (used / limit) * 100)}%` }]}
-          />
-        </View>
-      ) : null}
-
-      <Text style={styles.subTagline}>
-        {isPro ? t('settings.subTaglinePro') : t('settings.subTaglineFree')}
-      </Text>
-
-      {!isPro && !loading ? (
-        <TouchableOpacity
-          style={styles.subCta}
-          onPress={onUpgrade}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.upgradePlan')}
-          testID="settings-upgrade-cta"
-        >
-          <Text style={styles.subCtaText}>{t('settings.upgradePlan')}</Text>
-          <Ionicons name="arrow-forward" size={16} color={Colors.accent} />
-        </TouchableOpacity>
-      ) : null}
-
-      {isPro && remaining !== Infinity ? (
-        <Text style={styles.subRemaining}>{t('settings.diagnosticsRemaining', { remaining })}</Text>
-      ) : null}
-    </LinearGradient>
-  );
-}
-
-// ============================================================================
 // Settings screen
 // ============================================================================
 
@@ -260,29 +141,10 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuthContext();
   const { t, i18n } = useTranslation();
   const [pushEnabled, setPushEnabled] = useState(true);
-  // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: forced to the top
-  // (enterprise/unlimited) plan inside loadSubscriptionData so no usage limit
-  // or upgrade CTA is ever shown.
-  const [plan, setPlan] = useState<string>('enterprise');
-  const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
-  const [subLoading, setSubLoading] = useState(true);
-  const [subError, setSubError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const subLoadingRef = useRef(false);
-  const [restoring, setRestoring] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const { isChecking, checkForUpdate } = useOTAUpdate();
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
-
-  const PLAN_LABELS: Record<string, string> = useMemo(
-    () => ({
-      free: t('settings.planFree'),
-      pro: t('settings.planPro'),
-      enterprise: t('settings.planEnterprise'),
-    }),
-    [t],
-  );
 
   // Load persisted push notification preference
   useEffect(() => {
@@ -358,81 +220,6 @@ export default function SettingsScreen() {
     }
   }, [i18n, t]);
 
-  const loadSubscriptionData = useCallback(async () => {
-    if (!user || subLoadingRef.current) return;
-    subLoadingRef.current = true;
-    setSubLoading(true);
-    setSubError(false);
-    try {
-      const now = new Date();
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-      // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
-      // FREE (Apple Guideline 2.3.2) with UNLIMITED diagnoses for everyone. We
-      // present the top (enterprise/unlimited) plan so the subscription card
-      // shows NO usage limit and NO "upgrade"/buy CTA, and we no longer depend
-      // on the shared `subscriptions` table. The monthly count is still loaded
-      // for the (purely informational) "X diagnoses" label.
-      const countResult = await supabase
-        .from('pragas_diagnoses')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', firstOfMonth);
-
-      setPlan('enterprise');
-      setUsedThisMonth(countResult.count ?? 0);
-    } catch (e) {
-      if (__DEV__) console.error('Failed to load subscription data:', e);
-      Sentry.captureException(e, { tags: { feature: 'settings.subscription' } });
-      setSubError(true);
-    } finally {
-      subLoadingRef.current = false;
-      setSubLoading(false);
-    }
-  }, [user]);
-
-  // Reload subscription/usage every time the tab regains focus so a plan that
-  // was just upgraded on the paywall (or restored) is never shown stale here.
-  useFocusEffect(
-    useCallback(() => {
-      loadSubscriptionData();
-    }, [loadSubscriptionData]),
-  );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await loadSubscriptionData();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [loadSubscriptionData]);
-
-  const handleRestorePurchases = useCallback(async () => {
-    if (!isRevenueCatConfigured()) return;
-    setRestoring(true);
-    Haptics.selectionAsync().catch(() => {});
-    try {
-      const customerInfo = await restorePurchases();
-      if (customerInfo) {
-        const hasActive =
-          customerInfo.entitlements.active['pro'] || customerInfo.entitlements.active['enterprise'];
-        if (hasActive) {
-          showAlert(t('paywall.purchasesRestored'), t('paywall.subscriptionReactivated'), [
-            { text: 'OK', onPress: loadSubscriptionData },
-          ]);
-        } else {
-          showAlert(t('paywall.noSubscriptionFound'), t('paywall.noSubscriptionFoundMsg'));
-        }
-      }
-    } catch (e) {
-      Sentry.captureException(e, { tags: { feature: 'settings.restorePurchases' } });
-      showAlert(t('common.error'), t('paywall.restoreError'));
-    } finally {
-      setRestoring(false);
-    }
-  }, [t, loadSubscriptionData]);
-
   const handleSignOut = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     showAlert(t('settings.signOutConfirmTitle'), t('settings.signOutConfirmMessage'), [
@@ -505,14 +292,6 @@ export default function SettingsScreen() {
       style={[styles.container, isDark && styles.containerDark]}
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={Colors.accent}
-          colors={[Colors.accent]}
-        />
-      }
     >
       {/* Header */}
       <View style={styles.header}>
@@ -548,22 +327,6 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Subscription hero */}
-      <View style={styles.subCardWrap}>
-        <SubscriptionCard
-          plan={plan}
-          planLabel={PLAN_LABELS[plan] || plan}
-          used={usedThisMonth}
-          limit={PLAN_LIMITS[plan] ?? 0}
-          loading={subLoading}
-          error={subError}
-          onRetry={loadSubscriptionData}
-          // FREE BUILD: upgrade CTA is never rendered (plan is enterprise →
-          // isPro), but keep the handler inert so no paywall can be reached.
-          onUpgrade={() => {}}
-        />
-      </View>
-
       {/* ACCOUNT */}
       <Section isDark={isDark} title={t('settings.sectionAccount')}>
         <Row
@@ -571,26 +334,9 @@ export default function SettingsScreen() {
           icon="person-circle-outline"
           label={t('settings.editProfile')}
           onPress={() => router.push('/edit-profile')}
+          isLast
           testID="settings-row-edit-profile"
         />
-        {/* FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: no subscription
-            to manage and no purchases to restore (no IAP shipped). The Restore
-            row stays gated behind `isRevenueCatConfigured()` (false in the free
-            build) so it is hidden; the "Manage Subscription" deep link is
-            removed entirely. */}
-        {isRevenueCatConfigured() && (
-          <Row
-            isDark={isDark}
-            icon="refresh-circle-outline"
-            label={restoring ? t('common.loading') : t('paywall.restorePurchases')}
-            onPress={restoring ? undefined : handleRestorePurchases}
-            trailing={
-              restoring ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
-            }
-            isLast
-            testID="settings-row-restore"
-          />
-        )}
       </Section>
 
       {/* PREFERENCES */}
@@ -771,90 +517,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Subscription hero
-  subCardWrap: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
-  subCard: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    gap: 12,
-  },
-  subCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  subBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  subBadgeText: {
-    color: '#FFF',
-    fontSize: FontSize.footnote,
-    fontWeight: FontWeight.semibold,
-  },
-  subUsage: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: FontSize.footnote,
-    fontWeight: FontWeight.medium,
-  },
-  usageBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    overflow: 'hidden',
-  },
-  usageBarFill: {
-    height: '100%',
-    backgroundColor: Colors.warmAmber,
-    borderRadius: 3,
-  },
-  subTagline: {
-    color: '#FFF',
-    fontSize: FontSize.subheadline,
-    lineHeight: 20,
-    opacity: 0.95,
-  },
-  subRemaining: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: FontSize.footnote,
-  },
-  subCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFF',
-    paddingVertical: 12,
-    borderRadius: BorderRadius.full,
-    marginTop: 4,
-  },
-  subCtaText: {
-    color: Colors.accent,
-    fontSize: FontSize.subheadline,
-    fontWeight: FontWeight.bold,
-  },
-  subErrorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.coral + '40',
-  },
-  subErrorTitle: {
-    fontSize: FontSize.subheadline,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
-  },
-  subErrorSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
 
   // Sections
   section: { marginTop: Spacing.xxl },
