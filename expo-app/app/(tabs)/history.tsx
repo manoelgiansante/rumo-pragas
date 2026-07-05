@@ -14,7 +14,14 @@ import { showAlert } from '../../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../constants/theme';
 import { DiagnosisCard } from '../../components/DiagnosisCard';
 import type { DiagnosisResult, AgrioPrediction } from '../../types/diagnosis';
 import { parseNotes } from '../../types/diagnosis';
@@ -161,7 +168,7 @@ export default function HistoryScreen() {
         <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
           {t('history.errorLoading')}
         </Text>
-        <Text style={styles.emptyDesc}>{t('history.errorLoading')}</Text>
+        <Text style={styles.emptyDesc}>{t('history.errorLoadingDesc')}</Text>
         <TouchableOpacity
           testID="history-retry"
           onPress={loadDiagnoses}
@@ -302,10 +309,30 @@ const styles = StyleSheet.create({
   containerDark: { backgroundColor: Colors.backgroundDark },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
   searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
-  count: { fontSize: FontSize.subheadline, fontWeight: '600', marginBottom: Spacing.md },
-  loadingText: { fontSize: FontSize.subheadline, color: Colors.textSecondary, marginTop: 12 },
-  emptyTitle: { fontSize: FontSize.title3, fontWeight: '700', marginTop: 16 },
-  emptyDesc: { fontSize: FontSize.subheadline, color: Colors.textSecondary, marginTop: 4 },
+  count: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    marginBottom: Spacing.md,
+  },
+  loadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+    marginTop: 12,
+  },
+  emptyTitle: {
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    marginTop: 16,
+  },
+  emptyDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
   textDark: { color: Colors.textDark },
   retryButton: {
     flexDirection: 'row',
@@ -319,6 +346,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.white,
   },
@@ -380,6 +408,7 @@ const styles = StyleSheet.create({
   emptyCtaText: {
     color: '#FFF',
     fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
   },
 });

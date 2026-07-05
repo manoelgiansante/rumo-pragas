@@ -13,10 +13,18 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../constants/theme';
 import { ChatBubble } from '../../components/ChatBubble';
 import { sendChatMessage } from '../../services/ai-chat';
 import { useTranslation } from 'react-i18next';
@@ -93,6 +101,11 @@ export default function AIChatScreen() {
   const { isTablet, contentMaxWidth } = useResponsive();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  // Prefill vindo da Home ("Sem foto? Descreva os sintomas") — o param `ts`
+  // muda a cada toque, então repetir o fluxo re-preenche; nunca auto-envia.
+  const { prefill, ts: prefillTs } = useLocalSearchParams<{ prefill?: string; ts?: string }>();
+  const inputRef = useRef<TextInput>(null);
+  const lastPrefillTs = useRef<string | null>(null);
   const [sending, setSending] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const flatListRef = useRef<FlatList>(null);
@@ -101,6 +114,27 @@ export default function AIChatScreen() {
   // `messages` as a dependency (which would recreate `send` — and the memoised
   // `handleSuggestionPress` — on every message, re-rendering all suggestions).
   const messagesRef = useRef<Message[]>([]);
+
+  useEffect(() => {
+    if (prefill === 'symptoms' && prefillTs && prefillTs !== lastPrefillTs.current) {
+      lastPrefillTs.current = prefillTs;
+      // Nunca sobrescrever rascunho do usuário: a aba fica montada no tab
+      // navigator e `input` persiste entre trocas de aba (e em remount Android
+      // os params persistem no estado de navegação — o guard do ref zera).
+      let didPrefill = false;
+      setInput((cur) => {
+        if (cur.trim()) return cur;
+        didPrefill = true;
+        return t('chat.symptomsPrefill');
+      });
+      // pequeno delay: deixa a troca de aba montar antes de focar o teclado.
+      // Só foca quando realmente prefilou — remount restaurado não rouba foco.
+      const timer = setTimeout(() => {
+        if (didPrefill) inputRef.current?.focus();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [prefill, prefillTs, t]);
 
   // Load chat history from AsyncStorage on mount
   useEffect(() => {
@@ -306,6 +340,7 @@ export default function AIChatScreen() {
         ]}
       >
         <TextInput
+          ref={inputRef}
           testID="aichat-input"
           style={[styles.textInput, isDark && styles.textInputDark]}
           placeholder={t('chat.placeholder')}
@@ -342,7 +377,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
+  loadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+  },
   emptyStateScroll: { flex: 1 },
   emptyState: {
     flexGrow: 1,
@@ -358,8 +397,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  aiTitle: { fontSize: FontSize.title, fontWeight: '700', marginTop: 16 },
+  aiTitle: {
+    fontSize: FontSize.title,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    marginTop: 16,
+  },
   aiSubtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     textAlign: 'center',
@@ -368,6 +413,7 @@ const styles = StyleSheet.create({
   },
   suggestLabel: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.textSecondary,
     letterSpacing: 0.5,
@@ -385,7 +431,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   suggestionDark: { backgroundColor: '#1C1C1E' },
-  suggestionText: { flex: 1, fontSize: FontSize.subheadline },
+  suggestionText: { fontFamily: FontFamily.regular, flex: 1, fontSize: FontSize.subheadline },
   typingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4 },
   typingAvatar: {
     width: 30,
@@ -410,7 +456,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.separator,
   },
-  chatHeaderTitle: { fontSize: FontSize.subheadline, fontWeight: '600' },
+  chatHeaderTitle: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+  },
   clearChatBtn: {
     padding: 8,
     minWidth: 44,
@@ -436,6 +486,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     marginRight: 8,
   },

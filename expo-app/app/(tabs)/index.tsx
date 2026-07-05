@@ -11,7 +11,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+  FontWeight,
+} from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { WeatherCard } from '../../components/WeatherCard';
 import { AlertCard } from '../../components/AlertCard';
@@ -307,6 +315,40 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          testID="home-cta-describe"
+          onPress={() =>
+            router.push({
+              pathname: '/(tabs)/ai-chat',
+              params: { prefill: 'symptoms', ts: String(Date.now()) },
+            })
+          }
+          activeOpacity={0.7}
+          accessibilityLabel={t('home.describeSymptomsA11y')}
+          accessibilityRole="button"
+          accessibilityHint={t('home.describeSymptomsHint')}
+          style={styles.describeCta}
+        >
+          <View style={styles.describeIconCircle}>
+            <Ionicons
+              name="chatbubbles-outline"
+              size={20}
+              color={Colors.accent}
+              accessibilityElementsHidden
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.describeTitle}>{t('home.describeSymptoms')}</Text>
+            <Text style={styles.describeSub}>{t('home.describeSymptomsSub')}</Text>
+          </View>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={Colors.systemGray2}
+            accessibilityElementsHidden
+          />
+        </TouchableOpacity>
+
         {pendingQueueCount > 0 && (
           <View style={styles.pendingCard} accessible accessibilityRole="alert">
             <Ionicons name="cloud-upload-outline" size={18} color={Colors.warmAmber} />
@@ -416,8 +458,17 @@ const styles = StyleSheet.create({
   containerDark: { backgroundColor: Colors.backgroundDark },
   hero: { height: 190, justifyContent: 'flex-end' },
   heroContent: { padding: 20, paddingBottom: 24 },
-  greeting: { fontSize: FontSize.subheadline, color: 'rgba(255,255,255,0.9)' },
-  userName: { fontSize: FontSize.title, fontWeight: '700', color: '#FFF' },
+  greeting: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  userName: {
+    fontSize: FontSize.title,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
   content: { padding: Spacing.lg, marginTop: -16 },
   scanRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   scanIcon: {
@@ -427,8 +478,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scanTitle: { fontSize: FontSize.title3, fontWeight: '700' },
-  scanSub: { fontSize: FontSize.subheadline, color: Colors.textSecondary, marginTop: 2 },
+  scanTitle: { fontSize: FontSize.title3, fontFamily: FontFamily.bold, fontWeight: '700' },
+  scanSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   ctaShadow: {
     shadowColor: Colors.accentDark,
     shadowOffset: { width: 0, height: 8 },
@@ -452,8 +508,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ctaTitle: { fontSize: FontSize.title3, fontWeight: '700', color: '#FFF' },
+  ctaTitle: {
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
   ctaSub: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: 'rgba(255,255,255,0.85)',
     marginTop: 2,
@@ -466,12 +528,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  describeCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.separator,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+  },
+  describeIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.systemGray6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  describeTitle: {
+    fontFamily: FontFamily.semibold,
+    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.subheadline,
+    color: Colors.text,
+  },
+  describeSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.footnote,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
   statsRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   statCard: { alignItems: 'center', gap: 6 },
-  statValue: { fontSize: FontSize.subheadline, fontWeight: '700' },
-  statLabel: { fontSize: FontSize.caption2, color: Colors.textSecondary },
+  statValue: { fontSize: FontSize.subheadline, fontFamily: FontFamily.bold, fontWeight: '700' },
+  statLabel: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption2,
+    color: Colors.textSecondary,
+  },
   sectionTitle: {
     fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
     marginTop: Spacing.xl,
     marginBottom: Spacing.md,
@@ -484,8 +583,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tipTitle: { fontSize: FontSize.subheadline, fontWeight: '600' },
-  tipDesc: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
+  tipTitle: { fontSize: FontSize.subheadline, fontFamily: FontFamily.semibold, fontWeight: '600' },
+  tipDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   textDark: { color: Colors.textDark },
   alertsHeader: {
     flexDirection: 'row',
@@ -510,6 +614,7 @@ const styles = StyleSheet.create({
   alertsBadgeText: {
     color: '#FFF',
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
   },
   errorCard: {
@@ -524,10 +629,12 @@ const styles = StyleSheet.create({
   },
   errorCardText: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.coral,
   },
   retryText: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
   },
@@ -546,6 +653,7 @@ const styles = StyleSheet.create({
   pendingText: {
     flex: 1,
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.earthText,
   },

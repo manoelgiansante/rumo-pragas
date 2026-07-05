@@ -38,6 +38,10 @@ export default {
     diagnosePestHint: 'Toque dos veces para abrir la cámara',
     diagnoseNow: 'Diagnosticar ahora',
     scanCtaHint: 'Resultado en segundos',
+    describeSymptoms: '¿Sin foto? Describa los síntomas',
+    describeSymptomsSub: 'La IA Agrónomo identifica por su descripción',
+    describeSymptomsA11y: 'Describir síntomas a la IA Agrónomo',
+    describeSymptomsHint: 'Abre el chat de IA para describir los síntomas del cultivo',
     tips: {
       monitorTitle: 'Monitoree regularmente',
       monitorDesc: 'Realice inspecciones semanales en las áreas más vulnerables del cultivo',
@@ -315,7 +319,6 @@ export default {
   settings: {
     profile: 'Perfil',
     appearance: 'Apariencia y Preferencias',
-    darkMode: 'Modo Oscuro',
     language: 'Idioma',
     notifications: 'Notificaciones',
     about: 'Acerca de',
@@ -323,6 +326,9 @@ export default {
     checkUpdates: 'Buscar actualizaciones',
     support: 'Soporte',
     contactSupport: 'Contactar soporte',
+    shareApp: 'Recomendar la app',
+    shareMessage:
+      'Uso Rumo Pragas IA para diagnosticar plagas y enfermedades del cultivo con una foto, gratis. Descárgala:',
     supportSubject: 'Soporte Rumo Pragas IA',
     checking: 'Verificando...',
     signOut: 'Cerrar Sesion',
@@ -342,8 +348,6 @@ export default {
     nameRequired: 'El nombre es obligatorio.',
     profileSaved: '¡Perfil actualizado con éxito!',
     profileSaveError: 'No se pudo guardar el perfil. Inténtelo de nuevo.',
-    darkModeActive: 'Activo',
-    darkModeInactive: 'Inactivo',
     languageTitle: 'Idioma / Language',
     deletionReceived: 'Cuenta Eliminada',
     deletionReceivedMessage:
@@ -433,6 +437,7 @@ export default {
     suggestion2: '¿Cuál es el mejor manejo para el gusano cogollero?',
     suggestion3: '¿Cuándo aplicar fungicida preventivo en el café?',
     suggestion4: '¿Cómo funciona el control biológico de plagas?',
+    symptomsPrefill: 'Mi cultivo presenta estos síntomas: ',
     inputA11y: 'Mensaje para el consultor de plagas',
     inputHint: 'Escriba su pregunta sobre plagas agrícolas',
     sendA11y: 'Enviar mensaje',
@@ -618,6 +623,7 @@ export default {
     noDiagnoses: 'Sin diagnosticos',
     noDiagnosesDesc: 'Sus diagnosticos apareceran aqui',
     errorLoading: 'Error al cargar historial',
+    errorLoadingDesc: 'Verifique su conexión e inténtelo de nuevo.',
     deleteTitle: 'Eliminar',
     deleteConfirm: '¿Está seguro de que desea eliminar este diagnóstico?',
     deleteError: 'No se pudo eliminar. Verifique su conexión.',

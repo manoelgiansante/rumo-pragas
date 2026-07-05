@@ -38,6 +38,10 @@ export default {
     diagnosePestHint: 'Double tap to open camera',
     diagnoseNow: 'Diagnose now',
     scanCtaHint: 'Result in seconds',
+    describeSymptoms: 'No photo? Describe the symptoms',
+    describeSymptomsSub: 'The AI Agronomist identifies from your description',
+    describeSymptomsA11y: 'Describe symptoms to the AI Agronomist',
+    describeSymptomsHint: 'Opens the AI chat to describe your crop symptoms',
     tips: {
       monitorTitle: 'Monitor regularly',
       monitorDesc: 'Conduct weekly inspections on the most vulnerable areas of your crop',
@@ -312,7 +316,6 @@ export default {
   settings: {
     profile: 'Profile',
     appearance: 'Appearance & Preferences',
-    darkMode: 'Dark Mode',
     language: 'Language',
     notifications: 'Notifications',
     about: 'About',
@@ -320,6 +323,9 @@ export default {
     checkUpdates: 'Check for updates',
     support: 'Support',
     contactSupport: 'Contact support',
+    shareApp: 'Share the app',
+    shareMessage:
+      'I use Rumo Pragas AI to diagnose crop pests and diseases from a photo, for free. Get it:',
     supportSubject: 'Rumo Pragas IA Support',
     checking: 'Checking...',
     signOut: 'Sign Out',
@@ -339,8 +345,6 @@ export default {
     nameRequired: 'Name is required.',
     profileSaved: 'Profile updated successfully!',
     profileSaveError: 'Could not save profile. Please try again.',
-    darkModeActive: 'Active',
-    darkModeInactive: 'Inactive',
     languageTitle: 'Language',
     deletionReceived: 'Account Deleted',
     deletionReceivedMessage:
@@ -429,6 +433,7 @@ export default {
     suggestion2: 'What is the best management for fall armyworm?',
     suggestion3: 'When to apply preventive fungicide on coffee?',
     suggestion4: 'How does biological pest control work?',
+    symptomsPrefill: 'My crop is showing these symptoms: ',
     inputA11y: 'Message to pest consultant',
     inputHint: 'Type your question about agricultural pests',
     sendA11y: 'Send message',
@@ -611,6 +616,7 @@ export default {
     noDiagnoses: 'No diagnoses',
     noDiagnosesDesc: 'Your diagnoses will appear here',
     errorLoading: 'Error loading history',
+    errorLoadingDesc: 'Check your connection and try again.',
     deleteTitle: 'Delete',
     deleteConfirm: 'Are you sure you want to delete this diagnosis?',
     deleteError: 'Could not delete. Check your connection.',

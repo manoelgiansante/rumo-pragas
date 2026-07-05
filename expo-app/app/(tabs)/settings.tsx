@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Share,
   StyleSheet,
   useColorScheme,
   Platform,
@@ -19,7 +20,14 @@ import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import * as Sentry from '@sentry/react-native';
 import { LANGUAGE_KEY } from '../../i18n';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../../constants/theme';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
@@ -287,6 +295,16 @@ export default function SettingsScreen() {
       });
   };
 
+  const handleShareApp = () => {
+    const url =
+      Platform.OS === 'ios'
+        ? 'https://apps.apple.com/br/app/id6762232682'
+        : 'https://play.google.com/store/apps/details?id=com.agrorumo.rumopragas';
+    Share.share({ message: `${t('settings.shareMessage')} ${url}` }).catch(() => {
+      /* usuário cancelou o share sheet — não é erro */
+    });
+  };
+
   return (
     <ScrollView
       style={[styles.container, isDark && styles.containerDark]}
@@ -341,12 +359,6 @@ export default function SettingsScreen() {
 
       {/* PREFERENCES */}
       <Section isDark={isDark} title={t('settings.sectionPreferences')}>
-        <Row
-          isDark={isDark}
-          icon="moon-outline"
-          label={t('settings.darkMode')}
-          value={isDark ? t('settings.darkModeActive') : t('settings.darkModeInactive')}
-        />
         <Row
           isDark={isDark}
           icon="globe-outline"
@@ -417,6 +429,13 @@ export default function SettingsScreen() {
         />
         <Row
           isDark={isDark}
+          icon="share-social-outline"
+          label={t('settings.shareApp')}
+          onPress={handleShareApp}
+          testID="settings-row-share-app"
+        />
+        <Row
+          isDark={isDark}
           icon="information-circle-outline"
           label={t('settings.version')}
           value={Constants.expoConfig?.version ?? '1.0.7'}
@@ -471,6 +490,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: FontSize.largeTitle,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },
@@ -487,8 +507,14 @@ const styles = StyleSheet.create({
   },
   profileCardDark: { backgroundColor: '#1C1C1E' },
   profileInfo: { flex: 1, minWidth: 0 },
-  profileName: { fontSize: FontSize.headline, fontWeight: FontWeight.semibold, color: Colors.text },
+  profileName: {
+    fontSize: FontSize.headline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
   profileEmail: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
     marginTop: 2,
@@ -506,6 +532,7 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.accent,
   },
@@ -522,6 +549,7 @@ const styles = StyleSheet.create({
   section: { marginTop: Spacing.xxl },
   sectionTitle: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
@@ -537,6 +565,7 @@ const styles = StyleSheet.create({
   },
   sectionContentDark: { backgroundColor: '#1C1C1E' },
   sectionFooter: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textTertiary,
     paddingHorizontal: Spacing.xxl,
@@ -563,9 +592,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  rowLabel: { flex: 1, fontSize: FontSize.body, color: Colors.text },
-  rowLabelDestructive: { color: Colors.coral, fontWeight: FontWeight.semibold },
-  rowValue: { fontSize: FontSize.subheadline, color: Colors.textSecondary, maxWidth: 160 },
+  rowLabel: {
+    fontFamily: FontFamily.regular,
+    flex: 1,
+    fontSize: FontSize.body,
+    color: Colors.text,
+  },
+  rowLabelDestructive: {
+    color: Colors.coral,
+    fontFamily: FontFamily.semibold,
+    fontWeight: FontWeight.semibold,
+  },
+  rowValue: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+    maxWidth: 160,
+  },
   rowValueDark: { color: Colors.systemGray2 },
 
   // Destructive
@@ -583,6 +626,7 @@ const styles = StyleSheet.create({
   signOutBtnDark: { backgroundColor: '#1C1C1E' },
   signOutText: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.coral,
   },
@@ -596,6 +640,7 @@ const styles = StyleSheet.create({
   },
   deleteAccountText: {
     fontSize: FontSize.footnote,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
     color: Colors.coral,
     textDecorationLine: 'underline',
