@@ -59,6 +59,9 @@ Fonte única: `expo-app/constants/theme.ts`. Regras NÃO-negociáveis:
   a lógica em `_layout.tsx` + `services/navigationGate.ts` é cirúrgica — não "simplifique".
 - iOS ASC `6762232682` · Android `com.agrorumo.rumopragas`. SA do Play: `expo-app/play-store-key.json`
   (o SA play-sa-new NÃO acessa este package).
+- Estado das lojas (04/07 noite): iOS **1.0.7 PÚBLICO** (READY_FOR_SALE) + **1.0.8 (b55) WAITING_FOR_REVIEW**
+  (AFTER_APPROVAL, publica sozinho); Android **production vc45 PÚBLICO** + 1.0.8 (vc46) no Play internal
+  (promover pra production = gate CEO).
 
 ## Monetização (estado 04/jul)
 GRÁTIS hoje. Comeback planejado: **Pro único R$19,90/mês · R$199/ano** — diagnóstico CONTINUA
@@ -93,3 +96,12 @@ Sentry project `rumo-pragas`. Release canônico `<slug>@<version>+<buildId>`
 - 2026-07-04: Poppins app inteiro (codemod fontFamily+fontWeight), light lock (sem dark mode),
   fix copy duplicada do erro de histórico, CTA "Descrever sintomas" (Home→IA chat com prefill),
   linha "Indicar o app" (Share) nos Ajustes, chaves darkMode* removidas da i18n.
+
+## Validação e Metodologias (ZERO-AE — 2026-07-04)
+- TODA alteração de código segue a skill agrorumo-code-guard (gates G0→G5). Todo git commit passa por gate automático (tsc/gitleaks/eslint/SQL); commit BLOQUEADO = corrigir o FAIL (débito herdado de outra sessão: validate-change.sh --staged --accept-debt + declarar); contornar é proibido e negado por hook.
+- Antes de trabalho não-trivial, ler Obsidian Playbooks/Metodologias e Padroes de Qualidade AgroRumo - MASTER 2026-07-04.md (router: codificação, banco, landing, design, billing).
+- Validação manual: bash ~/scripts/agrorumo/validate-change.sh --staged
+
+## Tutoriais em vídeo (05/07/2026)
+Central oficial: **https://pragas-tutoriais.vercel.app** (Bob HeyGen, cortes por assunto H+V + completo).
+Esteira reproduzível: `~/tmp/tutorial-marathon-2026-07-04/` (record-driver Playwright + compose.py + captions.py; conta demo tutorial.demo.pragas.0507@agrorumo.com). Caps 04-05 (diagnóstico) pendentes de rede no dia — regravar com o vigia e recompor.
