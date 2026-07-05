@@ -35,7 +35,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../../constants/theme';
 import { PremiumCard } from '../../../components/PremiumCard';
 import { CollapsibleSection } from '../../../components/CollapsibleSection';
 import { loadPestFromCache, type PestCacheEntry } from '../../../services/pestRegistry';
@@ -400,7 +407,7 @@ export default function PestDetailScreen() {
                   >
                     <Ionicons name="alert-circle" size={14} color={Colors.coral} />
                     <Text style={[styles.warningText, { color: Colors.coral }]}>
-                      <Text style={{ fontWeight: '700' }}>
+                      <Text style={{ fontFamily: FontFamily.bold, fontWeight: '700' }}>
                         {t('diagnosis.pestDetailActionThreshold')}:{' '}
                       </Text>
                       {enrichment.action_threshold}
@@ -553,7 +560,12 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
   },
-  heroTitlePillText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  heroTitlePillText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+  },
   heroContent: {
     position: 'absolute',
     left: 20,
@@ -572,26 +584,48 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     marginBottom: 8,
   },
-  heroBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '600' },
+  heroBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+  },
   heroPestName: {
     color: '#FFF',
     fontSize: 26,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
     letterSpacing: -0.2,
     lineHeight: 30,
   },
   heroScientific: {
     color: 'rgba(255,255,255,0.85)',
+    fontFamily: FontFamily.italic,
     fontSize: 14,
-    fontStyle: 'italic',
     marginTop: 4,
   },
   synonymsRow: { marginTop: 10, flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  synonymsLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600' },
-  synonymsText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, flex: 1 },
+  synonymsLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+  },
+  synonymsText: {
+    fontFamily: FontFamily.regular,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    flex: 1,
+  },
   // --- Sections ---
   sections: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: Spacing.sm },
-  sectionText: { fontSize: FontSize.subheadline, lineHeight: 22, flex: 1, color: Colors.text },
+  sectionText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    lineHeight: 22,
+    flex: 1,
+    color: Colors.text,
+  },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 6 },
   bullet: { width: 6, height: 6, borderRadius: 3, marginTop: 8 },
   warning: {
@@ -603,7 +637,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  warningText: { fontSize: FontSize.caption, color: Colors.earthText, flex: 1 },
+  warningText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: Colors.earthText,
+    flex: 1,
+  },
   // --- Product cards ---
   productCard: {
     backgroundColor: Colors.card,
@@ -612,11 +651,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.separator,
     padding: 12,
   },
-  productName: { fontSize: FontSize.subheadline, fontWeight: '700', color: Colors.text },
+  productName: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
   productActive: {
+    fontFamily: FontFamily.italic,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
     marginTop: 2,
   },
   productMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
@@ -626,10 +670,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
   },
   productMetaValue: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.text,
     marginTop: 2,
@@ -637,7 +683,12 @@ const styles = StyleSheet.create({
   // --- References ---
   refsCard: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: Spacing.md },
   refsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  refsTitle: { fontSize: FontSize.subheadline, fontWeight: '800', color: Colors.text },
+  refsTitle: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
   refRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -646,7 +697,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.separator,
   },
-  refRowText: { flex: 1, fontSize: FontSize.subheadline, color: Colors.text },
+  refRowText: {
+    fontFamily: FontFamily.regular,
+    flex: 1,
+    fontSize: FontSize.subheadline,
+    color: Colors.text,
+  },
   // --- Error / not found ---
   errorCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   errorIcon: {
@@ -657,8 +713,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  errorTitle: { fontSize: FontSize.title2, fontWeight: '700', marginBottom: 8, color: Colors.text },
+  errorTitle: {
+    fontSize: FontSize.title2,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: Colors.text,
+  },
   errorMsg: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     textAlign: 'center',
@@ -670,7 +733,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: BorderRadius.lg,
   },
-  closeBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
+  closeBtnText: {
+    fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
   // --- Legal disclaimer ---
   legalDisclaimer: {
     flexDirection: 'row',
@@ -684,9 +752,9 @@ const styles = StyleSheet.create({
   },
   legalDisclaimerText: {
     flex: 1,
+    fontFamily: FontFamily.italic,
     fontSize: 11,
     color: Colors.textSecondary,
     lineHeight: 16,
-    fontStyle: 'italic',
   },
 });

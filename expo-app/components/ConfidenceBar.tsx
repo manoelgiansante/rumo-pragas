@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Colors, FontSize, FontWeight, BorderRadius } from '../constants/theme';
+import { Colors, FontSize, FontWeight, BorderRadius, FontFamily } from '../constants/theme';
 
 interface ConfidenceBarProps {
   value: number; // 0..1
@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     width: 36,

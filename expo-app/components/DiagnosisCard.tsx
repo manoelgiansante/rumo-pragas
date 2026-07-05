@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { BorderRadius, Colors, FontSize, FontWeight } from '../constants/theme';
+import { BorderRadius, Colors, FontSize, FontWeight, FontFamily } from '../constants/theme';
 import type { DiagnosisResult } from '../types/diagnosis';
 
 export interface DiagnosisItem {
@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
   },
   pestName: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
   },
@@ -239,19 +240,23 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   cropEmoji: {
+    fontFamily: FontFamily.regular,
     fontSize: 10,
   },
   cropText: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
   },
   dot: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption2,
     color: Colors.textTertiary,
   },
   confidence: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
@@ -261,12 +266,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   date: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption2,
     color: Colors.textTertiary,
     fontVariant: ['tabular-nums'],
   },
   severityLabel: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
   },
   severityBar: {

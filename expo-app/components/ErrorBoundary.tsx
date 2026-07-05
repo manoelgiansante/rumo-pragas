@@ -3,7 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { withScope, captureException } from '../services/sentry-shim';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 import i18n from '../i18n';
 
 interface Props {
@@ -115,6 +122,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.title2,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
     textAlign: 'center',
@@ -122,6 +130,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.regular,
     fontWeight: FontWeight.regular,
     color: Colors.textSecondary,
     textAlign: 'center',
@@ -153,6 +162,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.white,
   },

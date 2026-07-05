@@ -1,9 +1,17 @@
 import '../i18n';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet, Platform, Dimensions } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_400Regular_Italic,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
@@ -148,6 +156,27 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading, user } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
+
+  // Poppins (tipografia de marca AgroRumo) — bundlada localmente, carga ~ms.
+  // `fontsReady` entra no gate de splash abaixo, mas NUNCA pode travar o boot:
+  // o watchdog absoluto de 10s (defesa Apple 2.1(a)) força o hide de qualquer
+  // jeito e, se a fonte falhar, o texto cai no system font silenciosamente.
+  const [fontsLoaded, fontError] = useFonts({
+    Poppins_400Regular,
+    Poppins_400Regular_Italic,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
+  // Teto próprio de 3s pra fonte: se o loadAsync pendurar num device problemático
+  // (fontsLoaded=false e fontError=null pra sempre), o splash não espera os 10s
+  // do watchdog — degrada pro system font e segue. Fonte é polish, não gate duro.
+  const [fontTimeoutPassed, setFontTimeoutPassed] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setFontTimeoutPassed(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+  const fontsReady = fontsLoaded || !!fontError || fontTimeoutPassed;
   // Gate flags live in a reactive provider (NavigationGateContext) — NOT in
   // local state read once on mount. This is the fix for the stale-read half of
   // the RUMO-PRAGAS-7/8 infinite loop: when consent-location / onboarding finish,
@@ -194,10 +223,10 @@ function RootLayoutNav() {
   // resolved. safeHideSplash() is idempotent and also disarms the absolute
   // watchdog so the two never race / double-call hideAsync.
   useEffect(() => {
-    if (!isLoading && hasSeenOnboarding !== null && hasSeenLocationConsent !== null) {
+    if (!isLoading && hasSeenOnboarding !== null && hasSeenLocationConsent !== null && fontsReady) {
       safeHideSplash('ready');
     }
-  }, [isLoading, hasSeenOnboarding, hasSeenLocationConsent]);
+  }, [isLoading, hasSeenOnboarding, hasSeenLocationConsent, fontsReady]);
 
   // ---------------------------------------------------------------------------
   // SINGLE SOURCE-OF-TRUTH ROUTING (fix for RUMO-PRAGAS-7/8 — Apple 2.1.0)

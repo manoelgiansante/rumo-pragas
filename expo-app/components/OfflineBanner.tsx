@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { Colors, Spacing, FontSize, FontWeight } from '../constants/theme';
+import { Colors, Spacing, FontSize, FontWeight, FontFamily } from '../constants/theme';
 
 /**
  * A banner that slides in from the top when the device is offline.
@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: FontSize.footnote,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.black,
   },

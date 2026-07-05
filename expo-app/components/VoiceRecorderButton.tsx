@@ -37,7 +37,7 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
 } from 'expo-audio';
-import { Colors, BorderRadius, Spacing, FontSize } from '../constants/theme';
+import { Colors, BorderRadius, Spacing, FontSize, FontFamily } from '../constants/theme';
 import { isVoiceEnabled } from './voiceFlag';
 import { transcribe, VoiceRecordError } from '../lib/voice-sdk';
 
@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSize.subheadline ?? 15,
     color: Colors.text,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
   },
 });

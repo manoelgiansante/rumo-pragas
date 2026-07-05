@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, StyleSheet, Image, ImageStyle, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Gradients, FontSize, FontWeight } from '../constants/theme';
+import { Gradients, FontSize, FontWeight, FontFamily } from '../constants/theme';
 
 /**
  * Avatar component used in Settings + Edit Profile.
@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
   },
   initial: {
     color: '#FFF',
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     fontSize: FontSize.title2,
   },

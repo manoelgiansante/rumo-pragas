@@ -2,7 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 import type { PestAlert, AlertSeverity } from '../services/alerts';
 
 const SEVERITY_CONFIG: Record<
@@ -146,6 +153,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
     lineHeight: 20,
@@ -163,6 +171,7 @@ const styles = StyleSheet.create({
   },
   severityText: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
   },
   forecastBadge: {
@@ -173,14 +182,17 @@ const styles = StyleSheet.create({
   },
   forecastBadgeText: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.white,
   },
   timestamp: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption2,
     color: Colors.textSecondary,
   },
   description: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
     lineHeight: 18,
@@ -196,6 +208,7 @@ const styles = StyleSheet.create({
   cropText: {
     fontSize: FontSize.caption2,
     color: Colors.textSecondary,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
 });

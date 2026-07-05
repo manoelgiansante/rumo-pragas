@@ -34,6 +34,13 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 jest.mock('../../constants/theme', () => ({
+  FontFamily: {
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semibold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
+    italic: 'Poppins_400Regular_Italic',
+  },
   Colors: { warmAmber: '#FFD700', black: '#000000' },
   Spacing: { sm: 4 },
   FontSize: { footnote: 13 },

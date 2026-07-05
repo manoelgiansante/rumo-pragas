@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, Gradients, FontSize } from '../constants/theme';
+import { Colors, Gradients, FontSize, FontFamily } from '../constants/theme';
 
 export interface ChatMessageData {
   id: string;
@@ -157,16 +157,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.systemGray6,
   },
   userText: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.white,
     lineHeight: 20,
   },
   aiText: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.text,
     lineHeight: 20,
   },
   timestamp: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption2,
     color: Colors.textTertiary,
     paddingHorizontal: 4,

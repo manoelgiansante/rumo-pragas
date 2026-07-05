@@ -20,7 +20,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, FontSize, FontWeight } from '../constants/theme';
+import { Colors, Spacing, FontSize, FontWeight, FontFamily } from '../constants/theme';
 
 /** Shared nativeID — use the SAME value on the InputAccessoryView and inputs. */
 export const DONE_ACCESSORY_ID = 'doneAccessory';
@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
   },
   doneText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.accent,
   },

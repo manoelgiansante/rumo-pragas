@@ -14,7 +14,14 @@ import { showAlert } from '../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useNavigationGate } from '../contexts/NavigationGateContext';
 import { LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY } from '../services/navigationGate';
@@ -209,12 +216,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.title2,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
     textAlign: 'center',
     marginBottom: Spacing.sm,
   },
   subtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     color: Colors.textSecondary,
     textAlign: 'center',
@@ -245,6 +254,7 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.text,
     lineHeight: 20,
@@ -260,6 +270,7 @@ const styles = StyleSheet.create({
   },
   lgpdText: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.text,
     lineHeight: 18,
@@ -277,10 +288,12 @@ const styles = StyleSheet.create({
   },
   acceptText: {
     fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: '#FFF',
   },
   footnote: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
     textAlign: 'center',

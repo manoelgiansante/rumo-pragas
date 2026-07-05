@@ -21,6 +21,13 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('../../constants/theme', () => ({
+  FontFamily: {
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semibold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
+    italic: 'Poppins_400Regular_Italic',
+  },
   Colors: {
     accent: '#1A966B',
     text: '#000',

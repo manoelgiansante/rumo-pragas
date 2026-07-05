@@ -18,7 +18,14 @@ import * as Haptics from 'expo-haptics';
 import * as Sentry from '@sentry/react-native';
 import { showAlert } from '../services/dialog';
 import { updatePassword } from '../services/auth';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 
 /**
  * Update-password screen — reached from the password-recovery deep link
@@ -208,12 +215,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.title2,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.systemGray,
     textAlign: 'center',
@@ -236,6 +245,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     color: Colors.text,
     height: '100%',
@@ -260,6 +270,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.white,
   },
@@ -270,6 +281,7 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: FontSize.footnote,
     color: Colors.accent,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
 });

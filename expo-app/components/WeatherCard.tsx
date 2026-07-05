@@ -10,7 +10,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { PremiumCard } from './PremiumCard';
-import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../constants/theme';
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Spacing,
+  BorderRadius,
+  FontFamily,
+} from '../constants/theme';
 import type { DailyForecast } from '../services/weather';
 
 export interface WeatherCardData {
@@ -202,15 +209,18 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   location: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
   },
   temperature: {
     fontSize: FontSize.title2,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },
   description: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
     textTransform: 'capitalize',
@@ -226,6 +236,7 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
@@ -252,17 +263,20 @@ const styles = StyleSheet.create({
   },
   forecastDay: {
     fontSize: 11,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     textTransform: 'capitalize',
   },
   forecastTemp: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
     fontVariant: ['tabular-nums'],
   },
   forecastTempMin: {
+    fontFamily: FontFamily.regular,
     fontSize: 11,
     color: Colors.systemGray3,
     fontVariant: ['tabular-nums'],
@@ -275,6 +289,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   loadingText: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
   },

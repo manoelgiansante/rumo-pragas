@@ -13,7 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../constants/theme';
 import { CROPS } from '../../constants/crops';
 import { PremiumCard } from '../../components/PremiumCard';
 import { SearchInput } from '../../components/SearchInput';
@@ -344,16 +351,31 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   chipActive: { backgroundColor: Colors.accent },
-  chipText: { fontSize: FontSize.caption, fontWeight: '600', color: Colors.textSecondary },
+  chipText: {
+    fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
   chipTextActive: { color: '#FFF' },
   chipEmoji: { fontSize: 14 },
   pestRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   severityDot: { width: 8, height: 8, borderRadius: 4 },
-  pestName: { fontSize: FontSize.subheadline, fontWeight: '600' },
-  pestScientific: { fontSize: FontSize.caption, color: Colors.textSecondary, fontStyle: 'italic' },
+  pestName: { fontSize: FontSize.subheadline, fontFamily: FontFamily.semibold, fontWeight: '600' },
+  pestScientific: {
+    fontFamily: FontFamily.italic,
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+  },
   cropBadge: { fontSize: 20 },
-  emptyTitle: { fontSize: FontSize.title3, fontWeight: '700', marginTop: 16 },
+  emptyTitle: {
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    marginTop: 16,
+  },
   emptyDesc: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     marginTop: 4,
@@ -369,7 +391,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent + '14',
     borderRadius: BorderRadius.md,
   },
-  clearFilterText: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.accent },
+  clearFilterText: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    color: Colors.accent,
+  },
   textDark: { color: Colors.textDark },
   emptyCtaShadow: {
     marginTop: Spacing.lg,
@@ -391,6 +418,7 @@ const styles = StyleSheet.create({
   emptyCtaText: {
     color: '#FFF',
     fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
   },
 });

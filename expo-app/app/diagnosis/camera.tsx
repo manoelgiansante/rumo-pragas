@@ -17,7 +17,14 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { VoiceRecorderButton } from '../../components/VoiceRecorderButton';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
@@ -340,7 +347,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerText: { fontSize: FontSize.headline, fontWeight: '700' },
+  headerText: { fontSize: FontSize.headline, fontFamily: FontFamily.bold, fontWeight: '700' },
   content: { flex: 1, paddingHorizontal: Spacing.lg, alignItems: 'center' },
   iconContainer: { marginTop: 20, marginBottom: 20 },
   iconRing: {
@@ -350,8 +357,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: { fontSize: FontSize.title, fontWeight: '700', marginBottom: 8 },
+  title: {
+    fontSize: FontSize.title,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
   subtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     textAlign: 'center',
@@ -401,14 +414,17 @@ const styles = StyleSheet.create({
   frameGuideText: {
     fontSize: FontSize.caption,
     color: Colors.accent,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
   },
   frameGuideDot: {
     fontSize: FontSize.caption,
     color: Colors.systemGray3,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
   },
   frameGuideHint: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
   },
@@ -421,13 +437,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  btnTitle: { fontSize: FontSize.headline, fontWeight: '600' },
-  btnSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
+  btnTitle: { fontSize: FontSize.headline, fontFamily: FontFamily.semibold, fontWeight: '600' },
+  btnSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   tips: { width: '100%', marginTop: 24 },
   tipsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  tipsTitle: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.earthText },
+  tipsTitle: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    color: Colors.earthText,
+  },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  tipText: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
+  tipText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+  },
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -442,5 +472,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  processingText: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
+  processingText: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

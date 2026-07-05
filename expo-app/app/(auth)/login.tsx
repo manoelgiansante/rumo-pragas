@@ -28,6 +28,7 @@ import {
   FontSize,
   FontWeight,
   Gradients,
+  FontFamily,
 } from '../../constants/theme';
 type AuthMode = 'login' | 'signup';
 
@@ -580,11 +581,13 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: FontSize.largeTitle,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.white,
     marginBottom: Spacing.sm,
   },
   heroSubtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
@@ -619,11 +622,13 @@ const styles = StyleSheet.create({
   },
   segmentText: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
     color: Colors.textTertiary,
   },
   segmentTextActive: {
     color: Colors.accent,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
   },
   errorContainer: {
@@ -634,6 +639,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: Colors.coral,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.footnote,
     textAlign: 'center',
   },
@@ -653,6 +659,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     color: Colors.text,
     height: '100%',
@@ -672,6 +679,7 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: FontSize.footnote,
     color: Colors.accent,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
   submitButton: {
@@ -690,10 +698,12 @@ const styles = StyleSheet.create({
   },
   submitText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.white,
   },
   termsText: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textTertiary,
     textAlign: 'center',
@@ -701,6 +711,7 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     color: Colors.accent,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
   consentRow: {
@@ -725,12 +736,14 @@ const styles = StyleSheet.create({
   },
   consentText: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.footnote,
     color: Colors.text,
     lineHeight: 20,
   },
   consentLink: {
     color: Colors.accent,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
   },
   dividerRow: {
@@ -747,6 +760,7 @@ const styles = StyleSheet.create({
   dividerText: {
     fontSize: FontSize.footnote,
     color: Colors.textTertiary,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
   appleButton: {
@@ -761,6 +775,7 @@ const styles = StyleSheet.create({
   },
   appleButtonText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: '#FFF',
   },
@@ -781,6 +796,7 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: '#3C4043',
   },

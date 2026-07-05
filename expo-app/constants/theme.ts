@@ -107,3 +107,20 @@ export const FontWeight = {
   semibold: '600' as const,
   bold: '700' as const,
 };
+
+// Tipografia de marca — Poppins (âncora do Design System AgroRumo).
+// Fontes bundladas localmente via @expo-google-fonts/poppins (sem fetch de rede);
+// `app/_layout.tsx` carrega os 4 pesos com useFonts e inclui `fontsReady` no gate
+// do splash (o watchdog de 10s continua soberano — fonte NUNCA pode travar o boot,
+// ver defesa Apple 2.1(a) no _layout). Em React Native o peso vem do ARQUIVO da
+// fonte: use SEMPRE fontFamily + fontWeight juntos (padrão Campo Vivo aprovado):
+//   fontFamily: FontFamily.semibold, fontWeight: FontWeight.semibold
+export const FontFamily = {
+  regular: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
+  semibold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
+  // Itálico real (nome científico de praga) — Android NÃO sintetiza itálico de
+  // fonte custom; usar esta face em vez de fontStyle: 'italic'.
+  italic: 'Poppins_400Regular_Italic',
+} as const;

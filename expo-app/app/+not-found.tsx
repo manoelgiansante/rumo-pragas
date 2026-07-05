@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '../constants/theme';
+import { Colors, FontFamily } from '../constants/theme';
 
 export default function NotFoundScreen() {
   const { t } = useTranslation();
@@ -45,11 +45,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 48,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
     color: Colors.accent,
     marginBottom: 8,
   },
   message: {
+    fontFamily: FontFamily.regular,
     fontSize: 16,
     color: Colors.textTertiary,
     marginBottom: 24,
@@ -63,6 +65,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: Colors.white,
     fontSize: 16,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
   },
 });

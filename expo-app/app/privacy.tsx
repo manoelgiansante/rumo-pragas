@@ -3,7 +3,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 
 export default function PrivacyScreen() {
   const { t } = useTranslation();
@@ -332,6 +339,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: FontSize.headline,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
   },
@@ -342,11 +350,13 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
   },
   lastUpdated: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
     marginBottom: Spacing.xxl,
   },
   intro: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.text,
     lineHeight: 22,
@@ -354,12 +364,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
     marginTop: Spacing.xxl,
     marginBottom: Spacing.md,
   },
   paragraph: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.text,
     lineHeight: 22,
@@ -369,12 +381,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.subheadline,
     color: Colors.techBlue,
     lineHeight: 22,
-    backgroundColor: '#EEF4FF',
+    backgroundColor: Colors.systemGray6,
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderLeftWidth: 4,
     borderLeftColor: Colors.techBlue,
     marginBottom: Spacing.md,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
     overflow: 'hidden',
   },
@@ -393,11 +406,13 @@ const styles = StyleSheet.create({
   },
   listText: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.text,
     lineHeight: 22,
   },
   bold: {
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
   },
   bottomSpacer: {

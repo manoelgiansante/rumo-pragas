@@ -19,7 +19,14 @@ import Animated, {
   withSpring,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 import { useNavigationGate } from '../contexts/NavigationGateContext';
 import { trackEvent } from '../services/analytics';
 
@@ -310,6 +317,7 @@ const styles = StyleSheet.create({
   iconContainerTablet: { width: 180, height: 180, borderRadius: 90 },
   pageTitle: {
     fontSize: FontSize.title,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.white,
     textAlign: 'center',
@@ -318,6 +326,7 @@ const styles = StyleSheet.create({
   },
   pageTitleTablet: { fontSize: 40 },
   pageSubtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
@@ -340,6 +349,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: FontSize.footnote,
     color: 'rgba(255,255,255,0.95)',
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
 
@@ -386,6 +396,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: FontSize.body,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.accent,
   },
@@ -401,6 +412,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 24,
     color: Colors.accent,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     includeFontPadding: false,
     marginTop: -2,
@@ -409,6 +421,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: FontSize.caption,
     color: 'rgba(255,255,255,0.7)',
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
   },
 });

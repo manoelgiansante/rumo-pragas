@@ -23,7 +23,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { Colors, FontSize, FontWeight, Spacing, FontFamily } from '../constants/theme';
 import { PremiumCard } from './PremiumCard';
 import { SkeletonLoader } from './SkeletonLoader';
 import type { InfestationLevel, MipReference } from '../data/mip';
@@ -436,6 +436,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.accent,
   },
@@ -450,23 +451,26 @@ const styles = StyleSheet.create({
   },
   tierBadgeText: {
     fontSize: 9,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.accent,
     letterSpacing: 0.4,
   },
   entryName: {
     fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },
   entryScientific: {
+    fontFamily: FontFamily.italic,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
     marginBottom: Spacing.md,
   },
   sectionLabel: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     letterSpacing: 0.4,
@@ -489,6 +493,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     letterSpacing: 0.3,
   },
@@ -500,6 +505,7 @@ const styles = StyleSheet.create({
   },
   panelHeader: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.textSecondary,
     letterSpacing: 0.4,
@@ -510,11 +516,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   panelBody: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     lineHeight: 21,
     color: Colors.text,
   },
   metaLabel: {
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.textSecondary,
   },
@@ -529,6 +537,7 @@ const styles = StyleSheet.create({
   },
   subsectionTitle: {
     fontSize: FontSize.footnote,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },
@@ -552,6 +561,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     color: Colors.earthText,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
   },
   productRow: {
@@ -561,15 +571,18 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: FontSize.footnote,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
   },
   productMeta: {
+    fontFamily: FontFamily.regular,
     fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 1,
   },
   obsText: {
+    fontFamily: FontFamily.regular,
     fontSize: 11,
     color: Colors.textSecondary,
     lineHeight: 16,
@@ -596,10 +609,12 @@ const styles = StyleSheet.create({
   },
   refSource: {
     fontSize: 11,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.techBlue,
   },
   refYear: {
+    fontFamily: FontFamily.regular,
     fontSize: 10,
     color: Colors.textSecondary,
   },
@@ -611,6 +626,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     flex: 1,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     lineHeight: 21,
@@ -625,9 +641,9 @@ const styles = StyleSheet.create({
   },
   disclaimerText: {
     flex: 1,
+    fontFamily: FontFamily.italic,
     fontSize: 11,
     color: Colors.textSecondary,
     lineHeight: 16,
-    fontStyle: 'italic',
   },
 });

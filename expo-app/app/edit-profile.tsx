@@ -22,7 +22,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Sentry from '@sentry/react-native';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  FontWeight,
+  FontFamily,
+} from '../constants/theme';
 import { CROPS } from '../constants/crops';
 import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
@@ -512,7 +519,11 @@ export default function EditProfileScreen() {
                   style={[
                     styles.cropName,
                     isDark && styles.textDark,
-                    selected && { color: crop.color, fontWeight: FontWeight.bold },
+                    selected && {
+                      color: crop.color,
+                      fontFamily: FontFamily.bold,
+                      fontWeight: FontWeight.bold,
+                    },
                   ]}
                 >
                   {crop.displayName}
@@ -645,12 +656,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     textAlign: 'center',
     color: Colors.text,
   },
   saveBtn: { padding: Spacing.xs, minWidth: 60, alignItems: 'flex-end' },
-  saveBtnText: { fontSize: FontSize.body, fontWeight: FontWeight.semibold, color: Colors.accent },
+  saveBtnText: {
+    fontSize: FontSize.body,
+    fontFamily: FontFamily.semibold,
+    fontWeight: FontWeight.semibold,
+    color: Colors.accent,
+  },
 
   // Avatar
   avatarBlock: { alignItems: 'center', marginTop: Spacing.xl, marginBottom: Spacing.lg },
@@ -670,6 +687,7 @@ const styles = StyleSheet.create({
   },
   avatarHint: {
     marginTop: 12,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
   },
@@ -687,6 +705,7 @@ const styles = StyleSheet.create({
   field: { paddingHorizontal: Spacing.lg, paddingVertical: 10 },
   fieldLabel: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
@@ -694,6 +713,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     color: Colors.text,
     paddingVertical: 6,
@@ -720,14 +740,20 @@ const styles = StyleSheet.create({
   stateChipActive: { backgroundColor: Colors.accent + '20', borderColor: Colors.accent },
   stateChipText: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.medium,
     fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
   },
-  stateChipTextActive: { color: Colors.accent, fontWeight: FontWeight.bold },
+  stateChipTextActive: {
+    color: Colors.accent,
+    fontFamily: FontFamily.bold,
+    fontWeight: FontWeight.bold,
+  },
 
   // Crops section
   sectionTitle: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
     textTransform: 'uppercase',
@@ -756,7 +782,11 @@ const styles = StyleSheet.create({
   },
   cropChipDark: { backgroundColor: '#1C1C1E', borderColor: '#2A2A2C' },
   cropIcon: { fontSize: 18 },
-  cropName: { fontSize: FontSize.caption, color: Colors.textSecondary },
+  cropName: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+  },
 
   textDark: { color: Colors.textDark },
   textMuted: { color: Colors.systemGray },

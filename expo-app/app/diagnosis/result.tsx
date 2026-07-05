@@ -28,7 +28,14 @@ import Animated, {
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { MipCard } from '../../components/MipCard';
@@ -1177,18 +1184,24 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  heroBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '600' },
+  heroBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+  },
   heroPestName: {
     color: '#FFF',
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
     letterSpacing: -0.3,
     lineHeight: 32,
   },
   heroScientific: {
     color: 'rgba(255,255,255,0.85)',
+    fontFamily: FontFamily.italic,
     fontSize: 14,
-    fontStyle: 'italic',
     marginTop: 4,
   },
   // --- Confidence bar ---
@@ -1201,12 +1214,13 @@ const styles = StyleSheet.create({
   },
   confidenceLabel: {
     fontSize: 11,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.85)',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
-  confidenceValue: { fontSize: 18, fontWeight: '700', color: '#FFF' },
+  confidenceValue: { fontSize: 18, fontFamily: FontFamily.bold, fontWeight: '700', color: '#FFF' },
   confidenceTrack: {
     height: 8,
     borderRadius: 4,
@@ -1232,6 +1246,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     color: '#78350F',
     lineHeight: 18,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
   },
   // --- Alternatives card ---
@@ -1254,6 +1269,7 @@ const styles = StyleSheet.create({
   alternativesHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   alternativesTitle: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
     color: Colors.text,
   },
@@ -1270,15 +1286,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   alternativeRowMain: { flex: 1 },
-  alternativeName: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
+  alternativeName: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    color: Colors.text,
+  },
   alternativeScientific: {
+    fontFamily: FontFamily.italic,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
     marginTop: 2,
   },
   alternativeConfidence: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
     color: Colors.accent,
   },
@@ -1290,7 +1312,8 @@ const styles = StyleSheet.create({
   treatmentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   treatmentTitle: {
     fontSize: FontSize.subheadline,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
     color: Colors.text,
   },
   treatmentLevels: { gap: 10, marginBottom: 14 },
@@ -1308,11 +1331,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   treatmentLevelText: { flex: 1 },
-  treatmentLevelTitle: { fontSize: FontSize.subheadline, fontWeight: '700', color: Colors.text },
-  treatmentLevelHint: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
+  treatmentLevelTitle: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  treatmentLevelHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
   treatmentLevelCount: {
     fontSize: FontSize.headline,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
     minWidth: 24,
     textAlign: 'right',
   },
@@ -1325,10 +1359,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: BorderRadius.md,
   },
-  viewDetailsBtnText: { color: '#FFF', fontSize: FontSize.subheadline, fontWeight: '700' },
+  viewDetailsBtnText: {
+    color: '#FFF',
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+  },
   // --- Sections ---
   sections: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: Spacing.sm },
-  sectionText: { fontSize: FontSize.subheadline, lineHeight: 22, flex: 1, color: Colors.text },
+  sectionText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    lineHeight: 22,
+    flex: 1,
+    color: Colors.text,
+  },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 6 },
   bullet: { width: 6, height: 6, borderRadius: 3, marginTop: 8 },
   warning: {
@@ -1340,17 +1385,32 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  warningText: { fontSize: FontSize.caption, color: Colors.earthText, flex: 1 },
+  warningText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: Colors.earthText,
+    flex: 1,
+  },
   // --- Details card ---
   detailTitle: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
     color: Colors.accent,
     marginBottom: 10,
   },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  detailLabel: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
-  detailValue: { fontSize: FontSize.subheadline, fontWeight: '600', color: Colors.text },
+  detailLabel: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+  },
+  detailValue: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    color: Colors.text,
+  },
   // --- Error states ---
   errorCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   errorIcon: {
@@ -1361,8 +1421,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  errorTitle: { fontSize: FontSize.title2, fontWeight: '700', marginBottom: 8, color: Colors.text },
+  errorTitle: {
+    fontSize: FontSize.title2,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: Colors.text,
+  },
   errorMsg: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
     color: Colors.textSecondary,
     textAlign: 'center',
@@ -1374,7 +1441,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: BorderRadius.lg,
   },
-  closeBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
+  closeBtnText: {
+    fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
   secondaryBtn: {
     paddingHorizontal: 48,
     paddingVertical: 14,
@@ -1382,6 +1454,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.systemGray,
   },
@@ -1420,7 +1493,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.accent + '40',
   },
-  actionBtnText: { fontSize: FontSize.caption, fontWeight: '700', color: '#FFF' },
+  actionBtnText: {
+    fontSize: FontSize.caption,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
   // --- Legal disclaimer ---
   legalDisclaimer: {
     flexDirection: 'row',
@@ -1434,9 +1512,9 @@ const styles = StyleSheet.create({
   },
   legalDisclaimerText: {
     flex: 1,
+    fontFamily: FontFamily.italic,
     fontSize: 11,
     color: Colors.textSecondary,
     lineHeight: 16,
-    fontStyle: 'italic',
   },
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, BorderRadius, FontSize } from '../constants/theme';
+import { Colors, BorderRadius, FontSize, FontFamily } from '../constants/theme';
 
 interface SearchInputProps {
   value: string;
@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 44,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.body,
     color: Colors.text,
   },

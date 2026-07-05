@@ -6,6 +6,13 @@ jest.mock('expo-linear-gradient', () => ({
 }));
 
 jest.mock('../../constants/theme', () => ({
+  FontFamily: {
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semibold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
+    italic: 'Poppins_400Regular_Italic',
+  },
   Gradients: { hero: ['#06281D', '#0B3D2E', '#145A45'] },
   FontSize: { title2: 22 },
   FontWeight: { bold: '700' },

@@ -26,7 +26,7 @@ import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, FontSize, FontWeight, BorderRadius } from '../constants/theme';
+import { Colors, FontSize, FontWeight, BorderRadius, FontFamily } from '../constants/theme';
 import { CollapsibleSection } from './CollapsibleSection';
 import type { AgrioPrediction } from '../types/diagnosis';
 
@@ -125,6 +125,7 @@ export function TopAlternatives({ predictions, primaryId, max = 3 }: Props) {
 
 const styles = StyleSheet.create({
   subtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
     color: Colors.textSecondary,
     marginBottom: 10,
@@ -152,6 +153,7 @@ const styles = StyleSheet.create({
   },
   rankText: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
   },
   body: {
@@ -160,6 +162,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
   },
@@ -167,9 +170,9 @@ const styles = StyleSheet.create({
     color: Colors.textDark,
   },
   scientific: {
+    fontFamily: FontFamily.italic,
     fontSize: FontSize.caption2,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
   },
   barTrack: {
     height: 4,
@@ -184,15 +187,16 @@ const styles = StyleSheet.create({
   },
   pct: {
     fontSize: FontSize.caption,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     fontVariant: ['tabular-nums'],
     minWidth: 36,
     textAlign: 'right',
   },
   disclaimer: {
+    fontFamily: FontFamily.italic,
     fontSize: 11,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
     marginTop: 4,
   },
 });

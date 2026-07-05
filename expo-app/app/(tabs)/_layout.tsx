@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '../../constants/theme';
+import { Colors, FontFamily } from '../../constants/theme';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 export default function TabsLayout() {
@@ -24,6 +24,7 @@ export default function TabsLayout() {
           },
           tabBarLabelStyle: {
             fontSize: 11,
+            fontFamily: FontFamily.semibold,
             fontWeight: '600',
           },
           headerShown: false,

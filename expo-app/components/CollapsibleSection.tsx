@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { Colors, FontSize, FontWeight, Spacing, FontFamily } from '../constants/theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -87,6 +87,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },

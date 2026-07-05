@@ -12,7 +12,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Colors, Spacing, BorderRadius, FontSize, Gradients } from '../../constants/theme';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Gradients,
+  FontFamily,
+} from '../../constants/theme';
 import { CROPS, CropType } from '../../constants/crops';
 import { SearchInput } from '../../components/SearchInput';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -176,7 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerText: { fontSize: FontSize.headline, fontWeight: '700' },
+  headerText: { fontSize: FontSize.headline, fontFamily: FontFamily.bold, fontWeight: '700' },
   preview: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -188,11 +195,21 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   previewImage: { width: 56, height: 56, borderRadius: 12 },
-  previewTitle: { fontSize: FontSize.subheadline, fontWeight: '600' },
-  previewSub: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
+  previewTitle: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+  },
+  previewSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   searchRow: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md },
   question: {
     fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
     fontWeight: '700',
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
@@ -210,14 +227,24 @@ const styles = StyleSheet.create({
   cropEmoji: { fontSize: 28 },
   cropName: {
     fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     marginTop: 4,
     color: Colors.textSecondary,
   },
   cropNameSelected: { color: Colors.accent },
   emptyContainer: { alignItems: 'center', paddingTop: 40, gap: 8 },
-  emptyTitle: { fontSize: FontSize.title3, fontWeight: '700', color: Colors.text },
-  emptyDesc: { fontSize: FontSize.subheadline, color: Colors.textSecondary },
+  emptyTitle: {
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  emptyDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+    color: Colors.textSecondary,
+  },
   footer: { padding: Spacing.lg, paddingBottom: 32 },
   startBtn: {
     flexDirection: 'row',
@@ -227,5 +254,10 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: BorderRadius.lg,
   },
-  startBtnText: { fontSize: FontSize.headline, fontWeight: '700', color: '#FFF' },
+  startBtnText: {
+    fontSize: FontSize.headline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
 });

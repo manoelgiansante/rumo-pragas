@@ -14,6 +14,13 @@ jest.mock('react-i18next', () => ({
 
 // Light theme stub — TopAlternatives only reads colours + font sizes.
 jest.mock('../../constants/theme', () => ({
+  FontFamily: {
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semibold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
+    italic: 'Poppins_400Regular_Italic',
+  },
   Colors: {
     accent: '#0B3D2E',
     warmAmber: '#C89B3C',

@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { FontSize, Gradients } from '../../constants/theme';
+import { FontSize, Gradients, FontFamily } from '../../constants/theme';
 import { sendDiagnosis } from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
@@ -348,6 +348,7 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: FontSize.title3,
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: '#FFF',
     textAlign: 'center',
@@ -364,10 +365,16 @@ const styles = StyleSheet.create({
   stepCounter: {
     fontSize: FontSize.caption,
     color: 'rgba(255,255,255,0.85)',
+    fontFamily: FontFamily.semibold,
     fontWeight: '600',
     marginTop: 10,
     fontVariant: ['tabular-nums'],
     letterSpacing: 0.3,
   },
-  hint: { fontSize: FontSize.caption, color: 'rgba(255,255,255,0.6)', marginTop: 20 },
+  hint: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 20,
+  },
 });
