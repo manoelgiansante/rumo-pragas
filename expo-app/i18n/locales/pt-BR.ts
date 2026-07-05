@@ -347,6 +347,7 @@ export default {
     support: 'Suporte',
     contactSupport: 'Contato / Suporte',
     shareApp: 'Indicar o app',
+    videoTutorials: 'Tutoriais em vídeo',
     shareMessage:
       'Estou usando o Rumo Pragas IA pra diagnosticar pragas e doenças da lavoura por foto, grátis. Baixe:',
     supportSubject: 'Suporte Rumo Pragas IA',

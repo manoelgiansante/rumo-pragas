@@ -324,6 +324,7 @@ export default {
     support: 'Support',
     contactSupport: 'Contact support',
     shareApp: 'Share the app',
+    videoTutorials: 'Video tutorials',
     shareMessage:
       'I use Rumo Pragas AI to diagnose crop pests and diseases from a photo, for free. Get it:',
     supportSubject: 'Rumo Pragas IA Support',

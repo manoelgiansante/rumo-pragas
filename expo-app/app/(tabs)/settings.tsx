@@ -295,6 +295,14 @@ export default function SettingsScreen() {
       });
   };
 
+  const openTutorials = () => {
+    import('expo-linking')
+      .then(({ openURL }) => openURL('https://tutoriais.pragas.agrorumo.com'))
+      .catch(() => {
+        showAlert(t('settings.videoTutorials'), 'tutoriais.pragas.agrorumo.com');
+      });
+  };
+
   const handleShareApp = () => {
     const url =
       Platform.OS === 'ios'
@@ -433,6 +441,13 @@ export default function SettingsScreen() {
           label={t('settings.shareApp')}
           onPress={handleShareApp}
           testID="settings-row-share-app"
+        />
+        <Row
+          isDark={isDark}
+          icon="play-circle-outline"
+          label={t('settings.videoTutorials')}
+          onPress={openTutorials}
+          testID="settings-row-tutorials"
         />
         <Row
           isDark={isDark}

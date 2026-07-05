@@ -327,6 +327,7 @@ export default {
     support: 'Soporte',
     contactSupport: 'Contactar soporte',
     shareApp: 'Recomendar la app',
+    videoTutorials: 'Tutoriales en video',
     shareMessage:
       'Uso Rumo Pragas IA para diagnosticar plagas y enfermedades del cultivo con una foto, gratis. Descárgala:',
     supportSubject: 'Soporte Rumo Pragas IA',
