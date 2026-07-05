@@ -23,12 +23,14 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Image,
-  Platform,
   useColorScheme,
   ActivityIndicator,
 } from 'react-native';
+// Cross-platform safe area: RN's SafeAreaView is iOS-only — on Android
+// (edge-to-edge) the hero back button sat under the status bar. The native
+// per-view measurement is also correct inside the iOS sheet modal.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -151,7 +153,9 @@ export default function PestDetailScreen() {
   const refQuery = `${displayName}${crop ? ' ' + crop : ''}`;
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+    // edges=['bottom'] only: the hero image intentionally bleeds under the
+    // status bar (top inset is applied to the overlay button row instead).
+    <SafeAreaView edges={['bottom']} style={[styles.container, isDark && styles.containerDark]}>
       <ScrollView contentInsetAdjustmentBehavior="automatic">
         {/* HERO — captured image (or gradient fallback) */}
         <View style={styles.heroWrap}>
@@ -172,22 +176,24 @@ export default function PestDetailScreen() {
             style={styles.heroGradient}
             pointerEvents="none"
           />
-          <View style={styles.heroTopRow}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.iconBtn}
-              accessibilityLabel={t('diagnosis.pestDetailCloseA11y')}
-              accessibilityRole="button"
-              testID="pest-detail-close-button"
-            >
-              <Ionicons name="chevron-back" size={22} color="#FFF" />
-            </TouchableOpacity>
-            <View style={styles.heroTitlePill}>
-              <Ionicons name="document-text" size={12} color="#FFF" />
-              <Text style={styles.heroTitlePillText}>{t('diagnosis.pestDetailTitle')}</Text>
+          <SafeAreaView edges={['top']} style={styles.heroTopSafe} pointerEvents="box-none">
+            <View style={styles.heroTopRow} pointerEvents="box-none">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.iconBtn}
+                accessibilityLabel={t('diagnosis.pestDetailCloseA11y')}
+                accessibilityRole="button"
+                testID="pest-detail-close-button"
+              >
+                <Ionicons name="chevron-back" size={22} color="#FFF" />
+              </TouchableOpacity>
+              <View style={styles.heroTitlePill}>
+                <Ionicons name="document-text" size={12} color="#FFF" />
+                <Text style={styles.heroTitlePillText}>{t('diagnosis.pestDetailTitle')}</Text>
+              </View>
+              <View style={{ width: 38 }} />
             </View>
-            <View style={{ width: 38 }} />
-          </View>
+          </SafeAreaView>
           <View style={styles.heroContent}>
             {crop ? (
               <View style={styles.heroBadge}>
@@ -533,15 +539,19 @@ const styles = StyleSheet.create({
   heroWrap: { height: HERO_HEIGHT, backgroundColor: Colors.brandDark, position: 'relative' },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   heroGradient: { ...StyleSheet.absoluteFillObject },
-  heroTopRow: {
+  heroTopSafe: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
-    left: 16,
-    right: 16,
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
+  },
+  heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 2,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
   },
   iconBtn: {
     width: 38,

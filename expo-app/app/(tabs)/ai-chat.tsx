@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -241,141 +242,148 @@ export default function AIChatScreen() {
   }, [t]);
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, isDark && styles.containerDark]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
-      {isLoadingHistory ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={[styles.loadingText, isDark && styles.textDark]}>
-            {t('aiChat.loadingConversation')}
-          </Text>
-        </View>
-      ) : messages.length === 0 ? (
-        <ScrollView
-          style={styles.emptyStateScroll}
-          contentContainerStyle={[
-            styles.emptyState,
-            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <LinearGradient colors={Gradients.tech} style={styles.aiAvatar}>
-            <Ionicons name="sparkles" size={34} color="#FFF" />
-          </LinearGradient>
-          <Text style={[styles.aiTitle, isDark && styles.textDark]}>{t('chat.title')}</Text>
-          <Text style={styles.aiSubtitle}>{t('chat.subtitle')}</Text>
-          <Text style={styles.suggestLabel}>{t('chat.askAbout')}:</Text>
-          {SUGGESTIONS.map((s, i) => (
-            <TouchableOpacity
-              key={i}
-              testID={`aichat-suggestion-${i}`}
-              style={[styles.suggestion, isDark && styles.suggestionDark]}
-              onPress={() => handleSuggestionPress(s)}
-              accessibilityLabel={`${t('chat.suggestionA11y')}: ${s}`}
-              accessibilityRole="button"
-            >
-              <Ionicons name="leaf" size={14} color={Colors.accent} />
-              <Text style={[styles.suggestionText, isDark && styles.textDark]} numberOfLines={2}>
-                {s}
-              </Text>
-              <Ionicons name="arrow-up-outline" size={12} color={Colors.systemGray3} />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      ) : (
-        <>
-          <View style={styles.chatHeader}>
-            <Text style={[styles.chatHeaderTitle, isDark && styles.textDark]}>
-              {t('chat.title')}
+    <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
+      >
+        {isLoadingHistory ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+            <Text style={[styles.loadingText, isDark && styles.textDark]}>
+              {t('aiChat.loadingConversation')}
             </Text>
-            <TouchableOpacity
-              testID="aichat-clear"
-              onPress={clearChat}
-              style={styles.clearChatBtn}
-              accessibilityLabel={t('chat.clearChat')}
-              accessibilityRole="button"
-            >
-              <Ionicons name="trash-outline" size={18} color={Colors.coral} />
-            </TouchableOpacity>
           </View>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
+        ) : messages.length === 0 ? (
+          <ScrollView
+            style={styles.emptyStateScroll}
             contentContainerStyle={[
-              { padding: Spacing.md, paddingBottom: 20 },
+              styles.emptyState,
               isTablet && {
                 maxWidth: contentMaxWidth,
                 alignSelf: 'center' as const,
                 width: '100%',
               },
             ]}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            renderItem={({ item }) => <ChatBubble message={item} />}
-            ListFooterComponent={
-              sending ? (
-                <View style={styles.typingRow}>
-                  <LinearGradient colors={Gradients.tech} style={styles.typingAvatar}>
-                    <Ionicons name="sparkles" size={13} color="#FFF" />
-                  </LinearGradient>
-                  <View style={styles.typingBubble}>
-                    <Text style={styles.typingDots}>{'\u2022 \u2022 \u2022'}</Text>
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <LinearGradient colors={Gradients.tech} style={styles.aiAvatar}>
+              <Ionicons name="sparkles" size={34} color="#FFF" />
+            </LinearGradient>
+            <Text style={[styles.aiTitle, isDark && styles.textDark]}>{t('chat.title')}</Text>
+            <Text style={styles.aiSubtitle}>{t('chat.subtitle')}</Text>
+            <Text style={styles.suggestLabel}>{t('chat.askAbout')}:</Text>
+            {SUGGESTIONS.map((s, i) => (
+              <TouchableOpacity
+                key={i}
+                testID={`aichat-suggestion-${i}`}
+                style={[styles.suggestion, isDark && styles.suggestionDark]}
+                onPress={() => handleSuggestionPress(s)}
+                accessibilityLabel={`${t('chat.suggestionA11y')}: ${s}`}
+                accessibilityRole="button"
+              >
+                <Ionicons name="leaf" size={14} color={Colors.accent} />
+                <Text style={[styles.suggestionText, isDark && styles.textDark]} numberOfLines={2}>
+                  {s}
+                </Text>
+                <Ionicons name="arrow-up-outline" size={12} color={Colors.systemGray3} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <>
+            <View style={styles.chatHeader}>
+              <Text style={[styles.chatHeaderTitle, isDark && styles.textDark]}>
+                {t('chat.title')}
+              </Text>
+              <TouchableOpacity
+                testID="aichat-clear"
+                onPress={clearChat}
+                style={styles.clearChatBtn}
+                accessibilityLabel={t('chat.clearChat')}
+                accessibilityRole="button"
+              >
+                <Ionicons name="trash-outline" size={18} color={Colors.coral} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[
+                { padding: Spacing.md, paddingBottom: 20 },
+                isTablet && {
+                  maxWidth: contentMaxWidth,
+                  alignSelf: 'center' as const,
+                  width: '100%',
+                },
+              ]}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              renderItem={({ item }) => <ChatBubble message={item} />}
+              ListFooterComponent={
+                sending ? (
+                  <View style={styles.typingRow}>
+                    <LinearGradient colors={Gradients.tech} style={styles.typingAvatar}>
+                      <Ionicons name="sparkles" size={13} color="#FFF" />
+                    </LinearGradient>
+                    <View style={styles.typingBubble}>
+                      <Text style={styles.typingDots}>{'\u2022 \u2022 \u2022'}</Text>
+                    </View>
                   </View>
-                </View>
-              ) : null
-            }
-          />
-        </>
-      )}
+                ) : null
+              }
+            />
+          </>
+        )}
 
-      <View
-        style={[
-          styles.inputBar,
-          isDark && styles.inputBarDark,
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
-      >
-        <TextInput
-          ref={inputRef}
-          testID="aichat-input"
-          style={[styles.textInput, isDark && styles.textInputDark]}
-          placeholder={t('chat.placeholder')}
-          placeholderTextColor={Colors.textSecondary}
-          value={input}
-          onChangeText={setInput}
-          multiline
-          maxLength={2000}
-          accessibilityLabel={t('chat.inputA11y')}
-          accessibilityRole="text"
-          accessibilityHint={t('chat.inputHint')}
-        />
-        <TouchableOpacity
-          testID="aichat-send"
-          onPress={() => send()}
-          disabled={!input.trim() || sending}
-          style={[styles.sendBtn, input.trim() && !sending ? styles.sendBtnActive : null]}
-          accessibilityLabel={t('chat.sendA11y')}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !input.trim() || sending, busy: sending }}
+        <View
+          style={[
+            styles.inputBar,
+            isDark && styles.inputBarDark,
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
         >
-          <Ionicons
-            name="arrow-up"
-            size={18}
-            color={input.trim() && !sending ? '#FFF' : Colors.textSecondary}
+          <TextInput
+            ref={inputRef}
+            testID="aichat-input"
+            style={[styles.textInput, isDark && styles.textInputDark]}
+            placeholder={t('chat.placeholder')}
+            placeholderTextColor={Colors.textSecondary}
+            value={input}
+            onChangeText={setInput}
+            multiline
+            maxLength={2000}
+            accessibilityLabel={t('chat.inputA11y')}
+            accessibilityRole="text"
+            accessibilityHint={t('chat.inputHint')}
           />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity
+            testID="aichat-send"
+            onPress={() => send()}
+            disabled={!input.trim() || sending}
+            style={[styles.sendBtn, input.trim() && !sending ? styles.sendBtnActive : null]}
+            accessibilityLabel={t('chat.sendA11y')}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !input.trim() || sending, busy: sending }}
+          >
+            <Ionicons
+              name="arrow-up"
+              size={18}
+              color={input.trim() && !sending ? '#FFF' : Colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
+  flex: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: {
     fontFamily: FontFamily.regular,

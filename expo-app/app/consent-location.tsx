@@ -5,11 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Platform,
   ActivityIndicator,
   BackHandler,
 } from 'react-native';
+// Cross-platform safe area (RN's SafeAreaView is iOS-only — Android edge-to-edge
+// rendered this LGPD gate under the status bar / home indicator).
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';

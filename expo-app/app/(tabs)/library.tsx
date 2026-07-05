@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -219,126 +220,129 @@ export default function LibraryScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, isDark && styles.containerDark]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View
-        style={[
-          styles.searchRow,
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
+    <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <SearchInput
-          testID="library-search"
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t('library.searchPlaceholder')}
-        />
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: 8, paddingBottom: 8 }}
-      >
-        <TouchableOpacity
-          testID="library-chip-all"
-          style={[styles.chip, !selectedCrop && styles.chipActive]}
-          onPress={() => setSelectedCrop(null)}
-          accessibilityLabel={t('library.allCropsA11y')}
-          accessibilityRole="button"
-          accessibilityState={{ selected: !selectedCrop }}
+        <View
+          style={[
+            styles.searchRow,
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
         >
-          <Text style={[styles.chipText, !selectedCrop && styles.chipTextActive]}>
-            {t('library.allCrops')}
-          </Text>
-        </TouchableOpacity>
-        {CROPS.filter((c) => PESTS_BY_CROP[c.id]).map((crop) => (
+          <SearchInput
+            testID="library-search"
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('library.searchPlaceholder')}
+          />
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: 8, paddingBottom: 8 }}
+        >
           <TouchableOpacity
-            key={crop.id}
-            testID={`library-chip-${crop.id}`}
-            style={[styles.chip, selectedCrop === crop.id && styles.chipActive]}
-            onPress={() => setSelectedCrop(crop.id === selectedCrop ? null : crop.id)}
-            accessibilityLabel={t('library.filterByCrop', { crop: crop.displayName })}
+            testID="library-chip-all"
+            style={[styles.chip, !selectedCrop && styles.chipActive]}
+            onPress={() => setSelectedCrop(null)}
+            accessibilityLabel={t('library.allCropsA11y')}
             accessibilityRole="button"
-            accessibilityState={{ selected: selectedCrop === crop.id }}
+            accessibilityState={{ selected: !selectedCrop }}
           >
-            <Text style={styles.chipEmoji} accessibilityElementsHidden>
-              {crop.icon}
-            </Text>
-            <Text style={[styles.chipText, selectedCrop === crop.id && styles.chipTextActive]}>
-              {crop.displayName}
+            <Text style={[styles.chipText, !selectedCrop && styles.chipTextActive]}>
+              {t('library.allCrops')}
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={keyExtractor}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        key={isTablet ? 'tablet' : 'phone'}
-        contentContainerStyle={[
-          { padding: Spacing.lg, paddingBottom: 100 },
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
-        initialNumToRender={15}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
-            <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
-              {t('library.noPests')}
-            </Text>
-            <Text style={styles.emptyDesc}>{t('library.emptyHint')}</Text>
-            {(search || selectedCrop) && (
-              <TouchableOpacity
-                testID="library-clear-filter"
-                style={styles.clearFilterBtn}
-                onPress={() => {
-                  setSearch('');
-                  setSelectedCrop(null);
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t('library.clearFilters')}
-              >
-                <Ionicons name="close-circle" size={16} color={Colors.accent} />
-                <Text style={styles.clearFilterText}>{t('library.clearFilters')}</Text>
-              </TouchableOpacity>
-            )}
+          {CROPS.filter((c) => PESTS_BY_CROP[c.id]).map((crop) => (
             <TouchableOpacity
-              testID="library-empty-cta-diagnose"
-              onPress={() => router.push('/diagnosis/camera')}
-              activeOpacity={0.85}
-              style={styles.emptyCtaShadow}
+              key={crop.id}
+              testID={`library-chip-${crop.id}`}
+              style={[styles.chip, selectedCrop === crop.id && styles.chipActive]}
+              onPress={() => setSelectedCrop(crop.id === selectedCrop ? null : crop.id)}
+              accessibilityLabel={t('library.filterByCrop', { crop: crop.displayName })}
               accessibilityRole="button"
-              accessibilityLabel={t('home.diagnoseNow')}
+              accessibilityState={{ selected: selectedCrop === crop.id }}
             >
-              <LinearGradient
-                colors={Gradients.hero}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.emptyCta}
-              >
-                <Ionicons name="camera" size={18} color="#FFF" />
-                <Text style={styles.emptyCtaText}>{t('home.diagnoseNow')}</Text>
-              </LinearGradient>
+              <Text style={styles.chipEmoji} accessibilityElementsHidden>
+                {crop.icon}
+              </Text>
+              <Text style={[styles.chipText, selectedCrop === crop.id && styles.chipTextActive]}>
+                {crop.displayName}
+              </Text>
             </TouchableOpacity>
-          </View>
-        }
-        renderItem={({ item }) => <PestItem item={item} isDark={isDark} />}
-      />
-    </KeyboardAvoidingView>
+          ))}
+        </ScrollView>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={keyExtractor}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          key={isTablet ? 'tablet' : 'phone'}
+          contentContainerStyle={[
+            { padding: Spacing.lg, paddingBottom: 100 },
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
+              <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
+                {t('library.noPests')}
+              </Text>
+              <Text style={styles.emptyDesc}>{t('library.emptyHint')}</Text>
+              {(search || selectedCrop) && (
+                <TouchableOpacity
+                  testID="library-clear-filter"
+                  style={styles.clearFilterBtn}
+                  onPress={() => {
+                    setSearch('');
+                    setSelectedCrop(null);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('library.clearFilters')}
+                >
+                  <Ionicons name="close-circle" size={16} color={Colors.accent} />
+                  <Text style={styles.clearFilterText}>{t('library.clearFilters')}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                testID="library-empty-cta-diagnose"
+                onPress={() => router.push('/diagnosis/camera')}
+                activeOpacity={0.85}
+                style={styles.emptyCtaShadow}
+                accessibilityRole="button"
+                accessibilityLabel={t('home.diagnoseNow')}
+              >
+                <LinearGradient
+                  colors={Gradients.hero}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.emptyCta}
+                >
+                  <Ionicons name="camera" size={18} color="#FFF" />
+                  <Text style={styles.emptyCtaText}>{t('home.diagnoseNow')}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          }
+          renderItem={({ item }) => <PestItem item={item} isDark={isDark} />}
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
+  flex: { flex: 1 },
   center: { alignItems: 'center', paddingTop: 60 },
   searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: Spacing.sm },
   chip: {

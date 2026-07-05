@@ -5,10 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Platform,
   useWindowDimensions,
   type ListRenderItemInfo,
 } from 'react-native';
+// Dynamic insets replace the old Platform.OS === 'ios' ? 56 : 24 hack: the skip
+// pill and bottom controls now clear every notch / Dynamic Island / gesture bar
+// (and the Android edge-to-edge status bar) instead of assuming fixed heights.
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, BookOpen, ShieldCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -96,6 +99,7 @@ export default function OnboardingScreen() {
   // so FlatList page width tracks rotation / split-view / iPad scaling.
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isTablet = screenWidth >= 768;
+  const insets = useSafeAreaInsets();
 
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -208,7 +212,7 @@ export default function OnboardingScreen() {
 
       {/* Skip — top-right, always visible */}
       {!isLastPage ? (
-        <View style={styles.topRight}>
+        <View style={[styles.topRight, { top: insets.top + Spacing.md }]}>
           <TouchableOpacity
             onPress={() => finishOnboarding('skipped')}
             style={styles.skipPill}
@@ -223,7 +227,13 @@ export default function OnboardingScreen() {
       ) : null}
 
       {/* Bottom controls overlay */}
-      <View style={[styles.bottomOverlay, isTablet && styles.bottomOverlayTablet]}>
+      <View
+        style={[
+          styles.bottomOverlay,
+          isTablet && styles.bottomOverlayTablet,
+          { paddingBottom: insets.bottom + (isTablet ? Spacing.xxxl : Spacing.xxl) },
+        ]}
+      >
         {/* Animated dot indicators */}
         <View style={styles.dotsContainer}>
           {PAGES.map((page, index) => (
@@ -334,10 +344,9 @@ const styles = StyleSheet.create({
   },
   pageSubtitleTablet: { fontSize: 20, lineHeight: 30 },
 
-  // Top-right skip pill
+  // Top-right skip pill (top offset applied inline via safe-area insets)
   topRight: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 24,
     right: Spacing.lg,
   },
   skipPill: {
@@ -353,19 +362,17 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.medium,
   },
 
-  // Bottom overlay
+  // Bottom overlay (paddingBottom applied inline via safe-area insets)
   bottomOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 30,
     paddingHorizontal: Spacing.xxl,
     alignItems: 'center',
   },
   bottomOverlayTablet: {
     paddingHorizontal: Spacing.xxxl * 2,
-    paddingBottom: Platform.OS === 'ios' ? 56 : 40,
   },
   dotsContainer: {
     flexDirection: 'row',

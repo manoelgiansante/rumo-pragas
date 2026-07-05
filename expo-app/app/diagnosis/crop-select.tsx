@@ -1,13 +1,8 @@
 import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  FlatList,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Image, FlatList, StyleSheet } from 'react-native';
+// Cross-platform safe area (RN's SafeAreaView is iOS-only — Android edge-to-edge
+// rendered the header under the status bar). Correct inside iOS sheets too.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';

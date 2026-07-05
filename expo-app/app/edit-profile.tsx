@@ -14,6 +14,9 @@ import {
   ReturnKeyTypeOptions,
 } from 'react-native';
 import { formatPhoneBR } from '../utils/phone';
+// Cross-platform safe area: native per-view measurement — correct inside the
+// iOS sheet (modal) and on Android edge-to-edge (clears the status bar).
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../services/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -317,228 +320,235 @@ export default function EditProfileScreen() {
   const userName = profile.full_name || user?.user_metadata?.full_name || '?';
 
   return (
-    <KeyboardAvoidingView
+    <SafeAreaView
+      edges={['top']}
       style={{ flex: 1, backgroundColor: isDark ? Colors.backgroundDark : Colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View style={[styles.header, isDark && styles.headerDark]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          accessibilityRole="button"
-          accessibilityLabel={t('editProfile.backA11y')}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          testID="edit-profile-back"
-        >
-          <Ionicons name="chevron-back" size={26} color={Colors.accent} />
-        </TouchableOpacity>
-        <Text
-          style={[styles.headerTitle, isDark && styles.textDark]}
-          accessibilityRole="header"
-          numberOfLines={1}
-        >
-          {t('settings.editProfile')}
-        </Text>
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving}
-          style={styles.saveBtn}
-          accessibilityRole="button"
-          accessibilityLabel={t('editProfile.saveA11y')}
-          accessibilityState={{ disabled: saving, busy: saving }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          testID="edit-profile-save"
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={Colors.accent} />
-          ) : (
-            <Text style={styles.saveBtnText}>{t('settings.save')}</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Avatar editor */}
-        <View style={styles.avatarBlock}>
+        {/* Header */}
+        <View style={[styles.header, isDark && styles.headerDark]}>
           <TouchableOpacity
-            onPress={handleAvatarPress}
-            activeOpacity={0.85}
+            onPress={() => router.back()}
+            style={styles.backBtn}
             accessibilityRole="button"
-            accessibilityLabel={t('editProfile.avatarChangeA11y')}
-            testID="edit-profile-avatar"
-            style={styles.avatarTouch}
+            accessibilityLabel={t('editProfile.backA11y')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            testID="edit-profile-back"
           >
-            <Avatar uri={profile.avatar_url} name={userName} size={104} />
-            <View style={styles.avatarBadge}>
-              {uploadingAvatar ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Ionicons name="camera" size={16} color="#FFF" />
-              )}
-            </View>
+            <Ionicons name="chevron-back" size={26} color={Colors.accent} />
           </TouchableOpacity>
-          <Text style={[styles.avatarHint, isDark && styles.textMuted]}>
-            {t('editProfile.avatarHint')}
+          <Text
+            style={[styles.headerTitle, isDark && styles.textDark]}
+            accessibilityRole="header"
+            numberOfLines={1}
+          >
+            {t('settings.editProfile')}
           </Text>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            style={styles.saveBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('editProfile.saveA11y')}
+            accessibilityState={{ disabled: saving, busy: saving }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            testID="edit-profile-save"
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={Colors.accent} />
+            ) : (
+              <Text style={styles.saveBtnText}>{t('settings.save')}</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Personal info card */}
-        <View style={[styles.card, isDark && styles.cardDark]}>
-          <Field
-            isDark={isDark}
-            label={t('settings.fullName')}
-            value={profile.full_name}
-            onChangeText={(text) => setProfile((p) => ({ ...p, full_name: text }))}
-            placeholder={t('editProfile.fullNamePlaceholder')}
-            autoComplete="name"
-            textContentType="name"
-            autoCapitalize="words"
-            a11yLabel={t('editProfile.fullNameA11y')}
-            required
-            returnKeyType="next"
-            onSubmitEditing={() => phoneRef.current?.focus()}
-            blurOnSubmit={false}
-            testID="edit-profile-input-name"
-          />
-          <Separator />
-          <Field
-            isDark={isDark}
-            label="Email"
-            value={user?.email || ''}
-            disabled
-            a11yLabel={t('editProfile.emailReadOnlyA11y')}
-          />
-          <Separator />
-          <Field
-            isDark={isDark}
-            inputRef={phoneRef}
-            label={t('editProfile.phone')}
-            value={profile.phone}
-            onChangeText={(text) => setProfile((p) => ({ ...p, phone: formatPhoneBR(text) }))}
-            placeholder="(11) 9 9999-9999"
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            textContentType="telephoneNumber"
-            a11yLabel={t('editProfile.phoneA11y')}
-            returnKeyType="next"
-            onSubmitEditing={() => cityRef.current?.focus()}
-            blurOnSubmit={false}
-            testID="edit-profile-input-phone"
-          />
-        </View>
-
-        {/* Location card */}
-        <View style={[styles.card, isDark && styles.cardDark]}>
-          <Field
-            isDark={isDark}
-            inputRef={cityRef}
-            label={t('settings.city')}
-            value={profile.city}
-            onChangeText={(text) => setProfile((p) => ({ ...p, city: text }))}
-            placeholder={t('editProfile.cityPlaceholder')}
-            autoCapitalize="words"
-            autoComplete="postal-address-locality"
-            textContentType="addressCity"
-            a11yLabel={t('editProfile.cityA11y')}
-            returnKeyType="done"
-            onSubmitEditing={handleSave}
-            testID="edit-profile-input-city"
-          />
-          <Separator />
-          <View style={styles.field}>
-            <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>
-              {t('settings.state')}
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.stateChipRow}
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Avatar editor */}
+          <View style={styles.avatarBlock}>
+            <TouchableOpacity
+              onPress={handleAvatarPress}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('editProfile.avatarChangeA11y')}
+              testID="edit-profile-avatar"
+              style={styles.avatarTouch}
             >
-              {BRAZILIAN_STATES.map((st) => {
-                const selected = profile.state === st;
-                return (
-                  <TouchableOpacity
-                    key={st}
-                    style={[styles.stateChip, selected && styles.stateChipActive]}
-                    onPress={() => {
-                      Haptics.selectionAsync().catch(() => {});
-                      setProfile((p) => ({ ...p, state: p.state === st ? '' : st }));
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('editProfile.stateSelectA11y', { state: st })}
-                    accessibilityState={{ selected }}
-                    testID={`edit-profile-state-${st}`}
-                  >
-                    <Text style={[styles.stateChipText, selected && styles.stateChipTextActive]}>
-                      {st}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+              <Avatar uri={profile.avatar_url} name={userName} size={104} />
+              <View style={styles.avatarBadge}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="camera" size={16} color="#FFF" />
+                )}
+              </View>
+            </TouchableOpacity>
+            <Text style={[styles.avatarHint, isDark && styles.textMuted]}>
+              {t('editProfile.avatarHint')}
+            </Text>
           </View>
-        </View>
 
-        {/* Crops */}
-        <Text style={[styles.sectionTitle, isDark && styles.textMuted]}>{t('settings.crops')}</Text>
-        <View style={styles.cropsGrid}>
-          {CROPS.map((crop) => {
-            const selected = profile.crops.includes(crop.id);
-            return (
-              <TouchableOpacity
-                key={crop.id}
-                style={[
-                  styles.cropChip,
-                  isDark && styles.cropChipDark,
-                  selected && {
-                    backgroundColor: crop.color + '30',
-                    borderColor: crop.color,
-                  },
-                ]}
-                onPress={() => toggleCrop(crop.id)}
-                accessibilityRole="button"
-                accessibilityLabel={t('editProfile.cropToggleA11y', { crop: crop.displayName })}
-                accessibilityState={{ selected }}
-                testID={`edit-profile-crop-${crop.id}`}
+          {/* Personal info card */}
+          <View style={[styles.card, isDark && styles.cardDark]}>
+            <Field
+              isDark={isDark}
+              label={t('settings.fullName')}
+              value={profile.full_name}
+              onChangeText={(text) => setProfile((p) => ({ ...p, full_name: text }))}
+              placeholder={t('editProfile.fullNamePlaceholder')}
+              autoComplete="name"
+              textContentType="name"
+              autoCapitalize="words"
+              a11yLabel={t('editProfile.fullNameA11y')}
+              required
+              returnKeyType="next"
+              onSubmitEditing={() => phoneRef.current?.focus()}
+              blurOnSubmit={false}
+              testID="edit-profile-input-name"
+            />
+            <Separator />
+            <Field
+              isDark={isDark}
+              label="Email"
+              value={user?.email || ''}
+              disabled
+              a11yLabel={t('editProfile.emailReadOnlyA11y')}
+            />
+            <Separator />
+            <Field
+              isDark={isDark}
+              inputRef={phoneRef}
+              label={t('editProfile.phone')}
+              value={profile.phone}
+              onChangeText={(text) => setProfile((p) => ({ ...p, phone: formatPhoneBR(text) }))}
+              placeholder="(11) 9 9999-9999"
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              a11yLabel={t('editProfile.phoneA11y')}
+              returnKeyType="next"
+              onSubmitEditing={() => cityRef.current?.focus()}
+              blurOnSubmit={false}
+              testID="edit-profile-input-phone"
+            />
+          </View>
+
+          {/* Location card */}
+          <View style={[styles.card, isDark && styles.cardDark]}>
+            <Field
+              isDark={isDark}
+              inputRef={cityRef}
+              label={t('settings.city')}
+              value={profile.city}
+              onChangeText={(text) => setProfile((p) => ({ ...p, city: text }))}
+              placeholder={t('editProfile.cityPlaceholder')}
+              autoCapitalize="words"
+              autoComplete="postal-address-locality"
+              textContentType="addressCity"
+              a11yLabel={t('editProfile.cityA11y')}
+              returnKeyType="done"
+              onSubmitEditing={handleSave}
+              testID="edit-profile-input-city"
+            />
+            <Separator />
+            <View style={styles.field}>
+              <Text style={[styles.fieldLabel, isDark && styles.textMuted]}>
+                {t('settings.state')}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.stateChipRow}
               >
-                <Text
-                  style={styles.cropIcon}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                >
-                  {crop.icon}
-                </Text>
-                <Text
+                {BRAZILIAN_STATES.map((st) => {
+                  const selected = profile.state === st;
+                  return (
+                    <TouchableOpacity
+                      key={st}
+                      style={[styles.stateChip, selected && styles.stateChipActive]}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => {});
+                        setProfile((p) => ({ ...p, state: p.state === st ? '' : st }));
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('editProfile.stateSelectA11y', { state: st })}
+                      accessibilityState={{ selected }}
+                      testID={`edit-profile-state-${st}`}
+                    >
+                      <Text style={[styles.stateChipText, selected && styles.stateChipTextActive]}>
+                        {st}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+
+          {/* Crops */}
+          <Text style={[styles.sectionTitle, isDark && styles.textMuted]}>
+            {t('settings.crops')}
+          </Text>
+          <View style={styles.cropsGrid}>
+            {CROPS.map((crop) => {
+              const selected = profile.crops.includes(crop.id);
+              return (
+                <TouchableOpacity
+                  key={crop.id}
                   style={[
-                    styles.cropName,
-                    isDark && styles.textDark,
+                    styles.cropChip,
+                    isDark && styles.cropChipDark,
                     selected && {
-                      color: crop.color,
-                      fontFamily: FontFamily.bold,
-                      fontWeight: FontWeight.bold,
+                      backgroundColor: crop.color + '30',
+                      borderColor: crop.color,
                     },
                   ]}
+                  onPress={() => toggleCrop(crop.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('editProfile.cropToggleA11y', { crop: crop.displayName })}
+                  accessibilityState={{ selected }}
+                  testID={`edit-profile-crop-${crop.id}`}
                 >
-                  {crop.displayName}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  <Text
+                    style={styles.cropIcon}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  >
+                    {crop.icon}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cropName,
+                      isDark && styles.textDark,
+                      selected && {
+                        color: crop.color,
+                        fontFamily: FontFamily.bold,
+                        fontWeight: FontWeight.bold,
+                      },
+                    ]}
+                  >
+                    {crop.displayName}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-        <View style={{ height: 80 }} />
-      </ScrollView>
+          <View style={{ height: 80 }} />
+        </ScrollView>
 
-      {/* Renders a "Concluir" toolbar above number-style keyboards on iOS. */}
-      <KeyboardDoneAccessory />
-    </KeyboardAvoidingView>
+        {/* Renders a "Concluir" toolbar above number-style keyboards on iOS. */}
+        <KeyboardDoneAccessory />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -645,7 +655,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingTop: Platform.OS === 'ios' ? Spacing.xl : Spacing.md,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
     backgroundColor: Colors.background,
     borderBottomWidth: StyleSheet.hairlineWidth,

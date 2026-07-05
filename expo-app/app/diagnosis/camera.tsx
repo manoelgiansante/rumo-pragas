@@ -4,10 +4,14 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
+// Safe area via react-native-safe-area-context: RN's built-in SafeAreaView only
+// pads on iOS — on Android (edge-to-edge, SDK 55) the header rendered under the
+// status bar. The native RNCSafeAreaView measures per-view, so it is also
+// correct inside the iOS sheet (modal) presentation of the diagnosis stack.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';

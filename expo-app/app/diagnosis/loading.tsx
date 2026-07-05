@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+// Native per-view safe area for the cancel button: correct inside the iOS
+// sheet (0 extra) AND on Android edge-to-edge (clears the status bar).
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,7 +12,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { FontSize, Gradients, FontFamily } from '../../constants/theme';
+import { FontSize, Gradients, FontFamily, Spacing } from '../../constants/theme';
 import { sendDiagnosis } from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
@@ -278,16 +281,18 @@ export default function LoadingScreen() {
           component itself; we don't want it stealing taps. */}
       <DiagnosisSkeleton />
 
-      <TouchableOpacity
-        testID="diagnosis-loading-cancel"
-        style={styles.cancelBtn}
-        onPress={handleCancel}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        accessibilityRole="button"
-        accessibilityLabel={t('common.cancel')}
-      >
-        <Ionicons name="close" size={26} color="#FFF" />
-      </TouchableOpacity>
+      <SafeAreaView edges={['top']} style={styles.cancelSafe} pointerEvents="box-none">
+        <TouchableOpacity
+          testID="diagnosis-loading-cancel"
+          style={styles.cancelBtn}
+          onPress={handleCancel}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.cancel')}
+        >
+          <Ionicons name="close" size={26} color="#FFF" />
+        </TouchableOpacity>
+      </SafeAreaView>
 
       <View
         style={styles.center}
@@ -324,17 +329,22 @@ export default function LoadingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  cancelBtn: {
+  cancelSafe: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 24,
-    left: 16,
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  cancelBtn: {
+    marginTop: Spacing.md,
+    marginLeft: Spacing.lg,
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
   },
   center: { alignItems: 'center', paddingHorizontal: 40 },
   iconCircle: {

@@ -12,6 +12,7 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -314,180 +315,178 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, isDark && styles.containerDark]}
-      contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, isDark && styles.textDark]} accessibilityRole="header">
-          {t('settings.headerTitle')}
-        </Text>
-      </View>
-
-      {/* Profile card */}
-      <View style={[styles.profileCard, isDark && styles.profileCardDark]}>
-        <Avatar uri={avatarUrl} name={userName} size={64} />
-        <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, isDark && styles.textDark]} numberOfLines={1}>
-            {userName}
+    <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
+      <ScrollView style={styles.flex} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, isDark && styles.textDark]} accessibilityRole="header">
+            {t('settings.headerTitle')}
           </Text>
-          <Text style={styles.profileEmail} numberOfLines={1}>
-            {userEmail}
-          </Text>
-          <View style={styles.roleBadge}>
-            <Ionicons name="shield-checkmark" size={11} color={Colors.accent} />
-            <Text style={styles.roleText}>{t('settings.farmerRole')}</Text>
-          </View>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/edit-profile')}
-          style={styles.editProfileIcon}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.editProfile')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          testID="settings-edit-profile"
+
+        {/* Profile card */}
+        <View style={[styles.profileCard, isDark && styles.profileCardDark]}>
+          <Avatar uri={avatarUrl} name={userName} size={64} />
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, isDark && styles.textDark]} numberOfLines={1}>
+              {userName}
+            </Text>
+            <Text style={styles.profileEmail} numberOfLines={1}>
+              {userEmail}
+            </Text>
+            <View style={styles.roleBadge}>
+              <Ionicons name="shield-checkmark" size={11} color={Colors.accent} />
+              <Text style={styles.roleText}>{t('settings.farmerRole')}</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/edit-profile')}
+            style={styles.editProfileIcon}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.editProfile')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            testID="settings-edit-profile"
+          >
+            <Ionicons name="create-outline" size={20} color={Colors.accent} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ACCOUNT */}
+        <Section isDark={isDark} title={t('settings.sectionAccount')}>
+          <Row
+            isDark={isDark}
+            icon="person-circle-outline"
+            label={t('settings.editProfile')}
+            onPress={() => router.push('/edit-profile')}
+            isLast
+            testID="settings-row-edit-profile"
+          />
+        </Section>
+
+        {/* PREFERENCES */}
+        <Section isDark={isDark} title={t('settings.sectionPreferences')}>
+          <Row
+            isDark={isDark}
+            icon="globe-outline"
+            label={t('settings.language')}
+            value={LANGUAGE_DISPLAY[i18n.language] || i18n.language}
+            onPress={handleLanguageChange}
+            isLast
+            testID="settings-row-language"
+          />
+        </Section>
+
+        {/* NOTIFICATIONS */}
+        <Section isDark={isDark} title={t('settings.sectionNotifications')}>
+          <Row
+            isDark={isDark}
+            icon="notifications-outline"
+            label={t('settings.pushNotifications')}
+            trailing={
+              <Switch
+                value={pushEnabled}
+                onValueChange={handlePushToggle}
+                trackColor={{ true: Colors.accent, false: Colors.systemGray4 }}
+                ios_backgroundColor={Colors.systemGray4}
+                accessibilityLabel={t('settings.pushNotifA11y')}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: pushEnabled }}
+                testID="settings-switch-push"
+              />
+            }
+            isLast
+          />
+        </Section>
+
+        {/* PRIVACY */}
+        <Section
+          isDark={isDark}
+          title={t('settings.sectionPrivacy')}
+          footer={t('settings.privacyFooter')}
         >
-          <Ionicons name="create-outline" size={20} color={Colors.accent} />
-        </TouchableOpacity>
-      </View>
+          <Row
+            isDark={isDark}
+            icon="lock-closed-outline"
+            label={t('auth.privacyPolicy')}
+            onPress={() => router.push('/privacy')}
+          />
+          <Row
+            isDark={isDark}
+            icon="document-text-outline"
+            label={t('auth.termsOfUse')}
+            onPress={() => router.push('/terms')}
+            isLast
+          />
+        </Section>
 
-      {/* ACCOUNT */}
-      <Section isDark={isDark} title={t('settings.sectionAccount')}>
-        <Row
-          isDark={isDark}
-          icon="person-circle-outline"
-          label={t('settings.editProfile')}
-          onPress={() => router.push('/edit-profile')}
-          isLast
-          testID="settings-row-edit-profile"
-        />
-      </Section>
+        {/* ABOUT */}
+        <Section isDark={isDark} title={t('settings.sectionAbout')}>
+          <Row
+            isDark={isDark}
+            icon="refresh-outline"
+            label={isChecking ? t('settings.checking') : t('settings.checkUpdates')}
+            onPress={checkForUpdate}
+          />
+          <Row
+            isDark={isDark}
+            icon="mail-outline"
+            label={t('settings.contactSupport')}
+            onPress={openMail}
+          />
+          <Row
+            isDark={isDark}
+            icon="share-social-outline"
+            label={t('settings.shareApp')}
+            onPress={handleShareApp}
+            testID="settings-row-share-app"
+          />
+          <Row
+            isDark={isDark}
+            icon="play-circle-outline"
+            label={t('settings.videoTutorials')}
+            onPress={openTutorials}
+            testID="settings-row-tutorials"
+          />
+          <Row
+            isDark={isDark}
+            icon="information-circle-outline"
+            label={t('settings.version')}
+            value={Constants.expoConfig?.version ?? '1.0.7'}
+            isLast
+          />
+        </Section>
 
-      {/* PREFERENCES */}
-      <Section isDark={isDark} title={t('settings.sectionPreferences')}>
-        <Row
-          isDark={isDark}
-          icon="globe-outline"
-          label={t('settings.language')}
-          value={LANGUAGE_DISPLAY[i18n.language] || i18n.language}
-          onPress={handleLanguageChange}
-          isLast
-          testID="settings-row-language"
-        />
-      </Section>
+        {/* DESTRUCTIVE — Sign out + Delete account */}
+        <View style={styles.dangerZone}>
+          <TouchableOpacity
+            style={[styles.signOutBtn, isDark && styles.signOutBtnDark]}
+            onPress={handleSignOut}
+            accessibilityLabel={t('settings.signOutA11y')}
+            accessibilityRole="button"
+            activeOpacity={0.7}
+            testID="settings-sign-out"
+          >
+            <Ionicons name="log-out-outline" size={18} color={Colors.coral} />
+            <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
+          </TouchableOpacity>
 
-      {/* NOTIFICATIONS */}
-      <Section isDark={isDark} title={t('settings.sectionNotifications')}>
-        <Row
-          isDark={isDark}
-          icon="notifications-outline"
-          label={t('settings.pushNotifications')}
-          trailing={
-            <Switch
-              value={pushEnabled}
-              onValueChange={handlePushToggle}
-              trackColor={{ true: Colors.accent, false: Colors.systemGray4 }}
-              ios_backgroundColor={Colors.systemGray4}
-              accessibilityLabel={t('settings.pushNotifA11y')}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: pushEnabled }}
-              testID="settings-switch-push"
-            />
-          }
-          isLast
-        />
-      </Section>
+          <TouchableOpacity
+            style={styles.deleteAccountBtn}
+            onPress={handleDeleteAccount}
+            accessibilityLabel={t('settings.deleteAccountA11y')}
+            accessibilityRole="button"
+            accessibilityHint={t('settings.deleteAccountHint')}
+            activeOpacity={0.85}
+            testID="settings-delete-account"
+          >
+            <Ionicons name="trash-outline" size={16} color={Colors.coral} />
+            <Text style={styles.deleteAccountText}>{t('settings.deleteAccount')}</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* PRIVACY */}
-      <Section
-        isDark={isDark}
-        title={t('settings.sectionPrivacy')}
-        footer={t('settings.privacyFooter')}
-      >
-        <Row
-          isDark={isDark}
-          icon="lock-closed-outline"
-          label={t('auth.privacyPolicy')}
-          onPress={() => router.push('/privacy')}
-        />
-        <Row
-          isDark={isDark}
-          icon="document-text-outline"
-          label={t('auth.termsOfUse')}
-          onPress={() => router.push('/terms')}
-          isLast
-        />
-      </Section>
-
-      {/* ABOUT */}
-      <Section isDark={isDark} title={t('settings.sectionAbout')}>
-        <Row
-          isDark={isDark}
-          icon="refresh-outline"
-          label={isChecking ? t('settings.checking') : t('settings.checkUpdates')}
-          onPress={checkForUpdate}
-        />
-        <Row
-          isDark={isDark}
-          icon="mail-outline"
-          label={t('settings.contactSupport')}
-          onPress={openMail}
-        />
-        <Row
-          isDark={isDark}
-          icon="share-social-outline"
-          label={t('settings.shareApp')}
-          onPress={handleShareApp}
-          testID="settings-row-share-app"
-        />
-        <Row
-          isDark={isDark}
-          icon="play-circle-outline"
-          label={t('settings.videoTutorials')}
-          onPress={openTutorials}
-          testID="settings-row-tutorials"
-        />
-        <Row
-          isDark={isDark}
-          icon="information-circle-outline"
-          label={t('settings.version')}
-          value={Constants.expoConfig?.version ?? '1.0.7'}
-          isLast
-        />
-      </Section>
-
-      {/* DESTRUCTIVE — Sign out + Delete account */}
-      <View style={styles.dangerZone}>
-        <TouchableOpacity
-          style={[styles.signOutBtn, isDark && styles.signOutBtnDark]}
-          onPress={handleSignOut}
-          accessibilityLabel={t('settings.signOutA11y')}
-          accessibilityRole="button"
-          activeOpacity={0.7}
-          testID="settings-sign-out"
-        >
-          <Ionicons name="log-out-outline" size={18} color={Colors.coral} />
-          <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.deleteAccountBtn}
-          onPress={handleDeleteAccount}
-          accessibilityLabel={t('settings.deleteAccountA11y')}
-          accessibilityRole="button"
-          accessibilityHint={t('settings.deleteAccountHint')}
-          activeOpacity={0.85}
-          testID="settings-delete-account"
-        >
-          <Ionicons name="trash-outline" size={16} color={Colors.coral} />
-          <Text style={styles.deleteAccountText}>{t('settings.deleteAccount')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ height: 64 }} />
-    </ScrollView>
+        <View style={{ height: 64 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -498,9 +497,10 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
+  flex: { flex: 1 },
   header: {
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xxl,
+    paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },
   headerTitle: {
