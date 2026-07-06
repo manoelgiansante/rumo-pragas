@@ -96,18 +96,10 @@ export default function CameraScreen() {
         showPermissionAlert(t('diagnosis.cameraPermissionMsg'));
         return;
       }
-    } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        addBreadcrumb({
-          category: 'diagnosis.camera',
-          message: 'gallery_permission_denied',
-          level: 'warning',
-        });
-        showPermissionAlert(t('diagnosis.galleryPermissionMsg'));
-        return;
-      }
     }
+    // Galeria: usa o Android Photo Picker / iOS limited picker do expo-image-picker,
+    // que NÃO exige READ_MEDIA_IMAGES (removida do manifesto por política do Google Play —
+    // acesso pontual a mídia não pode declarar a permissão ampla). Sem gate de permissão.
 
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ['images'],

@@ -152,14 +152,15 @@ export default function EditProfileScreen() {
     async (source: 'camera' | 'library') => {
       if (!user) return;
       try {
-        const perm =
-          source === 'camera'
-            ? await ImagePicker.requestCameraPermissionsAsync()
-            : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (!perm.granted) {
-          showAlert(t('editProfile.permissionDeniedTitle'), t('editProfile.permissionDeniedMsg'));
-          return;
+        // Câmera exige permissão; galeria usa o Android Photo Picker / iOS limited picker
+        // do expo-image-picker, que NÃO exige READ_MEDIA_IMAGES (removida do manifesto por
+        // política do Google Play — acesso pontual a mídia não declara a permissão ampla).
+        if (source === 'camera') {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) {
+            showAlert(t('editProfile.permissionDeniedTitle'), t('editProfile.permissionDeniedMsg'));
+            return;
+          }
         }
 
         const result =
