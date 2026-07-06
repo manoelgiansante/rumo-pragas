@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -158,7 +159,18 @@ export default function HistoryScreen() {
   const keyExtractor = useCallback((item: DiagnosisResult) => item.id, []);
 
   if (loading) {
-    return <HistorySkeleton />;
+    // Top safe area: tab screens render header-less (headerShown: false), so the
+    // skeleton must clear the status bar / notch exactly like the loaded screen.
+    return (
+      <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
+        <View style={styles.pageHeader}>
+          <Text style={[styles.pageTitle, isDark && styles.textDark]} accessibilityRole="header">
+            {t('tabs.history')}
+          </Text>
+        </View>
+        <HistorySkeleton />
+      </SafeAreaView>
+    );
   }
 
   if (error && diagnoses.length === 0) {
@@ -185,130 +197,155 @@ export default function HistoryScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, isDark && styles.containerDark]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View
-        style={[
-          styles.searchRow,
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
+    <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <SearchInput
-          testID="history-search"
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t('history.searchPlaceholder')}
-        />
-      </View>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={keyExtractor}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={[
-          { padding: Spacing.lg, paddingBottom: 100 },
-          isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.accent}
-            colors={[Colors.accent]}
+        {/* Título da tela (metodologia: toda tela tem título) — padrão large
+            title alinhado ao header dos Ajustes. */}
+        <View
+          style={[
+            styles.pageHeader,
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+        >
+          <Text style={[styles.pageTitle, isDark && styles.textDark]} accessibilityRole="header">
+            {t('tabs.history')}
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.searchRow,
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+        >
+          <SearchInput
+            testID="history-search"
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('history.searchPlaceholder')}
           />
-        }
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        ListEmptyComponent={
-          diagnoses.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIllustration}>
-                <LinearGradient
-                  colors={[Colors.accentLight + '33', Colors.accent + '14']}
-                  style={styles.emptyIllustrationBg}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                />
-                <View style={styles.emptyIllustrationRing}>
+        </View>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={keyExtractor}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={[
+            { padding: Spacing.lg, paddingBottom: 100 },
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          ListEmptyComponent={
+            diagnoses.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIllustration}>
                   <LinearGradient
-                    colors={Gradients.hero}
-                    style={styles.emptyIllustrationInner}
+                    colors={[Colors.accentLight + '33', Colors.accent + '14']}
+                    style={styles.emptyIllustrationBg}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name="leaf" size={36} color="#FFF" />
-                  </LinearGradient>
+                  />
+                  <View style={styles.emptyIllustrationRing}>
+                    <LinearGradient
+                      colors={Gradients.hero}
+                      style={styles.emptyIllustrationInner}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Ionicons name="leaf" size={36} color="#FFF" />
+                    </LinearGradient>
+                  </View>
                 </View>
-              </View>
-              <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
-                {t('diagnosis.emptyHistoryTitle')}
-              </Text>
-              <Text style={styles.emptyDesc}>{t('diagnosis.emptyHistoryDesc')}</Text>
-              <TouchableOpacity
-                testID="history-empty-cta-start"
-                onPress={() => router.push('/diagnosis/camera')}
-                activeOpacity={0.85}
-                style={styles.emptyCtaShadow}
-                accessibilityRole="button"
-                accessibilityLabel={t('diagnosis.startFirstDiagnosis')}
-              >
-                <LinearGradient
-                  colors={Gradients.hero}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.emptyCta}
+                <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
+                  {t('diagnosis.emptyHistoryTitle')}
+                </Text>
+                <Text style={styles.emptyDesc}>{t('diagnosis.emptyHistoryDesc')}</Text>
+                <TouchableOpacity
+                  testID="history-empty-cta-start"
+                  onPress={() => router.push('/diagnosis/camera')}
+                  activeOpacity={0.85}
+                  style={styles.emptyCtaShadow}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('diagnosis.startFirstDiagnosis')}
                 >
-                  <Ionicons name="camera" size={18} color="#FFF" />
-                  <Text style={styles.emptyCtaText}>{t('diagnosis.startFirstDiagnosis')}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.center}>
-              <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
-              <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
-                {t('history.noDiagnoses')}
-              </Text>
-              <Text style={styles.emptyDesc}>{t('history.noDiagnosesDesc')}</Text>
-            </View>
-          )
-        }
-        ListHeaderComponent={
-          <Text style={[styles.count, isDark && styles.textDark]}>
-            {t('history.diagnosisCount', { count: filtered.length })}
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            testID={`history-item-${item.id}`}
-            onPress={() => openDiagnosis(item)}
-            onLongPress={() => deleteDiagnosis(item.id)}
-            activeOpacity={0.8}
-            accessibilityLabel={t('history.itemA11y', {
-              pest: item.pest_name || t('history.noName'),
-              crop: item.crop || t('history.notInformed'),
-              confidence: Math.round((item.confidence ?? 0) * 100),
-            })}
-            accessibilityRole="button"
-            accessibilityHint={t('history.openHint')}
-          >
-            <DiagnosisCard diagnosis={item} />
-          </TouchableOpacity>
-        )}
-      />
-    </KeyboardAvoidingView>
+                  <LinearGradient
+                    colors={Gradients.hero}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.emptyCta}
+                  >
+                    <Ionicons name="camera" size={18} color="#FFF" />
+                    <Text style={styles.emptyCtaText}>{t('diagnosis.startFirstDiagnosis')}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.center}>
+                <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
+                <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
+                  {t('history.noDiagnoses')}
+                </Text>
+                <Text style={styles.emptyDesc}>{t('history.noDiagnosesDesc')}</Text>
+              </View>
+            )
+          }
+          ListHeaderComponent={
+            <Text style={[styles.count, isDark && styles.textDark]}>
+              {t('history.diagnosisCount', { count: filtered.length })}
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              testID={`history-item-${item.id}`}
+              onPress={() => openDiagnosis(item)}
+              onLongPress={() => deleteDiagnosis(item.id)}
+              activeOpacity={0.8}
+              accessibilityLabel={t('history.itemA11y', {
+                pest: item.pest_name || t('history.noName'),
+                crop: item.crop || t('history.notInformed'),
+                confidence: Math.round((item.confidence ?? 0) * 100),
+              })}
+              accessibilityRole="button"
+              accessibilityHint={t('history.openHint')}
+            >
+              <DiagnosisCard diagnosis={item} />
+            </TouchableOpacity>
+          )}
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
+  flex: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
-  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
+  pageHeader: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  pageTitle: {
+    fontSize: FontSize.largeTitle,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.md },
   count: {
     fontSize: FontSize.subheadline,
     fontFamily: FontFamily.semibold,

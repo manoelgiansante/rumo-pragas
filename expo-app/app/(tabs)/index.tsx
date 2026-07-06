@@ -240,7 +240,14 @@ export default function HomeScreen() {
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-        <View style={styles.heroContent}>
+        <View
+          style={[
+            styles.heroContent,
+            // Web desktop / iPad: saudação alinhada à mesma coluna do conteúdo
+            // (sem isso o texto ficava colado na borda esquerda da janela).
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+        >
           <Text style={styles.greeting}>{greetingText}</Text>
           <Text style={styles.userName}>
             {user?.user_metadata?.full_name || t('home.defaultUser')}
