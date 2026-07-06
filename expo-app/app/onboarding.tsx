@@ -13,7 +13,9 @@ import {
 // (and the Android edge-to-edge status bar) instead of assuming fixed heights.
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, BookOpen, ShieldCheck } from 'lucide-react-native';
+// Família única de ícones do app é Ionicons (anti-AI-slop: consistência >
+// variedade). O onboarding era a única superfície usando lucide-react-native.
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import Animated, {
@@ -38,7 +40,7 @@ interface OnboardingPage {
   titleKey: string;
   subtitleKey: string;
   gradientColors: [string, string];
-  Icon: typeof Camera;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 // QW-2 (W16-1, 2026-05-22): reduced 4 -> 3 pages by removing the secondary
@@ -53,21 +55,21 @@ const PAGES: OnboardingPage[] = [
     titleKey: 'onboarding.page1Title',
     subtitleKey: 'onboarding.page1Subtitle',
     gradientColors: [Colors.brandDark, Colors.brand],
-    Icon: Camera,
+    icon: 'camera-outline',
   },
   {
     id: '2',
     titleKey: 'onboarding.page3Title',
     subtitleKey: 'onboarding.page3Subtitle',
     gradientColors: [Colors.techIndigo, Colors.warmAmber],
-    Icon: BookOpen,
+    icon: 'book-outline',
   },
   {
     id: '3',
     titleKey: 'onboarding.page4Title',
     subtitleKey: 'onboarding.page4Subtitle',
     gradientColors: [Colors.accent, Colors.accentLight],
-    Icon: ShieldCheck,
+    icon: 'shield-checkmark-outline',
   },
 ];
 
@@ -147,7 +149,6 @@ export default function OnboardingScreen() {
 
   const renderPage = useCallback(
     ({ item }: ListRenderItemInfo<OnboardingPage>) => {
-      const { Icon } = item;
       return (
         <LinearGradient
           colors={item.gradientColors}
@@ -165,7 +166,7 @@ export default function OnboardingScreen() {
 
           <View style={[styles.pageContent, isTablet && styles.pageContentTablet]}>
             <View style={[styles.iconContainer, isTablet && styles.iconContainerTablet]}>
-              <Icon size={isTablet ? 96 : 64} color={Colors.white} strokeWidth={1.5} />
+              <Ionicons name={item.icon} size={isTablet ? 96 : 64} color={Colors.white} />
             </View>
             <Text style={[styles.pageTitle, isTablet && styles.pageTitleTablet]}>
               {t(item.titleKey)}
@@ -260,7 +261,12 @@ export default function OnboardingScreen() {
           </Text>
           {!isLastPage ? (
             <View style={styles.arrowCircle}>
-              <Text style={styles.arrowGlyph}>›</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={Colors.accent}
+                accessibilityElementsHidden
+              />
             </View>
           ) : null}
         </TouchableOpacity>
@@ -414,15 +420,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent + '14',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  arrowGlyph: {
-    fontSize: 22,
-    lineHeight: 24,
-    color: Colors.accent,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    includeFontPadding: false,
-    marginTop: -2,
   },
   pageOf: {
     marginTop: 12,
