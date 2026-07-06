@@ -171,6 +171,16 @@ const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
       category: "fungo",
       severity: "medium",
     },
+    // Verified live 2026-07-06 (Agrio id "FallArmyWorm", sci "Spodoptera
+    // frugiperda"). Corn armyworm is the dominant real query for this app, so
+    // pin the PT headline (Agrio returns the English "Fall armyworm") — the
+    // scientific name already resolves the catalog on its own.
+    fallarmyworm: {
+      name_pt: "Lagarta-do-cartucho",
+      scientific_name: "Spodoptera frugiperda",
+      category: "inseto",
+      severity: "high",
+    },
   },
 };
 
