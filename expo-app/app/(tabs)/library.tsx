@@ -140,11 +140,14 @@ const PESTS_BY_CROP: Record<string, { name: string; scientific: string; severity
   ],
 };
 
-const severityColor: Record<string, string> = {
-  critical: Colors.coral,
-  high: Colors.warmAmber,
-  medium: Colors.techBlue,
-  low: Colors.accent,
+// Severidade nunca comunicada SÓ por cor (WCAG 1.4.1): o chip combina ponto
+// colorido + rótulo de texto. Texto sempre em tom AA sobre o cartão branco
+// (warmAmber falha como texto pequeno → earthText, ver constants/theme.ts).
+const severityChip: Record<string, { dot: string; bg: string; text: string }> = {
+  critical: { dot: Colors.coral, bg: Colors.coral + '14', text: Colors.coral },
+  high: { dot: Colors.warmAmber, bg: Colors.warmAmber + '1F', text: Colors.earthText },
+  medium: { dot: Colors.techBlue, bg: Colors.techBlue + '14', text: Colors.techBlue },
+  low: { dot: Colors.accent, bg: Colors.accent + '14', text: Colors.accent },
 };
 
 const SEVERITY_LABELS: Record<string, string> = {
@@ -164,22 +167,25 @@ const PestItem = React.memo(function PestItem({
   const { t } = useTranslation();
   const cropInfo = CROPS.find((c) => c.id === item.crop);
   const severityLabelKey = SEVERITY_LABELS[item.severity] || 'severity.medium';
+  const chip = severityChip[item.severity] ?? severityChip.medium!;
 
   return (
     <PremiumCard style={{ marginBottom: Spacing.sm }}>
       <View
         style={styles.pestRow}
         accessible
-        accessibilityLabel={`${item.name}, ${item.scientific}, ${t(severityLabelKey)}, ${cropInfo?.displayName || item.crop}`}
+        accessibilityLabel={`${item.name}, ${item.scientific}, ${t('severity.label')} ${t(severityLabelKey)}, ${cropInfo?.displayName || item.crop}`}
         accessibilityRole="summary"
       >
-        <View
-          style={[styles.severityDot, { backgroundColor: severityColor[item.severity] }]}
-          accessibilityElementsHidden
-        />
         <View style={{ flex: 1 }}>
           <Text style={[styles.pestName, isDark && styles.textDark]}>{item.name}</Text>
           <Text style={styles.pestScientific}>{item.scientific}</Text>
+          <View style={[styles.severityChip, { backgroundColor: chip.bg }]}>
+            <View style={[styles.severityDot, { backgroundColor: chip.dot }]} />
+            <Text style={[styles.severityChipText, { color: chip.text }]}>
+              {t(severityLabelKey)}
+            </Text>
+          </View>
         </View>
         <Text style={styles.cropBadge} accessibilityElementsHidden>
           {cropInfo?.icon}
@@ -386,7 +392,22 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#FFF' },
   chipEmoji: { fontSize: 14 },
   pestRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  severityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
   severityDot: { width: 8, height: 8, borderRadius: 4 },
+  severityChipText: {
+    fontSize: FontSize.caption2,
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+  },
   pestName: { fontSize: FontSize.subheadline, fontFamily: FontFamily.semibold, fontWeight: '600' },
   pestScientific: {
     fontFamily: FontFamily.italic,
