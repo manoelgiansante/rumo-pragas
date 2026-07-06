@@ -598,8 +598,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: Spacing.xxxl,
   },
+  // maxWidth: em telas largas (web desktop / iPad) o formulário fica numa
+  // coluna central de leitura em vez de esticar a janela inteira; em telefones
+  // (width < 520) o cap é inerte.
   formCard: {
     flex: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.xxl,
     paddingTop: Spacing.xxxl,
     paddingBottom: Spacing.xxxl,

@@ -394,6 +394,8 @@ const styles = StyleSheet.create({
   },
 
   // Primary button
+  // width 100% + maxWidth em vez de alignSelf stretch: em telefone é idêntico;
+  // em web desktop/iPad o CTA não estica a janela inteira (mobile esticado).
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -405,7 +407,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     minHeight: 54,
     minWidth: 220,
-    alignSelf: 'stretch',
+    width: '100%',
+    maxWidth: 480,
   },
   primaryButtonText: {
     fontSize: FontSize.body,
