@@ -163,6 +163,11 @@ export default function HistoryScreen() {
     // skeleton must clear the status bar / notch exactly like the loaded screen.
     return (
       <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
+        <View style={styles.pageHeader}>
+          <Text style={[styles.pageTitle, isDark && styles.textDark]} accessibilityRole="header">
+            {t('tabs.history')}
+          </Text>
+        </View>
         <HistorySkeleton />
       </SafeAreaView>
     );
@@ -197,6 +202,18 @@ export default function HistoryScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* Título da tela (metodologia: toda tela tem título) — padrão large
+            title alinhado ao header dos Ajustes. */}
+        <View
+          style={[
+            styles.pageHeader,
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+        >
+          <Text style={[styles.pageTitle, isDark && styles.textDark]} accessibilityRole="header">
+            {t('tabs.history')}
+          </Text>
+        </View>
         <View
           style={[
             styles.searchRow,
@@ -318,7 +335,17 @@ const styles = StyleSheet.create({
   containerDark: { backgroundColor: Colors.backgroundDark },
   flex: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
-  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
+  pageHeader: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  pageTitle: {
+    fontSize: FontSize.largeTitle,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.md },
   count: {
     fontSize: FontSize.subheadline,
     fontFamily: FontFamily.semibold,

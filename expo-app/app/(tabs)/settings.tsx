@@ -30,6 +30,7 @@ import {
   FontFamily,
 } from '../../constants/theme';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useResponsive } from '../../hooks/useResponsive';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
 import { Avatar } from '../../components/Avatar';
@@ -148,6 +149,7 @@ function Row({
 export default function SettingsScreen() {
   const isDark = useColorScheme() === 'dark';
   const { user, signOut } = useAuthContext();
+  const { isTablet, contentMaxWidth } = useResponsive();
   const { t, i18n } = useTranslation();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -316,7 +318,17 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView style={styles.flex} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.flex}
+        showsVerticalScrollIndicator={false}
+        // Web desktop / iPad: mesma largura máxima dos outros tabs — sem isso as
+        // linhas de ajuste esticavam a tela inteira (mobile esticado).
+        contentContainerStyle={
+          isTablet
+            ? { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' }
+            : undefined
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.headerTitle, isDark && styles.textDark]} accessibilityRole="header">
@@ -498,8 +510,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
   flex: { flex: 1 },
+  // paddingHorizontal alinhado ao large title de Histórico/Biblioteca (16pt)
   header: {
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },

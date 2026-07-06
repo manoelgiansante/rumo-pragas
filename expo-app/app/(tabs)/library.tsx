@@ -225,6 +225,18 @@ export default function LibraryScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* Título da tela (metodologia: toda tela tem título) — padrão large
+            title alinhado ao header dos Ajustes. */}
+        <View
+          style={[
+            styles.pageHeader,
+            isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
+          ]}
+        >
+          <Text style={[styles.pageTitle, isDark && styles.textDark]} accessibilityRole="header">
+            {t('tabs.library')}
+          </Text>
+        </View>
         <View
           style={[
             styles.searchRow,
@@ -344,7 +356,17 @@ const styles = StyleSheet.create({
   containerDark: { backgroundColor: Colors.backgroundDark },
   flex: { flex: 1 },
   center: { alignItems: 'center', paddingTop: 60 },
-  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: Spacing.sm },
+  pageHeader: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  pageTitle: {
+    fontSize: FontSize.largeTitle,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.md, marginBottom: Spacing.sm },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
