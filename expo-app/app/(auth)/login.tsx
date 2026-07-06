@@ -300,6 +300,9 @@ export default function LoginScreen() {
             {/* Name field (signup only) */}
             {mode === 'signup' ? (
               <View style={styles.inputGroup}>
+                {/* Label visível (metodologia de formulário): placeholder some ao
+                    digitar — o rótulo mantém o contexto do campo. */}
+                <Text style={styles.inputLabel}>{t('auth.fullNameOptionalPlaceholder')}</Text>
                 <View style={styles.inputContainer}>
                   <Ionicons
                     name="person-outline"
@@ -326,6 +329,7 @@ export default function LoginScreen() {
 
             {/* Email field */}
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('auth.emailPlaceholder')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -354,6 +358,7 @@ export default function LoginScreen() {
 
             {/* Password field */}
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('auth.passwordPlaceholder')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -645,6 +650,16 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: Spacing.lg,
+  },
+  // Rótulo visível acima do campo (WCAG/HIG): textSecondary #435044 sobre
+  // #FAFAF7 passa AA para texto pequeno.
+  inputLabel: {
+    fontSize: FontSize.footnote,
+    fontFamily: FontFamily.medium,
+    fontWeight: FontWeight.medium,
+    color: Colors.textSecondary,
+    marginBottom: 6,
+    marginLeft: 2,
   },
   inputContainer: {
     flexDirection: 'row',
