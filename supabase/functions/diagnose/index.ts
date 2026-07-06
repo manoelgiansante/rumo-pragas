@@ -1,7 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { captureException, captureGenAiRequest } from "../_shared/sentry.ts";
+import { callAgrioDiagnose, adaptAgrio } from "./agrio.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
+const AGRIO_API_KEY = Deno.env.get("AGRIO_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -12,6 +14,16 @@ const SUPABASE_SERVICE_ROLE_KEY =
 const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
 
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+
+// ── Diagnosis provider (Option B, 2026-07-06) ──
+// "agrio"  → identification via Agrio (paid, funded) + PT-BR laudo resolved
+//            client-side from the bundled MIP catalog. ZERO Anthropic spend.
+// "claude" → legacy Anthropic Vision path (identification + free-text laudo).
+// Default is "agrio": Anthropic credits hit zero on 2026-07-06 and diagnosis
+// was returning 400 "credit balance too low" for every user (RUMO-PRAGAS-10).
+// Flip back to the legacy path in one env change: DIAGNOSE_PROVIDER=claude.
+const DIAGNOSE_PROVIDER =
+  (Deno.env.get("DIAGNOSE_PROVIDER") ?? "agrio").toLowerCase();
 
 // ── FREE MODE (2026-06-30, fix/pragas-free-2026-06-30) ──
 // The app ships 100% FREE (CEO decision — re-monetize later). While FREE_MODE is
@@ -24,7 +36,11 @@ const FREE_MODE =
   (Deno.env.get("FREE_MODE") ?? "true").toLowerCase() !== "false";
 
 // ── Security: Fail-fast on missing critical secrets (#15) ──
-if (!CLAUDE_API_KEY) {
+// Only the ACTIVE provider's key is required.
+if (DIAGNOSE_PROVIDER === "agrio" && !AGRIO_API_KEY) {
+  console.error(JSON.stringify({ function: "diagnose", level: "FATAL", message: "AGRIO_API_KEY not set. Function will reject all requests." }));
+}
+if (DIAGNOSE_PROVIDER === "claude" && !CLAUDE_API_KEY) {
   console.error(JSON.stringify({ function: "diagnose", level: "FATAL", message: "CLAUDE_API_KEY not set. Function will reject all requests." }));
 }
 
@@ -292,9 +308,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Security: Fail-fast if API key missing (#15) ──
-  if (!CLAUDE_API_KEY) {
-    logJson("diagnose", requestId, "ERROR", "CLAUDE_API_KEY not configured");
+  // ── Security: Fail-fast if the ACTIVE provider's key is missing (#15) ──
+  const providerKeyMissing =
+    (DIAGNOSE_PROVIDER === "agrio" && !AGRIO_API_KEY) ||
+    (DIAGNOSE_PROVIDER === "claude" && !CLAUDE_API_KEY);
+  if (providerKeyMissing) {
+    logJson("diagnose", requestId, "ERROR", `${DIAGNOSE_PROVIDER} API key not configured`);
     return new Response(
       JSON.stringify({ error: "API de diagnostico nao configurada", requestId }),
       {
@@ -604,116 +623,166 @@ Deno.serve(async (req: Request) => {
 
     const userPrompt = `Analise esta imagem de uma planta/lavoura e faca o diagnostico fitossanitario completo.${cropContext}${locationContext}\n\nRetorne APENAS o JSON conforme o formato especificado, sem nenhum texto adicional.`;
 
-    // Call Claude Vision API
-    const claudeStart = Date.now();
-    const claudeResponse = await fetch(
-      "https://api.anthropic.com/v1/messages",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": CLAUDE_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: CLAUDE_MODEL,
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: mediaType,
-                    data: cleanBase64,
-                  },
-                },
-                {
-                  type: "text",
-                  text: userPrompt,
-                },
-              ],
-            },
-          ],
-        }),
-      },
-    );
-
-    if (!claudeResponse.ok) {
-      const errText = await claudeResponse.text();
-      logJson("diagnose", requestId, "ERROR", "Claude API error", { status: claudeResponse.status, errorText: errText });
-      // Core product route failing upstream — instrument it (ZERO-O), mirroring ai-chat.
-      await captureException(
-        new Error(`Claude API ${claudeResponse.status}`),
-        {
-          tags: { fn: "diagnose", step: "claude_api", status: String(claudeResponse.status) },
-          extra: { userId: user.id, errorText: errText.slice(0, 500) },
-        },
-      );
-      return new Response(
-        JSON.stringify({
-          error: "Erro na analise da imagem. Tente novamente.",
-          requestId,
-        }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const claudeData = await claudeResponse.json();
-
-    // ── AI telemetry (ZERO-O / observability) ──
-    // Emit a gen_ai.request span with Anthropic token usage so cost/latency of
-    // the app's core product is observable. No prompt/image content is captured
-    // (PII). Best-effort — never blocks the response.
-    captureGenAiRequest({
-      model: CLAUDE_MODEL,
-      operation: "vision",
-      inputTokens: claudeData?.usage?.input_tokens,
-      outputTokens: claudeData?.usage?.output_tokens,
-      durationMs: Date.now() - claudeStart,
-      tags: { fn: "diagnose" },
-    }).catch(() => {});
-
-    const rawText = claudeData?.content?.[0]?.text;
-    if (!rawText) {
-      return new Response(
-        JSON.stringify({
-          error: "Resposta vazia da IA. Tente com outra imagem.",
-          requestId,
-        }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // Parse JSON from response
+    // ── Provider branch (Option B, 2026-07-06) ──
+    // Both branches assign `diagnosisData` with the SAME shape (pest_id /
+    // pest_name / confidence / crop / crop_confidence / predictions /
+    // enrichment) so the downstream sanitize → invalid-image threshold →
+    // disclaimer → persist → Sentry code below is reused verbatim.
     let diagnosisData: Record<string, unknown>;
-    try {
-      const jsonStr = rawText
-        .replace(/```json\s*/g, "")
-        .replace(/```\s*/g, "")
-        .trim();
-      diagnosisData = JSON.parse(jsonStr);
-    } catch {
-      logJson("diagnose", requestId, "ERROR", "Failed to parse AI response", { rawTextSnippet: rawText.slice(0, 500) });
-      return new Response(
-        JSON.stringify({
-          error: "Erro ao processar resultado. Tente novamente.",
+
+    if (DIAGNOSE_PROVIDER === "agrio") {
+      // Agrio identification (paid, funded). The PT-BR laudo is resolved
+      // client-side from the bundled MIP catalog — ZERO Anthropic spend.
+      const agrioStart = Date.now();
+      try {
+        const agrioRaw = await callAgrioDiagnose({
+          apiKey: AGRIO_API_KEY,
+          base64: cleanBase64,
+          mediaType,
+          // safeCropType is already the Agrio/English crop apiName (allowlist),
+          // or "" when the user did not pick one → let Agrio auto-detect.
+          cropApiName: safeCropType || undefined,
           requestId,
-        }),
+        });
+        diagnosisData = adaptAgrio(agrioRaw, {
+          cropApiName: safeCropType || undefined,
+          requestId,
+        });
+        logJson("diagnose", requestId, "INFO", "Agrio diagnose ok", {
+          crop: String(diagnosisData.crop ?? ""),
+          pestId: String(diagnosisData.pest_id ?? ""),
+          confidence: Number(diagnosisData.confidence ?? 0),
+          durationMs: Date.now() - agrioStart,
+        });
+      } catch (agrioErr) {
+        logJson("diagnose", requestId, "ERROR", "Agrio API error", { error: String(agrioErr) });
+        // Core product route failing upstream — instrument it (ZERO-O).
+        await captureException(agrioErr, {
+          tags: { fn: "diagnose", step: "agrio_api" },
+          extra: { userId: user.id },
+        });
+        return new Response(
+          JSON.stringify({
+            error: "Erro na analise da imagem. Tente novamente.",
+            requestId,
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+    } else {
+      // Call Claude Vision API (legacy path).
+      const claudeStart = Date.now();
+      const claudeResponse = await fetch(
+        "https://api.anthropic.com/v1/messages",
         {
-          status: 502,
-          headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": CLAUDE_API_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: CLAUDE_MODEL,
+            max_tokens: 4096,
+            system: SYSTEM_PROMPT,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: mediaType,
+                      data: cleanBase64,
+                    },
+                  },
+                  {
+                    type: "text",
+                    text: userPrompt,
+                  },
+                ],
+              },
+            ],
+          }),
         },
       );
+
+      if (!claudeResponse.ok) {
+        const errText = await claudeResponse.text();
+        logJson("diagnose", requestId, "ERROR", "Claude API error", { status: claudeResponse.status, errorText: errText });
+        // Core product route failing upstream — instrument it (ZERO-O), mirroring ai-chat.
+        await captureException(
+          new Error(`Claude API ${claudeResponse.status}`),
+          {
+            tags: { fn: "diagnose", step: "claude_api", status: String(claudeResponse.status) },
+            extra: { userId: user.id, errorText: errText.slice(0, 500) },
+          },
+        );
+        return new Response(
+          JSON.stringify({
+            error: "Erro na analise da imagem. Tente novamente.",
+            requestId,
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const claudeData = await claudeResponse.json();
+
+      // ── AI telemetry (ZERO-O / observability) ──
+      // Emit a gen_ai.request span with Anthropic token usage so cost/latency of
+      // the app's core product is observable. No prompt/image content is captured
+      // (PII). Best-effort — never blocks the response.
+      captureGenAiRequest({
+        model: CLAUDE_MODEL,
+        operation: "vision",
+        inputTokens: claudeData?.usage?.input_tokens,
+        outputTokens: claudeData?.usage?.output_tokens,
+        durationMs: Date.now() - claudeStart,
+        tags: { fn: "diagnose" },
+      }).catch(() => {});
+
+      const rawText = claudeData?.content?.[0]?.text;
+      if (!rawText) {
+        return new Response(
+          JSON.stringify({
+            error: "Resposta vazia da IA. Tente com outra imagem.",
+            requestId,
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Parse JSON from response
+      try {
+        const jsonStr = rawText
+          .replace(/```json\s*/g, "")
+          .replace(/```\s*/g, "")
+          .trim();
+        diagnosisData = JSON.parse(jsonStr);
+      } catch {
+        logJson("diagnose", requestId, "ERROR", "Failed to parse AI response", { rawTextSnippet: rawText.slice(0, 500) });
+        return new Response(
+          JSON.stringify({
+            error: "Erro ao processar resultado. Tente novamente.",
+            requestId,
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     // ── P0 #3: Sanitize AI output to prevent HTML injection ──
@@ -763,7 +832,16 @@ Deno.serve(async (req: Request) => {
       Grape: "uva", Banana: "banana", Sorghum: "sorgo", Peanut: "amendoim",
       Sunflower: "girassol", Onion: "cebola",
     };
-    const cropId = cropMap[safeCropType] || safeCropType?.toLowerCase() || "outro";
+    // Prefer the user's selected crop; fall back to the provider-detected crop
+    // (Agrio returns the crop in English, e.g. "Coffee") so the client MIP
+    // catalog filter still works when the user did not pick a crop.
+    const detectedCropEn = String(diagnosisData.crop ?? "");
+    const cropId =
+      cropMap[safeCropType] ||
+      cropMap[detectedCropEn] ||
+      safeCropType?.toLowerCase() ||
+      detectedCropEn.toLowerCase() ||
+      "outro";
 
     // Save to database (parameterized via Supabase client — no SQL injection)
     // P0-1: For invalid_image, persist with confidence=0 and no pest data
