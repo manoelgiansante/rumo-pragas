@@ -21,11 +21,13 @@ export const getPestHistory: ToolHandler = {
     const { sinceDays } = parsed.data;
     const since = new Date(Date.now() - sinceDays * 86400_000).toISOString();
 
+    // `pragas_diagnoses` (jxcn) has NO `status` column — every row is a
+    // completed diagnosis by construction (the row is INSERTed only after the
+    // AI result is persisted), so we count all diagnoses in the window.
     const { data, error } = await ctx.supabase
-      .from('diagnoses')
-      .select('pest_name, confidence, created_at, status')
+      .from('pragas_diagnoses')
+      .select('pest_name, confidence, created_at')
       .eq('user_id', ctx.userId) // defense-in-depth: RLS already filters
-      .eq('status', 'completed')
       .gte('created_at', since)
       .order('created_at', { ascending: false });
     if (error) return err(`DB error: ${error.message}`);

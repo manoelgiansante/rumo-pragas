@@ -19,7 +19,7 @@ export const getDiagnosis: ToolHandler = {
     // RLS will filter rows the caller cannot see; we additionally constrain
     // by `user_id` so a missing/looser policy still cannot leak data.
     const { data, error } = await ctx.supabase
-      .from('diagnoses')
+      .from('pragas_diagnoses')
       .select('*')
       .eq('id', parsed.data.diagnosisId)
       .eq('user_id', ctx.userId)

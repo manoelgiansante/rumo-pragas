@@ -1,36 +1,36 @@
 import { z } from 'zod';
 import { ToolHandler, ok, err } from '../_types';
 
+// Schema drift fix (2026-07-06): the real table is `pragas_diagnoses` (jxcn),
+// NOT `diagnoses`, and it has NO `status` column — a Pragas row is only ever
+// INSERTed after the AI diagnosis completes, so every row is "completed".
+// The status filter has been removed (there is nothing to filter on).
 const InputSchema = z.object({
-  status: z.enum(['pending', 'completed', 'failed']).optional(),
   limit: z.number().int().min(1).max(100).optional().default(20),
 });
 
 export const listDiagnoses: ToolHandler = {
   name: 'list_diagnoses',
   description:
-    'Lista diagnósticos de pragas (foto + resultado AI) do usuário autenticado. Filtros: status.',
+    'Lista os diagnósticos de pragas (foto + resultado da IA) do usuário autenticado, mais recentes primeiro.',
   inputSchema: {
     type: 'object',
     properties: {
-      status: { type: 'string', enum: ['pending', 'completed', 'failed'] },
       limit: { type: 'number', default: 20 },
     },
   },
   async handler(input, ctx) {
     const parsed = InputSchema.safeParse(input ?? {});
     if (!parsed.success) return err(`Invalid input: ${parsed.error.message}`);
-    const { status, limit } = parsed.data;
+    const { limit } = parsed.data;
 
-    let q = ctx.supabase
-      .from('diagnoses')
-      .select('id, user_id, pest_name, confidence, status, created_at, image_url')
+    const { data, error } = await ctx.supabase
+      .from('pragas_diagnoses')
+      .select('id, user_id, crop, pest_id, pest_name, confidence, created_at, image_url')
       .eq('user_id', ctx.userId) // defense-in-depth: RLS already filters
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (status) q = q.eq('status', status);
 
-    const { data, error } = await q;
     if (error) return err(`DB error: ${error.message}`);
     return ok({ count: data?.length ?? 0, diagnoses: data ?? [] });
   },
