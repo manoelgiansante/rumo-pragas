@@ -162,6 +162,7 @@ export default function UpdatePasswordScreen() {
 
             <TouchableOpacity
               testID="update-password-submit"
+              accessibilityLabel={t('updatePassword.submit')}
               style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
               onPress={handleSubmit}
               disabled={submitting}
@@ -180,6 +181,7 @@ export default function UpdatePasswordScreen() {
               onPress={() => router.replace('/(auth)/login')}
               style={styles.backButton}
               accessibilityRole="button"
+              accessibilityLabel={t('updatePassword.backToLogin')}
             >
               <Text style={styles.backText}>{t('updatePassword.backToLogin')}</Text>
             </TouchableOpacity>
