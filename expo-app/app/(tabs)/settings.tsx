@@ -463,7 +463,10 @@ export default function SettingsScreen() {
             isDark={isDark}
             icon="information-circle-outline"
             label={t('settings.version')}
-            value={Constants.expoConfig?.version ?? '1.0.7'}
+            // Read the real runtime version only — a hardcoded fallback showed a
+            // stale/wrong version whenever it kicked in. expoConfig.version is
+            // always populated from app.json in a real build.
+            value={Constants.expoConfig?.version}
             isLast
           />
         </Section>
