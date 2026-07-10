@@ -152,6 +152,17 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
+    // Android: the Expo push token requires FCM (google-services.json), which
+    // this build does NOT ship yet → getExpoPushTokenAsync throws on EVERY
+    // launch (Sentry noise; pragas_push_tokens stays at 0). Short-circuit the
+    // REMOTE token here. Local pest alerts keep working: the notification
+    // handler, Android channels and POST_NOTIFICATIONS permission were already
+    // configured/requested above, and scheduleLocalPestAlert re-ensures them.
+    // Same pattern as Rumo Operacional. TEMPORARY — remove once FCM is wired.
+    if (Platform.OS === 'android') {
+      return null;
+    }
+
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
 
