@@ -239,46 +239,70 @@ export default function SettingsScreen() {
     ]);
   };
 
+  // Performs the actual irreversible deletion. Called ONLY after the two-step
+  // informed confirmation in handleDeleteAccount below.
+  const runAccountDeletion = async () => {
+    try {
+      // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData?.session?.access_token) {
+        showAlert(t('common.error'), t('settings.deletionError'));
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('delete-user-account', {
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+      });
+
+      if (error || !data?.ok) {
+        if (__DEV__) console.error('delete-user-account failed:', error, data);
+        Sentry.captureMessage('delete-user-account failed', {
+          level: 'error',
+          tags: { feature: 'settings.deleteAccount' },
+        });
+        showAlert(t('common.error'), t('settings.deletionError'));
+        return;
+      }
+
+      await signOut();
+      showAlert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
+    } catch (e) {
+      if (__DEV__) console.error('handleDeleteAccount exception:', e);
+      Sentry.captureException(e, { tags: { feature: 'settings.deleteAccount' } });
+      showAlert(t('common.error'), t('settings.deletionError'));
+    }
+  };
+
   const handleDeleteAccount = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    // The delete-user-account edge fn HARD-deletes the auth.users row, which is
+    // the SHARED AgroRumo login (same email signs into Rumo Vet / Finance /
+    // Operacional / CampoVivo). Make that consequence explicit BEFORE deletion,
+    // and require a deliberate two-step confirmation. This tab is not rendered
+    // inside a full-screen Modal, so the native Alert shows in front (the RN
+    // new-arch "Alert behind Modal" no-op does not apply here — verified).
+    // Step 1: spell out the shared-login / other-apps impact.
     showAlert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       {
-        text: t('settings.delete'),
+        text: t('settings.deleteContinue'),
         style: 'destructive',
-        onPress: async () => {
-          try {
-            // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-            if (sessionError || !sessionData?.session?.access_token) {
-              showAlert(t('common.error'), t('settings.deletionError'));
-              return;
-            }
-
-            const { data, error } = await supabase.functions.invoke('delete-user-account', {
-              headers: {
-                Authorization: `Bearer ${sessionData.session.access_token}`,
+        onPress: () => {
+          // Step 2: final, deliberate confirmation — permanent + immediate,
+          // no recovery window.
+          showAlert(t('settings.deleteFinalTitle'), t('settings.deleteFinalMessage'), [
+            { text: t('settings.cancel'), style: 'cancel' },
+            {
+              text: t('settings.deleteFinalConfirm'),
+              style: 'destructive',
+              onPress: () => {
+                void runAccountDeletion();
               },
-            });
-
-            if (error || !data?.ok) {
-              if (__DEV__) console.error('delete-user-account failed:', error, data);
-              Sentry.captureMessage('delete-user-account failed', {
-                level: 'error',
-                tags: { feature: 'settings.deleteAccount' },
-              });
-              showAlert(t('common.error'), t('settings.deletionError'));
-              return;
-            }
-
-            await signOut();
-            showAlert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
-          } catch (e) {
-            if (__DEV__) console.error('handleDeleteAccount exception:', e);
-            Sentry.captureException(e, { tags: { feature: 'settings.deleteAccount' } });
-            showAlert(t('common.error'), t('settings.deletionError'));
-          }
+            },
+          ]);
         },
       },
     ]);

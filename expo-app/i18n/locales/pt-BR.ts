@@ -351,7 +351,12 @@ export default {
     deleteAccount: 'Excluir Conta',
     deleteConfirmTitle: 'Excluir Conta',
     deleteConfirmMessage:
-      'Tem certeza? Isto exclui permanentemente sua conta AgroRumo (usada para entrar em todos os apps AgroRumo) e todos os seus dados do Rumo Pragas IA. Esta ação não pode ser desfeita.',
+      'Atenção: seu login do AgroRumo é COMPARTILHADO. Excluir esta conta remove o mesmo login e o acesso a TODOS os outros apps AgroRumo que você usa com este e-mail (como Rumo Vet, Finance, Operacional e CampoVivo), além de todos os seus dados do Rumo Pragas IA.',
+    deleteContinue: 'Continuar',
+    deleteFinalTitle: 'Confirmar exclusão definitiva',
+    deleteFinalMessage:
+      'Esta ação é permanente e imediata — não há período de recuperação. Sua conta AgroRumo e seus dados serão apagados agora e não poderão ser restaurados. Deseja excluir definitivamente?',
+    deleteFinalConfirm: 'Excluir definitivamente',
     cancel: 'Cancelar',
     delete: 'Excluir',
     support: 'Suporte',

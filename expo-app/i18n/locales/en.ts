@@ -343,7 +343,12 @@ export default {
     deleteAccount: 'Delete Account',
     deleteConfirmTitle: 'Delete Account',
     deleteConfirmMessage:
-      'Are you sure? This permanently deletes your AgroRumo account (used to sign in to every AgroRumo app) and all your Rumo Pragas IA data. This action cannot be undone.',
+      'Warning: your AgroRumo login is SHARED. Deleting this account removes the same login and access to ALL other AgroRumo apps you use with this email (such as Rumo Vet, Finance, Operacional and CampoVivo), plus all your Rumo Pragas IA data.',
+    deleteContinue: 'Continue',
+    deleteFinalTitle: 'Confirm permanent deletion',
+    deleteFinalMessage:
+      'This action is permanent and immediate — there is no recovery period. Your AgroRumo account and data will be erased now and cannot be restored. Delete permanently?',
+    deleteFinalConfirm: 'Delete permanently',
     cancel: 'Cancel',
     delete: 'Delete',
     editProfile: 'Edit Profile',
