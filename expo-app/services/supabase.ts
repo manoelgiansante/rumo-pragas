@@ -38,6 +38,26 @@ if (!isSupabaseConfigured) {
   );
 }
 
+// P0 (Vet-rejection class — "spinner eterno"): never let an auth/data request
+// hang forever. A dead spinner on a slow network reads as "app incomplete" to
+// Apple review. Every Supabase-client fetch (auth sign-in, session refresh,
+// RPC, REST) gets a hard timeout. The diagnose/ai-chat edge calls use their own
+// fetch + AbortController (see services/diagnosis.ts and services/ai-chat.ts).
+const SUPABASE_FETCH_TIMEOUT_MS = 20_000;
+
+const fetchWithTimeout: typeof fetch = (input, init) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SUPABASE_FETCH_TIMEOUT_MS);
+  // Respect a caller-provided signal — abort ours if theirs fires so we never
+  // leak the timeout or override the SDK's own cancellation.
+  const callerSignal = init?.signal;
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+};
+
 export const supabase = createClient(
   // Empty string is invalid for URL parsing inside @supabase/supabase-js, so
   // substitute a syntactically-valid placeholder when env is missing.
@@ -50,5 +70,6 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: false,
     },
+    global: { fetch: fetchWithTimeout },
   },
 );

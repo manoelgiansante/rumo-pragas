@@ -613,6 +613,8 @@ export default {
     serviceUnavailable:
       'The AI service is temporarily unavailable. Please try again in a few minutes.',
     genericError: 'An error occurred while processing your message. Please try again.',
+    requestTimeout: 'The request took too long. Check your connection and try sending again.',
+    networkError: 'Could not reach the server. Check your connection and try again.',
     emptyResponse: 'Empty AI response',
     loadingConversation: 'Loading conversation...',
   },

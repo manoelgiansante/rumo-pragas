@@ -631,6 +631,8 @@ export default {
     serviceUnavailable:
       'O serviço de IA está temporariamente indisponível. Tente novamente em alguns minutos.',
     genericError: 'Ocorreu um erro ao processar sua mensagem. Tente novamente.',
+    requestTimeout: 'A conexão demorou demais. Verifique sua internet e tente enviar novamente.',
+    networkError: 'Sem conexão com o servidor. Verifique sua internet e tente novamente.',
     emptyResponse: 'Resposta vazia da IA',
     loadingConversation: 'Carregando conversa...',
   },

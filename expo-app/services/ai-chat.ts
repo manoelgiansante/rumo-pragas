@@ -7,6 +7,10 @@ export interface ChatMessage {
   content: string;
 }
 
+// P0 (Vet-rejection class): bound the chat request so the AI screen never shows
+// an eternal spinner on a slow/offline network.
+const CHAT_TIMEOUT_MS = 20_000;
+
 export async function sendChatMessage(
   messages: { role: string; content: string }[],
 ): Promise<string> {
@@ -22,23 +26,40 @@ export async function sendChatMessage(
 
   const url = `${Config.SUPABASE_URL}/functions/v1/ai-chat`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      // Identify the calling app so the SHARED `ai-chat` slug (also used by
-      // rumo-vet) can detect/serve the correct persona. See edge fn comments
-      // on the shared-slug hazard. Durable fix = dedicated `ai-chat-pragas` slug.
-      'X-Rumo-App': 'rumo-pragas',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      messages: messages.map((m) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content,
-      })),
-    }),
-  });
+  // AbortController + hard timeout — on timeout/offline we throw a clear pt-BR
+  // message; the chat screen surfaces it and re-enables the input so the user
+  // can resend (retry). NEVER an infinite spinner.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Identify the calling app so the SHARED `ai-chat` slug (also used by
+        // rumo-vet) can detect/serve the correct persona. See edge fn comments
+        // on the shared-slug hazard. Durable fix = dedicated `ai-chat-pragas` slug.
+        'X-Rumo-App': 'rumo-pragas',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        messages: messages.map((m) => ({
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: m.content,
+        })),
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(i18n.t('aiChat.requestTimeout'), { cause: err });
+    }
+    throw new Error(i18n.t('aiChat.networkError'), { cause: err });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     // Parse error body for structured error codes
