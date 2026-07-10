@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { captureException, captureGenAiRequest, captureMessage } from "../_shared/sentry.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY =
@@ -12,13 +13,26 @@ const SUPABASE_SERVICE_ROLE_KEY =
 // with migration 20260628120000_subscriptions_per_app_isolation.sql.
 const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
 
+// ── AI provider selection (2026-07-10 — CEO order: zero Anthropic spend) ──
+// Default provider = Google Gemini free tier. AI_PROVIDER=claude flips back to
+// the legacy Anthropic path (kept intact below for rollback, mirroring
+// diagnose/index.ts' DIAGNOSE_PROVIDER pattern).
+const AI_PROVIDER = (Deno.env.get("AI_PROVIDER") ?? "gemini").toLowerCase();
+// Primary free-tier model — overridable via FREE_AI_MODEL secret (no redeploy).
+const FREE_AI_MODEL = Deno.env.get("FREE_AI_MODEL") ?? "gemini-3.1-flash-lite";
+// Fallback when the free tier answers 503 "high demand" even after the retry.
+const FREE_AI_FALLBACK_MODEL = "gemini-2.0-flash";
+
 // ── Security: Fail-fast on missing critical secrets (#15) ──
-if (!CLAUDE_API_KEY) {
+if (AI_PROVIDER === "claude" && !CLAUDE_API_KEY) {
   console.error(JSON.stringify({ function: "ai-chat", level: "FATAL", message: "CLAUDE_API_KEY not set. Function will reject all requests." }));
+}
+if (AI_PROVIDER !== "claude" && !GEMINI_API_KEY) {
+  console.error(JSON.stringify({ function: "ai-chat", level: "FATAL", message: "GEMINI_API_KEY not set. Function will reject all requests." }));
 }
 
 // ── Security: CORS — hardcoded fallback + cross-app coverage (audit #17) ──
-// Edge fn ai-chat is shared across rumo-pragas AND rumo-vet (same Anthropic
+// Edge fn ai-chat is shared across rumo-pragas AND rumo-vet (same AI
 // chat backend, hosted in jxcn). Allowlist MUST include both apps' production
 // origins. ALLOWED_ORIGINS env is a single project-level secret in jxcn shared
 // across all apps' fns — if a sibling app sets it, the fallback below ensures
@@ -84,13 +98,13 @@ function logJson(fn: string, requestId: string, level: string, message: string, 
 }
 
 // ── Rate limiting: in-memory counter with LRU eviction + per-plan limits ──
-// Anthropic spend protection — abuse via compromised JWT would be capped.
+// LLM API quota/spend protection — abuse via compromised JWT would be capped.
 // See supabase/functions/RATE_LIMITS.md for plan-based limits.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_ENTRIES = 10_000; // LRU eviction cap to bound memory
 
-// Per-minute message burst limits by plan (protects Anthropic API spend).
+// Per-minute message burst limits by plan (protects LLM API quota/spend).
 // These are SEPARATE from the monthly chat-message caps enforced by CHAT_LIMITS.
 const RATE_LIMIT_BY_PLAN: Record<string, number> = {
   free: 20,        // 20 msg/min — generous for legit UX, blocks scripted abuse
@@ -137,8 +151,8 @@ function rateLimitHeaders(limit: number, remaining: number, resetAt: number): Re
 // on, the monthly chat-message cap for the `free` plan is UNLIMITED (-1), so real
 // signups (plan='free' via handle_new_user) never hit the 403 CHAT_LIMIT_REACHED
 // dead-end the neutralized paywall can no longer resolve. The per-minute burst
-// limit (RATE_LIMIT_BY_PLAN.free via checkRateLimit) STILL protects Anthropic API
-// spend against abuse. To re-enable paid monthly caps later: set FREE_MODE=false.
+// limit (RATE_LIMIT_BY_PLAN.free via checkRateLimit) STILL protects the LLM API
+// quota against abuse. To re-enable paid monthly caps later: set FREE_MODE=false.
 const FREE_MODE =
   (Deno.env.get("FREE_MODE") ?? "true").toLowerCase() !== "false";
 
@@ -189,6 +203,147 @@ function validateMessage(msg: unknown): msg is ChatMessage {
   );
 }
 
+// ── AI provider calls ──
+type ChatTurn = { role: "user" | "assistant"; content: string };
+
+type AiResult =
+  | {
+    ok: true;
+    text: string;
+    model: string;
+    inputTokens?: number;
+    outputTokens?: number;
+  }
+  | { ok: false; status: number; errorText: string; model: string };
+
+// The Gemini endpoint embeds the API key in the URL query string. NEVER log a
+// raw URL or a raw fetch error — always pass strings through here first.
+function redactGeminiKey(s: string): string {
+  return GEMINI_API_KEY ? s.split(GEMINI_API_KEY).join("[REDACTED]") : s;
+}
+
+// Legacy Anthropic path — behavior preserved verbatim from the pre-Gemini
+// version. Active only when AI_PROVIDER=claude (rollback lever).
+async function callClaude(messages: ChatTurn[]): Promise<AiResult> {
+  const model = "claude-haiku-4-5-20251001";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": CLAUDE_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages,
+    }),
+  });
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      errorText: await res.text().catch(() => ""),
+      model,
+    };
+  }
+  const data = await res.json();
+  const parts: Array<{ text?: unknown }> = Array.isArray(data?.content)
+    ? data.content
+    : [];
+  const text = parts
+    .filter((p) => p && typeof p.text === "string")
+    .map((p) => p.text as string)
+    .join("");
+  return {
+    ok: true,
+    text,
+    model,
+    inputTokens: data?.usage?.input_tokens,
+    outputTokens: data?.usage?.output_tokens,
+  };
+}
+
+// Single Gemini generateContent attempt (REST v1beta). Same prompt contract as
+// the Claude path: SYSTEM_PROMPT as systemInstruction, the validated/trimmed
+// message history as contents, and the 1024 output-token cap preserved.
+async function callGeminiOnce(
+  model: string,
+  messages: ChatTurn[],
+): Promise<AiResult> {
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        generationConfig: { maxOutputTokens: 1024 },
+      }),
+    });
+  } catch (err) {
+    // Network-level failure: the raw error can embed the URL (and the key).
+    return {
+      ok: false,
+      status: 0,
+      errorText: redactGeminiKey(String(err)),
+      model,
+    };
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      errorText: redactGeminiKey(await res.text().catch(() => "")),
+      model,
+    };
+  }
+  const data = await res.json();
+  // Concatenate text parts; entries may carry thoughtSignature / thought:true
+  // (thinking traces) — those are skipped, only answer text is returned.
+  const parts: Array<{ text?: unknown; thought?: unknown }> =
+    data?.candidates?.[0]?.content?.parts ?? [];
+  const text = parts
+    .filter((p) => p && typeof p.text === "string" && p.thought !== true)
+    .map((p) => p.text as string)
+    .join("");
+  return {
+    ok: true,
+    text,
+    model,
+    inputTokens: data?.usageMetadata?.promptTokenCount,
+    outputTokens: data?.usageMetadata?.candidatesTokenCount,
+  };
+}
+
+// Free tier returns intermittent 503 UNAVAILABLE ("model is overloaded").
+function isUnavailable(r: AiResult): boolean {
+  return !r.ok && (r.status === 503 || r.errorText.includes("UNAVAILABLE"));
+}
+
+// Resilience envelope for the free tier:
+//   1. try FREE_AI_MODEL;
+//   2. on 503/UNAVAILABLE → wait 2s, retry FREE_AI_MODEL once;
+//   3. still 503/UNAVAILABLE → fall back to FREE_AI_FALLBACK_MODEL.
+async function callFreeAI(messages: ChatTurn[]): Promise<AiResult> {
+  let result = await callGeminiOnce(FREE_AI_MODEL, messages);
+  if (isUnavailable(result)) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    result = await callGeminiOnce(FREE_AI_MODEL, messages);
+  }
+  if (isUnavailable(result) && FREE_AI_FALLBACK_MODEL !== FREE_AI_MODEL) {
+    result = await callGeminiOnce(FREE_AI_FALLBACK_MODEL, messages);
+  }
+  return result;
+}
+
 Deno.serve(async (req: Request) => {
   const requestId = generateRequestId();
   const corsHeaders = getCorsHeaders(req);
@@ -231,8 +386,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Security: Fail-fast if API key missing (#15) ──
-  if (!CLAUDE_API_KEY) {
-    logJson("ai-chat", requestId, "ERROR", "CLAUDE_API_KEY not configured");
+  const missingApiKey = AI_PROVIDER === "claude"
+    ? !CLAUDE_API_KEY
+    : !GEMINI_API_KEY;
+  if (missingApiKey) {
+    logJson(
+      "ai-chat",
+      requestId,
+      "ERROR",
+      `${AI_PROVIDER === "claude" ? "CLAUDE" : "GEMINI"}_API_KEY not configured`,
+    );
     return new Response(
       JSON.stringify({ error: "AI service not configured", requestId }),
       {
@@ -459,35 +622,32 @@ Deno.serve(async (req: Request) => {
       ...trimmedMessages,
     ];
 
-    // Call Claude API
-    const claudeStart = Date.now();
-    const claudeResponse = await fetch(
-      "https://api.anthropic.com/v1/messages",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": CLAUDE_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1024,
-          system: SYSTEM_PROMPT,
-          messages: messagesWithDelimiter,
-        }),
-      },
-    );
+    // Call the AI provider (Gemini free tier by default; AI_PROVIDER=claude
+    // keeps the legacy Anthropic path alive as rollback).
+    const aiStart = Date.now();
+    const aiResult = AI_PROVIDER === "claude"
+      ? await callClaude(messagesWithDelimiter)
+      : await callFreeAI(messagesWithDelimiter);
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      logJson("ai-chat", requestId, "ERROR", "Claude API error", { status: claudeResponse.status, errorText });
-      // Paid AI route failing upstream — instrument it (ZERO-O).
+    if (!aiResult.ok) {
+      logJson("ai-chat", requestId, "ERROR", "AI API error", {
+        provider: AI_PROVIDER,
+        model: aiResult.model,
+        status: aiResult.status,
+        errorText: aiResult.errorText.slice(0, 500),
+      });
+      // AI route failing upstream — instrument it (ZERO-O).
       await captureException(
-        new Error(`Claude API ${claudeResponse.status}`),
+        new Error(`${AI_PROVIDER} API ${aiResult.status}`),
         {
-          tags: { fn: "ai-chat", step: "claude_api", status: String(claudeResponse.status) },
-          extra: { userId: user.id, errorText: errorText.slice(0, 500) },
+          tags: {
+            fn: "ai-chat",
+            step: "ai_api",
+            provider: AI_PROVIDER,
+            model: aiResult.model,
+            status: String(aiResult.status),
+          },
+          extra: { userId: user.id, errorText: aiResult.errorText.slice(0, 500) },
         },
       );
       return new Response(
@@ -499,22 +659,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const data = await claudeResponse.json();
-
     // ── AI telemetry (ZERO-O / observability) ──
-    // Emit a gen_ai.request span with Anthropic token usage (previously
-    // discarded) so chat cost/latency is observable. No message content is
-    // captured (PII). Best-effort — never blocks the response.
+    // Emit a gen_ai.request span with provider token usage so chat
+    // cost/latency is observable. No message content is captured (PII).
+    // Best-effort — never blocks the response.
     captureGenAiRequest({
-      model: "claude-haiku-4-5-20251001",
+      model: aiResult.model,
       operation: "chat",
-      inputTokens: data?.usage?.input_tokens,
-      outputTokens: data?.usage?.output_tokens,
-      durationMs: Date.now() - claudeStart,
-      tags: { fn: "ai-chat" },
+      inputTokens: aiResult.inputTokens,
+      outputTokens: aiResult.outputTokens,
+      durationMs: Date.now() - aiStart,
+      tags: { fn: "ai-chat", provider: AI_PROVIDER },
     }).catch(() => {});
 
-    if (!data.content || data.content.length === 0) {
+    if (!aiResult.text) {
       return new Response(
         JSON.stringify({ error: "Empty response from AI", requestId }),
         {
@@ -546,7 +704,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ response: data.content[0].text, requestId }),
+      JSON.stringify({ response: aiResult.text, requestId }),
       {
         status: 200,
         headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
