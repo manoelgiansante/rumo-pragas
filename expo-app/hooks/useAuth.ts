@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { supabase } from '../services/supabase';
 import * as authService from '../services/auth';
 import { handleRecoveryDeepLink } from '../services/passwordRecovery';
+import { flushPendingLocationConsent } from '../services/userPreferences';
 import i18n from '../i18n';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -73,6 +74,12 @@ export function useAuth() {
         isAuthenticated: !!session,
         error: null,
       });
+      // FIX-12: once a session exists on boot, replay any location-consent
+      // decision that failed to persist offline (LGPD proof). Fire-and-forget,
+      // never blocks boot, never throws.
+      if (session?.user?.id) {
+        void flushPendingLocationConsent(session.user.id);
+      }
     });
 
     // Listen for auth changes (also resolves isLoading -> belt and suspenders)

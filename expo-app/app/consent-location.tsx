@@ -26,7 +26,7 @@ import {
 import { useAuthContext } from '../contexts/AuthContext';
 import { useNavigationGate } from '../contexts/NavigationGateContext';
 import { LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY } from '../services/navigationGate';
-import { setLocationConsent } from '../services/userPreferences';
+import { setLocationConsent, enqueuePendingLocationConsent } from '../services/userPreferences';
 import { useLocation } from '../hooks/useLocation';
 import { trackEvent } from '../services/analytics';
 
@@ -51,20 +51,27 @@ const CONSENT_PURPOSE_PT =
  *
  * The user's choice is still recorded (LGPD), but a flaky/offline network can
  * never trap them on this gate — that reads as "app incomplete" to Apple
- * review. The write runs in the background with a few retries; a total failure
- * is reported to analytics only (never to the UI, never blocks entry).
+ * review. The write runs in the background with a few retries; if ALL retries
+ * fail (prolonged offline), the decision is queued to AsyncStorage and replayed
+ * on the next boot with a session (see flushPendingLocationConsent) so the LGPD
+ * proof is never silently lost while the local "seen" flag already advanced.
  */
 function persistConsentInBackground(userId: string, granted: boolean): void {
   const MAX_ATTEMPTS = 3;
+  // Capture the decision timestamp once so retries and the queued replay all
+  // record when consent was actually given, not when it eventually synced.
+  const consentedAt = new Date().toISOString();
   void (async () => {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        await setLocationConsent(userId, granted, CONSENT_PURPOSE_PT);
+        await setLocationConsent(userId, granted, CONSENT_PURPOSE_PT, consentedAt);
         return;
       } catch (err) {
         if (attempt === MAX_ATTEMPTS) {
           if (__DEV__) console.warn('[consent-location] persist failed after retries:', err);
           trackEvent('location_consent_persist_failed', { granted });
+          // Queue for replay on the next boot — LGPD proof preserved.
+          await enqueuePendingLocationConsent(userId, granted, CONSENT_PURPOSE_PT, consentedAt);
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
