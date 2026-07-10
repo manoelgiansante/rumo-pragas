@@ -290,6 +290,11 @@ export default {
     mipLabelHumidity: 'Umidade',
     mipLabelSeason: 'Época favorável',
     mipDaysUnit: 'dias',
+    // Reference-protocol banner shown when chemical products come from the MIP
+    // catalog fallback (not the diagnosis enrichment) — the match is by pest
+    // name, so the identification must be confirmed before applying defensivos.
+    pestDetailReferenceProtocol:
+      'Protocolo de referência para {{praga}} — confirme a identificação antes de aplicar.',
     // Loading screen step counter (e.g. "Passo 2 de 4")
     stepCounter: 'Passo {{current}} de {{total}}',
     // Top-3 alternatives card

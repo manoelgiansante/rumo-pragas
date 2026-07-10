@@ -281,6 +281,11 @@ export default {
     mipLabelHumidity: 'Humidity',
     mipLabelSeason: 'Favorable season',
     mipDaysUnit: 'days',
+    // Reference-protocol banner shown when chemical products come from the MIP
+    // catalog fallback (not the diagnosis enrichment) — the match is by pest
+    // name, so the identification must be confirmed before applying pesticides.
+    pestDetailReferenceProtocol:
+      'Reference protocol for {{praga}} — confirm the identification before applying.',
     stepCounter: 'Step {{current}} of {{total}}',
     topAlternatives: 'Other possibilities',
     topAlternativesHint:

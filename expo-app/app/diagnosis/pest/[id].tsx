@@ -37,6 +37,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   Colors,
   Spacing,
@@ -54,7 +55,28 @@ import type { MipEntry } from '../../../data/mip';
 
 const HERO_HEIGHT = 320;
 
+/**
+ * Minimum `useMipKnowledge` match score to backfill the SENSITIVE fields
+ * (commercial products + chemical actives = pesticide dosages) from the MIP
+ * catalog. Higher than the entry-resolution threshold (default 2): a fuzzy
+ * match that is "good enough" to show symptoms / lifecycle / monitoring is NOT
+ * good enough to recommend a specific defensivo for the wrong pest (agronomic
+ * + CDC art.14 risk). A score >= 4 requires the pest name itself to have
+ * matched strongly (see `searchByKeywords` scoring). Below it, the sensitive
+ * blocks stay empty; the educational content still renders at the normal bar.
+ */
+const SENSITIVE_MIP_MIN_SCORE = 4;
+
 type EnrichmentLabels = (key: string) => string;
+
+/** Result of merging a diagnosis enrichment with the MIP catalog fallback. */
+interface MipMergeResult {
+  enrichment: AgrioEnrichment;
+  /** True when `chemical_treatment` was backfilled from the MIP catalog. */
+  chemicalFromMip: boolean;
+  /** True when `recommended_products` was backfilled from the MIP catalog. */
+  productsFromMip: boolean;
+}
 
 /**
  * Map a MIP catalog entry onto the AgrioEnrichment shape the fact sheet reads.
@@ -142,12 +164,23 @@ function mipEntryToEnrichment(entry: MipEntry, t: EnrichmentLabels): Partial<Agr
  * Fill ONLY the empty fields of `base` from the MIP entry — a pure fallback.
  * The enrichment path is never removed: any field the model already provided
  * wins; the MIP catalog only backfills what came back blank.
+ *
+ * SAFETY (FIX-9): the sensitive fields — `recommended_products` (commercial
+ * defensivos with dosage) and `chemical_treatment` (active ingredients) — are
+ * ONLY backfilled from the MIP catalog when the keyword match is strong
+ * (`matchScore >= SENSITIVE_MIP_MIN_SCORE`). This prevents a fuzzy/wrong match
+ * from recommending the pesticide of the wrong pest. When they DO come from the
+ * catalog, the caller marks the block as a reference protocol (see
+ * `chemicalFromMip` / `productsFromMip`) so the UI can ask the user to confirm
+ * the identification first. The non-sensitive, educational fields (symptoms,
+ * lifecycle, favorable conditions, monitoring, IPM) keep the normal threshold.
  */
 function mergeEnrichmentWithMip(
   base: AgrioEnrichment,
   mip: MipEntry,
   t: EnrichmentLabels,
-): AgrioEnrichment {
+  matchScore: number,
+): MipMergeResult {
   const fromMip = mipEntryToEnrichment(mip, t);
   const merged: AgrioEnrichment = { ...base };
   const needArr = (v?: unknown[]) => !v || v.length === 0;
@@ -161,17 +194,28 @@ function mergeEnrichmentWithMip(
     merged.cultural_treatment = fromMip.cultural_treatment;
   if (needArr(merged.biological_treatment) && fromMip.biological_treatment)
     merged.biological_treatment = fromMip.biological_treatment;
-  if (needArr(merged.chemical_treatment) && fromMip.chemical_treatment)
-    merged.chemical_treatment = fromMip.chemical_treatment;
-  if (needArr(merged.recommended_products) && fromMip.recommended_products)
-    merged.recommended_products = fromMip.recommended_products;
   if (needArr(merged.monitoring) && fromMip.monitoring) merged.monitoring = fromMip.monitoring;
   if (needStr(merged.action_threshold) && fromMip.action_threshold)
     merged.action_threshold = fromMip.action_threshold;
   if (needStr(merged.mip_strategy) && fromMip.mip_strategy)
     merged.mip_strategy = fromMip.mip_strategy;
 
-  return merged;
+  // Sensitive backfill (pesticide dosages) — only on a strong match, and
+  // tracked so the UI can label it as a reference protocol.
+  let chemicalFromMip = false;
+  let productsFromMip = false;
+  if (matchScore >= SENSITIVE_MIP_MIN_SCORE) {
+    if (needArr(merged.chemical_treatment) && fromMip.chemical_treatment) {
+      merged.chemical_treatment = fromMip.chemical_treatment;
+      chemicalFromMip = true;
+    }
+    if (needArr(merged.recommended_products) && fromMip.recommended_products) {
+      merged.recommended_products = fromMip.recommended_products;
+      productsFromMip = true;
+    }
+  }
+
+  return { enrichment: merged, chemicalFromMip, productsFromMip };
 }
 
 // EMBRAPA + MAPA + AGROFIT search portals — opened in external browser.
@@ -273,11 +317,19 @@ export default function PestDetailScreen() {
 
   // Merge: model enrichment wins field-by-field; the MIP catalog only backfills
   // the fields that came back empty (lifecycle / conditions / monitoring /
-  // products / IPM treatments). The enrichment path is preserved.
-  const displayEnrichment = useMemo<AgrioEnrichment>(() => {
+  // products / IPM treatments). The enrichment path is preserved. Sensitive
+  // fields (pesticide products/chemicals) are only backfilled on a strong match
+  // and flagged as a reference protocol (FIX-9).
+  const merge = useMemo<MipMergeResult>(() => {
     const base = entry?.enrichment ?? ({} as AgrioEnrichment);
-    return mipKnowledge.entry ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t) : base;
-  }, [entry?.enrichment, mipKnowledge.entry, t]);
+    return mipKnowledge.entry
+      ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t, mipKnowledge.matchScore)
+      : { enrichment: base, chemicalFromMip: false, productsFromMip: false };
+  }, [entry?.enrichment, mipKnowledge.entry, mipKnowledge.matchScore, t]);
+  const displayEnrichment = merge.enrichment;
+  // Common name of the matched MIP entry — used in the reference-protocol
+  // banner so the user knows WHICH pest the borrowed protocol belongs to.
+  const mipMatchedName = mipKnowledge.entry?.nomeComum;
 
   // Only show the spinner while the cache is still loading AND we have no
   // synthetic entry from params yet (library taps render immediately).
@@ -487,6 +539,9 @@ export default function PestDetailScreen() {
               icon="flask"
               iconColor={Colors.techBlue}
             >
+              {merge.chemicalFromMip ? (
+                <ReferenceProtocolBanner name={mipMatchedName || displayName} t={t} />
+              ) : null}
               <View style={styles.warning}>
                 <Ionicons name="warning" size={14} color={Colors.warmAmber} />
                 <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
@@ -509,6 +564,9 @@ export default function PestDetailScreen() {
           >
             {(enrichment.recommended_products?.length ?? 0) > 0 ? (
               <View style={{ gap: 10 }}>
+                {merge.productsFromMip ? (
+                  <ReferenceProtocolBanner name={mipMatchedName || displayName} t={t} />
+                ) : null}
                 <View style={styles.warning}>
                   <Ionicons name="warning" size={14} color={Colors.warmAmber} />
                   <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
@@ -684,6 +742,46 @@ export default function PestDetailScreen() {
   );
 }
 
+/**
+ * Reference-protocol banner (FIX-9). Rendered above the chemical / commercial
+ * product blocks when those came from the MIP catalog fallback (matched by pest
+ * name), NOT from the diagnosis enrichment. Makes the borrowed protocol's
+ * provenance explicit and asks the user to confirm the identification before
+ * applying any defensivo — a matched name is not a confirmed diagnosis.
+ */
+function ReferenceProtocolBanner({
+  name,
+  t,
+}: {
+  name: string;
+  // i18next's real TFunction: the local `t` from useTranslation() is a
+  // TFunction, and under exactOptionalPropertyTypes it is NOT assignable to a
+  // hand-rolled `(k, opts?) => string` (the optional-undefined arg breaks the
+  // overloads). Typing the prop as TFunction keeps interpolation calls
+  // (`t(key, { praga })`) valid without `as any` or loosening tsconfig.
+  t: TFunction;
+}) {
+  return (
+    <View
+      style={styles.referenceBanner}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={t('diagnosis.pestDetailReferenceProtocol', { praga: name })}
+      testID="pest-reference-protocol-banner"
+    >
+      <Ionicons
+        name="alert-circle"
+        size={14}
+        color={Colors.warmAmber}
+        accessibilityElementsHidden
+      />
+      <Text style={styles.referenceBannerText}>
+        {t('diagnosis.pestDetailReferenceProtocol', { praga: name })}
+      </Text>
+    </View>
+  );
+}
+
 interface ReferenceRowProps {
   label: string;
   onPress: () => void;
@@ -833,6 +931,26 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     color: Colors.earthText,
     flex: 1,
+  },
+  // --- Reference-protocol banner (FIX-9) ---
+  referenceBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 10,
+    backgroundColor: Colors.coral + '14',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.coral + '33',
+    marginBottom: 10,
+  },
+  referenceBannerText: {
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    fontSize: FontSize.caption,
+    color: Colors.earthText,
+    flex: 1,
+    lineHeight: 18,
   },
   // --- Product cards ---
   productCard: {
