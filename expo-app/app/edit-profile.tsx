@@ -35,7 +35,7 @@ import {
 } from '../constants/theme';
 import { CROPS } from '../constants/crops';
 import { useAuthContext } from '../contexts/AuthContext';
-import { supabase } from '../services/supabase';
+import { supabase, timeoutHeader } from '../services/supabase';
 import { Avatar } from '../components/Avatar';
 import { KeyboardDoneAccessory, DONE_ACCESSORY_ID } from '../components/KeyboardDoneAccessory';
 
@@ -203,6 +203,10 @@ export default function EditProfileScreen() {
           .upload(path, arrayBuffer, {
             contentType: 'image/jpeg',
             upsert: true,
+            // Avatar uploads move real image bytes and must survive slow rural
+            // networks — opt this one request out of the blanket 20s client
+            // timeout (60s). Global default stays 20s for auth/data (FIX-13).
+            headers: timeoutHeader(60_000),
           });
 
         if (uploadError) throw uploadError;
