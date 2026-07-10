@@ -217,6 +217,21 @@ export default function ResultScreen() {
     enabled: mipEnabled,
   });
 
+  // FIX-2: prefer the PT-BR common name from the MIP catalog when the pest was
+  // resolved. The Agrio path can leave `name_pt` in English when it matched
+  // only by scientific name; the catalog `nomeComum` is always PT-BR. Falls
+  // back to enrichment name, then the raw Agrio name. Healthy / invalid-image
+  // states are handled by early returns before this name is rendered.
+  const displayPestName = useMemo(() => {
+    if (isHealthy) return t('diagnosis.healthy');
+    return (
+      mipKnowledge.entry?.nomeComum ||
+      enrichment.name_pt ||
+      result.pest_name ||
+      t('diagnosis.pestDetected')
+    );
+  }, [isHealthy, mipKnowledge.entry, enrichment.name_pt, result.pest_name, t]);
+
   // Fire one analytics event per resolved entry (covers both unlocked and
   // empty states — empty is itself a signal we should grow the catalog).
   useEffect(() => {
@@ -252,9 +267,7 @@ export default function ResultScreen() {
 
   // All useCallback hooks must be declared before any early returns (Rules of Hooks)
   const buildShareText = useCallback(() => {
-    const pestName = isHealthy
-      ? t('diagnosis.healthy')
-      : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected');
+    const pestName = displayPestName;
     const conf = Math.round(confidence * 100);
     const crop = result.crop || t('diagnosis.notInformed');
     const sev = severityLabel();
@@ -302,7 +315,7 @@ export default function ResultScreen() {
       '',
       `_${t('diagnosis.shareFooter')}_`,
     ].join('\n');
-  }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
+  }, [result, enrichment, confidence, displayPestName, t, severityLabel]);
 
   // Share the diagnosis. Prefer the WhatsApp deep link when it is actually
   // openable, but NEVER let a missing/unopenable WhatsApp turn into a UX
@@ -361,9 +374,7 @@ export default function ResultScreen() {
   }, [buildShareText, t]);
 
   const buildPdfHtml = useCallback(() => {
-    const pestName = isHealthy
-      ? t('diagnosis.healthy')
-      : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected');
+    const pestName = displayPestName;
     const conf = Math.round(confidence * 100);
     const crop = result.crop || t('diagnosis.notInformed');
     const sev = severityLabel();
@@ -505,7 +516,7 @@ export default function ResultScreen() {
   </div>
 </body>
 </html>`;
-  }, [result, enrichment, confidence, isHealthy, t, severityLabel]);
+  }, [result, enrichment, confidence, displayPestName, t, severityLabel]);
 
   const handlePdfExport = useCallback(async () => {
     void Haptics.selectionAsync().catch(() => {
@@ -726,9 +737,7 @@ export default function ResultScreen() {
               </View>
             </View>
             <Text style={styles.heroPestName} numberOfLines={2} maxFontSizeMultiplier={1.4}>
-              {isHealthy
-                ? t('diagnosis.healthy')
-                : enrichment.name_pt || result.pest_name || t('diagnosis.pestDetected')}
+              {displayPestName}
             </Text>
             {!isHealthy && enrichment.scientific_name ? (
               <Text style={styles.heroScientific} numberOfLines={1}>
