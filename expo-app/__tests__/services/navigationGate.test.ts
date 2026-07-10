@@ -411,4 +411,20 @@ describe('readGateFlags / persist helpers (storage layer)', () => {
       hasSeenLocationConsent: true,
     });
   });
+
+  it('clearLocationConsentSeen removes the consent flag so the gate re-asks next boot', async () => {
+    const {
+      persistLocationConsentSeen,
+      clearLocationConsentSeen,
+      readGateFlags,
+    } = require('../../services/navigationGate');
+    // Simulate the optimistic "seen" flag being set, then the LGPD double-failure
+    // path undoing it (server retries + offline queue both failed).
+    await persistLocationConsentSeen();
+    await clearLocationConsentSeen();
+    await expect(readGateFlags()).resolves.toEqual({
+      hasSeenOnboarding: false,
+      hasSeenLocationConsent: false,
+    });
+  });
 });

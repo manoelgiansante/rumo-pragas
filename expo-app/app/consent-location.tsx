@@ -25,7 +25,10 @@ import {
 } from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useNavigationGate } from '../contexts/NavigationGateContext';
-import { LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY } from '../services/navigationGate';
+import {
+  LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY,
+  clearLocationConsentSeen,
+} from '../services/navigationGate';
 import { setLocationConsent, enqueuePendingLocationConsent } from '../services/userPreferences';
 import { useLocation } from '../hooks/useLocation';
 import { trackEvent } from '../services/analytics';
@@ -71,7 +74,20 @@ function persistConsentInBackground(userId: string, granted: boolean): void {
           if (__DEV__) console.warn('[consent-location] persist failed after retries:', err);
           trackEvent('location_consent_persist_failed', { granted });
           // Queue for replay on the next boot — LGPD proof preserved.
-          await enqueuePendingLocationConsent(userId, granted, CONSENT_PURPOSE_PT, consentedAt);
+          const queued = await enqueuePendingLocationConsent(
+            userId,
+            granted,
+            CONSENT_PURPOSE_PT,
+            consentedAt,
+          );
+          if (!queued) {
+            // Double failure: neither the server nor the offline queue kept the
+            // consent proof. Undo the optimistic "consent seen" flag so this LGPD
+            // gate reappears on the next cold start and the choice is recaptured.
+            // Only affects the next boot — the current session already advanced
+            // and is left undisturbed (no bounce, non-blocking).
+            void clearLocationConsentSeen();
+          }
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, attempt * 1500));

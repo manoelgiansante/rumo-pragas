@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { trackEvent } from './analytics';
 
 /**
  * P0-3 (LGPD) — user_preferences service.
@@ -109,18 +110,32 @@ export async function setLocationConsent(
  * network), so it can be replayed on the next boot. Never throws — a queue
  * write failure must not surface to the LGPD gate, which already degrades
  * gracefully and lets the user into the app.
+ *
+ * Returns `true` when the decision was queued for replay, and `false` on a
+ * DOUBLE failure (the server retries AND this local AsyncStorage write both
+ * failed) — in which case the LGPD proof of consent is lost. On `false` the
+ * caller MUST NOT leave the optimistic "consent seen" flag advanced: it has to
+ * undo it (see `clearLocationConsentSeen`) so the consent gate reappears on the
+ * next boot and the choice is recaptured, rather than silently skipping consent.
  */
 export async function enqueuePendingLocationConsent(
   userId: string,
   shareLocation: boolean,
   purpose: string,
   consentedAt: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const payload: PendingLocationConsent = { userId, shareLocation, purpose, consentedAt };
     await AsyncStorage.setItem(PENDING_LOCATION_CONSENT_KEY, JSON.stringify(payload));
+    return true;
   } catch (e) {
     if (__DEV__) console.warn('[userPreferences] failed to queue pending consent:', e);
+    // Double failure: the consent proof reached neither the server nor the local
+    // replay queue. Emit telemetry so this silent LGPD loss is observable, then
+    // report failure so the caller can re-ask on the next boot. No PII in the
+    // event — never attach the coordinates / purpose / userId payload here.
+    trackEvent('consent_queue_write_failed');
+    return false;
   }
 }
 
