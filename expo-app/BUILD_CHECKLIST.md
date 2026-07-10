@@ -7,11 +7,9 @@ Passo a passo pra build de production iOS + Android.
 ```bash
 # Sentry — source map upload (precisa ser sntrys_XXXX, Internal Integration token)
 eas secret:create --scope project --name SENTRY_AUTH_TOKEN --value sntrys_XXXX
-
-# RevenueCat SDK keys (publicas, prefixo appl_/goog_)
-eas secret:create --scope project --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value appl_XXXX
-eas secret:create --scope project --name EXPO_PUBLIC_REVENUECAT_ANDROID_KEY --value goog_XXXX
 ```
+
+> App 100% grátis: NÃO criar chaves RevenueCat (`react-native-purchases` removido — reintroduzir IAP causa rejeição 3.1.1).
 
 Verificar:
 
@@ -51,8 +49,8 @@ eas build --platform all --profile production --auto-submit
 
 O `--auto-submit` usa a config em `eas.json > submit.production`. Requer:
 
-- iOS: AuthKey `/Users/manoelnascimento/.keys/AuthKey_YQGT4C9TB8.p8` valido
-- Android: `./play-store-key.json` valido + track=production
+- iOS: AuthKey `/Users/manoelnascimento/.keys/AuthKey_C5FD4GNS79.p8` valido (bate com `eas.json > submit.production.ios.ascApiKeyPath`)
+- Android: `./play-store-key.json` valido + track=internal, releaseStatus=draft (conforme `eas.json`; promover pra production = gate CEO)
 
 ## 6. Monitorar pos-submit
 

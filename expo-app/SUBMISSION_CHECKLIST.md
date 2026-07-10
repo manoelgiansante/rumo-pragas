@@ -1,24 +1,29 @@
-# Submission Checklist — Rumo Pragas v1.0.0
+# Submission Checklist — Rumo Pragas
 
-> Auditoria 30 agentes concluída 2026-04-17. Tudo OK para submissão assim que steps manuais abaixo forem feitos.
+> Auditoria 30 agentes concluída 2026-04-17 (v1.0.0). App já PÚBLICO nas duas lojas
+> desde então; os steps manuais de loja abaixo já foram feitos uma vez.
+>
+> ⚠️ ATUALIZADO 2026-07-10: o app é **100% GRÁTIS** (Guideline 3.1.1). O
+> `react-native-purchases` foi REMOVIDO e não há paywall/assinatura/IAP. NÃO
+> recrie chaves RevenueCat nem declare "purchase history" — reintroduzir IAP já
+> causou rejeições 3.1.1 no histórico. A verdade voltada ao revisor está em
+> `store-assets/ios/REVIEWER_NOTES.md`.
 
 ## Steps manuais do Manoel (UMA VEZ)
 
-### 1. EAS Secrets (RevenueCat + Sentry)
+### 1. EAS Secrets (Sentry)
 
 ```bash
 cd ~/AgroRumo\ Projetos/Apps/rumo-pragas/expo-app
-
-# RevenueCat keys (do dashboard app.revenuecat.com → Project Settings → API Keys)
-eas secret:create --scope project --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value appl_XXXXXXX
-eas secret:create --scope project --name EXPO_PUBLIC_REVENUECAT_ANDROID_KEY --value goog_XXXXXXX
 
 # Sentry auth token (de sentry.io → Settings → Auth Tokens → "Source Maps: read & write")
 eas secret:create --scope project --name SENTRY_AUTH_TOKEN --value sntrys_XXXXXXX
 
 # Verificar
-eas secret:list
+eas env:list --environment production
 ```
+
+> RevenueCat NÃO se aplica — app 100% grátis, `react-native-purchases` removido.
 
 ### 2. Google Play Service Account (BLOQUEADOR)
 
@@ -47,7 +52,7 @@ No https://play.google.com/console/u/0/developers/.../app/.../data-safety:
 No https://appstoreconnect.apple.com para app id `6762232682`:
 
 - App Information → Review Notes: copiar de [store-assets/ios/REVIEWER_NOTES.md](store-assets/ios/REVIEWER_NOTES.md)
-- Privacy nutrition labels: preencher (camera, location, email, photos, crash data, purchase history)
+- Privacy nutrition labels: preencher (camera, location, email, photos, crash data) — SEM "purchase history" (não há IAP)
 - Age Rating: 4+
 - Category: Utilities (primary) + Productivity (secondary)
 
@@ -59,12 +64,12 @@ No Supabase (jxcnfyeemdltdfqtgbcl) → Auth → Add User:
 - Password: senha forte (anotar em 1Password/Obsidian)
 - Atualizar credenciais em `store-assets/ios/REVIEWER_NOTES.md`
 
-### 6. RevenueCat Offerings (iOS + Android)
+### 6. RevenueCat Offerings — N/A
 
-No https://app.revenuecat.com → Offerings:
-
-- Criar offering "default" com 2 packages: monthly + annual
-- Vincular aos product IDs do App Store Connect e Google Play Console (criar IAPs se ainda não existem)
+App 100% grátis: sem offerings, sem IAP. Quando/se a re-monetização voltar (Pro
+R$19,90/mês · R$199/ano — ver `CLAUDE.md` §Monetização), usar **product IDs NOVOS**
+(os antigos foram queimados) e submeter a 1ª assinatura via "submit with version"
+no console (UI-only, gate CEO).
 
 ## Build + Submit
 
