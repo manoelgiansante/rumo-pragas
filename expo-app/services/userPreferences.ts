@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { trackEvent } from './analytics';
 
 /**
  * P0-3 (LGPD) — user_preferences service.
@@ -14,6 +16,23 @@ export interface UserPreferences {
   share_location: boolean;
   share_location_purpose: string | null;
   consented_at: string | null;
+}
+
+/**
+ * AsyncStorage key holding a location-consent decision that could NOT be
+ * persisted to the server (offline / degraded network) at the moment the user
+ * made it. It is replayed on the next boot with a session so the LGPD proof is
+ * never silently lost while the local "consent seen" flag already advanced the
+ * user into the app. Only the LATEST pending decision is kept.
+ */
+const PENDING_LOCATION_CONSENT_KEY = '@rumopragas/pending_location_consent';
+
+interface PendingLocationConsent {
+  userId: string;
+  shareLocation: boolean;
+  purpose: string;
+  /** ISO timestamp captured when the user actually made the choice. */
+  consentedAt: string;
 }
 
 const DEFAULT_PREFS: UserPreferences = {
@@ -66,18 +85,100 @@ export async function setLocationConsent(
   userId: string,
   shareLocation: boolean,
   purpose: string,
+  // The moment the user made the choice. Defaults to now, but callers replaying
+  // a queued (offline) decision pass the ORIGINAL timestamp so the audit trail
+  // reflects when consent was actually given, not when it finally synced.
+  consentedAt: string = new Date().toISOString(),
 ): Promise<void> {
   const { error } = await supabase.from('user_preferences').upsert(
     {
       user_id: userId,
       share_location: shareLocation,
       share_location_purpose: purpose,
-      consented_at: new Date().toISOString(),
+      consented_at: consentedAt,
     },
     { onConflict: 'user_id' },
   );
   if (error) {
     if (__DEV__) console.error('[userPreferences] upsert failed:', error.message);
     throw new Error(error.message);
+  }
+}
+
+/**
+ * Queue a consent decision that failed to reach the server (offline / degraded
+ * network), so it can be replayed on the next boot. Never throws — a queue
+ * write failure must not surface to the LGPD gate, which already degrades
+ * gracefully and lets the user into the app.
+ *
+ * Returns `true` when the decision was queued for replay, and `false` on a
+ * DOUBLE failure (the server retries AND this local AsyncStorage write both
+ * failed) — in which case the LGPD proof of consent is lost. On `false` the
+ * caller MUST NOT leave the optimistic "consent seen" flag advanced: it has to
+ * undo it (see `clearLocationConsentSeen`) so the consent gate reappears on the
+ * next boot and the choice is recaptured, rather than silently skipping consent.
+ */
+export async function enqueuePendingLocationConsent(
+  userId: string,
+  shareLocation: boolean,
+  purpose: string,
+  consentedAt: string,
+): Promise<boolean> {
+  try {
+    const payload: PendingLocationConsent = { userId, shareLocation, purpose, consentedAt };
+    await AsyncStorage.setItem(PENDING_LOCATION_CONSENT_KEY, JSON.stringify(payload));
+    return true;
+  } catch (e) {
+    if (__DEV__) console.warn('[userPreferences] failed to queue pending consent:', e);
+    // Double failure: the consent proof reached neither the server nor the local
+    // replay queue. Emit telemetry so this silent LGPD loss is observable, then
+    // report failure so the caller can re-ask on the next boot. No PII in the
+    // event — never attach the coordinates / purpose / userId payload here.
+    trackEvent('consent_queue_write_failed');
+    return false;
+  }
+}
+
+/**
+ * Replay a queued (offline) consent decision. Call once a session is available
+ * on boot. Idempotent and best-effort: on success the queue is cleared; on a
+ * still-failing network the record is KEPT for the next boot so the LGPD proof
+ * is never dropped. A record belonging to a different user (account switch) is
+ * left untouched — it replays when that user next boots, or is overwritten by a
+ * newer decision. Never throws / never blocks.
+ */
+export async function flushPendingLocationConsent(currentUserId: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_LOCATION_CONSENT_KEY);
+    if (!raw) return;
+
+    let pending: PendingLocationConsent;
+    try {
+      pending = JSON.parse(raw) as PendingLocationConsent;
+    } catch {
+      // Corrupt payload — drop it so it cannot wedge every boot.
+      await AsyncStorage.removeItem(PENDING_LOCATION_CONSENT_KEY);
+      return;
+    }
+
+    if (!pending?.userId || typeof pending.shareLocation !== 'boolean') {
+      await AsyncStorage.removeItem(PENDING_LOCATION_CONSENT_KEY);
+      return;
+    }
+    // Only replay the current user's own decision. Leave a foreign record in
+    // place (do not write it under this session).
+    if (pending.userId !== currentUserId) return;
+
+    await setLocationConsent(
+      pending.userId,
+      pending.shareLocation,
+      pending.purpose,
+      pending.consentedAt,
+    );
+    // Persisted — clear the queue.
+    await AsyncStorage.removeItem(PENDING_LOCATION_CONSENT_KEY);
+  } catch (e) {
+    // Still offline / server down — keep the record for the next boot.
+    if (__DEV__) console.warn('[userPreferences] pending consent replay failed:', e);
   }
 }

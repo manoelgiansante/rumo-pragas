@@ -30,6 +30,7 @@ import { ChatBubble } from '../../components/ChatBubble';
 import { sendChatMessage } from '../../services/ai-chat';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -100,6 +101,17 @@ export default function AIChatScreen() {
 
   const isDark = useColorScheme() === 'dark';
   const { isTablet, contentMaxWidth } = useResponsive();
+  // Auth session token forwarded to the chat edge fn. On web the Supabase
+  // client's storage adapter is a no-op, so `supabase.auth.getSession()` inside
+  // the service returns null even for a logged-in user; the reliable source is
+  // the auth context (populated by onAuthStateChange). Held in a ref so `send`'s
+  // dependency array stays stable (avoids recreating the memoised suggestions on
+  // every token refresh). Mirrors services/diagnosis.ts' loading.tsx caller.
+  const { session } = useAuthContext();
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   // Prefill vindo da Home ("Sem foto? Descreva os sintomas") — o param `ts`
@@ -180,7 +192,7 @@ export default function AIChatScreen() {
           role: m.role,
           content: m.content,
         }));
-        const response = await sendChatMessage(history);
+        const response = await sendChatMessage(history, sessionRef.current?.access_token);
         const aiMsg: Message = {
           id: nextMessageId(),
           role: 'assistant',

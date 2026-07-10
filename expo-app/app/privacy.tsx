@@ -44,7 +44,7 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 1 de julho de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 10 de julho de 2026</Text>
 
         <Text style={styles.intro}>
           A AgroRumo ("nós") se compromete a proteger a privacidade dos usuários do aplicativo Rumo
@@ -112,8 +112,9 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Fotos de plantas:</Text> enviadas para análise por
-              inteligência artificial para identificação de pragas, doenças e deficiências.
+              <Text style={styles.bold}>Fotos de plantas:</Text> enviadas ao serviço de
+              identificação por imagem Agrio (operado pela Saillog Ltd.) para identificar pragas,
+              doenças e deficiências a partir da imagem.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -156,14 +157,18 @@ export default function PrivacyScreen() {
         </Text>
         <Text style={styles.importantBox}>
           As imagens de plantas são enviadas, por meio do nosso servidor de diagnóstico, ao serviço
-          Claude, da Anthropic (inteligência artificial), exclusivamente para fins de análise e
-          diagnóstico. Quando você autoriza o uso da localização, as coordenadas (latitude e
-          longitude) são enviadas no mesmo pedido de diagnóstico e utilizadas apenas como contexto
-          regional (condições climáticas e ocorrência de pragas na sua região) para melhorar o
-          resultado. Se você não autorizar a localização, nenhuma coordenada é enviada
-          (comportamento restritivo por padrão). Seu nome e email NÃO são enviados junto com as
-          imagens. A Anthropic processa os dados de acordo com sua própria política de privacidade e
-          não utiliza os dados enviados via API para treinar seus modelos.
+          de identificação por imagem Agrio (operado pela Saillog Ltd.), exclusivamente para
+          identificar a cultura e as pragas ou doenças a partir da foto. Seu nome e email NÃO são
+          enviados junto com as imagens.{'\n\n'}O chat com o Agrônomo IA processa apenas o texto que
+          você digita, por meio do serviço Claude, da Anthropic (inteligência artificial),
+          exclusivamente para gerar as respostas do assistente — as suas fotos NÃO são enviadas à
+          Anthropic.{'\n\n'}Quando você autoriza o uso da localização, as coordenadas (latitude e
+          longitude) são armazenadas para georreferenciar seus diagnósticos e obter dados
+          meteorológicos da sua região (ver a seguir); elas NÃO são enviadas ao Agrio nem à
+          Anthropic. Se você não autorizar a localização, nenhuma coordenada é registrada
+          (comportamento restritivo por padrão). Tanto a Saillog/Agrio quanto a Anthropic tratam os
+          dados de acordo com suas próprias políticas de privacidade; a Anthropic não utiliza os
+          dados enviados via API para treinar seus modelos.
         </Text>
         <Text style={styles.importantBox}>
           Suas coordenadas de localização (latitude e longitude), quando fornecidas, são enviadas

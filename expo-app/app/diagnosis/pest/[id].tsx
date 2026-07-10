@@ -16,7 +16,7 @@
  *   for pest fact sheets ships, add `fetchPestFromRemote` as fallback.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   Colors,
   Spacing,
@@ -48,8 +49,184 @@ import {
 import { PremiumCard } from '../../../components/PremiumCard';
 import { CollapsibleSection } from '../../../components/CollapsibleSection';
 import { loadPestFromCache, type PestCacheEntry } from '../../../services/pestRegistry';
+import { useMipKnowledge } from '../../../hooks/useMipKnowledge';
+import type { AgrioEnrichment, AgrioProduct } from '../../../types/diagnosis';
+import type { MipEntry } from '../../../data/mip';
 
 const HERO_HEIGHT = 320;
+
+/**
+ * Minimum `useMipKnowledge` match score to backfill the SENSITIVE fields
+ * (commercial products + chemical actives = pesticide dosages) from the MIP
+ * catalog. Higher than the entry-resolution threshold (default 2): a fuzzy
+ * match that is "good enough" to show symptoms / lifecycle / monitoring is NOT
+ * good enough to recommend a specific defensivo for the wrong pest (agronomic
+ * + CDC art.14 risk).
+ *
+ * A score >= 4 requires a STRONG keyword match — e.g. two single-word strong
+ * hits, or one full multi-word phrase (see `searchByKeywords` scoring: a token
+ * that hits `sintomas.palavrasChave` scores +2, and +4 as a multi-word phrase).
+ * It does NOT guarantee the pest NAME matched: the strong-hit bonus is scored
+ * against the SYMPTOM keywords only, while the common/scientific name
+ * contributes just a weak +1. So two strong SYMPTOM tokens already reach 4 with
+ * the name never matching at all — which is exactly why, even above this bar,
+ * the backfilled chemical block still renders under the "confirme a
+ * identificação" banner (a similar-symptom look-alike could score high). Below
+ * this bar the sensitive blocks stay empty; the educational content still
+ * renders at the normal threshold.
+ */
+const SENSITIVE_MIP_MIN_SCORE = 4;
+
+type EnrichmentLabels = (key: string) => string;
+
+/** Result of merging a diagnosis enrichment with the MIP catalog fallback. */
+interface MipMergeResult {
+  enrichment: AgrioEnrichment;
+  /** True when `chemical_treatment` was backfilled from the MIP catalog. */
+  chemicalFromMip: boolean;
+  /** True when `recommended_products` was backfilled from the MIP catalog. */
+  productsFromMip: boolean;
+}
+
+/**
+ * Map a MIP catalog entry onto the AgrioEnrichment shape the fact sheet reads.
+ *
+ * The Agrio diagnose path (default since 2026-07-06) emits enrichment with
+ * ONLY name_pt / scientific_name / severity — so lifecycle, favorable
+ * conditions, monitoring and products come back empty and the fact sheet
+ * looked blank ("Ciclo de vida não disponível…"). The rich agronomic content
+ * lives in the bundled MIP catalog (`data/mip`); this maps it onto the same
+ * fields the screen already renders.
+ *
+ * Only keys the catalog actually has data for are inserted (exact-optional-
+ * property-types safe — never assigns `undefined`). Labels for the derived
+ * favorable-conditions / safety-period strings are localized via `t`.
+ */
+function mipEntryToEnrichment(entry: MipEntry, t: EnrichmentLabels): Partial<AgrioEnrichment> {
+  const out: Partial<AgrioEnrichment> = {};
+
+  const descricao = entry.sintomas.descricao?.trim();
+  if (descricao) out.symptoms = [descricao];
+
+  const ciclo = entry.cicloVida?.trim();
+  if (ciclo) out.lifecycle = ciclo;
+
+  const favorable: string[] = [];
+  const cf = entry.condicoesFavorecimento;
+  if (cf.temperatura?.trim())
+    favorable.push(`${t('diagnosis.mipLabelTemperature')}: ${cf.temperatura.trim()}`);
+  if (cf.umidade?.trim())
+    favorable.push(`${t('diagnosis.mipLabelHumidity')}: ${cf.umidade.trim()}`);
+  if (cf.estacao?.trim()) favorable.push(`${t('diagnosis.mipLabelSeason')}: ${cf.estacao.trim()}`);
+  if (cf.observacoes) {
+    for (const o of cf.observacoes) {
+      const trimmed = o?.trim();
+      if (trimmed) favorable.push(trimmed);
+    }
+  }
+  if (favorable.length > 0) out.favorable_conditions = favorable;
+
+  if (entry.mip.cultural.length > 0) out.cultural_treatment = [...entry.mip.cultural];
+  if (entry.mip.biologico.length > 0) out.biological_treatment = [...entry.mip.biologico];
+
+  const chemical: string[] = entry.mip.quimico.ingredientesAtivos.map(
+    (ia) => `${ia.nome} (${ia.graudeIRACouFRAC})`,
+  );
+  for (const obs of entry.mip.quimico.observacoes) {
+    const trimmed = obs?.trim();
+    if (trimmed) chemical.push(trimmed);
+  }
+  if (chemical.length > 0) out.chemical_treatment = chemical;
+
+  const products: AgrioProduct[] = [];
+  const daysUnit = t('diagnosis.mipDaysUnit');
+  for (const ia of entry.mip.quimico.ingredientesAtivos) {
+    for (const pc of ia.produtosComerciais) {
+      const p: AgrioProduct = {
+        name: pc.nome,
+        active_ingredient: `${ia.nome} (${ia.graudeIRACouFRAC})`,
+      };
+      if (pc.dosagem?.trim()) p.dosage = pc.dosagem.trim();
+      if (pc.intervaloAplicacoes?.trim()) p.interval = pc.intervaloAplicacoes.trim();
+      if (Number.isFinite(pc.carencia)) p.safety_period = `${pc.carencia} ${daysUnit}`;
+      products.push(p);
+    }
+  }
+  if (products.length > 0) out.recommended_products = products;
+
+  const monitoring: string[] = [];
+  const metodo = entry.monitoramento.metodo?.trim();
+  const freq = entry.monitoramento.frequencia?.trim();
+  if (metodo) monitoring.push(metodo);
+  if (freq) monitoring.push(freq);
+  if (monitoring.length > 0) out.monitoring = monitoring;
+
+  const nivel = entry.monitoramento.nivelControle?.trim();
+  if (nivel) out.action_threshold = nivel;
+
+  const obsAgro = entry.observacoesAgronomicas?.trim();
+  if (obsAgro) out.mip_strategy = obsAgro;
+
+  return out;
+}
+
+/**
+ * Fill ONLY the empty fields of `base` from the MIP entry — a pure fallback.
+ * The enrichment path is never removed: any field the model already provided
+ * wins; the MIP catalog only backfills what came back blank.
+ *
+ * SAFETY (FIX-9): the sensitive fields — `recommended_products` (commercial
+ * defensivos with dosage) and `chemical_treatment` (active ingredients) — are
+ * ONLY backfilled from the MIP catalog when the keyword match is strong
+ * (`matchScore >= SENSITIVE_MIP_MIN_SCORE`). This prevents a fuzzy/wrong match
+ * from recommending the pesticide of the wrong pest. When they DO come from the
+ * catalog, the caller marks the block as a reference protocol (see
+ * `chemicalFromMip` / `productsFromMip`) so the UI can ask the user to confirm
+ * the identification first. The non-sensitive, educational fields (symptoms,
+ * lifecycle, favorable conditions, monitoring, IPM) keep the normal threshold.
+ */
+function mergeEnrichmentWithMip(
+  base: AgrioEnrichment,
+  mip: MipEntry,
+  t: EnrichmentLabels,
+  matchScore: number,
+): MipMergeResult {
+  const fromMip = mipEntryToEnrichment(mip, t);
+  const merged: AgrioEnrichment = { ...base };
+  const needArr = (v?: unknown[]) => !v || v.length === 0;
+  const needStr = (v?: string) => !v || v.trim().length === 0;
+
+  if (needArr(merged.symptoms) && fromMip.symptoms) merged.symptoms = fromMip.symptoms;
+  if (needStr(merged.lifecycle) && fromMip.lifecycle) merged.lifecycle = fromMip.lifecycle;
+  if (needArr(merged.favorable_conditions) && fromMip.favorable_conditions)
+    merged.favorable_conditions = fromMip.favorable_conditions;
+  if (needArr(merged.cultural_treatment) && fromMip.cultural_treatment)
+    merged.cultural_treatment = fromMip.cultural_treatment;
+  if (needArr(merged.biological_treatment) && fromMip.biological_treatment)
+    merged.biological_treatment = fromMip.biological_treatment;
+  if (needArr(merged.monitoring) && fromMip.monitoring) merged.monitoring = fromMip.monitoring;
+  if (needStr(merged.action_threshold) && fromMip.action_threshold)
+    merged.action_threshold = fromMip.action_threshold;
+  if (needStr(merged.mip_strategy) && fromMip.mip_strategy)
+    merged.mip_strategy = fromMip.mip_strategy;
+
+  // Sensitive backfill (pesticide dosages) — only on a strong match, and
+  // tracked so the UI can label it as a reference protocol.
+  let chemicalFromMip = false;
+  let productsFromMip = false;
+  if (matchScore >= SENSITIVE_MIP_MIN_SCORE) {
+    if (needArr(merged.chemical_treatment) && fromMip.chemical_treatment) {
+      merged.chemical_treatment = fromMip.chemical_treatment;
+      chemicalFromMip = true;
+    }
+    if (needArr(merged.recommended_products) && fromMip.recommended_products) {
+      merged.recommended_products = fromMip.recommended_products;
+      productsFromMip = true;
+    }
+  }
+
+  return { enrichment: merged, chemicalFromMip, productsFromMip };
+}
 
 // EMBRAPA + MAPA + AGROFIT search portals — opened in external browser.
 // We don't deep link to a specific pest page because URL formats differ per
@@ -68,8 +245,20 @@ export default function PestDetailScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [entry, setEntry] = useState<PestCacheEntry | null>(null);
+  // The Library passes name/scientific/crop as params (there is no cached
+  // diagnosis for a library pest). Diagnoses reach this screen with only `id`.
+  const {
+    id,
+    name,
+    scientific,
+    crop: cropParam,
+  } = useLocalSearchParams<{
+    id: string;
+    name?: string;
+    scientific?: string;
+    crop?: string;
+  }>();
+  const [cacheEntry, setCacheEntry] = useState<PestCacheEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,7 +266,7 @@ export default function PestDetailScreen() {
     void (async () => {
       const data = await loadPestFromCache(id || '');
       if (mounted) {
-        setEntry(data);
+        setCacheEntry(data);
         setLoading(false);
       }
     })();
@@ -85,6 +274,28 @@ export default function PestDetailScreen() {
       mounted = false;
     };
   }, [id]);
+
+  // Effective entry: the AsyncStorage cache (populated by a diagnosis) wins.
+  // When reached from the Library there is no cached diagnosis, so synthesize a
+  // minimal entry from the nav params — the MIP-catalog fallback then hydrates
+  // the full fact sheet (see mergeEnrichmentWithMip). Deep links with neither a
+  // cache hit nor params still fall through to the "not found" state below.
+  const entry = useMemo<PestCacheEntry | null>(() => {
+    if (cacheEntry) return cacheEntry;
+    if (!name && !scientific) return null;
+    const synthEnrichment: AgrioEnrichment = {};
+    if (name) synthEnrichment.name_pt = name;
+    if (scientific) synthEnrichment.scientific_name = scientific;
+    return {
+      v: 1,
+      id: id || '',
+      pest_name: name,
+      scientific_name: scientific,
+      crop: cropParam,
+      enrichment: synthEnrichment,
+      updated_at: Date.now(),
+    };
+  }, [cacheEntry, id, name, scientific, cropParam]);
 
   const handleOpenLink = useCallback(
     async (url: string) => {
@@ -102,7 +313,37 @@ export default function PestDetailScreen() {
     [t],
   );
 
-  if (loading) {
+  // FIX-1: resolve the bundled MIP catalog entry (same heuristic result.tsx
+  // uses) so the fact sheet can fall back to it when the Agrio enrichment is
+  // sparse. Hooks run before early returns (Rules of Hooks); the hook tolerates
+  // undefined inputs while the cache entry is still loading.
+  const mipKnowledge = useMipKnowledge({
+    pestName: entry?.pest_name,
+    enrichment: entry?.enrichment,
+    crop: entry?.crop,
+    tier: 'enterprise',
+    enabled: !!entry?.pest_name,
+  });
+
+  // Merge: model enrichment wins field-by-field; the MIP catalog only backfills
+  // the fields that came back empty (lifecycle / conditions / monitoring /
+  // products / IPM treatments). The enrichment path is preserved. Sensitive
+  // fields (pesticide products/chemicals) are only backfilled on a strong match
+  // and flagged as a reference protocol (FIX-9).
+  const merge = useMemo<MipMergeResult>(() => {
+    const base = entry?.enrichment ?? ({} as AgrioEnrichment);
+    return mipKnowledge.entry
+      ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t, mipKnowledge.matchScore)
+      : { enrichment: base, chemicalFromMip: false, productsFromMip: false };
+  }, [entry?.enrichment, mipKnowledge.entry, mipKnowledge.matchScore, t]);
+  const displayEnrichment = merge.enrichment;
+  // Common name of the matched MIP entry — used in the reference-protocol
+  // banner so the user knows WHICH pest the borrowed protocol belongs to.
+  const mipMatchedName = mipKnowledge.entry?.nomeComum;
+
+  // Only show the spinner while the cache is still loading AND we have no
+  // synthetic entry from params yet (library taps render immediately).
+  if (loading && !entry) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
         <View style={styles.loadingCenter}>
@@ -137,7 +378,9 @@ export default function PestDetailScreen() {
     );
   }
 
-  const { enrichment, pest_name, scientific_name, crop, image_uri } = entry;
+  const { pest_name, scientific_name, crop, image_uri } = entry;
+  // Use the MIP-merged enrichment everywhere the sheet renders agronomic data.
+  const enrichment = displayEnrichment;
   const displayName = enrichment.name_pt || pest_name || t('diagnosis.pestDetected');
   // Synonyms heuristic: when enrichment provides both name_pt and the original
   // pest_name (e.g. English common name from the model), surface as synonyms.
@@ -306,6 +549,9 @@ export default function PestDetailScreen() {
               icon="flask"
               iconColor={Colors.techBlue}
             >
+              {merge.chemicalFromMip ? (
+                <ReferenceProtocolBanner name={mipMatchedName || displayName} t={t} />
+              ) : null}
               <View style={styles.warning}>
                 <Ionicons name="warning" size={14} color={Colors.warmAmber} />
                 <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
@@ -328,6 +574,9 @@ export default function PestDetailScreen() {
           >
             {(enrichment.recommended_products?.length ?? 0) > 0 ? (
               <View style={{ gap: 10 }}>
+                {merge.productsFromMip ? (
+                  <ReferenceProtocolBanner name={mipMatchedName || displayName} t={t} />
+                ) : null}
                 <View style={styles.warning}>
                   <Ionicons name="warning" size={14} color={Colors.warmAmber} />
                   <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
@@ -503,6 +752,46 @@ export default function PestDetailScreen() {
   );
 }
 
+/**
+ * Reference-protocol banner (FIX-9). Rendered above the chemical / commercial
+ * product blocks when those came from the MIP catalog fallback (matched by pest
+ * name), NOT from the diagnosis enrichment. Makes the borrowed protocol's
+ * provenance explicit and asks the user to confirm the identification before
+ * applying any defensivo — a matched name is not a confirmed diagnosis.
+ */
+function ReferenceProtocolBanner({
+  name,
+  t,
+}: {
+  name: string;
+  // i18next's real TFunction: the local `t` from useTranslation() is a
+  // TFunction, and under exactOptionalPropertyTypes it is NOT assignable to a
+  // hand-rolled `(k, opts?) => string` (the optional-undefined arg breaks the
+  // overloads). Typing the prop as TFunction keeps interpolation calls
+  // (`t(key, { praga })`) valid without `as any` or loosening tsconfig.
+  t: TFunction;
+}) {
+  return (
+    <View
+      style={styles.referenceBanner}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={t('diagnosis.pestDetailReferenceProtocol', { praga: name })}
+      testID="pest-reference-protocol-banner"
+    >
+      <Ionicons
+        name="alert-circle"
+        size={14}
+        color={Colors.warmAmber}
+        accessibilityElementsHidden
+      />
+      <Text style={styles.referenceBannerText}>
+        {t('diagnosis.pestDetailReferenceProtocol', { praga: name })}
+      </Text>
+    </View>
+  );
+}
+
 interface ReferenceRowProps {
   label: string;
   onPress: () => void;
@@ -652,6 +941,26 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     color: Colors.earthText,
     flex: 1,
+  },
+  // --- Reference-protocol banner (FIX-9) ---
+  referenceBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 10,
+    backgroundColor: Colors.coral + '14',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.coral + '33',
+    marginBottom: 10,
+  },
+  referenceBannerText: {
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    fontSize: FontSize.caption,
+    color: Colors.earthText,
+    flex: 1,
+    lineHeight: 18,
   },
   // --- Product cards ---
   productCard: {

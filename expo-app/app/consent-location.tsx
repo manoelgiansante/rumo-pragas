@@ -12,7 +12,6 @@ import {
 // Cross-platform safe area (RN's SafeAreaView is iOS-only — Android edge-to-edge
 // rendered this LGPD gate under the status bar / home indicator).
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { showAlert } from '../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -26,8 +25,11 @@ import {
 } from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useNavigationGate } from '../contexts/NavigationGateContext';
-import { LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY } from '../services/navigationGate';
-import { setLocationConsent } from '../services/userPreferences';
+import {
+  LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY,
+  clearLocationConsentSeen,
+} from '../services/navigationGate';
+import { setLocationConsent, enqueuePendingLocationConsent } from '../services/userPreferences';
 import { useLocation } from '../hooks/useLocation';
 import { trackEvent } from '../services/analytics';
 
@@ -46,6 +48,53 @@ export const LOCATION_CONSENT_SHOWN_KEY = GATE_LOCATION_CONSENT_SHOWN_KEY;
 
 const CONSENT_PURPOSE_PT =
   'Compartilhar localização com o agrônomo IA para melhorar o diagnóstico de pragas regionais e alertas climáticos.';
+
+/**
+ * Persist the LGPD consent decision WITHOUT blocking navigation.
+ *
+ * The user's choice is still recorded (LGPD), but a flaky/offline network can
+ * never trap them on this gate — that reads as "app incomplete" to Apple
+ * review. The write runs in the background with a few retries; if ALL retries
+ * fail (prolonged offline), the decision is queued to AsyncStorage and replayed
+ * on the next boot with a session (see flushPendingLocationConsent) so the LGPD
+ * proof is never silently lost while the local "seen" flag already advanced.
+ */
+function persistConsentInBackground(userId: string, granted: boolean): void {
+  const MAX_ATTEMPTS = 3;
+  // Capture the decision timestamp once so retries and the queued replay all
+  // record when consent was actually given, not when it eventually synced.
+  const consentedAt = new Date().toISOString();
+  void (async () => {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        await setLocationConsent(userId, granted, CONSENT_PURPOSE_PT, consentedAt);
+        return;
+      } catch (err) {
+        if (attempt === MAX_ATTEMPTS) {
+          if (__DEV__) console.warn('[consent-location] persist failed after retries:', err);
+          trackEvent('location_consent_persist_failed', { granted });
+          // Queue for replay on the next boot — LGPD proof preserved.
+          const queued = await enqueuePendingLocationConsent(
+            userId,
+            granted,
+            CONSENT_PURPOSE_PT,
+            consentedAt,
+          );
+          if (!queued) {
+            // Double failure: neither the server nor the offline queue kept the
+            // consent proof. Undo the optimistic "consent seen" flag so this LGPD
+            // gate reappears on the next cold start and the choice is recaptured.
+            // Only affects the next boot — the current session already advanced
+            // and is left undisturbed (no bounce, non-blocking).
+            void clearLocationConsentSeen();
+          }
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+      }
+    }
+  })();
+}
 
 export default function ConsentLocationScreen() {
   const { t } = useTranslation();
@@ -100,34 +149,31 @@ export default function ConsentLocationScreen() {
       granted = false;
     }
 
-    try {
-      if (granted) {
-        await setLocationConsent(user.id, true, CONSENT_PURPOSE_PT);
-        trackEvent('location_consent_accepted');
-        // Fire-and-forget the location fetch so we don't block finishing. The
-        // permission is already granted, so this resolves coords (Home reads
-        // useLocation when it lands). Degrades gracefully on failure.
-        const fetchPromise = getCurrentLocation()
-          .then((coords) => {
-            trackEvent('location_first_fetch', {
-              success: !!coords,
-              source: 'consent_continue',
-            });
-          })
-          .catch((err) => {
-            if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
-            trackEvent('location_first_fetch', { success: false, source: 'consent_continue' });
-          });
-        void fetchPromise;
-      } else {
-        await setLocationConsent(user.id, false, CONSENT_PURPOSE_PT);
-        trackEvent('location_consent_declined');
-      }
-      finish();
-    } catch {
-      setIsSaving(false);
-      showAlert(t('common.error'), t('consent.location.saveError'), [{ text: t('common.ok') }]);
+    // Record the decision analytics immediately — it reflects the user's choice
+    // regardless of whether the network write below succeeds.
+    trackEvent(granted ? 'location_consent_accepted' : 'location_consent_declined');
+
+    // LGPD: persist the consent decision, but NEVER block entry on it. The
+    // write runs in the background with retry so a flaky/offline network cannot
+    // trap the user on this gate (Apple "incomplete app" risk).
+    persistConsentInBackground(user.id, granted);
+
+    if (granted) {
+      // Fire-and-forget the first location fetch (permission already granted).
+      // Home reads useLocation when it lands. Degrades gracefully on failure.
+      void getCurrentLocation()
+        .then((coords) =>
+          trackEvent('location_first_fetch', { success: !!coords, source: 'consent_continue' }),
+        )
+        .catch((err) => {
+          if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
+          trackEvent('location_first_fetch', { success: false, source: 'consent_continue' });
+        });
     }
+
+    // Advance immediately (optimistic). The gate flag flips and the single
+    // routing effect in app/_layout.tsx replaces to '/(tabs)' exactly once.
+    finish();
   };
 
   return (

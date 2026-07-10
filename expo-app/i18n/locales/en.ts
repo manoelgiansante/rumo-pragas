@@ -276,6 +276,16 @@ export default {
     pestDetailFavorableEmpty: 'Favorable conditions not registered.',
     pestDetailProductsEmpty: 'No commercial products registered. Consult an agronomist.',
     pestDetailMonitoringEmpty: 'No monitoring method registered.',
+    // Labels for the MIP-catalog fallback (pest fact sheet — Agrio path)
+    mipLabelTemperature: 'Temperature',
+    mipLabelHumidity: 'Humidity',
+    mipLabelSeason: 'Favorable season',
+    mipDaysUnit: 'days',
+    // Reference-protocol banner shown when chemical products come from the MIP
+    // catalog fallback (not the diagnosis enrichment) — the match is by pest
+    // name, so the identification must be confirmed before applying pesticides.
+    pestDetailReferenceProtocol:
+      'Reference protocol for {{praga}} — confirm the identification before applying.',
     stepCounter: 'Step {{current}} of {{total}}',
     topAlternatives: 'Other possibilities',
     topAlternativesHint:
@@ -333,7 +343,12 @@ export default {
     deleteAccount: 'Delete Account',
     deleteConfirmTitle: 'Delete Account',
     deleteConfirmMessage:
-      'Are you sure? This permanently deletes your AgroRumo account (used to sign in to every AgroRumo app) and all your Rumo Pragas IA data. This action cannot be undone.',
+      'Warning: your AgroRumo login is SHARED. Deleting this account removes the same login and access to ALL other AgroRumo apps you use with this email (such as Rumo Vet, Finance, Operacional and CampoVivo), plus all your Rumo Pragas IA data.',
+    deleteContinue: 'Continue',
+    deleteFinalTitle: 'Confirm permanent deletion',
+    deleteFinalMessage:
+      'This action is permanent and immediate — there is no recovery period. Your AgroRumo account and data will be erased now and cannot be restored. Delete permanently?',
+    deleteFinalConfirm: 'Delete permanently',
     cancel: 'Cancel',
     delete: 'Delete',
     editProfile: 'Edit Profile',
@@ -451,6 +466,7 @@ export default {
     clearFilters: 'Clear filters',
     allCropsA11y: 'All crops',
     filterByCrop: 'Filter by {{crop}}',
+    pestDetailHint: 'Tap to open the pest fact sheet',
   },
   errors: {
     imageTooLarge:
@@ -608,6 +624,8 @@ export default {
     serviceUnavailable:
       'The AI service is temporarily unavailable. Please try again in a few minutes.',
     genericError: 'An error occurred while processing your message. Please try again.',
+    requestTimeout: 'The request took too long. Check your connection and try sending again.',
+    networkError: 'Could not reach the server. Check your connection and try again.',
     emptyResponse: 'Empty AI response',
     loadingConversation: 'Loading conversation...',
   },

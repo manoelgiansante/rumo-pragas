@@ -171,3 +171,24 @@ export async function persistLocationConsentSeen(): Promise<void> {
     /* never block navigation on storage failure */
   }
 }
+
+/**
+ * Clear the location-consent-shown flag (inverse of `persistLocationConsentSeen`).
+ *
+ * Used only in the LGPD double-failure path: when the consent decision could NOT
+ * be persisted on the server (retries exhausted) AND the offline replay queue
+ * write ALSO failed, the proof of consent is lost. Dropping this flag makes the
+ * consent gate reappear on the NEXT cold start so the choice is recaptured,
+ * instead of the user being silently advanced past a consent we never recorded.
+ *
+ * Only affects the next boot: the current session keeps routing off the reactive
+ * NavigationGate state (which stays "seen"), so there is no mid-session bounce.
+ * Never throws / never blocks.
+ */
+export async function clearLocationConsentSeen(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(LOCATION_CONSENT_SHOWN_KEY);
+  } catch {
+    /* never block navigation on storage failure */
+  }
+}
