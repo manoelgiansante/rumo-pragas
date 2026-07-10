@@ -61,9 +61,19 @@ const HERO_HEIGHT = 320;
  * catalog. Higher than the entry-resolution threshold (default 2): a fuzzy
  * match that is "good enough" to show symptoms / lifecycle / monitoring is NOT
  * good enough to recommend a specific defensivo for the wrong pest (agronomic
- * + CDC art.14 risk). A score >= 4 requires the pest name itself to have
- * matched strongly (see `searchByKeywords` scoring). Below it, the sensitive
- * blocks stay empty; the educational content still renders at the normal bar.
+ * + CDC art.14 risk).
+ *
+ * A score >= 4 requires a STRONG keyword match — e.g. two single-word strong
+ * hits, or one full multi-word phrase (see `searchByKeywords` scoring: a token
+ * that hits `sintomas.palavrasChave` scores +2, and +4 as a multi-word phrase).
+ * It does NOT guarantee the pest NAME matched: the strong-hit bonus is scored
+ * against the SYMPTOM keywords only, while the common/scientific name
+ * contributes just a weak +1. So two strong SYMPTOM tokens already reach 4 with
+ * the name never matching at all — which is exactly why, even above this bar,
+ * the backfilled chemical block still renders under the "confirme a
+ * identificação" banner (a similar-symptom look-alike could score high). Below
+ * this bar the sensitive blocks stay empty; the educational content still
+ * renders at the normal threshold.
  */
 const SENSITIVE_MIP_MIN_SCORE = 4;
 
