@@ -276,6 +276,11 @@ export default {
     pestDetailFavorableEmpty: 'Favorable conditions not registered.',
     pestDetailProductsEmpty: 'No commercial products registered. Consult an agronomist.',
     pestDetailMonitoringEmpty: 'No monitoring method registered.',
+    // Labels for the MIP-catalog fallback (pest fact sheet — Agrio path)
+    mipLabelTemperature: 'Temperature',
+    mipLabelHumidity: 'Humidity',
+    mipLabelSeason: 'Favorable season',
+    mipDaysUnit: 'days',
     stepCounter: 'Step {{current}} of {{total}}',
     topAlternatives: 'Other possibilities',
     topAlternativesHint:

@@ -285,6 +285,11 @@ export default {
     pestDetailFavorableEmpty: 'Condições de favorecimento não cadastradas.',
     pestDetailProductsEmpty: 'Nenhum produto comercial cadastrado. Consulte um agrônomo.',
     pestDetailMonitoringEmpty: 'Sem método de monitoramento cadastrado.',
+    // Labels for the MIP-catalog fallback (pest fact sheet — Agrio path)
+    mipLabelTemperature: 'Temperatura',
+    mipLabelHumidity: 'Umidade',
+    mipLabelSeason: 'Época favorável',
+    mipDaysUnit: 'dias',
     // Loading screen step counter (e.g. "Passo 2 de 4")
     stepCounter: 'Passo {{current}} de {{total}}',
     // Top-3 alternatives card

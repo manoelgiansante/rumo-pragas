@@ -16,7 +16,7 @@
  *   for pest fact sheets ships, add `fetchPestFromRemote` as fallback.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -48,8 +48,131 @@ import {
 import { PremiumCard } from '../../../components/PremiumCard';
 import { CollapsibleSection } from '../../../components/CollapsibleSection';
 import { loadPestFromCache, type PestCacheEntry } from '../../../services/pestRegistry';
+import { useMipKnowledge } from '../../../hooks/useMipKnowledge';
+import type { AgrioEnrichment, AgrioProduct } from '../../../types/diagnosis';
+import type { MipEntry } from '../../../data/mip';
 
 const HERO_HEIGHT = 320;
+
+type EnrichmentLabels = (key: string) => string;
+
+/**
+ * Map a MIP catalog entry onto the AgrioEnrichment shape the fact sheet reads.
+ *
+ * The Agrio diagnose path (default since 2026-07-06) emits enrichment with
+ * ONLY name_pt / scientific_name / severity — so lifecycle, favorable
+ * conditions, monitoring and products come back empty and the fact sheet
+ * looked blank ("Ciclo de vida não disponível…"). The rich agronomic content
+ * lives in the bundled MIP catalog (`data/mip`); this maps it onto the same
+ * fields the screen already renders.
+ *
+ * Only keys the catalog actually has data for are inserted (exact-optional-
+ * property-types safe — never assigns `undefined`). Labels for the derived
+ * favorable-conditions / safety-period strings are localized via `t`.
+ */
+function mipEntryToEnrichment(entry: MipEntry, t: EnrichmentLabels): Partial<AgrioEnrichment> {
+  const out: Partial<AgrioEnrichment> = {};
+
+  const descricao = entry.sintomas.descricao?.trim();
+  if (descricao) out.symptoms = [descricao];
+
+  const ciclo = entry.cicloVida?.trim();
+  if (ciclo) out.lifecycle = ciclo;
+
+  const favorable: string[] = [];
+  const cf = entry.condicoesFavorecimento;
+  if (cf.temperatura?.trim())
+    favorable.push(`${t('diagnosis.mipLabelTemperature')}: ${cf.temperatura.trim()}`);
+  if (cf.umidade?.trim())
+    favorable.push(`${t('diagnosis.mipLabelHumidity')}: ${cf.umidade.trim()}`);
+  if (cf.estacao?.trim()) favorable.push(`${t('diagnosis.mipLabelSeason')}: ${cf.estacao.trim()}`);
+  if (cf.observacoes) {
+    for (const o of cf.observacoes) {
+      const trimmed = o?.trim();
+      if (trimmed) favorable.push(trimmed);
+    }
+  }
+  if (favorable.length > 0) out.favorable_conditions = favorable;
+
+  if (entry.mip.cultural.length > 0) out.cultural_treatment = [...entry.mip.cultural];
+  if (entry.mip.biologico.length > 0) out.biological_treatment = [...entry.mip.biologico];
+
+  const chemical: string[] = entry.mip.quimico.ingredientesAtivos.map(
+    (ia) => `${ia.nome} (${ia.graudeIRACouFRAC})`,
+  );
+  for (const obs of entry.mip.quimico.observacoes) {
+    const trimmed = obs?.trim();
+    if (trimmed) chemical.push(trimmed);
+  }
+  if (chemical.length > 0) out.chemical_treatment = chemical;
+
+  const products: AgrioProduct[] = [];
+  const daysUnit = t('diagnosis.mipDaysUnit');
+  for (const ia of entry.mip.quimico.ingredientesAtivos) {
+    for (const pc of ia.produtosComerciais) {
+      const p: AgrioProduct = {
+        name: pc.nome,
+        active_ingredient: `${ia.nome} (${ia.graudeIRACouFRAC})`,
+      };
+      if (pc.dosagem?.trim()) p.dosage = pc.dosagem.trim();
+      if (pc.intervaloAplicacoes?.trim()) p.interval = pc.intervaloAplicacoes.trim();
+      if (Number.isFinite(pc.carencia)) p.safety_period = `${pc.carencia} ${daysUnit}`;
+      products.push(p);
+    }
+  }
+  if (products.length > 0) out.recommended_products = products;
+
+  const monitoring: string[] = [];
+  const metodo = entry.monitoramento.metodo?.trim();
+  const freq = entry.monitoramento.frequencia?.trim();
+  if (metodo) monitoring.push(metodo);
+  if (freq) monitoring.push(freq);
+  if (monitoring.length > 0) out.monitoring = monitoring;
+
+  const nivel = entry.monitoramento.nivelControle?.trim();
+  if (nivel) out.action_threshold = nivel;
+
+  const obsAgro = entry.observacoesAgronomicas?.trim();
+  if (obsAgro) out.mip_strategy = obsAgro;
+
+  return out;
+}
+
+/**
+ * Fill ONLY the empty fields of `base` from the MIP entry — a pure fallback.
+ * The enrichment path is never removed: any field the model already provided
+ * wins; the MIP catalog only backfills what came back blank.
+ */
+function mergeEnrichmentWithMip(
+  base: AgrioEnrichment,
+  mip: MipEntry,
+  t: EnrichmentLabels,
+): AgrioEnrichment {
+  const fromMip = mipEntryToEnrichment(mip, t);
+  const merged: AgrioEnrichment = { ...base };
+  const needArr = (v?: unknown[]) => !v || v.length === 0;
+  const needStr = (v?: string) => !v || v.trim().length === 0;
+
+  if (needArr(merged.symptoms) && fromMip.symptoms) merged.symptoms = fromMip.symptoms;
+  if (needStr(merged.lifecycle) && fromMip.lifecycle) merged.lifecycle = fromMip.lifecycle;
+  if (needArr(merged.favorable_conditions) && fromMip.favorable_conditions)
+    merged.favorable_conditions = fromMip.favorable_conditions;
+  if (needArr(merged.cultural_treatment) && fromMip.cultural_treatment)
+    merged.cultural_treatment = fromMip.cultural_treatment;
+  if (needArr(merged.biological_treatment) && fromMip.biological_treatment)
+    merged.biological_treatment = fromMip.biological_treatment;
+  if (needArr(merged.chemical_treatment) && fromMip.chemical_treatment)
+    merged.chemical_treatment = fromMip.chemical_treatment;
+  if (needArr(merged.recommended_products) && fromMip.recommended_products)
+    merged.recommended_products = fromMip.recommended_products;
+  if (needArr(merged.monitoring) && fromMip.monitoring) merged.monitoring = fromMip.monitoring;
+  if (needStr(merged.action_threshold) && fromMip.action_threshold)
+    merged.action_threshold = fromMip.action_threshold;
+  if (needStr(merged.mip_strategy) && fromMip.mip_strategy)
+    merged.mip_strategy = fromMip.mip_strategy;
+
+  return merged;
+}
 
 // EMBRAPA + MAPA + AGROFIT search portals — opened in external browser.
 // We don't deep link to a specific pest page because URL formats differ per
@@ -102,6 +225,26 @@ export default function PestDetailScreen() {
     [t],
   );
 
+  // FIX-1: resolve the bundled MIP catalog entry (same heuristic result.tsx
+  // uses) so the fact sheet can fall back to it when the Agrio enrichment is
+  // sparse. Hooks run before early returns (Rules of Hooks); the hook tolerates
+  // undefined inputs while the cache entry is still loading.
+  const mipKnowledge = useMipKnowledge({
+    pestName: entry?.pest_name,
+    enrichment: entry?.enrichment,
+    crop: entry?.crop,
+    tier: 'enterprise',
+    enabled: !!entry?.pest_name,
+  });
+
+  // Merge: model enrichment wins field-by-field; the MIP catalog only backfills
+  // the fields that came back empty (lifecycle / conditions / monitoring /
+  // products / IPM treatments). The enrichment path is preserved.
+  const displayEnrichment = useMemo<AgrioEnrichment>(() => {
+    const base = entry?.enrichment ?? ({} as AgrioEnrichment);
+    return mipKnowledge.entry ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t) : base;
+  }, [entry?.enrichment, mipKnowledge.entry, t]);
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
@@ -137,7 +280,9 @@ export default function PestDetailScreen() {
     );
   }
 
-  const { enrichment, pest_name, scientific_name, crop, image_uri } = entry;
+  const { pest_name, scientific_name, crop, image_uri } = entry;
+  // Use the MIP-merged enrichment everywhere the sheet renders agronomic data.
+  const enrichment = displayEnrichment;
   const displayName = enrichment.name_pt || pest_name || t('diagnosis.pestDetected');
   // Synonyms heuristic: when enrichment provides both name_pt and the original
   // pest_name (e.g. English common name from the model), surface as synonyms.
