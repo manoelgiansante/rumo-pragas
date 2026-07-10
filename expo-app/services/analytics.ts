@@ -158,7 +158,7 @@ export function trackSubscriptionPurchased(plan: string, provider: string): void
 
 export function trackPestDetailViewed(
   pestId: string,
-  source: 'result' | 'history' | 'deeplink',
+  source: 'result' | 'history' | 'deeplink' | 'library',
 ): void {
   trackEvent('pest_detail_viewed', { pestId, source });
 }

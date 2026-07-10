@@ -456,6 +456,7 @@ export default {
     clearFilters: 'Clear filters',
     allCropsA11y: 'All crops',
     filterByCrop: 'Filter by {{crop}}',
+    pestDetailHint: 'Tap to open the pest fact sheet',
   },
   errors: {
     imageTooLarge:

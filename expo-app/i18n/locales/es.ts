@@ -460,6 +460,7 @@ export default {
     clearFilters: 'Limpiar filtros',
     allCropsA11y: 'Todos los cultivos',
     filterByCrop: 'Filtrar por {{crop}}',
+    pestDetailHint: 'Toca para ver la ficha técnica de la plaga',
   },
   errors: {
     imageTooLarge:

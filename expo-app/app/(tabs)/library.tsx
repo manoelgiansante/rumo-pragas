@@ -27,6 +27,17 @@ import { PremiumCard } from '../../components/PremiumCard';
 import { SearchInput } from '../../components/SearchInput';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
+import { trackPestDetailViewed } from '../../services/analytics';
+
+/** URL-safe slug for the pest-detail route (no cache id exists for library pests). */
+function pestSlug(crop: string, name: string): string {
+  return `lib-${crop}-${name}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
 
 const PESTS_BY_CROP: Record<string, { name: string; scientific: string; severity: string }[]> = {
   soja: [
@@ -169,13 +180,29 @@ const PestItem = React.memo(function PestItem({
   const severityLabelKey = SEVERITY_LABELS[item.severity] || 'severity.medium';
   const chip = severityChip[item.severity] ?? severityChip.medium!;
 
+  // FIX-7: the library was a dead-end (static cards). Tapping now opens the pest
+  // fact sheet. No cached diagnosis exists for a library pest, so we forward the
+  // name/scientific/crop as params; pest/[id] synthesizes an entry and the MIP
+  // catalog fallback hydrates the sheet.
+  const handlePress = useCallback(() => {
+    const slug = pestSlug(item.crop, item.name);
+    trackPestDetailViewed(slug, 'library');
+    router.push({
+      pathname: '/diagnosis/pest/[id]',
+      params: { id: slug, name: item.name, scientific: item.scientific, crop: item.crop },
+    });
+  }, [item]);
+
   return (
     <PremiumCard style={{ marginBottom: Spacing.sm }}>
-      <View
+      <TouchableOpacity
         style={styles.pestRow}
-        accessible
+        onPress={handlePress}
+        activeOpacity={0.7}
         accessibilityLabel={`${item.name}, ${item.scientific}, ${t('severity.label')} ${t(severityLabelKey)}, ${cropInfo?.displayName || item.crop}`}
-        accessibilityRole="summary"
+        accessibilityRole="button"
+        accessibilityHint={t('library.pestDetailHint')}
+        testID={`library-pest-${item.crop}-${item.name}`}
       >
         <View style={{ flex: 1 }}>
           <Text style={[styles.pestName, isDark && styles.textDark]}>{item.name}</Text>
@@ -190,7 +217,8 @@ const PestItem = React.memo(function PestItem({
         <Text style={styles.cropBadge} accessibilityElementsHidden>
           {cropInfo?.icon}
         </Text>
-      </View>
+        <Ionicons name="chevron-forward" size={16} color={Colors.systemGray3} />
+      </TouchableOpacity>
     </PremiumCard>
   );
 });

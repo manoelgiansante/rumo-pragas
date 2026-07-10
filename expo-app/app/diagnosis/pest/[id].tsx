@@ -191,8 +191,20 @@ export default function PestDetailScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [entry, setEntry] = useState<PestCacheEntry | null>(null);
+  // The Library passes name/scientific/crop as params (there is no cached
+  // diagnosis for a library pest). Diagnoses reach this screen with only `id`.
+  const {
+    id,
+    name,
+    scientific,
+    crop: cropParam,
+  } = useLocalSearchParams<{
+    id: string;
+    name?: string;
+    scientific?: string;
+    crop?: string;
+  }>();
+  const [cacheEntry, setCacheEntry] = useState<PestCacheEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -200,7 +212,7 @@ export default function PestDetailScreen() {
     void (async () => {
       const data = await loadPestFromCache(id || '');
       if (mounted) {
-        setEntry(data);
+        setCacheEntry(data);
         setLoading(false);
       }
     })();
@@ -208,6 +220,28 @@ export default function PestDetailScreen() {
       mounted = false;
     };
   }, [id]);
+
+  // Effective entry: the AsyncStorage cache (populated by a diagnosis) wins.
+  // When reached from the Library there is no cached diagnosis, so synthesize a
+  // minimal entry from the nav params — the MIP-catalog fallback then hydrates
+  // the full fact sheet (see mergeEnrichmentWithMip). Deep links with neither a
+  // cache hit nor params still fall through to the "not found" state below.
+  const entry = useMemo<PestCacheEntry | null>(() => {
+    if (cacheEntry) return cacheEntry;
+    if (!name && !scientific) return null;
+    const synthEnrichment: AgrioEnrichment = {};
+    if (name) synthEnrichment.name_pt = name;
+    if (scientific) synthEnrichment.scientific_name = scientific;
+    return {
+      v: 1,
+      id: id || '',
+      pest_name: name,
+      scientific_name: scientific,
+      crop: cropParam,
+      enrichment: synthEnrichment,
+      updated_at: Date.now(),
+    };
+  }, [cacheEntry, id, name, scientific, cropParam]);
 
   const handleOpenLink = useCallback(
     async (url: string) => {
@@ -245,7 +279,9 @@ export default function PestDetailScreen() {
     return mipKnowledge.entry ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t) : base;
   }, [entry?.enrichment, mipKnowledge.entry, t]);
 
-  if (loading) {
+  // Only show the spinner while the cache is still loading AND we have no
+  // synthetic entry from params yet (library taps render immediately).
+  if (loading && !entry) {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
         <View style={styles.loadingCenter}>

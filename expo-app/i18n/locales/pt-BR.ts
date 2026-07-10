@@ -472,6 +472,7 @@ export default {
     clearFilters: 'Limpar filtros',
     allCropsA11y: 'Todas as culturas',
     filterByCrop: 'Filtrar por {{crop}}',
+    pestDetailHint: 'Toque para ver a ficha técnica da praga',
   },
   errors: {
     imageTooLarge:
