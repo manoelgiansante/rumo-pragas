@@ -28,9 +28,11 @@ import {
 import { useNotifications } from '../hooks/useNotifications';
 import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
 import { useOTAUpdate } from '../hooks/useOTAUpdate';
+import { useAppUpdateCheck } from '../hooks/useAppUpdateCheck';
 import { initAnalytics, resetAnalytics } from '../services/analytics';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { ForceUpdateModal, UpdateBanner } from '../components/AppUpdate';
 import { Colors } from '../constants/theme';
 
 // Sentry lazy init — NEVER call Sentry.init() at module scope.
@@ -192,6 +194,12 @@ function RootLayoutNav() {
 
   // Check for OTA updates on app launch (only in production builds)
   useOTAUpdate();
+
+  // In-app STORE update check (jxcn shared `version-check` Edge Function,
+  // app=pragas): silent / soft (dismissible banner) / force (blocking modal).
+  // Complements useOTAUpdate — OTA covers JS-only updates, this covers new
+  // store binaries. Fail-open by design: any error → silent, never crashes.
+  const { mode: updateMode, updateInfo, dismiss: dismissUpdate } = useAppUpdateCheck();
 
   // ATT (App Tracking Transparency) intentionally removed — Apple guideline 5.1.2:
   // the app does not integrate any ad SDK and does not perform cross-app tracking,
@@ -384,6 +392,18 @@ function RootLayoutNav() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
+      {/* In-app update (2026-07): force always wins (blocking Modal); the
+          soft banner is absolute-positioned at the top and dismissible.
+          Rendered AFTER the Stack so the banner stacks above screen content. */}
+      {updateMode === 'force' && updateInfo && <ForceUpdateModal updateInfo={updateInfo} />}
+      {updateMode === 'soft' && updateInfo && (
+        <UpdateBanner
+          updateInfo={updateInfo}
+          onDismiss={() => {
+            void dismissUpdate();
+          }}
+        />
+      )}
     </View>
   );
 }
