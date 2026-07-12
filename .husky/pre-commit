@@ -1,1 +1,5 @@
-cd expo-app && npx lint-staged
+(cd expo-app && npx lint-staged) || exit 1
+# ZERO-AE: encadeia o gate global da maquina (o hooksPath local do husky o bypassava)
+if [ -f "$HOME/scripts/agrorumo/git-hooks/pre-commit" ]; then
+  bash "$HOME/scripts/agrorumo/git-hooks/pre-commit" || exit 1
+fi
