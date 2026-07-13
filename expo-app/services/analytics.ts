@@ -17,6 +17,26 @@ const MAX_QUEUE_SIZE = 50;
 let flushTimer: ReturnType<typeof setInterval> | null = null;
 let currentUserId: string | null = null;
 
+// ── WEB-SAFE ACCESS TOKEN (cicatriz ed9906a / ZERO-X class) ──
+// The flush runs from a background timer with no React context, so it cannot
+// read useAuthContext(). We hold the freshest access token IN MEMORY, sourced
+// from onAuthStateChange (which fires SIGNED_IN / TOKEN_REFRESHED with the live
+// session), and pass it explicitly on invoke.
+//
+// Why this is required: the DEFAULT `supabase.functions.invoke(...)` auth path
+// resolves the token via `supabase.auth.getSession()`, which reads EXCLUSIVELY
+// from storage. On WEB the SecureStore adapter is a no-op (services/supabase.ts)
+// → session is null → invoke silently falls back to the ANON key. The
+// `analytics` edge fn then runs getUser() on the anon identity, finds no user
+// and returns 401, so every batch is re-queued forever and product telemetry
+// dies. Passing this in-memory token explicitly fixes web and stays correct on
+// native. Identity is STILL verified server-side by the edge fn via
+// `supabase.auth.getUser(token)` (ZERO-X) — the client is never trusted.
+let currentAccessToken: string | null = null;
+supabase.auth.onAuthStateChange((_event, session) => {
+  currentAccessToken = session?.access_token ?? null;
+});
+
 export interface AnalyticsEvent {
   event: string;
   properties?: Record<string, unknown> | undefined;
@@ -103,6 +123,17 @@ export function trackEvent(event: string, properties?: Record<string, unknown>):
 async function flushEvents(): Promise<void> {
   if (eventQueue.length === 0) return;
 
+  // The `analytics` edge fn requires an authenticated user. Without a live
+  // access token (logged out, or the session has not resolved yet) the request
+  // would fall back to the anon key and 401; keep the events queued (bounded)
+  // until a token arrives instead of dropping them or spamming failed calls.
+  if (!currentAccessToken) {
+    if (eventQueue.length > MAX_QUEUE_SIZE) {
+      eventQueue.splice(0, eventQueue.length - MAX_QUEUE_SIZE);
+    }
+    return;
+  }
+
   const batch = eventQueue.splice(0, eventQueue.length);
 
   try {
@@ -110,6 +141,9 @@ async function flushEvents(): Promise<void> {
     // This can be replaced with PostHog/Amplitude SDK call
     const { error } = await supabase.functions.invoke('analytics', {
       body: { events: batch },
+      // Override the default anon-key Authorization with the user's JWT so the
+      // edge fn's getUser() resolves the real user (see currentAccessToken note).
+      headers: { Authorization: `Bearer ${currentAccessToken}` },
     });
 
     if (error) {

@@ -4,13 +4,29 @@
 
 // --- Mocks ---
 const mockInvoke = jest.fn();
+// Captures the onAuthStateChange callback registered by services/analytics.ts
+// at module load so tests can simulate an authenticated in-memory session
+// (name is `mock`-prefixed so jest allows the out-of-scope factory reference).
+let mockAuthCallback:
+  | ((event: string, session: { access_token?: string } | null) => void)
+  | undefined;
 jest.mock('../../services/supabase', () => ({
   supabase: {
     functions: {
       invoke: (...args: unknown[]) => mockInvoke(...args),
     },
+    auth: {
+      onAuthStateChange: (
+        cb: (event: string, session: { access_token?: string } | null) => void,
+      ) => {
+        mockAuthCallback = cb;
+        return { data: { subscription: { unsubscribe: jest.fn() } } };
+      },
+    },
   },
 }));
+
+const TEST_ACCESS_TOKEN = 'test-jwt-token';
 
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
@@ -38,6 +54,9 @@ beforeEach(() => {
   resetAnalytics();
   jest.clearAllMocks();
   mockInvoke.mockResolvedValue({ error: null });
+  // Simulate an authenticated in-memory session so the flush has a live token
+  // (the edge fn requires auth; without a token the flush intentionally no-ops).
+  mockAuthCallback?.('SIGNED_IN', { access_token: TEST_ACCESS_TOKEN });
 });
 
 afterEach(() => {
@@ -61,6 +80,7 @@ describe('initAnalytics', () => {
           }),
         ]),
       },
+      headers: { Authorization: `Bearer ${TEST_ACCESS_TOKEN}` },
     });
   });
 });
@@ -75,6 +95,41 @@ describe('resetAnalytics', () => {
 
     // Should have flushed the queued event
     expect(mockInvoke).toHaveBeenCalled();
+  });
+});
+
+describe('auth token (web-safe flush — cicatriz ed9906a)', () => {
+  it('sends the in-memory user JWT (never the anon key) as Authorization', () => {
+    initAnalytics('user-1');
+    trackEvent('authed_event');
+    jest.advanceTimersByTime(31000);
+
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(mockInvoke.mock.calls[0][1].headers).toEqual({
+      Authorization: `Bearer ${TEST_ACCESS_TOKEN}`,
+    });
+  });
+
+  it('does NOT hit the edge fn while signed out (would 401 on the anon key)', () => {
+    // Simulate sign-out: onAuthStateChange clears the in-memory token.
+    mockAuthCallback?.('SIGNED_OUT', null);
+
+    initAnalytics('user-1');
+    trackEvent('event_while_logged_out');
+    jest.advanceTimersByTime(31000);
+
+    expect(mockInvoke).not.toHaveBeenCalled();
+
+    // Once a session returns, the queued event flushes with the fresh token.
+    mockAuthCallback?.('SIGNED_IN', { access_token: TEST_ACCESS_TOKEN });
+    jest.advanceTimersByTime(31000);
+
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(mockInvoke.mock.calls[0][1].headers).toEqual({
+      Authorization: `Bearer ${TEST_ACCESS_TOKEN}`,
+    });
+    const events = mockInvoke.mock.calls[0][1].body.events;
+    expect(events).toContainEqual(expect.objectContaining({ event: 'event_while_logged_out' }));
   });
 });
 
@@ -96,6 +151,7 @@ describe('trackEvent', () => {
           }),
         ]),
       },
+      headers: { Authorization: `Bearer ${TEST_ACCESS_TOKEN}` },
     });
   });
 
