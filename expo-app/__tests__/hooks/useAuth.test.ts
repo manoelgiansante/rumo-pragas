@@ -18,6 +18,8 @@ jest.mock('../../services/supabase', () => ({
   },
 }));
 
+jest.mock('../../services/analytics', () => ({ trackEvent: jest.fn() }));
+
 jest.mock('../../services/auth', () => ({
   signIn: (...args: unknown[]) => mockSignIn(...args),
   signUp: (...args: unknown[]) => mockSignUp(...args),
