@@ -822,4 +822,18 @@ export default {
       saveError: 'No se pudo guardar tu preferencia. Inténtalo de nuevo.',
     },
   },
+  // In-app update check (aviso de nueva versión) — 2026-07
+  appUpdate: {
+    bannerTitle: 'Nueva versión disponible',
+    bannerSubtitle: 'La versión {{version}} ya está en la tienda',
+    actionUpdate: 'Actualizar',
+    actionLater: 'Después',
+    forceTitle: 'Actualización necesaria',
+    forceSubtitle:
+      'Esta versión de la app ya no es compatible. Actualiza para seguir usando Rumo Pragas.',
+    forceAction: 'Actualizar ahora',
+    releaseNotesTitle: 'Novedades',
+    currentVersionLabel: 'Versión instalada: {{version}}',
+    noConnectionError: 'No se pudo abrir la tienda. Verifica tu conexión e inténtalo de nuevo.',
+  },
 };

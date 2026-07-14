@@ -813,4 +813,18 @@ export default {
       saveError: 'Could not save your preference. Please try again.',
     },
   },
+  // In-app update check (new version notice) — 2026-07
+  appUpdate: {
+    bannerTitle: 'New version available',
+    bannerSubtitle: 'Version {{version}} is on the store',
+    actionUpdate: 'Update',
+    actionLater: 'Later',
+    forceTitle: 'Update required',
+    forceSubtitle:
+      'This version of the app is no longer supported. Please update to keep using Rumo Pragas.',
+    forceAction: 'Update now',
+    releaseNotesTitle: "What's new",
+    currentVersionLabel: 'Installed version: {{version}}',
+    noConnectionError: 'Could not open the store. Check your connection and try again.',
+  },
 };
