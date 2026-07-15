@@ -2,45 +2,145 @@ name: PR Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   changes:
-    name: Detect Changes
+    name: Detect changes
     runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.filter.outputs.app }}
       supabase: ${{ steps.filter.outputs.supabase }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - name: Filter paths
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
         id: filter
         with:
           filters: |
             app:
               - 'expo-app/**'
+              - 'marketing/**'
+              - 'docs/aso-final.md'
+              - 'docs/aso/**'
+              - 'docs/press-kit.md'
+              - '.github/workflows/**'
             supabase:
               - 'supabase/**'
+              - '.github/workflows/**'
 
   app-check:
-    name: App Quality
+    name: App release checks
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: expo-app
+    env:
+      CI: true
+      EXPO_NO_TELEMETRY: 1
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          node-version: 20
+          persist-credentials: false
+      - name: Node 22.22.3
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22.22.3
           cache: npm
           cache-dependency-path: expo-app/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      # Use the typecheck script (node --stack-size=16000) — plain `tsc` crashes
-      # on this codebase with RangeError: Maximum call stack size exceeded.
-      # Code is 0-error; the crash is a V8 default-stack limit, not a type error.
-      - run: npm run typecheck
-      - run: npm test -- --ci
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Dependency security audit
+        run: npm audit --audit-level=low
+      - name: Release version, metadata and claims
+        working-directory: .
+        run: node expo-app/scripts/validate-release-surfaces.mjs
+      - name: Native release configuration
+        run: npm run validate:native-config
+      - name: Web security and routing configuration
+        run: npm run validate:web-config
+      - name: Diagnosis API contract
+        run: npm run validate:diagnosis-contract
+      - name: MCP 2025-11-25 SDK interoperability
+        run: npm run validate:mcp-sdk
+      - name: Expo configuration health
+        run: npx --yes expo-doctor@1.20.0
+      - name: Expo public config sanity
+        run: npx expo config --type public --json > /dev/null
+      - name: Expo prebuild config sanity
+        run: npx expo config --type prebuild --json > /dev/null
+      - name: Store submission assets (fail closed)
+        run: npm run validate:store-assets
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and integration tests
+        run: npm test -- --coverage --ci
+      - name: Export web production bundle
+        run: npx expo export --platform web --output-dir dist
+      - name: Upload coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: expo-app/coverage/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload web export
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-web-export-${{ github.run_id }}-${{ github.run_attempt }}
+          path: expo-app/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  supabase-check:
+    name: Supabase Edge quality gate
+    needs: changes
+    if: needs.changes.outputs.supabase == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Deno 2.7.12
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.7.12
+
+      - name: Reject merge-conflict markers
+        working-directory: .
+        run: |
+          if rg --line-number '^(<<<<<<<|=======|>>>>>>>)' supabase; then
+            echo 'Merge conflict markers found in Supabase sources.' >&2
+            exit 1
+          fi
+
+      - name: Format, lint, typecheck and test Edge Functions
+        run: deno task gate
+
+      - name: PostgreSQL 17 migration, replay and rollback integration
+        working-directory: .
+        run: bash supabase/tests/pragas-backend-security-integration.sh

@@ -1,5 +1,10 @@
 # 04 — AUDITORIA DE BANCO (Supabase jxcn · tabelas `pragas_*`)
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR PARA ALTERAR BANCO OU PRODUÇÃO.**
+> Snapshot anterior à revisão de 14/07/2026; use `docs/audit/launch-coverage-2026-07-14.md` e
+> migrations/testes versionados em `supabase/`.
+
 **Data:** 2026-07-02 · **Fase:** read-only (nenhuma migration aplicada) · **Projeto:** `jxcnfyeemdltdfqtgbcl` (SHARED — jamais confundir com byfg/RM)
 **Método:** pg_catalog direto via MCP (`pg_policies`, `pg_proc`, `pg_indexes`, `pg_constraint`, `storage.buckets/objects`, `supabase_migrations.schema_migrations`) + advisors + grep do código vivo em `expo-app/` e `supabase/functions/`.
 

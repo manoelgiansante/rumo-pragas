@@ -1,182 +1,81 @@
-# Instagram Carousel — Launch Rumo Pragas (10 slides)
+# Carrossel de lançamento — Instagram
 
-**Objetivo:** Awareness + downloads via link na bio
-**Formato:** 1080x1350 (4:5 vertical, máximo espaço no feed)
-**Paleta:** Verde AgroRumo (#2D5016) + Bege (#F5E6C8) + Branco
-**Tipografia sugerida:** Inter Bold (título) + Inter Regular (corpo)
-**Tempo total de leitura:** ~40 segundos
+**Formato:** 1080 × 1350 px, sete cards.
+**Regra de ativo:** usar somente telas capturadas do candidato final; nunca simular confiança,
+resultado ou funcionalidade.
 
----
+## Card 1 — Hook
 
-## SLIDE 1 — HOOK
+**Texto:**
+Viu um sinal diferente na planta?
+Comece pela triagem visual.
 
-**Visual:** Foto close de folha de soja com manchas alaranjadas de ferrugem (real, não estoque)
-**Overlay escuro:** 40% opacity pra legibilidade
+**Visual:** detalhe real de uma folha e um celular sem resultado legível.
 
-**Título (80 char max):**
-> 30% DA SAFRA PERDIDA EM 48H.
+**Alt text:** Folha com sintoma visual ao lado de um celular com o Rumo Pragas aberto.
 
-**Subtítulo:**
-> Ferrugem asiática não avisa. Mas agora você identifica em 5 segundos.
+## Card 2 — Captura
 
-**CTA canto inferior:** Arrasta →
+**Texto:**
 
----
+1. Fotografe a área afetada
+   Boa luz, foco e contexto da planta ajudam a análise.
 
-## SLIDE 2 — PROBLEMA
+**Visual:** tela real de captura.
 
-**Visual:** Produtor olhando folha no pôr-do-sol, preocupado
-**Fundo:** Gradient escuro embaixo
+## Card 3 — Hipótese
 
-**Título:**
-> O tempo é seu inimigo na lavoura.
+**Texto:**
+2. Receba uma hipótese probabilística
+Veja confiança e possíveis alternativas — não uma certeza.
 
-**Bullet (150 char):**
-> Cada hora que você demora pra identificar uma praga, ela avança. E avança rápido. 48h de atraso = 30% de prejuízo em Ferrugem Asiática comprovado em campo.
+**Visual:** tela real de resultado com dados gerados em ambiente autorizado.
 
----
+## Card 4 — Próximo passo
 
-## SLIDE 3 — PROBLEMA (parte 2)
+**Texto:**
+3. Compare em campo
+Use sintomas, histórico da área e orientação profissional.
 
-**Visual:** Mão segurando celular com WhatsApp aberto, "visto" mas não respondido
-**Cor de fundo:** Vermelho suave / alerta
+**Visual:** inspeção da planta, sem imagem de pulverização ou produto.
 
-**Título:**
-> Agrônomo ocupado. Livro na estante. Google não sabe.
+## Card 5 — Mais contexto
 
-**Bullet:**
-> Identificar praga no olho exige anos de experiência. E nem sempre o especialista tá disponível quando a lavoura precisa.
+**Texto:**
+Histórico, biblioteca educativa, clima opcional e assistente de IA.
 
----
+**Rodapé:** A análise por foto exige internet.
 
-## SLIDE 4 — SOLUÇÃO (reveal)
+## Card 6 — Limites claros
 
-**Visual:** Mão segurando celular com app Rumo Pragas aberto na tela de captura
-**Animação sugerida:** Zoom pra tela do app
+**Texto:**
+A IA pode errar.
+Não é laudo, receituário ou indicação de produto, dose ou aplicação.
 
-**Título:**
-> Foto. 5 segundos. Diagnóstico.
+**Rodapé:** Consulte engenheiro agrônomo habilitado e o AGROFIT.
 
-**Bullet:**
-> Tira foto da folha. A IA analisa. Você recebe: nome da praga, nível de severidade e recomendação do que fazer agora.
+## Card 7 — CTA
 
----
+**Texto:**
+Rumo Pragas
+Gratuito no iOS e Android
 
-## SLIDE 5 — COMO FUNCIONA
+**CTA:** pragas.agrorumo.com
 
-**Visual:** Mockup 3 steps em colunas
-**Ícones:** 📷 → 🤖 → 📋
+## Legenda
 
-**Título:**
-> Simples assim:
+Uma foto pode ajudar a organizar a primeira triagem — desde que a resposta seja tratada como
+hipótese, não como decisão final.
 
-**Bullets (3 colunas curtas):**
-> 1. Tire a foto
-> 2. IA identifica
-> 3. Aja com confiança
+No Rumo Pragas, você envia a imagem e recebe uma hipótese probabilística, confiança e possíveis
+alternativas. Também encontra histórico e conteúdo educativo de MIP.
 
----
+O app é gratuito, sem assinatura, compra interna ou anúncio. A análise por foto exige internet; uma
+falha de conexão pode deixar a solicitação na fila para reenvio posterior.
 
-## SLIDE 6 — DIFERENCIAL IA
+⚠️ Confirme situações relevantes em campo com engenheiro agrônomo habilitado. O aplicativo não
+prescreve produtos, doses ou aplicações. Consulte o AGROFIT.
 
-**Visual:** Interface de chat com agrônoma IA respondendo
-**Fundo:** Verde claro
+🔗 pragas.agrorumo.com
 
-**Título:**
-> E você ainda conversa com uma agrônoma IA.
-
-**Bullet:**
-> "Qual dose de fungicida?" "Posso aplicar hoje com essa chuva?" "Essa praga passa pro milho?" — Resposta na hora, 24h por dia.
-
----
-
-## SLIDE 7 — PROVA SOCIAL (acurácia)
-
-**Visual:** Número GIGANTE "82,5%" centralizado, verde AgroRumo
-**Fundo:** Branco limpo
-
-**Título:**
-> 82,5% DE ACURÁCIA VALIDADA.
-
-**Bullet:**
-> Testado em campo, não em laboratório americano. Treinado com pragas reais da soja, milho, café e algodão brasileiros.
-
----
-
-## SLIDE 8 — BIBLIOTECA
-
-**Visual:** Grid de fotos de diferentes pragas/folhas (6-9 miniaturas)
-**Fundo:** Bege
-
-**Título:**
-> +100 pragas no banco. E crescendo.
-
-**Bullet:**
-> Ferrugem, percevejo, lagarta, mofo, mancha, broca... Se tá na sua lavoura, a gente identifica.
-
----
-
-## SLIDE 9 — FEATURES COMPLETAS
-
-**Visual:** Mockup do app com 4 ícones principais
-**Layout:** 2x2 grid
-
-**Título:**
-> Tudo o que você precisa:
-
-**Bullets (4 cards):**
-> 📷 Identificação por foto
-> 💬 Chat com agrônoma IA
-> 📊 Histórico da sua lavoura
-> 📄 Relatório PDF exportável
-
----
-
-## SLIDE 10 — CTA FINAL
-
-**Visual:** QR code grande ao centro + logo Rumo Pragas no topo
-**CTA button:** Baixar grátis
-**Fundo:** Verde AgroRumo sólido, texto branco
-
-**Título:**
-> Baixe agora. Tá grátis pra começar.
-
-**Bullets:**
-> 🍎 iOS — apps.apple.com/br/app/id6762232682
-> 🤖 Android — play.google.com
-> 🌐 pragas.agrorumo.com
-
-**QR Code:** Aponta pra pragas.agrorumo.com (deeplinks auto detectam iOS/Android)
-
----
-
-## LEGENDA DO POST
-
-```
-A próxima praga na sua lavoura não vai avisar. 🌾
-
-Mas agora você identifica ela em 5 segundos — só com a câmera do celular.
-
-Rumo Pragas é o primeiro app brasileiro de identificação de pragas com IA treinada em campo, não laboratório gringo.
-
-✅ 82,5% de acurácia validada
-✅ +100 pragas de soja, milho, café e algodão
-✅ Chat com agrônoma IA 24h
-✅ Histórico + PDF pra comprovar pra comprador e seguradora
-
-Link na bio 👆 ou pragas.agrorumo.com
-
-Comenta aqui: qual praga já pegou você de surpresa?
-
-#Agrotech #Agronegocio #Agricultura #Soja #Milho #Cafe #Algodao #IA #RumoPragas
-```
-
----
-
-## NOTAS DE PRODUÇÃO
-
-- **Slide 1 hook rule:** Nunca comece com "Bem-vindo" ou "Chegou" — comece com dor/número/pergunta.
-- **Contraste:** Sempre testar em dark mode do Instagram (95% dos usuários). Textos brancos em foto precisam overlay escuro.
-- **Safe zones:** 150px de margem superior/inferior (onde Instagram corta na preview).
-- **Swipe rate meta:** 40%+ (chegar até slide 5). CTA no slide 10 precisa reward pro swipe.
-- **Posting time:** Terça ou quinta, 06h00 ou 19h00 BRT (horário do produtor rural).
+#RumoPragas #AgriculturaDigital #ManejoIntegradoDePragas #AgTech

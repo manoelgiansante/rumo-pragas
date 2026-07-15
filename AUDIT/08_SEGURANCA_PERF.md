@@ -1,5 +1,9 @@
 # 08 — SEGURANÇA & PERFORMANCE · Rumo Pragas IA
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO POSTURA DE SEGURANÇA ATUAL.**
+> Use `SECURITY.md`, o código atual e `docs/audit/launch-coverage-2026-07-14.md`.
+
 > Fase: mega-audit de lançamento · 2026-07-02 · branch `perfect/pragas-launch-2026-07-02` (read-only)
 > Escopo: auth/tokens (ZERO-X), secrets no bundle, rate limiting, injeção, storage de foto, bundle web, cold start, imagens, memory leaks/re-renders, useEffect cleanup.
 > Regra seguida: nenhum item já corrigido pelo mega-audit de 01/jul foi re-reportado (grants chat_usage, FREE_MODE, gen_ai telemetry, fail-closed de quota, CORS allowlist, JWT verify — tudo CONFIRMADO já presente no código atual e registrado em "Positivos").

@@ -1,0 +1,305 @@
+# Rumo Pragas launch runbook
+
+This runbook prepares preview, internal testing and gradual release. It does not authorize a direct production publication.
+
+## Release acceptance
+
+- Candidate commit is immutable and all CI gates pass.
+- No P0 or P1 defect remains open.
+- Store and landing copy match actual behavior.
+- Signed iOS and Android builds pass device smoke.
+- Privacy declarations match providers, permissions and data flow.
+- New optional coordinates are verified at two-decimal persistence in the deployed candidate; the
+  four historical rows are handled only through the separately authorized remediation below.
+- Backup, deletion, monitoring and rollback evidence is attached to the private release record.
+- Full shared-account deletion is resolved before store submission. The current app-scoped cleanup
+  is not a substitute for the Apple/Google account-deletion requirement; see
+  `expo-app/store-assets/ACCOUNT_DELETION_BLOCKER.md`.
+
+## Preview and internal validation
+
+1. Build the landing worktree and inspect the local production preview at mobile, tablet and desktop widths.
+2. Export the Expo web bundle through the same command used by CI.
+3. Build signed mobile artifacts with release configuration.
+4. Distribute only through TestFlight and Play Internal testing.
+5. Run the persona and critical-flow matrix in docs/audit/launch-coverage-2026-07-14.md.
+6. Compare real screenshots and metadata with the exact artifacts.
+
+## Build and submission are separate
+
+`expo-app/scripts/launch.sh` validates and builds only. It has no bypass and never passes
+`--auto-submit` to EAS:
+
+```bash
+cd expo-app
+./scripts/launch.sh --profile production --platform all
+```
+
+Local and internal builds remain available without widening submission authority:
+
+```bash
+./scripts/launch.sh --profile production --platform ios --local
+./scripts/launch.sh --profile production --platform android --local
+./scripts/launch.sh --profile preview --platform android
+```
+
+The production path reads only environment-variable names via `eas env:list production`; values
+remain suppressed. A missing name, failed EAS query or invalid option stops before build.
+
+Submission is a second command that is never called by the build. It requires explicit external
+authorization, one exact real build ID or signed artifact path, and
+`--confirm-authorized-submission`. Run `./scripts/submit.sh --help` for syntax; never substitute an
+example or `--latest` for the reviewed artifact.
+
+The submission command fails if real screenshots are absent. That absence does not block a local,
+preview or production artifact build; it remains a documented store-submission blocker. Archived
+screenshots are never eligible.
+
+## Remote build versions and Sentry evidence
+
+A read-only EAS query on 2026-07-14 observed iOS build 63 and Android version code 54 as the latest
+remote values. These numbers must not be pinned as the candidate: query them again on build day and
+record the values actually reserved by the production profile's remote `autoIncrement` in each
+immutable artifact. A local `app.json` build number is not authoritative.
+
+Native EAS Build source maps are uploaded automatically by the official Expo/Sentry plugin when
+`SENTRY_AUTH_TOKEN` exists in the selected EAS Environment. Verify that upload in the exact build
+logs and prove symbolication with a controlled event that contains no personal data. The retired
+custom release-finalization hook must not be restored.
+
+An EAS Update is a separate production change and is never performed by the build scripts. After
+an explicitly authorized operator runs and reviews the exact `eas update`, upload its existing
+`dist/` maps separately:
+
+```bash
+cd expo-app
+./scripts/upload-sentry-ota.sh \
+  --environment production \
+  --confirm-sourcemap-upload
+```
+
+The script cannot publish an update and fails closed before network upload when confirmation,
+environment configuration, dependencies or source maps are absent. A failed upload or
+symbolication smoke means the OTA release is incomplete. References:
+[Expo Sentry guide](https://docs.expo.dev/guides/using-sentry/) and
+[EAS environment variables](https://docs.expo.dev/eas/environment-variables/usage/).
+
+## Public surface drift gate
+
+Read-only checks on 2026-07-14 found that implemented repository corrections are not yet live:
+
+- App Store version 1.0.9, observed as `READY_FOR_SALE`, still publicly describes fixed-time
+  identification, measured accuracy, offline use and professional equivalence. The latest valid
+  build observed in App Store Connect was 1.0.10 (63); the candidate must use a later reserved
+  build number.
+- The Google Play production listing for `com.agrorumo.rumopragas`, version 1.0.9 (code 49),
+  carries the same prohibited claims. Internal version 1.0.7 (44) and draft 1.0.8 (54) were also
+  observed; the candidate must reserve a code greater than 54.
+- `pragas.agrorumo.com` still uses “Agrônomo IA” positioning, and its live legal pages describe
+  broad account/data deletion and billing behavior that do not match the app-scoped deletion and
+  free-product contract.
+
+The canonical store metadata and tested landing candidate in these worktrees already remove those
+claims. Closing the gate requires authenticated external action: replace the relevant fields in
+both store consoles, deploy the exact reviewed landing candidate, purge only normal delivery cache,
+and verify the public pt-BR pages and legal URLs. Capture timestamps and URLs in the private release
+record. Do not submit or promote the mobile candidate while any public surface retains the unsafe
+copy. If the landing deploy regresses, redeploy the last known-good immutable version while keeping
+the store correction in review.
+
+## Monitoring and stop conditions
+
+Dashboards must separate client, edge and provider failures.
+
+| Signal | Observe | Stop or investigate immediately |
+| --- | --- | --- |
+| Crash-free sessions | Overall and by version/platform | Material regression from the last known-good version |
+| Login | Email, Apple and Google success rate | Sustained authentication failure or callback loop |
+| Diagnosis | Success, invalid image, 4xx, 429, 5xx and provider latency | Elevated 5xx, stuck requests or unexpected cost spike |
+| Queue | Enqueue, retry, success, expiration and duplicate rate | Lost request, retry storm or duplicate persisted result |
+| Chat | Success, safety refusal, 429, 5xx, latency and token cost | Unsafe agricultural direction or sustained provider error |
+| Deletion | App-scoped completion, retry state, push revocation and retained shared/global records | App data reported complete when cleanup failed, cross-app deletion or authorization anomaly |
+| Push | Delivery errors and revoked tokens | Cross-user notification or repeated invalid-token failures |
+| Landing | Availability, Core Web Vitals and store-link conversion | Broken store/legal link or severe performance regression |
+
+Never log raw images, access tokens, reviewer passwords, full chat content, exact coordinates or provider keys.
+
+## Backend candidate and deploy boundary
+
+The backend candidate is the ordered, forward-only migration pair
+`supabase/migrations/20260714143000_pragas_backend_security.sql` followed by
+`supabase/migrations/20260714150000_pragas_export_consistency.sql`. The second migration adds the
+service-only, transfer-locked bounded SQL snapshot for the optional legacy notification queue; deploy the
+reviewed Edge export only after both migrations pass. Historical applied migrations
+`20260522003425_pragas_subscriptions_deprecated_2026_05_21.sql` and
+`20260628120000_subscriptions_per_app_isolation.sql` are immutable and must remain byte-for-byte
+unchanged. The candidate adds an explicit active `pragas_app_links` marker; profile or legacy
+subscription ownership alone never grants Rumo Pragas access.
+
+The shared Supabase project has no safe deploy-all path. The normal free-product Edge allowlist is
+exactly:
+
+```text
+admin-ai-content-reports
+ai-chat-pragas
+diagnose-pragas
+pragas-analytics
+pragas-delete-user-account
+pragas-export-user-data
+pragas-process-ai-idempotency
+pragas-process-deletions
+pragas-reactivate-account
+pragas-send-push
+report-ai-content
+report-diagnosis-feedback
+```
+
+Run `bash supabase/functions/deploy-pragas-allowlist.sh --list` to validate the local source and
+configuration without network mutation. Execute mode requires an approved production window and
+the two exact project confirmations documented by the script. Never deploy generic/shared
+`diagnose`, `ai-chat`, `analytics`, `delete-user-account`, `process-deletions`, `send-push`,
+`version-check`, `revenuecat-webhook` or `stripe-webhook` in this release.
+
+Before an authorized backend rollout, both commands must pass against PostgreSQL 17 and Deno:
+
+```bash
+bash supabase/tests/pragas-backend-security-integration.sh
+cd supabase/functions
+deno task gate
+```
+
+Rate-limit idempotency keys are bound to a canonical SHA-256 request hash. Same-key/same-request
+retries count every execution; same-key/different-request reuse is rejected. Diagnosis and chat
+may reclaim an expired lease only before the provider-start marker. Push delivery follows the same
+claim/lease boundary. After a provider may have received a request, a lost or timed-out worker is
+terminal `unknown_outcome` and must not be automatically resent. Operator review may reconcile the
+outcome, but it cannot infer failure from an ambiguous provider response.
+
+## Historical coordinate remediation gate
+
+The read-only production inventory on 2026-07-14 found non-null latitude/longitude in 4 of 342
+diagnoses. The candidate rounds future persisted coordinates to two decimal places, but changing
+the four historical rows is a real-data mutation and is not authorized by repository work.
+
+An authorized operator must first preserve backup and row-count evidence, preview the exact
+idempotent update in a transaction, verify that only those four user-owned diagnosis rows are in
+scope, apply the coarsening during an approved window, and record before/after precision without
+copying coordinates into logs. Abort and roll back on any unexpected row count. Until then, legal
+copy must not imply that every historical coordinate is already approximate.
+
+## Rollback
+
+- Landing: redeploy the last known-good immutable Vercel deployment.
+- Mobile configuration: disable a risky server-side feature flag or provider route only when its tested rollback path exists.
+- Android: halt staged rollout and issue a higher-version corrected AAB.
+- iOS: pause phased release where available and issue a higher-build correction.
+- Edge functions: redeploy the last known-good version by dedicated Pragas slug.
+- Database: first take a fresh backup, run
+  `supabase/rollback/20260714150000_pragas_export_consistency.down.sql`, then run
+  `supabase/rollback/20260714143000_pragas_backend_security.down.sql`, only after each exact preflight
+  passes. Both scripts are transactional and remove candidate runtime functions/policies/triggers;
+  it deliberately preserves all candidate tables, enum types, consent receipts, reports, audit
+  rows, idempotency ledgers, push outcomes, app links and storage data. If preflight or postcondition
+  fails, the transaction aborts; use a reviewed forward fix instead of dropping or rewriting data.
+
+The bare send-push slug is owned by another shared-project workload and must never be deployed as the Rumo Pragas notification function.
+
+## Production drift gates
+
+Read-only inventory on 2026-07-14 found active production functions with no tracked source in this
+repository:
+
+- `disease-risk`
+- `create-checkout-session-pragas`
+- `stripe-webhook-pragas`
+- `stripe-customer-portal-pragas`
+- `asaas-checkout-pragas`
+- `asaas-webhook-pragas`
+
+The current free client contains no call to those billing routes. An aggregate, non-PII query found 82
+rows in `pragas_subscriptions`, 81 marked active or trialing, but zero Stripe subscription IDs, Asaas IDs
+or product IDs. This is ambiguous legacy state, not evidence of a valid paid entitlement and not permission
+to delete the records.
+
+Before production release, an authorized operator must:
+
+1. preserve the read-only inventory and current function versions in the private release record;
+2. verify that reviewed local tombstones return a deterministic retirement response without touching shared handlers;
+3. deploy or deactivate only the dedicated Pragas legacy slugs during an approved production window;
+4. smoke the free client, confirm no checkout/portal dependency and monitor 4xx/5xx after the change;
+5. roll back to the captured function version if an unknown consumer is detected;
+6. leave all real subscription rows unchanged until a separately approved data-reconciliation procedure exists.
+
+This is a production-change gate. Repository work alone cannot mark it complete.
+
+## Backup and restoration evidence
+
+- Confirm the production database backup policy and latest successful backup in the provider console.
+- Restore the latest backup into an isolated non-production project.
+- Validate row counts, foreign keys, RLS, authentication references and avatar objects.
+- Record recovery point and recovery time from the exercise.
+- Destroy the isolated restored copy under the approved retention process.
+
+Backup and restoration are external infrastructure checks because the repository cannot prove live provider state.
+
+## First 24 hours
+
+- Assign a named release operator and backup.
+- Watch crash-free sessions, login, diagnosis, queue, chat, deletion and landing availability.
+- Exercise one synthetic diagnosis per platform without using personal data.
+- Verify reviewer/support inbox handling.
+- Confirm no paid product, ad or upgrade prompt appears.
+- Confirm store screenshots and descriptions remain the approved versions.
+- Halt staged rollout if a stop condition triggers.
+
+## Accessibility declaration gate
+
+Use `docs/accessibility-matrix.md` and
+`expo-app/store-assets/metadata/ios/ACCESSIBILITY_CHECKLIST.md`. Static labels and automated tests
+are preparatory evidence only. Before changing Accessibility Nutrition Labels in App Store Connect,
+execute every common task with VoiceOver and Voice Control on the exact signed candidate, separately
+on iPhone and iPad, and inspect differentiation without color and contrast in every state. Do not
+declare Larger Text, Dark Interface or Reduced Motion without complete device evidence.
+
+## First 7 days
+
+- Review failures by crop, invalid-image rate and confidence band without retaining raw personal imagery.
+- Audit provider latency, error rate and cost.
+- Verify app-scoped deletion jobs reached a terminal state and that retained shared/global records match the documented contract.
+- Review accessibility, support tickets and store reviews for recurrent friction.
+- Confirm push opt-outs and revoked-token cleanup.
+- Reconcile Data Safety and Apple labels with any runtime provider change.
+
+## First 30 days
+
+- Complete a backup restore exercise if it was not completed immediately before launch.
+- Review retention and deletion evidence.
+- Re-run dependency, secret, authorization and policy audits.
+- Compare conversion, activation, successful identification, repeat use and uninstall signals.
+- Keep only metrics with a documented product decision and lawful purpose.
+- Close the release record with incident, rollback and support outcomes.
+
+## External handoff
+
+The operator needs:
+
+- Apple signing and App Store Connect access.
+- Android upload keystore and Play Console access.
+- Authorization to replace the unsafe live store metadata with the reviewed canonical files.
+- Authorization to deploy the tested landing candidate to `pragas.agrorumo.com`.
+- Approved EAS route if cloud build is used.
+- Sentry release access.
+- Supabase dashboard access for backup, schedule and deletion verification.
+- Authorized schedules for `pragas-process-deletions` and
+  `pragas-process-ai-idempotency`, using the service bearer from the approved
+  secret store; record one successful invocation and alerting without logging
+  the credential or user data.
+- Approval to deploy/deactivate dedicated remote-only Pragas legacy functions; no approval is implied for shared webhooks or real subscription rows.
+- Portfolio-wide decision and authorization for complete AgroRumo account deletion, with cross-app
+  data mapping and rollback/retention review, or formal recorded store/legal acceptance of the
+  current app-scoped model.
+- Secure reviewer-account access.
+- Provider contract evidence for Data Safety.
+- Signed-candidate iPhone and iPad accessibility walkthrough evidence.
+
+No secret value belongs in this runbook.

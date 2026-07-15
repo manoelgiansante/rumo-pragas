@@ -1,5 +1,9 @@
 # 01 — Arquitetura e Qualidade de Código · Rumo Pragas IA
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESTADO ATUAL OU CHECKLIST DE LANÇAMENTO.**
+> Snapshot anterior à revisão de 14/07/2026; use `docs/audit/launch-coverage-2026-07-14.md`.
+
 > Auditoria read-only · branch `perfect/pragas-launch-2026-07-02` · 2026-07-02
 > Escopo: `expo-app/` (iOS + Android + Web). Estado: 100% grátis, iOS 1.0.7 WAITING_FOR_REVIEW (intocável).
 > **Nota geral da dimensão: 8.5/10** — base de código madura, TypeScript strict completo, error handling exemplar. Deduções por testes desabilitados, gap de observabilidade no serverless e código morto de paywall.

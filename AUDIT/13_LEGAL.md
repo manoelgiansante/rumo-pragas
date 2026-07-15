@@ -1,5 +1,10 @@
 # 13_LEGAL — Auditoria Legal/LGPD · Rumo Pragas IA
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO É AVISO LEGAL NEM POLÍTICA VIGENTE.**
+> A legislação, os provedores e o fluxo de exclusão descritos abaixo podem estar superados. Use
+> as páginas públicas atuais e `docs/audit/launch-coverage-2026-07-14.md`.
+
 **Data:** 2026-07-02 · **Branch:** `perfect/pragas-launch-2026-07-02` (read-only) · **Fase:** mega-audit de lançamento
 **Escopo:** privacidade/termos in-app e web, controlador/DPO, consentimento GPS/câmera, exclusão de conta ponta-a-ponta, retenção, menores.
 **Nota da dimensão (estado atual): 6.5/10** — o pacote legal **in-app** está forte após os fixes de 01–02/jul; o que derruba é a **web** (landing Astro de 16/abr nunca acompanhou o pivot grátis nem o produto real) e o drift repo↔prod da edge fn de exclusão.

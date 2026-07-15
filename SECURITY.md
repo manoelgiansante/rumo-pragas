@@ -1,99 +1,85 @@
-# Guia de Seguranca - Rumo Pragas IA
+# Segurança de lançamento — Rumo Pragas
 
-## Rotacao de Chaves (URGENTE)
+Atualizado em 2026-07-14. Este documento não contém valores, formatos realistas de chaves nem
+credenciais de exemplo.
 
-As chaves abaixo precisam ser rotacionadas imediatamente se foram expostas:
+## Modelo de configuração
 
-### 1. Supabase
-- Acesse: https://supabase.com/dashboard/project/settings/api
-- Regenere a "anon key" e "service_role key"
-- Atualize no .env e nas Supabase Edge Functions
+O cliente móvel recebe somente configuração pública com prefixo `EXPO_PUBLIC_`. Segredos de provedor,
+chaves administrativas e tokens de automação pertencem ao ambiente de servidor ou ao cofre do serviço
+de build; nunca ao bundle, ao Git, a logs, screenshots ou tickets.
 
-### 2. Stripe
-- Acesse: https://dashboard.stripe.com/apikeys
-- Clique em "Roll key" na secret key
-- Atualize a publishable key no .env
-- Atualize a secret key nas Supabase Edge Functions
-- Atualize o webhook secret: https://dashboard.stripe.com/webhooks
+### Cliente móvel
 
-### 3. Google OAuth
-- Acesse: https://console.cloud.google.com/apis/credentials
-- Crie novas credenciais OAuth
-- Atualize no .env
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_GOOGLE_CLIENT_ID`
+- `EXPO_PUBLIC_SENTRY_DSN`
+- flags públicas documentadas em `expo-app/.env.example`
 
-### 4. Claude API (Anthropic)
-- Acesse: https://console.anthropic.com/settings/keys
-- Crie uma nova API key
-- Atualize nas Supabase Edge Functions (CLAUDE_API_KEY)
+A chave anônima do Supabase e o DSN de ingestão do Sentry são identificadores públicos por desenho;
+isso não os transforma em autorização administrativa. RLS, limites de ingestão e configuração do projeto
+continuam obrigatórios.
 
-### 5. RevenueCat
-- Acesse: https://app.revenuecat.com > Project Settings > API Keys
-- Regenere as chaves iOS e Android
-- Atualize no .env
+### Supabase Edge Functions
 
-### 6. Google Gemini (se ainda em uso)
-- Acesse: https://aistudio.google.com/app/apikey
-- Crie uma nova API key
-- Atualize nas Supabase Edge Functions (GOOGLE_GEMINI_API_KEY)
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `AGRIO_API_KEY` para análise de imagem
+- `GEMINI_API_KEY` para o assistente padrão
+- `CLAUDE_API_KEY` somente se o provedor Anthropic Claude for selecionado deliberadamente para
+  diagnóstico ou chat
+- `SENTRY_DSN` e `SENTRY_PII_HASH_SALT`
+- `EXPO_ACCESS_TOKEN` quando exigido para push
 
-## Onde Colocar Cada Chave
+Os nomes efetivos no backend são `AGRIO_API_KEY`, `GEMINI_API_KEY` e, quando selecionado,
+`CLAUDE_API_KEY`.
 
-| Chave | Local | Tipo |
-|-------|-------|------|
-| SUPABASE_URL | .env (app) | Publica |
-| SUPABASE_ANON_KEY | .env (app) | Publica |
-| STRIPE_PUBLISHABLE_KEY | .env (app) | Publica |
-| GOOGLE_CLIENT_ID | .env (app) | Publica |
-| REVENUECAT_IOS_KEY | .env (app) | Publica |
-| REVENUECAT_ANDROID_KEY | .env (app) | Publica |
-| STRIPE_SECRET_KEY | Supabase Secrets | SECRETA |
-| SUPABASE_SERVICE_ROLE_KEY | Supabase Secrets | SECRETA |
-| CLAUDE_API_KEY | Supabase Secrets | SECRETA |
-| GOOGLE_GEMINI_API_KEY | Supabase Secrets | SECRETA |
-| STRIPE_WEBHOOK_SECRET | Supabase Secrets | SECRETA |
-| RESEND_API_KEY | Supabase Secrets | SECRETA |
+Os handlers compartilhados de Stripe e RevenueCat permanecem fora do produto gratuito e fora da
+mudança de lançamento. Seus segredos não devem ser copiados para o cliente nem rotacionados por este
+repositório sem coordenação com os demais produtos proprietários.
 
-## ALERTA: Chaves Secretas no .env
+## Configuração segura
 
-O arquivo `.env` atual contem chaves que NAO deveriam estar no app mobile:
-- `STRIPE_SECRET_KEY` - DEVE ser removida do .env e usada apenas via Supabase Secrets
-- `SUPABASE_SERVICE_ROLE_KEY` - DEVE ser removida do .env e usada apenas via Supabase Secrets
-- `GOOGLE_GEMINI_API_KEY` - DEVE ser removida do .env e usada apenas via Supabase Secrets
+1. Cadastre valores diretamente no Supabase Secrets, EAS, Sentry ou cofre aprovado.
+2. Use somente o nome da variável em documentação e automação; não registre o valor na linha de comando
+   compartilhada nem no histórico do shell.
+3. Restrinja origem, escopo e permissão de cada credencial no provedor.
+4. Valide ambiente e presença sem imprimir valores.
+5. Em caso de exposição confirmada, revogue ou rotacione no provedor, atualize consumidores autorizados e
+   preserve evidências do incidente sem copiar o segredo.
 
-Essas chaves dao acesso total ao banco de dados e servicos de pagamento.
-Qualquer pessoa que descompilar o app pode extrair essas chaves.
+## Gates automatizados
 
-## Como Configurar Secrets nas Supabase Edge Functions
+- `npm audit --audit-level=low` bloqueia qualquer vulnerabilidade conhecida no CI do aplicativo. Achados
+  sem superfície aplicável precisam de uma exceção revisada e documentada; o lock atual não exige exceção.
+- O Deno gate executa formatação, lint, typecheck e testes de contratos/autorização das Edge Functions.
+- Gitleaks deve ser executado localmente com saída redigida antes do commit e no histórico durante a
+  preparação final. Uma ocorrência real nunca deve ser exibida no relatório compartilhado.
+- `expo-doctor`, lint, TypeScript, Jest com cobertura e export web são bloqueantes.
 
-```bash
-supabase secrets set STRIPE_SECRET_KEY=sk_live_xxx
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=eyJxxx
-supabase secrets set CLAUDE_API_KEY=sk-ant-xxx
-supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
-supabase secrets set GOOGLE_GEMINI_API_KEY=AIzaxxx
-supabase secrets set RESEND_API_KEY=re_xxx
-```
+O DSN público do Sentry configurado em `eas.json` pode ser sinalizado por heurística. Ele deve ser
+triado como identificador público do cliente, com projeto e ingestão restritos, e não removido apenas para
+silenciar o scanner. Exemplos em playbooks locais usam placeholders não realistas.
 
-## EAS Secrets (para builds)
+## Arquivos e artefatos proibidos no Git
 
-Para que as variaveis de ambiente estejam disponiveis nos builds EAS:
+- `.env` e variantes locais
+- `google-services.json` e `GoogleService-Info.plist`
+- keystores, certificados, perfis e chaves privadas
+- credenciais EAS/Play, service accounts e exports de consoles
+- contas ou senhas de revisão
+- fotos reais, tokens, dumps, backups e relatórios contendo dados pessoais
 
-```bash
-eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://xxx.supabase.co"
-eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "eyJxxx"
-eas secret:create --name EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY --value "pk_live_xxx"
-eas secret:create --name EXPO_PUBLIC_GOOGLE_CLIENT_ID --value "xxx.apps.googleusercontent.com"
-eas secret:create --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value "appl_xxx"
-eas secret:create --name EXPO_PUBLIC_REVENUECAT_ANDROID_KEY --value "goog_xxx"
-```
+Modelos seguros podem usar extensão `.example`, sem valores e sem formato que pareça uma credencial.
 
-## Checklist de Seguranca
+## Checklist de incidente
 
-- [ ] Chaves secretas rotacionadas (Stripe secret, Service Role, Claude API, Gemini API)
-- [ ] Chaves secretas REMOVIDAS do .env (manter apenas chaves publicas)
-- [ ] .env NAO esta no git (verificar com: `git ls-files expo-app/.env`)
-- [ ] Secrets server-side configurados nas Supabase Edge Functions
-- [ ] Webhook Stripe com verificacao de assinatura ativa
-- [ ] RLS habilitado em todas as tabelas do Supabase
-- [ ] EAS Secrets configurados para builds de producao
-- [ ] Google OAuth redirect URIs restritos aos dominios corretos
+1. Interromper o uso da credencial afetada e preservar evidência redigida.
+2. Rotacionar no provedor e revogar a versão anterior.
+3. Identificar todos os consumidores e atualizar apenas os ambientes autorizados.
+4. Verificar logs por acesso indevido, sem ampliar exposição de dados.
+5. Avaliar obrigação de comunicação conforme LGPD e processo interno.
+6. Executar novamente Gitleaks, testes de autorização e smoke do fluxo afetado.
+
+Nenhuma reescrita destrutiva de histórico, rotação de produção ou alteração de dados reais é autorizada
+por este documento.

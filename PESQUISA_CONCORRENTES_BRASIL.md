@@ -1,5 +1,9 @@
 # Pesquisa de Mercado - Apps de Controle de Pragas Agricolas no Brasil
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÚMEROS, PREÇOS E CLAIMS NÃO ESTÃO APROVADOS PARA PUBLICAÇÃO.**
+> Use `docs/audit/competitive-matrix-2026-07-14.md`, que registra fontes e data de verificação.
+
 **Data:** 2026-03-25
 **Objetivo:** Mapear todos os concorrentes do mercado brasileiro de apps para controle de pragas agricolas e definir funcionalidades para o Rumo Pragas ser o numero 1 do Brasil.
 
