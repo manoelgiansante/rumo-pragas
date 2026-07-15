@@ -1,473 +1,469 @@
 /**
- * pragas-send-push edge function
- * ==============================
+ * Dedicated, server-to-server Rumo Pragas push fan-out.
  *
- * DEDICATED Pragas slug. The bare `send-push` slug in the jxcn (shared) project
- * is LIVE code owned by RUMO CONFINAMENTO (reads `push_tokens`, tenant
- * vet_fazendas) — deploying this file under that slug would clobber it. Pragas
- * MUST deploy under `pragas-send-push` only.
- *
- * Invocation path becomes: POST /functions/v1/pragas-send-push
- *
- * Fan-out: given a target audience + category + payload, look up active
- * push tokens in `pragas_push_tokens`, filter by user notification
- * preferences, dedup by notification_id, POST to Expo Push API with retry,
- * and write an audit row to `pragas_push_notifications`.
- *
- * SECURITY MODEL
- *  - Auth: service_role key required (this is a server-to-server endpoint).
- *    We reject any caller without the SUPABASE_SERVICE_ROLE_KEY in the
- *    `Authorization: Bearer` header. Mobile clients NEVER call this.
- *  - Idempotency: `notification_id` is the PRIMARY KEY of the audit table.
- *    Replays with the same id are no-ops returning the original status.
- *  - Filtering: outbreaks_regional / daily_reminder / news / marketing are
- *    each respected per-user. Category `transactional` (account events) is
- *    NEVER filtered — those always go through.
- *
- * RETRY MODEL
- *  - Expo Push API is called once per batch of ≤100 tokens (Expo limit).
- *  - On 5xx or network error: exponential backoff retry up to 3 attempts.
- *  - On `DeviceNotRegistered`: soft-revoke the row (is_active = false).
- *
- * INVOCATION
- *   POST /functions/v1/pragas-send-push
- *   Authorization: Bearer <SERVICE_ROLE_KEY>
- *   {
- *     "notification_id": "<uuid>",
- *     "category": "outbreaks_regional" | "daily_reminder" | "news" | "marketing" | "transactional",
- *     "title": "string",
- *     "body": "string",
- *     "data": { "screen": "diagnosis" | "paywall" | ..., "diagnosisId": "<uuid>" },
- *     "target_user_ids": ["uuid", ...]   // explicit list
- *       OR
- *     "target_state": "MG",              // broadcast: all users in a state
- *     "sender": "system" | string         // optional, default 'system'
- *   }
- *
- * RESPONSE
- *   { "ok": true, "notification_id": "...", "recipient_count": 12,
- *     "accepted_count": 11, "error_count": 1, "status": "partial" }
+ * Only explicit user lists and two truthful categories are accepted. There is
+ * no state/broadcast/marketing/news path until a real audited pipeline exists.
  */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { captureException, captureMessage, withSentry } from '../_shared/sentry.ts';
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { sha256Hex } from "../_shared/ai-idempotency.ts";
+import { type ExpoTicket, parseExpoTickets } from "../_shared/expo-push-ticket.ts";
+import { fetchWithTimeout } from "../_shared/fetch-timeout.ts";
+import { authenticateServiceBearer } from "../_shared/service-auth.ts";
+import { captureException, withSentry } from "../_shared/pragas-sentry.ts";
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN') ?? '';
-
-const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
-const EXPO_BATCH_SIZE = 100; // Expo hard limit per request
-const MAX_RETRIES = 3;
-const BACKOFF_BASE_MS = 250;
-
-// ---- Whitelists (mirror client useNotifications.ts) -----------------------
-
-const VALID_CATEGORIES = new Set([
-  'outbreaks_regional',
-  'daily_reminder',
-  'news',
-  'marketing',
-  'transactional',
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const EXPO_ACCESS_TOKEN = Deno.env.get("EXPO_ACCESS_TOKEN") ?? "";
+const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
+const EXPO_BATCH_SIZE = 100;
+const MAX_TARGET_USERS = 500;
+const MAX_BODY_BYTES = 64 * 1024;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const VALID_CATEGORIES = new Set(["transactional", "climate_risk_educational"]);
+const VALID_SCREENS = new Set(["diagnosis", "settings", "history", "home"]);
+const VALID_RISK_TYPES = new Set(["rainfall", "temperature", "humidity", "drought", "frost"]);
+const ALLOWED_BODY_KEYS = new Set([
+  "notification_id",
+  "category",
+  "title",
+  "body",
+  "data",
+  "target_user_ids",
 ]);
-const VALID_SCREENS = new Set(['diagnosis', 'paywall', 'settings', 'history', 'home']);
-const UUID_STRICT_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ALLOWED_DATA_KEYS = new Set(["screen", "diagnosisId", "riskType"]);
 
-// ---- Types -----------------------------------------------------------------
-
-interface RequestBody {
-  notification_id?: string;
-  category?: string;
-  title?: string;
-  body?: string;
-  data?: Record<string, unknown>;
-  target_user_ids?: string[];
-  target_state?: string;
-  sender?: string;
+interface ValidRequest {
+  notificationId: string;
+  category: "transactional" | "climate_risk_educational";
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  targetUserIds: string[];
 }
 
-interface ExpoTicket {
-  status: 'ok' | 'error';
-  id?: string;
-  message?: string;
-  details?: { error?: string };
+interface PushToken {
+  user_id: string;
+  expo_token: string;
+  platform: "ios" | "android";
 }
 
-// ---- Helpers --------------------------------------------------------------
+type ExpoBatchResult =
+  | { state: "tickets"; tickets: ExpoTicket[] }
+  | { state: "unknown_outcome" };
 
-function jsonResponse(body: unknown, init?: ResponseInit): Response {
+class PushInputError extends Error {
+  constructor(readonly code: string, readonly status = 400) {
+    super(code);
+    this.name = "PushInputError";
+  }
+}
+
+function jsonResponse(body: Record<string, unknown>, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      ...(init.headers ?? {}),
     },
   });
 }
 
-function sanitizeData(raw: unknown): Record<string, unknown> {
-  if (raw === null || typeof raw !== 'object') return {};
-  const data = raw as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
-  if (typeof data.screen === 'string' && VALID_SCREENS.has(data.screen)) {
-    out.screen = data.screen;
+async function readBoundedJSON(req: Request): Promise<unknown> {
+  const declared = Number(req.headers.get("Content-Length") ?? "0");
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    throw new PushInputError("payload_too_large", 413);
   }
-  if (typeof data.diagnosisId === 'string' && UUID_STRICT_RE.test(data.diagnosisId)) {
-    out.diagnosisId = data.diagnosisId;
+  const bytes = new Uint8Array(await req.arrayBuffer());
+  if (bytes.byteLength > MAX_BODY_BYTES) throw new PushInputError("payload_too_large", 413);
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    throw new PushInputError("invalid_json");
   }
-  // Allow any other string-keyed primitive (string/number/boolean) for tracking
-  for (const [k, v] of Object.entries(data)) {
-    if (k === 'screen' || k === 'diagnosisId') continue;
-    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
-      out[k] = v;
+}
+
+function validateText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > max) return null;
+  for (const character of trimmed) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint <= 31 || codePoint === 127) return null;
+  }
+  return trimmed;
+}
+
+function parseRequest(value: unknown): ValidRequest {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new PushInputError("invalid_body");
+  }
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some((key) => !ALLOWED_BODY_KEYS.has(key))) {
+    throw new PushInputError("invalid_body_schema");
+  }
+  if (typeof body.notification_id !== "string" || !UUID_PATTERN.test(body.notification_id)) {
+    throw new PushInputError("invalid_notification_id");
+  }
+  if (typeof body.category !== "string" || !VALID_CATEGORIES.has(body.category)) {
+    throw new PushInputError("invalid_category");
+  }
+  const title = validateText(body.title, 100);
+  const message = validateText(body.body, 240);
+  if (!title) throw new PushInputError("invalid_title");
+  if (!message) throw new PushInputError("invalid_body_text");
+  if (
+    !Array.isArray(body.target_user_ids) || body.target_user_ids.length < 1 ||
+    body.target_user_ids.length > MAX_TARGET_USERS ||
+    body.target_user_ids.some((id) => typeof id !== "string" || !UUID_PATTERN.test(id))
+  ) {
+    throw new PushInputError("invalid_target_user_ids");
+  }
+  const targetUserIds = [...new Set(body.target_user_ids.map((id) => String(id).toLowerCase()))];
+
+  const data: Record<string, string> = {};
+  if (body.data !== undefined) {
+    if (typeof body.data !== "object" || body.data === null || Array.isArray(body.data)) {
+      throw new PushInputError("invalid_data");
     }
-  }
-  return out;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((res) => setTimeout(res, ms));
-}
-
-async function sendBatchWithRetry(
-  messages: Array<{
-    to: string;
-    title: string;
-    body: string;
-    data: Record<string, unknown>;
-    sound: string;
-    channelId?: string;
-  }>,
-): Promise<ExpoTicket[]> {
-  let lastErr: unknown = null;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const res = await fetch(EXPO_PUSH_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'Accept-Encoding': 'gzip, deflate',
-          ...(EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${EXPO_ACCESS_TOKEN}` } : {}),
-        },
-        body: JSON.stringify(messages),
-      });
-
-      if (res.status >= 500) {
-        // Retryable
-        lastErr = new Error(`expo_${res.status}`);
-      } else if (!res.ok) {
-        // 4xx — not retryable. Capture + return synthetic errors.
-        const text = await res.text();
-        await captureMessage('expo push 4xx', {
-          level: 'warning',
-          tags: { feature: 'pragas-send-push', status: String(res.status) },
-          extra: { body: text.slice(0, 500) },
-        });
-        return messages.map(() => ({ status: 'error', message: `expo_${res.status}` }));
-      } else {
-        const payload = (await res.json()) as { data?: ExpoTicket[] };
-        return payload.data ?? messages.map(() => ({ status: 'error', message: 'no_data' }));
+    const raw = body.data as Record<string, unknown>;
+    if (Object.keys(raw).some((key) => !ALLOWED_DATA_KEYS.has(key))) {
+      throw new PushInputError("invalid_data_schema");
+    }
+    if (raw.screen !== undefined) {
+      if (typeof raw.screen !== "string" || !VALID_SCREENS.has(raw.screen)) {
+        throw new PushInputError("invalid_screen");
       }
-    } catch (err) {
-      lastErr = err;
+      data.screen = raw.screen;
     }
-    // Backoff before next attempt
-    if (attempt < MAX_RETRIES) {
-      await sleep(BACKOFF_BASE_MS * Math.pow(2, attempt));
+    if (raw.diagnosisId !== undefined) {
+      if (typeof raw.diagnosisId !== "string" || !UUID_PATTERN.test(raw.diagnosisId)) {
+        throw new PushInputError("invalid_diagnosis_id");
+      }
+      data.diagnosisId = raw.diagnosisId.toLowerCase();
+    }
+    if (raw.riskType !== undefined) {
+      if (typeof raw.riskType !== "string" || !VALID_RISK_TYPES.has(raw.riskType)) {
+        throw new PushInputError("invalid_risk_type");
+      }
+      data.riskType = raw.riskType;
     }
   }
-  await captureException(lastErr ?? new Error('expo_unknown'), {
-    tags: { feature: 'pragas-send-push', step: 'expo_call' },
-  });
-  return messages.map(() => ({ status: 'error', message: 'expo_unreachable' }));
+  if (body.category === "climate_risk_educational" && !data.riskType) {
+    throw new PushInputError("risk_type_required");
+  }
+
+  return {
+    notificationId: body.notification_id.toLowerCase(),
+    category: body.category as ValidRequest["category"],
+    title,
+    body: message,
+    data,
+    targetUserIds,
+  };
 }
 
-// ---- Handler --------------------------------------------------------------
+async function captureStableFailure(step: string): Promise<void> {
+  await captureException(new Error(`pragas_push_${step}_failed`), {
+    tags: { fn: "pragas-send-push", step },
+  });
+}
+
+async function resolveEligibleUsers(
+  admin: SupabaseClient,
+  targetUserIds: string[],
+): Promise<Set<string> | null> {
+  const [links, profiles, subscriptions, deletions] = await Promise.all([
+    admin
+      .from("pragas_app_links")
+      .select("user_id")
+      .in("user_id", targetUserIds)
+      .eq("active", true),
+    admin.from("pragas_profiles").select("id,user_id").in("user_id", targetUserIds),
+    admin
+      .from("subscriptions")
+      .select("user_id")
+      .in("user_id", targetUserIds)
+      .eq("app", "rumo-pragas")
+      .eq("status", "active"),
+    admin
+      .from("pragas_deletion_jobs")
+      .select("user_id,status")
+      .in("user_id", targetUserIds),
+  ]);
+  if (links.error || profiles.error || subscriptions.error || deletions.error) return null;
+  const linkIds = new Set((links.data ?? []).map((row) => String(row.user_id)));
+  const profileIds = new Set(
+    (profiles.data ?? [])
+      .filter((row) => String(row.id) === String(row.user_id))
+      .map((row) => String(row.user_id)),
+  );
+  const subscriptionIds = new Set((subscriptions.data ?? []).map((row) => String(row.user_id)));
+  const blockedIds = new Set(
+    (deletions.data ?? [])
+      .filter((row) => row.status !== "reactivated")
+      .map((row) => String(row.user_id)),
+  );
+  return new Set(
+    targetUserIds.filter((id) =>
+      linkIds.has(id) && profileIds.has(id) && subscriptionIds.has(id) && !blockedIds.has(id)
+    ),
+  );
+}
+
+async function sendExpoBatch(
+  messages: Array<Record<string, unknown>>,
+): Promise<ExpoBatchResult> {
+  try {
+    const response = await fetchWithTimeout(EXPO_PUSH_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${EXPO_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify(messages),
+    }, 15_000);
+    if (response.ok) {
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength <= 256 * 1024) {
+        try {
+          const tickets = parseExpoTickets(JSON.parse(text), messages.length);
+          if (tickets) return { state: "tickets", tickets };
+        } catch {
+          // A malformed 2xx may still mean Expo accepted the request.
+        }
+      }
+      await captureStableFailure("expo_unknown_response");
+      return { state: "unknown_outcome" };
+    }
+    const status = response.status;
+    await response.body?.cancel().catch(() => undefined);
+    if (status >= 500) {
+      await captureStableFailure("expo_unknown_server_failure");
+      return { state: "unknown_outcome" };
+    }
+    return {
+      state: "tickets",
+      tickets: messages.map(() => ({ status: "error" })),
+    };
+  } catch {
+    // A timeout/network failure can happen after Expo accepted the bytes. Never
+    // retry this batch automatically because Expo provides no request key here.
+    await captureStableFailure("expo_unknown_network_failure");
+    return { state: "unknown_outcome" };
+  }
+}
 
 async function handler(req: Request, { requestId }: { requestId: string }): Promise<Response> {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204 });
+  if (req.method !== "POST") {
+    return jsonResponse({ ok: false, error: "method_not_allowed", requestId }, { status: 405 });
   }
-  if (req.method !== 'POST') {
-    return jsonResponse({ ok: false, error: 'method_not_allowed' }, { status: 405 });
+  if (!(await authenticateServiceBearer(req, SUPABASE_SERVICE_ROLE_KEY))) {
+    return jsonResponse({ ok: false, error: "unauthorized", requestId }, { status: 401 });
   }
-
-  // ── Service-role auth ────────────────────────────────────────────────
-  const authHeader = req.headers.get('Authorization') ?? '';
-  const presented = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!SUPABASE_SERVICE_ROLE_KEY) {
-    // Misconfigured deployment — never silently accept.
-    await captureMessage('pragas-send-push missing service role key', {
-      level: 'fatal',
-      tags: { feature: 'pragas-send-push', requestId },
-    });
-    return jsonResponse({ ok: false, error: 'misconfigured' }, { status: 500 });
-  }
-  if (presented !== SUPABASE_SERVICE_ROLE_KEY) {
-    return jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 });
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !EXPO_ACCESS_TOKEN) {
+    await captureStableFailure("configuration");
+    return jsonResponse({ ok: false, error: "misconfigured", requestId }, { status: 503 });
   }
 
-  // ── Body parsing + validation ────────────────────────────────────────
-  let body: RequestBody;
+  let input: ValidRequest;
   try {
-    body = (await req.json()) as RequestBody;
-  } catch {
-    return jsonResponse({ ok: false, error: 'invalid_json' }, { status: 400 });
+    input = parseRequest(await readBoundedJSON(req));
+  } catch (error) {
+    if (error instanceof PushInputError) {
+      return jsonResponse({ ok: false, error: error.code, requestId }, { status: error.status });
+    }
+    return jsonResponse({ ok: false, error: "invalid_request", requestId }, { status: 400 });
   }
 
-  const {
-    notification_id,
-    category,
-    title,
-    body: messageBody,
-    data: rawData,
-    target_user_ids,
-    target_state,
-    sender,
-  } = body;
-
-  if (!notification_id || typeof notification_id !== 'string' || notification_id.length < 8) {
-    return jsonResponse({ ok: false, error: 'notification_id_required' }, { status: 400 });
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const requestHash = await sha256Hex(JSON.stringify(input));
+  const claimResult = await admin.rpc("claim_pragas_push_notification", {
+    p_notification_id: input.notificationId,
+    p_request_hash: requestHash,
+    p_category: input.category,
+  });
+  if (claimResult.error) {
+    await captureStableFailure("audit_claim");
+    return jsonResponse({ ok: false, error: "push_unavailable", requestId }, { status: 503 });
   }
-  if (!category || !VALID_CATEGORIES.has(category)) {
-    return jsonResponse({ ok: false, error: 'invalid_category' }, { status: 400 });
+  const claimRaw = Array.isArray(claimResult.data) ? claimResult.data[0] : claimResult.data;
+  if (typeof claimRaw !== "object" || claimRaw === null) {
+    await captureStableFailure("audit_claim_contract");
+    return jsonResponse({ ok: false, error: "push_unavailable", requestId }, { status: 503 });
   }
-  if (!title || typeof title !== 'string' || title.length === 0 || title.length > 100) {
-    return jsonResponse({ ok: false, error: 'invalid_title' }, { status: 400 });
+  const claim = claimRaw as Record<string, unknown>;
+  if (claim.state === "completed") {
+    const { state: _state, ...completed } = claim;
+    return jsonResponse({ ok: true, ...completed, deduped: true, requestId });
+  }
+  if (claim.state === "conflict") {
+    return jsonResponse({ ok: false, error: "notification_id_payload_conflict", requestId }, {
+      status: 409,
+    });
+  }
+  if (claim.state === "unknown_outcome") {
+    return jsonResponse({
+      ok: false,
+      error: "push_delivery_outcome_unknown_new_notification_id_required",
+      requestId,
+    }, { status: 409 });
+  }
+  if (claim.state === "in_progress") {
+    const retryAfter = typeof claim.retry_after_seconds === "number"
+      ? Math.max(1, Math.ceil(claim.retry_after_seconds))
+      : 5;
+    return jsonResponse({ ok: false, error: "push_delivery_in_progress", requestId }, {
+      status: 409,
+      headers: { "Retry-After": String(retryAfter) },
+    });
   }
   if (
-    !messageBody ||
-    typeof messageBody !== 'string' ||
-    messageBody.length === 0 ||
-    messageBody.length > 240
+    claim.state !== "reserved" || typeof claim.lease_token !== "string" ||
+    !UUID_PATTERN.test(claim.lease_token)
   ) {
-    return jsonResponse({ ok: false, error: 'invalid_body' }, { status: 400 });
+    await captureStableFailure("audit_claim_contract");
+    return jsonResponse({ ok: false, error: "push_unavailable", requestId }, { status: 503 });
   }
-  if (!Array.isArray(target_user_ids) && typeof target_state !== 'string') {
-    return jsonResponse(
-      { ok: false, error: 'target_user_ids_or_target_state_required' },
-      { status: 400 },
+  const leaseToken = claim.lease_token.toLowerCase();
+  const releaseClaim = async (): Promise<void> => {
+    await admin.rpc("release_pragas_push_notification", {
+      p_notification_id: input.notificationId,
+      p_request_hash: requestHash,
+      p_lease_token: leaseToken,
+    });
+  };
+
+  const eligibleUsers = await resolveEligibleUsers(admin, input.targetUserIds);
+  if (!eligibleUsers) {
+    await releaseClaim();
+    await captureStableFailure("recipient_link");
+    return jsonResponse({ ok: false, error: "push_unavailable", requestId }, { status: 503 });
+  }
+  const eligibleIds = [...eligibleUsers];
+  let tokens: PushToken[] = [];
+  if (eligibleIds.length > 0) {
+    const result = await admin
+      .from("pragas_push_tokens")
+      .select("user_id,expo_token,platform")
+      .in("user_id", eligibleIds)
+      .eq("is_active", true)
+      .eq("notifications_enabled", true)
+      .not("consented_at", "is", null)
+      .is("revoked_at", null);
+    if (result.error) {
+      await releaseClaim();
+      await captureStableFailure("token_lookup");
+      return jsonResponse({ ok: false, error: "push_unavailable", requestId }, { status: 503 });
+    }
+    tokens = (result.data ?? []).filter((row): row is PushToken =>
+      typeof row.expo_token === "string" &&
+      (row.platform === "ios" || row.platform === "android")
     );
   }
 
-  const sanitizedData = sanitizeData(rawData);
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  // ── Idempotency: short-circuit if we've already sent this id ────────
-  const existing = await supabase
-    .from('pragas_push_notifications')
-    .select('notification_id, status, recipient_count, accepted_count, error_count')
-    .eq('notification_id', notification_id)
-    .maybeSingle();
-
-  if (existing.data) {
-    return jsonResponse({
-      ok: true,
-      ...existing.data,
-      deduped: true,
-      requestId,
-    });
-  }
-
-  // Reserve the row (pending) so concurrent retries dedup against us.
-  // ON CONFLICT DO NOTHING: if a race lost, exit with the existing row.
-  const reserve = await supabase.from('pragas_push_notifications').insert({
-    notification_id,
-    sender: sender ?? 'system',
-    category,
-    payload: { title, body: messageBody, data: sanitizedData },
-    status: 'pending',
-  });
-
-  if (reserve.error) {
-    if (reserve.error.code === '23505') {
-      // unique violation — another worker beat us; re-read and return.
-      const again = await supabase
-        .from('pragas_push_notifications')
-        .select('notification_id, status, recipient_count, accepted_count, error_count')
-        .eq('notification_id', notification_id)
-        .maybeSingle();
-      return jsonResponse({
-        ok: true,
-        ...(again.data ?? { notification_id }),
-        deduped: true,
-        requestId,
-      });
-    }
-    await captureException(reserve.error, {
-      tags: { feature: 'pragas-send-push', step: 'reserve', requestId },
-    });
-    return jsonResponse({ ok: false, error: 'reserve_failed' }, { status: 500 });
-  }
-
-  // ── Resolve recipients ──────────────────────────────────────────────
-  // Step 1: active push tokens for the audience
-  let tokensQuery = supabase
-    .from('pragas_push_tokens')
-    .select('user_id, expo_token, platform')
-    .eq('is_active', true);
-
-  if (Array.isArray(target_user_ids) && target_user_ids.length > 0) {
-    tokensQuery = tokensQuery.in('user_id', target_user_ids);
-  } else if (typeof target_state === 'string' && target_state.length > 0) {
-    // Get user ids in the target state via a subselect.
-    // NOTE: pragas_profiles PK `id` is a random uuid; the auth uid lives in
-    // `user_id`. Select/compare on `user_id`, never `id` (DB-C1/DB-A1).
-    const profiles = await supabase
-      .from('pragas_profiles')
-      .select('user_id')
-      .eq('state', target_state);
-    if (profiles.error) {
-      await captureException(profiles.error, {
-        tags: { feature: 'pragas-send-push', step: 'resolve_state', requestId },
-      });
-      return jsonResponse({ ok: false, error: 'resolve_failed' }, { status: 500 });
-    }
-    const ids = (profiles.data ?? []).map((p) => p.user_id);
-    if (ids.length === 0) {
-      await supabase
-        .from('pragas_push_notifications')
-        .update({ status: 'sent', recipient_count: 0 })
-        .eq('notification_id', notification_id);
-      return jsonResponse({
-        ok: true,
-        notification_id,
-        recipient_count: 0,
-        accepted_count: 0,
-        error_count: 0,
-        status: 'sent',
-        requestId,
-      });
-    }
-    tokensQuery = tokensQuery.in('user_id', ids);
-  }
-
-  const tokensRes = await tokensQuery;
-  if (tokensRes.error) {
-    await captureException(tokensRes.error, {
-      tags: { feature: 'pragas-send-push', step: 'resolve_tokens', requestId },
-    });
-    return jsonResponse({ ok: false, error: 'resolve_failed' }, { status: 500 });
-  }
-  const allTokens = tokensRes.data ?? [];
-
-  // Step 2: filter by user notification preferences (unless transactional)
-  let eligibleTokens: typeof allTokens = [];
-  if (category === 'transactional') {
-    eligibleTokens = allTokens;
-  } else {
-    const userIds = [...new Set(allTokens.map((t) => t.user_id))];
-    if (userIds.length === 0) {
-      eligibleTokens = [];
-    } else {
-      // Key on user_id (auth uid), NOT the random PK `id` (DB-C1/DB-A1).
-      const prefsRes = await supabase
-        .from('pragas_profiles')
-        .select('user_id, notification_preferences')
-        .in('user_id', userIds);
-      if (prefsRes.error) {
-        await captureException(prefsRes.error, {
-          tags: { feature: 'pragas-send-push', step: 'resolve_prefs', requestId },
-        });
-        return jsonResponse({ ok: false, error: 'resolve_failed' }, { status: 500 });
-      }
-      const optedInUsers = new Set<string>();
-      for (const row of prefsRes.data ?? []) {
-        const prefs = (row.notification_preferences ?? {}) as Record<string, unknown>;
-        // Default to true for outbreaks_regional/daily_reminder/news (parity
-        // with column DEFAULT), false for marketing.
-        const defaults: Record<string, boolean> = {
-          outbreaks_regional: true,
-          daily_reminder: true,
-          news: true,
-          marketing: false,
-        };
-        const value = typeof prefs[category] === 'boolean' ? prefs[category] : defaults[category];
-        if (value) optedInUsers.add(row.user_id);
-      }
-      eligibleTokens = allTokens.filter((t) => optedInUsers.has(t.user_id));
-    }
-  }
-
-  // ── Send in batches of 100 ───────────────────────────────────────────
   let accepted = 0;
-  let errors = 0;
-  const invalidTokenIds: string[] = [];
-
-  for (let i = 0; i < eligibleTokens.length; i += EXPO_BATCH_SIZE) {
-    const batch = eligibleTokens.slice(i, i + EXPO_BATCH_SIZE);
-    const messages = batch.map((row) => ({
-      to: row.expo_token,
-      title,
-      body: messageBody,
-      data: sanitizedData,
-      sound: 'default',
-      ...(row.platform === 'android' ? { channelId: 'pest-alerts' } : {}),
-    }));
-    const tickets = await sendBatchWithRetry(messages);
-    for (let j = 0; j < tickets.length; j++) {
-      const ticket = tickets[j];
-      if (ticket.status === 'ok') {
-        accepted += 1;
-      } else {
-        errors += 1;
-        if (ticket.details?.error === 'DeviceNotRegistered') {
-          invalidTokenIds.push(batch[j].expo_token);
+  let failures = 0;
+  const deadTokens: string[] = [];
+  if (tokens.length > 0) {
+    const providerStart = await admin.rpc("mark_pragas_push_provider_started", {
+      p_notification_id: input.notificationId,
+      p_request_hash: requestHash,
+      p_lease_token: leaseToken,
+    });
+    if (providerStart.error || providerStart.data !== true) {
+      await releaseClaim();
+      await captureStableFailure("provider_lease");
+      return jsonResponse({ ok: false, error: "push_provider_lease_unavailable", requestId }, {
+        status: 503,
+        headers: { "Retry-After": "30" },
+      });
+    }
+  }
+  for (let offset = 0; offset < tokens.length; offset += EXPO_BATCH_SIZE) {
+    const batch = tokens.slice(offset, offset + EXPO_BATCH_SIZE);
+    const delivery = await sendExpoBatch(batch.map((token) => ({
+      to: token.expo_token,
+      title: input.title,
+      body: input.body,
+      data: input.data,
+      sound: "default",
+      ...(token.platform === "android" ? { channelId: "climate-risk" } : {}),
+    })));
+    if (delivery.state === "unknown_outcome") {
+      const unknown = await admin.rpc("mark_pragas_push_unknown_outcome", {
+        p_notification_id: input.notificationId,
+        p_request_hash: requestHash,
+        p_lease_token: leaseToken,
+        p_recipient_count: tokens.length,
+        p_accepted_count: accepted,
+        p_error_count: failures,
+      });
+      if (unknown.error || unknown.data !== true) {
+        await captureStableFailure("audit_unknown_outcome");
+      }
+      return jsonResponse({
+        ok: false,
+        error: "push_delivery_outcome_unknown_new_notification_id_required",
+        requestId,
+      }, { status: 502 });
+    }
+    delivery.tickets.forEach((ticket, index) => {
+      if (ticket.status === "ok") accepted += 1;
+      else {
+        failures += 1;
+        if (ticket.details?.error === "DeviceNotRegistered") {
+          const token = batch[index]?.expo_token;
+          if (token) deadTokens.push(token);
         }
       }
-    }
-  }
-
-  // ── Soft-revoke dead tokens ──────────────────────────────────────────
-  if (invalidTokenIds.length > 0) {
-    const revoke = await supabase
-      .from('pragas_push_tokens')
-      .update({ is_active: false })
-      .in('expo_token', invalidTokenIds);
-    if (revoke.error) {
-      await captureException(revoke.error, {
-        tags: { feature: 'pragas-send-push', step: 'revoke', requestId },
-      });
-    }
-  }
-
-  const finalStatus: 'sent' | 'partial' | 'failed' =
-    accepted === eligibleTokens.length && eligibleTokens.length > 0
-      ? 'sent'
-      : accepted > 0
-        ? 'partial'
-        : eligibleTokens.length === 0
-          ? 'sent'
-          : 'failed';
-
-  const update = await supabase
-    .from('pragas_push_notifications')
-    .update({
-      recipient_count: eligibleTokens.length,
-      accepted_count: accepted,
-      error_count: errors,
-      status: finalStatus,
-    })
-    .eq('notification_id', notification_id);
-  if (update.error) {
-    await captureException(update.error, {
-      tags: { feature: 'pragas-send-push', step: 'audit_update', requestId },
     });
   }
 
+  if (deadTokens.length > 0) {
+    const revoked = await admin
+      .from("pragas_push_tokens")
+      .update({
+        is_active: false,
+        notifications_enabled: false,
+        revoked_at: new Date().toISOString(),
+      })
+      .in("expo_token", deadTokens);
+    if (revoked.error) await captureStableFailure("token_revoke");
+  }
+
+  const status = tokens.length === 0 || accepted === tokens.length
+    ? "sent"
+    : accepted > 0
+    ? "partial"
+    : "failed";
+  const audit = await admin.rpc("complete_pragas_push_notification", {
+    p_notification_id: input.notificationId,
+    p_request_hash: requestHash,
+    p_lease_token: leaseToken,
+    p_status: status,
+    p_recipient_count: tokens.length,
+    p_accepted_count: accepted,
+    p_error_count: failures,
+  });
+  if (audit.error || audit.data !== true) {
+    await captureStableFailure("audit_complete");
+    return jsonResponse({ ok: false, error: "push_audit_unavailable", requestId }, {
+      status: 503,
+    });
+  }
   return jsonResponse({
     ok: true,
-    notification_id,
-    recipient_count: eligibleTokens.length,
+    notification_id: input.notificationId,
+    recipient_count: tokens.length,
     accepted_count: accepted,
-    error_count: errors,
-    status: finalStatus,
+    error_count: failures,
+    status,
     requestId,
   });
 }
 
-Deno.serve(withSentry('pragas-send-push', handler));
+Deno.serve(withSentry("pragas-send-push", handler));

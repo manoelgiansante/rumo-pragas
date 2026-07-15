@@ -50,6 +50,65 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+# Internal Pragas deletion worker validates the exact service-role secret in the
+# handler. Gateway JWT parsing is disabled to support rotated sb_secret_* keys.
+[functions.pragas-process-deletions]
+verify_jwt = false
+
+[functions.pragas-process-ai-idempotency]
+verify_jwt = false
+
+[functions.ai-chat-pragas]
+verify_jwt = true
+
+[functions.diagnose-pragas]
+verify_jwt = true
+
+[functions.report-ai-content]
+verify_jwt = true
+
+[functions.report-diagnosis-feedback]
+verify_jwt = true
+
+[functions.admin-ai-content-reports]
+verify_jwt = true
+
+[functions.pragas-analytics]
+verify_jwt = true
+
+[functions.pragas-delete-user-account]
+verify_jwt = true
+
+[functions.pragas-export-user-data]
+verify_jwt = true
+
+[functions.pragas-reactivate-account]
+verify_jwt = true
+
+[functions.pragas-send-push]
+verify_jwt = false
+
+# Dedicated legacy Pragas slugs are tombstoned locally so a future function
+# sync cannot resurrect billing or the retired disease-risk contract. Generic
+# portfolio billing/webhook functions above remain untouched.
+[functions.create-checkout-session-pragas]
+verify_jwt = true
+
+[functions.stripe-customer-portal-pragas]
+verify_jwt = true
+
+[functions.asaas-checkout-pragas]
+verify_jwt = true
+
+[functions.disease-risk]
+verify_jwt = true
+
+[functions.stripe-webhook-pragas]
+verify_jwt = false
+
+[functions.asaas-webhook-pragas]
+verify_jwt = false
+
 # waitlist accepts anonymous POSTs from public landing page
 [functions.waitlist-campovivo]
 verify_jwt = false
