@@ -243,6 +243,7 @@
       ],
       "expo-localization",
       "expo-apple-authentication",
+      "./plugins/withQuotedSentryXcodeScripts",
       [
         "@sentry/react-native/expo",
         {
@@ -251,7 +252,6 @@
           "url": "https://sentry.io/"
         }
       ],
-      "./plugins/withQuotedSentryXcodeScripts",
       "expo-asset"
     ],
     "extra": {

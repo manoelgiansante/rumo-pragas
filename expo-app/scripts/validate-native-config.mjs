@@ -161,8 +161,13 @@ requireCondition(
   buildPropertiesConfig?.ios?.buildReactNativeFromSource === true,
   'iOS deve compilar React Native do fonte para suportar o caminho local com espaços',
 );
+const quotedSentryPluginIndex = app.plugins?.indexOf('./plugins/withQuotedSentryXcodeScripts');
+const sentryPluginIndex = app.plugins?.findIndex(
+  (plugin) => Array.isArray(plugin) && plugin[0] === '@sentry/react-native/expo',
+);
 requireCondition(
-  app.plugins?.includes('./plugins/withQuotedSentryXcodeScripts') &&
+  quotedSentryPluginIndex >= 0 &&
+    sentryPluginIndex > quotedSentryPluginIndex &&
     sentryXcodePluginSource.includes(
       '/bin/sh "$SENTRY_XCODE_SCRIPT" "$REACT_NATIVE_XCODE_SCRIPT"',
     ) &&
@@ -170,7 +175,7 @@ requireCondition(
     sentryXcodePluginSource.includes('path_safe_expo_scripts') &&
     sentryXcodePluginSource.includes('PROJECT_DIR=Pods bash -l') &&
     sentryXcodePluginSource.includes('create-updates-resources-ios.sh'),
-  'scripts Xcode do Sentry/Expo devem preservar caminhos locais com espaços',
+  'plugin de quoting deve preceder Sentry e preservar caminhos Xcode locais com espaços',
 );
 
 const notificationIconPath = path.join(appRoot, 'assets/android-icon-monochrome.png');
