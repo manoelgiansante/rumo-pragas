@@ -61,7 +61,9 @@ sanitized. Before any release candidate is generated or distributed, an authoriz
 rotate the affected Apple distribution certificate, provisioning profile and password in the
 approved secret store/EAS credentials, revoke the superseded material where applicable, and record
 the new non-secret identifiers in the private release record. Repository work cannot perform this
-external rotation, and no pre-rotation iOS artifact is eligible for release.
+external rotation, and no pre-rotation iOS artifact is eligible for release. The versioned,
+machine-enforced state is `expo-app/store-assets/APPLE_SIGNING_ROTATION_BLOCKER.md`; it may be
+removed only after all external evidence listed there exists.
 
 Every build, submission and OTA source-map helper uses the versioned pinned executor rather than a
 global EAS installation. The production gate probes one allowlisted variable name at a time via
@@ -70,13 +72,29 @@ exact CLI marker, analytics are disabled, and every probe has a 30-second timeou
 cleanup. A missing name, ambiguous response, failed query or invalid option stops before build.
 
 Submission is a second command that is never called by the build. It requires explicit external
-authorization, one exact real build ID or signed artifact path, and
+authorization, one exact local signed artifact path, and
 `--confirm-authorized-submission`. Run `./scripts/submit.sh --help` for syntax; never substitute an
-example or `--latest` for the reviewed artifact.
+example, remote build ID or `--latest` for the reviewed artifact. The command executes the complete
+`store-submission-status.mjs` gate before production-environment validation or EAS. That global gate
+checks both platform asset sets and shared submission blockers, so choosing iOS or Android cannot
+bypass the unresolved account-deletion decision, the versioned Apple-signing rotation gate or an
+incomplete set for the other store. It also
+requires the streamed SHA-256 of the exact signed `.ipa`/`.aab` to equal the independently reviewed
+candidate-artifact record in the screenshot manifest; a different binary cannot reuse that
+approval. The command creates one private, read-only snapshot and passes that exact file to the
+asset gate, the release-bundle environment verifier and EAS, closing path-replacement races between
+validation and submission. Immediately before submit, the verifier requires the approved production
+Supabase URL and the versioned SHA-256 fingerprint of the public anon/publishable key embedded in
+that snapshot; build IDs are intentionally ineligible because their bundle cannot be inspected.
 
-The submission command fails if real screenshots are absent. That absence does not block a local,
-preview or production artifact build; it remains a documented store-submission blocker. Archived
-screenshots are never eligible.
+The submission command fails if real screenshots are absent. Once any screenshot exists, the
+machine-readable `store-assets/screenshots-manifest.json` must bind every image hash and canonical
+scene to app version 1.0.11, a real candidate commit present in the full local Git history, the
+exact signed artifact and environment, followed by an independent second review. CI and
+submission checkouts must therefore include the referenced candidate commit rather than a depth-1
+history. That absence does not block a local, preview or production artifact build; it
+remains a documented store-submission blocker. Fixture, mock, archived and historical screenshots
+are never eligible.
 
 ## Remote build versions and Sentry evidence
 
@@ -134,16 +152,16 @@ the store correction in review.
 
 Dashboards must separate client, edge and provider failures.
 
-| Signal | Observe | Stop or investigate immediately |
-| --- | --- | --- |
-| Crash-free sessions | Overall and by version/platform | Material regression from the last known-good version |
-| Login | Email, Apple and Google success rate | Sustained authentication failure or callback loop |
-| Diagnosis | Success, invalid image, 4xx, 429, 5xx and provider latency | Elevated 5xx, stuck requests or unexpected cost spike |
-| Queue | Enqueue, retry, success, expiration and duplicate rate | Lost request, retry storm or duplicate persisted result |
-| Chat | Success, safety refusal, 429, 5xx, latency and token cost | Unsafe agricultural direction or sustained provider error |
-| Deletion | App-scoped completion, retry state, push revocation and retained shared/global records | App data reported complete when cleanup failed, cross-app deletion or authorization anomaly |
-| Push | Delivery errors and revoked tokens | Cross-user notification or repeated invalid-token failures |
-| Landing | Availability, Core Web Vitals and store-link conversion | Broken store/legal link or severe performance regression |
+| Signal              | Observe                                                                                | Stop or investigate immediately                                                             |
+| ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Crash-free sessions | Overall and by version/platform                                                        | Material regression from the last known-good version                                        |
+| Login               | Email, Apple and Google success rate                                                   | Sustained authentication failure or callback loop                                           |
+| Diagnosis           | Success, invalid image, 4xx, 429, 5xx and provider latency                             | Elevated 5xx, stuck requests or unexpected cost spike                                       |
+| Queue               | Enqueue, retry, success, expiration and duplicate rate                                 | Lost request, retry storm or duplicate persisted result                                     |
+| Chat                | Success, safety refusal, 429, 5xx, latency and token cost                              | Unsafe agricultural direction or sustained provider error                                   |
+| Deletion            | App-scoped completion, retry state, push revocation and retained shared/global records | App data reported complete when cleanup failed, cross-app deletion or authorization anomaly |
+| Push                | Delivery errors and revoked tokens                                                     | Cross-user notification or repeated invalid-token failures                                  |
+| Landing             | Availability, Core Web Vitals and store-link conversion                                | Broken store/legal link or severe performance regression                                    |
 
 Never log raw images, access tokens, reviewer passwords, full chat content, exact coordinates or provider keys.
 

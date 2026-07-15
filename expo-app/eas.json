@@ -13,6 +13,22 @@
         "simulator": true
       }
     },
+    "storeQa": {
+      "environment": "development",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_ENABLE_ANALYTICS": "false",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
     "preview": {
       "environment": "preview",
       "distribution": "internal",
@@ -29,14 +45,15 @@
     },
     "production": {
       "environment": "production",
+      "node": "22.22.3",
       "autoIncrement": true,
       "channel": "production",
       "ios": {
-        "image": "latest",
+        "image": "macos-sequoia-15.6-xcode-26.2",
         "credentialsSource": "local"
       },
       "android": {
-        "image": "latest",
+        "image": "ubuntu-24.04-jdk-17-ndk-r27b-sdk-55",
         "buildType": "app-bundle"
       },
       "env": {

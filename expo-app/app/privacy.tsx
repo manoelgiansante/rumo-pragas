@@ -49,7 +49,7 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 14 de julho de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 15 de julho de 2026</Text>
 
         <Text style={styles.intro}>
           Esta Política explica como a MM CAMPO FORTE LTDA., CNPJ 57.169.838/0001-20, responsável
@@ -75,9 +75,12 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Conta:</Text> nome, e-mail, identificador de autenticação e
-              dados de sessão para criar a conta, autenticar, recuperar acesso e prestar suporte. A
-              identidade de acesso AgroRumo pode ser compartilhada com outros produtos.
+              <Text style={styles.bold}>Conta e perfil:</Text> nome, e-mail, telefone opcional,
+              cidade e estado opcionais, identificador de autenticação e dados de sessão para criar
+              e administrar a conta e o perfil, autenticar, recuperar acesso, manter seu histórico e
+              prestar suporte. O identificador da conta também pode vincular eventos de uso para
+              continuidade do produto e análise de funcionamento. A identidade de acesso AgroRumo
+              pode ser compartilhada com outros produtos.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -121,8 +124,10 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Histórico e conteúdo:</Text> resultados salvos, mensagens
-              enviadas ao assistente e preferências necessárias para os recursos solicitados.
+              <Text style={styles.bold}>Mensagens do assistente (opcional):</Text> mensagens e
+              contexto do chat são enviados, após o consentimento para IA, ao provedor ativo para
+              gerar a resposta solicitada. O histórico e as preferências necessários ao recurso
+              também podem ser mantidos para dar continuidade à conversa.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -136,8 +141,9 @@ export default function PrivacyScreen() {
             />
             <Text style={styles.listText}>
               <Text style={styles.bold}>Dados técnicos:</Text> token de notificação quando
-              autorizado, versão do aplicativo, sistema, eventos de uso, desempenho e falhas
-              necessários para entregar notificações, prevenir abuso e manter o serviço.
+              autorizado, identificadores técnicos do dispositivo, versão do aplicativo, sistema,
+              eventos de uso, desempenho e falhas necessários para entregar notificações, analisar o
+              funcionamento, prevenir abuso e manter o serviço.
             </Text>
           </View>
         </View>

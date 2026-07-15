@@ -49,6 +49,18 @@ requireCondition(eas.cli?.version === '>= 20.0.0', 'EAS CLI mínimo deve ser >= 
 requireCondition(eas.cli?.appVersionSource === 'remote', 'appVersionSource deve permanecer remote');
 requireCondition(eas.build?.production?.autoIncrement === true, 'produção deve usar autoIncrement');
 requireCondition(
+  eas.build?.production?.node === '22.22.3' && pkg.engines?.node === '22.22.3',
+  'produção e package.json devem fixar Node 22.22.3',
+);
+requireCondition(
+  eas.build?.production?.ios?.image === 'macos-sequoia-15.6-xcode-26.2',
+  'produção iOS deve fixar a imagem SDK 55 com macOS 15.6 e Xcode 26.2',
+);
+requireCondition(
+  eas.build?.production?.android?.image === 'ubuntu-24.04-jdk-17-ndk-r27b-sdk-55',
+  'produção Android deve fixar a imagem SDK 55 com Ubuntu 24.04, JDK 17 e NDK r27b',
+);
+requireCondition(
   app.ios?.buildNumber === undefined,
   'buildNumber local conflita com versionamento remoto',
 );
@@ -157,6 +169,11 @@ const buildProperties = app.plugins?.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
 );
 const buildPropertiesConfig = Array.isArray(buildProperties) ? buildProperties[1] : null;
+requireCondition(
+  buildPropertiesConfig?.android?.compileSdkVersion === 36 &&
+    buildPropertiesConfig?.android?.targetSdkVersion === 36,
+  'Android deve preservar compileSdkVersion e targetSdkVersion 36',
+);
 requireCondition(
   buildPropertiesConfig?.ios?.buildReactNativeFromSource === true,
   'iOS deve compilar React Native do fonte para suportar o caminho local com espaços',

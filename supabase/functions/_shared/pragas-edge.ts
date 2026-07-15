@@ -122,7 +122,6 @@ export async function getPragasAppAccessState(
     admin
       .from("pragas_profiles")
       .select("id,user_id")
-      .eq("id", userId)
       .eq("user_id", userId)
       .maybeSingle(),
     admin

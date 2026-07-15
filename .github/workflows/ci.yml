@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Node 22.22.3
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -52,6 +53,21 @@ jobs:
 
       - name: EAS local build log redaction
         run: npm run test:eas-redactor
+
+      - name: Store release gates
+        run: npm run test:store-release-gates
+
+      - name: Data Safety contract tests
+        run: npm run test:data-safety
+
+      - name: Data Safety current declaration
+        run: npm run validate:data-safety
+
+      - name: Store screenshot QA harness
+        run: npm run test:store-screenshot-qa-server
+
+      - name: Release bundle environment gate
+        run: npm run test:release-bundle-env
 
       - name: Web security and routing configuration
         run: npm run validate:web-config

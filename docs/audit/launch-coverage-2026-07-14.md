@@ -1,9 +1,11 @@
 # Launch audit coverage — Rumo Pragas
 
 - Snapshot: 2026-07-14
+- Last evidence update: 2026-07-15
 - App source: expo-app
 - Backend and database source: supabase
-Website source: isolated rumo-pragas-landing worktree
+- Website source: canonical repository `manoelgiansante/rumo-pragas-landing-nextjs`, branch
+  `codex/rumo-pragas-landing-astro-launch-20260715` (PR #3)
 
 Status vocabulary:
 
@@ -188,11 +190,35 @@ There is no multi-farm team, consultant hierarchy or public community permission
 | Platform | Audited configuration | Corrected | Tested or evidence |
 | --- | --- | --- | --- |
 | Web export | Expo web bundle and CI artifact | Blocking export added to CI | Production export |
-| iOS | Expo bundle `com.agrorumo.rumopragas`, tablet support, deployment target, permission text, Apple auth and Sentry | Metadata, reviewer notes, screenshot process and conservative Accessibility Nutrition Labels matrix corrected; remote build baseline 63 observed read-only, with candidate number delegated to EAS `autoIncrement` | Local signing material detected; archive must be attempted before classifying a credential blocker; verify source-map upload, symbolication and accessibility separately on iPhone/iPad |
-| Android | Expo package `com.agrorumo.rumopragas`, min SDK 24, compile/target SDK 36, camera/coarse-location/notification only | Data Safety and store metadata corrected; remote version-code baseline 54 observed read-only, with candidate number delegated to EAS `autoIncrement` | Local signing material detected; signed AAB must be attempted before classifying a credential blocker; verify automatic source-map upload and symbolication |
+| iOS | Expo bundle `com.agrorumo.rumopragas`, tablet support, deployment target, permission text, Apple auth and Sentry | Metadata, reviewer notes, screenshot process and conservative Accessibility Nutrition Labels matrix corrected; remote build baseline 63 observed read-only, with candidate number delegated to EAS `autoIncrement` | A real Release simulator app was built with Xcode 26.2 and the iOS 26.2 SDK and its embedded production environment passed the release gate. The App Store archive exposed compromised distribution material; the certificate/profile/password must be revoked and replaced before a new eligible IPA can be generated. Verify source-map upload, symbolication and accessibility separately on iPhone/iPad. |
+| Android | Expo package `com.agrorumo.rumopragas`, min SDK 24, compile/target SDK 36, camera/coarse-location/notification only | Store metadata corrected; Data Safety is being reconciled against every optional profile field; remote version-code baseline 54 observed read-only, with candidate number delegated to EAS `autoIncrement` | Real signed production AAB built and its embedded production environment passed the release gate. Target SDK 36 meets the Google Play requirement effective 2026-08-31. Verify automatic source-map upload, symbolication and final Data Safety answers. |
 | Legacy native iOS | Root `RumoPragas.xcodeproj`, SwiftUI 1.0.0 (build 1), same bundle identifier | N/A: superseded by the published Expo client and excluded from current CI/store pipeline | Source and project inspected; do not archive or submit this target |
-| Landing | Static Astro candidate with legal/support/404 pages, consent-gated analytics and official store links | False paid/provider/offline claims removed; React hydration, misleading assets and unproven Universal Links excluded; HTTPS app associations fail closed until native support exists | Isolated candidate: Astro check 0/0/0, claims gate 30 files, build 9 pages, Playwright 75/75 across five desktop/mobile browser projects, and Lighthouse 18/18 with every category at 100 (max LCP 309 ms, CLS 0.00037, TBT 0 ms); replay in the selected repository and deployment remain gated on the owner's canonical-source decision |
+| Landing | Static Astro candidate with legal/support/404 pages, consent-gated analytics and official store links | False paid/provider/offline claims removed; React hydration, misleading assets and unproven Universal Links excluded; HTTPS app associations fail closed until native support exists; the audited Astro source was migrated into the canonical repository without carrying cache, deployment metadata or the former repository history | Canonical PR #3 at `4ea03d5`: both Lighthouse CI and E2E are green, Playwright is 75/75, remote preview smoke is 15/15, and the preview returns the expected CSP/HSTS/noindex and route status contract. Preview: `https://rumo-pragas-landing-2wytz15q7-manoels-projects-849ab1fe.vercel.app`. Production merge/deployment remains an explicit external gate. |
 | CI | Locked install, Expo Doctor, lint, typecheck, Jest coverage, web export and Deno Edge gate | Node 22.22.3, official GitHub actions v6, Deno 2.7.12 `fmt/lint/check/test`; false asynchronous EAS check removed | Workflow syntax plus local command parity |
+
+## Production compatibility evidence
+
+Read-only inventory of Supabase project `jxcnfyeemdltdfqtgbcl` on 2026-07-15 proved that the
+repository candidate is ahead of production. The nine dedicated Edge slugs used by the candidate
+are not deployed there, including diagnosis, chat, analytics, export, deletion/reactivation,
+feedback and AI-content moderation. Production also lacks `pragas_app_links`, the candidate's
+consent/rate-limit/idempotency/deletion/report/admin objects, the `pragas-avatars` bucket,
+`pragas_profiles.avatar_path` and the new RPC contracts. Shipping the client before this backend
+would leave critical authenticated flows returning 404 or failing on missing schema.
+
+The production profile identity model is also materially different from the original broad local
+migration assumption: all 82 inspected `pragas_profiles` rows have `id != user_id`. The legacy
+state includes 82 `pragas_subscriptions` rows while the shared `subscriptions` table has no
+Rumo Pragas rows. The broad migration was therefore replaced by additive, data-preserving
+production-compatibility migrations and an exact-slug deployment gate. No remote write was made.
+Those migrations must pass clean, legacy, partial-state, replay, rollback, RLS and cross-user
+contracts before an authenticated backup and explicitly authorized database-to-Edge deployment.
+
+The production build environment gate is independently pinned to the expected Supabase project
+and public-key fingerprint. It inspects the semantic Hermes string table instead of accepting byte
+prefixes, rejects competing hosts/ports/userinfo and privileged or prefix-lookalike keys, and has
+passed both the real Android AAB and the real iOS Release simulator app without logging either
+configured value.
 
 ## Terminal launch blockers
 
@@ -207,9 +233,14 @@ There is no multi-farm team, consultant hierarchy or public community permission
 3. The production landing and legal pages still carry “Agrônomo IA”, broad account/data deletion
    and billing language that does not match the reviewed free app. The tested landing candidate
    requires an explicitly authorized production deployment and public verification.
-4. Local signing material is present; iOS archive and Android signed AAB must be attempted before any remaining credential blocker is classified.
-5. App Store Connect and Play Console declarations need authenticated final comparison with the candidate binaries.
-6. Reviewer credentials must be added through secure store fields.
+4. Apple distribution material observed during the archive attempt is compromised and must be
+   revoked/rotated externally. Any IPA produced before that rotation is ineligible; a new archive
+   must be generated from the committed candidate with the replacement certificate/profile.
+5. App Store Connect and Play Console declarations need authenticated final comparison with the
+   candidate binaries. This includes Apple's age-rating questions required since 2026-01-31 and
+   the final Google Data Safety answers.
+6. The exposed reviewer password must be rotated externally, then supplied only through the
+   stores' secure reviewer fields and exercised once against the release backend.
 7. The `process-deletions` retry schedule needs live production evidence; synchronous app-scoped deletion does not depend on a global identity purge.
 8. Data Safety shared-data answers need current service-provider contract evidence.
 9. Real store screenshots must be captured from the signed candidate.
@@ -221,5 +252,9 @@ There is no multi-farm team, consultant hierarchy or public community permission
     auditable production migration; no repository-only task can close this gate.
 14. Accessibility Nutrition Labels must remain undeclared until every common task in
     `docs/accessibility-matrix.md` passes on the signed candidate, separately on iPhone and iPad.
+15. Production does not yet contain the schema/RPC/storage contracts or nine exact Edge slugs used
+    by this candidate. Deployment is blocked on the completed compatibility gate, an authenticated
+    pre-change backup/snapshot with restore evidence, and explicit authorization for the direct
+    production change; deploying only the client or only the login shim is unsafe.
 
 All other findings in this document are implemented and tested, N/A with evidence, or tied to a precise external verification.
