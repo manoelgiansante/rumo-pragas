@@ -26,7 +26,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { Colors, FontSize, FontWeight, Spacing, FontFamily } from '../constants/theme';
 import { PremiumCard } from './PremiumCard';

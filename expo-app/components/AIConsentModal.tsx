@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { AI_CONSENT_VERSION, AIConsentPurpose } from '../services/aiConsent';
 import { BorderRadius, Colors, FontFamily, FontSize, Spacing } from '../constants/theme';

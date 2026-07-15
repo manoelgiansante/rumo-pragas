@@ -12,10 +12,10 @@ import {
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { addBreadcrumb, captureMessage } from '../../services/sentry-shim';
-import { router } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -438,13 +438,25 @@ export default function LoginScreen() {
                 </TouchableOpacity>
                 <Text style={styles.consentText}>
                   {t('auth.acceptTerms')}{' '}
-                  <Text style={styles.consentLink} onPress={() => router.push('/privacy')}>
-                    {t('auth.privacyPolicy')}
-                  </Text>{' '}
+                  <Link href="/privacy" asChild>
+                    <Text
+                      style={styles.consentLink}
+                      accessibilityRole="link"
+                      accessibilityLabel={t('auth.privacyPolicy')}
+                    >
+                      {t('auth.privacyPolicy')}
+                    </Text>
+                  </Link>{' '}
                   {t('auth.and')}{' '}
-                  <Text style={styles.consentLink} onPress={() => router.push('/terms')}>
-                    {t('auth.termsOfUse')}
-                  </Text>
+                  <Link href="/terms" asChild>
+                    <Text
+                      style={styles.consentLink}
+                      accessibilityRole="link"
+                      accessibilityLabel={t('auth.termsOfUse')}
+                    >
+                      {t('auth.termsOfUse')}
+                    </Text>
+                  </Link>
                 </Text>
               </View>
             ) : null}
@@ -486,13 +498,25 @@ export default function LoginScreen() {
             {mode === 'login' ? (
               <Text style={styles.termsText}>
                 {t('auth.acceptTerms')}{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/terms')}>
-                  {t('auth.termsOfUse')}
-                </Text>{' '}
+                <Link href="/terms" asChild>
+                  <Text
+                    style={styles.termsLink}
+                    accessibilityRole="link"
+                    accessibilityLabel={t('auth.termsOfUse')}
+                  >
+                    {t('auth.termsOfUse')}
+                  </Text>
+                </Link>{' '}
                 {t('auth.and')}{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/privacy')}>
-                  {t('auth.privacyPolicy')}
-                </Text>
+                <Link href="/privacy" asChild>
+                  <Text
+                    style={styles.termsLink}
+                    accessibilityRole="link"
+                    accessibilityLabel={t('auth.privacyPolicy')}
+                  >
+                    {t('auth.privacyPolicy')}
+                  </Text>
+                </Link>
               </Text>
             ) : null}
 

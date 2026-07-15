@@ -6,6 +6,7 @@ import {
   StyleSheet,
   FlatList,
   useWindowDimensions,
+  Platform,
   type ListRenderItemInfo,
 } from 'react-native';
 // Dynamic insets replace the old Platform.OS === 'ios' ? 56 : 24 hack: the skip
@@ -16,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 // Família única de ícones do app é Ionicons (anti-AI-slop: consistência >
 // variedade). O onboarding era a única superfície usando lucide-react-native.
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import Animated, {
@@ -130,9 +131,9 @@ export default function OnboardingScreen() {
     [markOnboardingSeen, currentIndex],
   );
 
-  const goToNext = useCallback(() => {
-    if (currentIndex < PAGES.length - 1) {
-      const nextIndex = currentIndex + 1;
+  const navigateToPage = useCallback(
+    (nextIndex: number) => {
+      if (nextIndex < 0 || nextIndex >= PAGES.length) return;
       try {
         flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       } catch {
@@ -143,19 +144,34 @@ export default function OnboardingScreen() {
       }
       setCurrentIndex(nextIndex);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    },
+    [screenWidth],
+  );
+
+  const goToNext = useCallback(() => {
+    if (currentIndex < PAGES.length - 1) {
+      navigateToPage(currentIndex + 1);
     } else {
       finishOnboarding('completed');
     }
-  }, [currentIndex, screenWidth, finishOnboarding]);
+  }, [currentIndex, finishOnboarding, navigateToPage]);
+
+  const goToPrevious = useCallback(() => {
+    if (currentIndex > 0) navigateToPage(currentIndex - 1);
+  }, [currentIndex, navigateToPage]);
 
   const renderPage = useCallback(
-    ({ item }: ListRenderItemInfo<OnboardingPage>) => {
+    ({ item, index }: ListRenderItemInfo<OnboardingPage>) => {
+      const isCurrentPage = index === currentIndex;
       return (
         <LinearGradient
           colors={item.gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.page, { width: screenWidth, height: screenHeight }]}
+          aria-hidden={!isCurrentPage}
+          accessibilityElementsHidden={!isCurrentPage}
+          importantForAccessibility={isCurrentPage ? 'yes' : 'no-hide-descendants'}
         >
           {/* Decorative concentric rings behind the icon — adds depth without
               hurting perf (static views, no animation). */}
@@ -179,10 +195,15 @@ export default function OnboardingScreen() {
         </LinearGradient>
       );
     },
-    [screenWidth, screenHeight, isTablet, t],
+    [screenWidth, screenHeight, isTablet, currentIndex, t],
   );
 
   const isLastPage = currentIndex === PAGES.length - 1;
+  const currentPage = PAGES[currentIndex] ?? PAGES[0]!;
+  const carouselRoleProps =
+    Platform.OS === 'web'
+      ? ({ role: 'group' } as const)
+      : ({ accessibilityRole: 'adjustable' } as const);
 
   return (
     <View style={styles.container}>
@@ -205,6 +226,26 @@ export default function OnboardingScreen() {
           index,
         })}
         extraData={screenWidth}
+        {...carouselRoleProps}
+        accessibilityLabel={t(currentPage.titleKey)}
+        accessibilityHint={t(currentPage.subtitleKey)}
+        accessibilityValue={{
+          min: 1,
+          max: PAGES.length,
+          now: currentIndex + 1,
+          text: t('onboarding.pageOf', {
+            current: currentIndex + 1,
+            total: PAGES.length,
+          }),
+        }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'increment' && currentIndex < PAGES.length - 1) {
+            navigateToPage(currentIndex + 1);
+          } else if (event.nativeEvent.actionName === 'decrement') {
+            goToPrevious();
+          }
+        }}
         onMomentumScrollEnd={(e) => {
           if (screenWidth <= 0) return;
           const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);

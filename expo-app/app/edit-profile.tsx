@@ -18,7 +18,7 @@ import { formatPhoneBR } from '../utils/phone';
 // iOS sheet (modal) and on Android edge-to-edge (clears the status bar).
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../services/dialog';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';

@@ -1,6 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { withScope, captureException } from '../services/sentry-shim';
 import {

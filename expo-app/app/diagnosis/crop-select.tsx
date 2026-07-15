@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, Image, FlatList, StyleSheet } from 'react
 // rendered the header under the status bar). Correct inside iOS sheets too.
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {
