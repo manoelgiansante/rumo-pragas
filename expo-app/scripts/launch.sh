@@ -68,6 +68,10 @@ if [[ "$LOCAL_BUILD" == true && "$PLATFORM" == "all" ]]; then
   exit 2
 fi
 
+if [[ "$LOCAL_BUILD" == true && "$PROFILE" == "production" ]]; then
+  exec ./scripts/eas-local-production-build.sh --platform "$PLATFORM"
+fi
+
 command -v eas >/dev/null 2>&1 || {
   echo "ERRO: EAS CLI não encontrado." >&2
   exit 1

@@ -72,6 +72,8 @@ jobs:
         run: node expo-app/scripts/validate-release-surfaces.mjs
       - name: Native release configuration
         run: npm run validate:native-config
+      - name: EAS local build log redaction
+        run: npm run test:eas-redactor
       - name: Web security and routing configuration
         run: npm run validate:web-config
       - name: Diagnosis API contract

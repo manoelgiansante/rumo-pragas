@@ -38,10 +38,27 @@ cd expo-app
 Local and internal builds remain available without widening submission authority:
 
 ```bash
-./scripts/launch.sh --profile production --platform ios --local
-./scripts/launch.sh --profile production --platform android --local
+./scripts/eas-local-production-build.sh --platform ios
+./scripts/eas-local-production-build.sh --platform android
 ./scripts/launch.sh --profile preview --platform android
 ```
+
+Production local builds must use the protected wrapper above. The equivalent production path in
+`launch.sh --local` delegates to it. The wrapper fixes Node 22.22.3 and EAS CLI 21.0.0, enables `pipefail`, runs one
+platform at a time, preserves the EAS exit code and sends stdout/stderr through the versioned
+redactor before either the terminal or the `.artifacts/` log. Long base64 sequences and password
+fields are replaced; no raw EAS job payload is persisted. `SENTRY_DISABLE_AUTO_UPLOAD=true` is
+scoped only to the local build process. It is not written to `eas.json` or a production EAS
+Environment. A successful run creates a mode-600 signed artifact and sanitized log under
+`expo-app/.artifacts/`; a failed run must be diagnosed only from that sanitized log.
+
+On 2026-07-15, an EAS CLI 21 local iOS build failure included the serialized job in its error and
+therefore exposed Apple signing material and its password in terminal output. The known raw log was
+sanitized. Before any release candidate is generated or distributed, an authorized operator must
+rotate the affected Apple distribution certificate, provisioning profile and password in the
+approved secret store/EAS credentials, revoke the superseded material where applicable, and record
+the new non-secret identifiers in the private release record. Repository work cannot perform this
+external rotation, and no pre-rotation iOS artifact is eligible for release.
 
 The production path reads only environment-variable names via `eas env:list production`; values
 remain suppressed. A missing name, failed EAS query or invalid option stops before build.

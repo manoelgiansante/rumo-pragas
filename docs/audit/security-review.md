@@ -51,6 +51,17 @@ remove imediatamente; nenhuma correção histórica será reaplicada no banco re
 
 A varredura do candidato rastreado não encontrou novo segredo útil. Achados históricos/ignorados incluem artefatos de configuração já conhecidos; nenhum valor é reproduzido neste relatório. A credencial histórica de conta revisora continua exigindo rotação externa antes da submissão. Chave anônima Supabase e DSN público de ingestão não são tratados como segredos, mas não autorizam acesso de serviço.
 
+Em 2026-07-15, a falha de um build iOS local com EAS CLI 21 imprimiu o job serializado e expôs
+material de assinatura Apple e a senha associada no terminal. O log bruto conhecido foi sanitizado
+sem reproduzir qualquer valor. Builds locais de produção agora passam obrigatoriamente pelo wrapper
+`expo-app/scripts/eas-local-production-build.sh`, que fixa Node 22.22.3 e EAS CLI 21.0.0, remove
+códigos de controle e sanitiza a saída antes do
+console e do arquivo, preserva o código de saída e limita `SENTRY_DISABLE_AUTO_UPLOAD` ao processo
+local. O teste sintético do redator roda no CI. A correção do repositório reduz nova exposição, mas
+não recupera a confidencialidade do material já impresso: certificado de distribuição, provisioning
+profile e senha Apple permanecem bloqueadores externos e devem ser rotacionados antes de qualquer
+novo release iOS.
+
 ## Não aplicável ou bloqueado externamente
 
 - Cobrança, assinatura paga, trial, cupom e restauração de compra: não aplicáveis ao lançamento gratuito; rotas dedicadas foram aposentadas e testadas.
@@ -70,7 +81,9 @@ A varredura do candidato rastreado não encontrou novo segredo útil. Achados hi
 3. Reconciliar cirurgicamente `supabase_migrations.schema_migrations` com o histórico local. A divergência impede `db push`; nenhuma migration deve ser aplicada remotamente em lote.
 4. Aprovar a alteração direta de produção para aplicar apenas o DDL reconciliado e publicar as funções dedicadas, seguida de smoke e monitoramento. Esta execução não recebeu autorização para mutar produção.
 5. Rotacionar a credencial histórica da conta revisora e atualizar o cofre/console correspondente sem registrar o valor no Git.
-6. Confirmar no painel os schedules, backup/restauração e alertas do projeto; essas provas não são inferíveis apenas pelo repositório.
+6. Rotacionar o certificado de distribuição, provisioning profile e senha Apple expostos na falha
+   local de 2026-07-15; revogar o material anterior quando aplicável e só então gerar novo candidato.
+7. Confirmar no painel os schedules, backup/restauração e alertas do projeto; essas provas não são inferíveis apenas pelo repositório.
 
 ## Comandos de verificação
 

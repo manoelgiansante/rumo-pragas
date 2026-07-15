@@ -19,6 +19,7 @@
     "validate:native-config": "node scripts/validate-native-config.mjs",
     "validate:web-config": "node scripts/validate-web-config.mjs",
     "validate:mcp-sdk": "tsx scripts/test-mcp-sdk.ts",
+    "test:eas-redactor": "node --test scripts/test-redact-eas-output.mjs",
     "validate:store-assets": "node scripts/validate-store-assets.mjs ios && node scripts/validate-store-assets.mjs android",
     "status:store-submission": "node scripts/store-submission-status.mjs",
     "prepare": "cd .. && husky"
