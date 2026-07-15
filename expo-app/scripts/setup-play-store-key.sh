@@ -2,7 +2,7 @@
 # Uso: ./scripts/setup-play-store-key.sh /path/to/downloaded-play-key.json
 #
 # Instala o Service Account JSON do Google Play Console no local correto
-# para que `eas submit --platform android` consiga autenticar.
+# para que o gate explícito `./scripts/submit.sh` consiga autenticar.
 #
 # Criar o Service Account em:
 #   https://play.google.com/console -> Setup -> API access
@@ -46,4 +46,4 @@ echo "OK. play-store-key.json configurado em $TARGET"
 echo "Permissoes: $(stat -f '%Sp' "$TARGET" 2>/dev/null || stat -c '%A' "$TARGET" 2>/dev/null)"
 echo ""
 echo "Proximo passo:"
-echo "  eas submit --platform android --profile production"
+echo "  ./scripts/submit.sh --help"

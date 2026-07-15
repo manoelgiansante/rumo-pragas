@@ -65,8 +65,8 @@ if ! find dist -type f -name '*.map' -print -quit | grep -q .; then
   exit 1
 fi
 
-command -v eas >/dev/null 2>&1 || {
-  echo "ERRO: EAS CLI não encontrado." >&2
+[[ -x ./scripts/eas-pinned.sh ]] || {
+  echo "ERRO: executor EAS fixado não encontrado." >&2
   exit 1
 }
 
@@ -75,11 +75,20 @@ command -v eas >/dev/null 2>&1 || {
   exit 1
 }
 
-./scripts/validate-prod-env.sh "$ENVIRONMENT"
+RUMO_EAS_CLI_MODE=pinned ./scripts/validate-prod-env.sh "$ENVIRONMENT"
 
 echo "Enviando source maps OTA do ambiente '$ENVIRONMENT'; nenhum segredo será exibido pelo script."
-eas env:exec "$ENVIRONMENT" \
+set +e
+CI=1 ./scripts/eas-pinned.sh env:exec "$ENVIRONMENT" \
   './node_modules/.bin/sentry-expo-upload-sourcemaps dist' \
-  --non-interactive
+  --non-interactive \
+  </dev/null >/dev/null 2>&1
+UPLOAD_STATUS=$?
+set -e
+
+if [[ "$UPLOAD_STATUS" -ne 0 ]]; then
+  echo "ERRO: upload de source maps falhou; a saída bruta foi suprimida." >&2
+  exit "$UPLOAD_STATUS"
+fi
 
 echo "Upload concluído. Valide a symbolication do release/dist no Sentry antes de encerrar a atualização."

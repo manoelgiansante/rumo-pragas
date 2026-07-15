@@ -54,10 +54,14 @@ A varredura do candidato rastreado não encontrou novo segredo útil. Achados hi
 Em 2026-07-15, a falha de um build iOS local com EAS CLI 21 imprimiu o job serializado e expôs
 material de assinatura Apple e a senha associada no terminal. O log bruto conhecido foi sanitizado
 sem reproduzir qualquer valor. Builds locais de produção agora passam obrigatoriamente pelo wrapper
-`expo-app/scripts/eas-local-production-build.sh`, que fixa Node 22.22.3 e EAS CLI 21.0.0, remove
-códigos de controle e sanitiza a saída antes do
-console e do arquivo, preserva o código de saída e limita `SENTRY_DISABLE_AUTO_UPLOAD` ao processo
-local. O teste sintético do redator roda no CI. A correção do repositório reduz nova exposição, mas
+`expo-app/scripts/eas-local-production-build.sh`, que fixa Node 22.22.3 e EAS CLI 21.0.0, suprime
+integralmente stdout/stderr do EAS antes do console e do arquivo, preserva o código de saída,
+desabilita analytics e limita `SENTRY_DISABLE_AUTO_UPLOAD` ao processo local. O arquivo gerado
+contém somente status criado pelo próprio wrapper. O redator ampliado continua como defesa em
+profundidade e seu teste sintético roda no CI, mas nenhum caminho de release depende dele. Build,
+submit e upload OTA usam o mesmo executor EAS fixado; a validação de nomes remotos não imprime nem
+persiste valores, tem timeout e encerra o grupo de processos. A correção do repositório reduz nova
+exposição, mas
 não recupera a confidencialidade do material já impresso: certificado de distribuição, provisioning
 profile e senha Apple permanecem bloqueadores externos e devem ser rotacionados antes de qualquer
 novo release iOS.

@@ -70,8 +70,8 @@ fi
   exit 3
 }
 
-command -v eas >/dev/null 2>&1 || {
-  echo "ERRO: EAS CLI não encontrado." >&2
+[[ -x ./scripts/eas-pinned.sh ]] || {
+  echo "ERRO: executor EAS fixado não encontrado." >&2
   exit 1
 }
 
@@ -93,10 +93,10 @@ if [[ "$PLATFORM" == "android" ]]; then
   fi
 fi
 
-./scripts/validate-prod-env.sh production
+RUMO_EAS_CLI_MODE=pinned ./scripts/validate-prod-env.sh production
 
 SUBMIT_COMMAND=(
-  eas submit
+  ./scripts/eas-pinned.sh submit
   --platform "$PLATFORM"
   --profile production
   --non-interactive
@@ -113,4 +113,15 @@ else
 fi
 
 echo "Submissão autorizada e separada do build: plataforma $PLATFORM."
-"${SUBMIT_COMMAND[@]}"
+echo "Saída bruta do EAS suprimida; confirme o resultado no console autenticado da loja."
+set +e
+CI=1 "${SUBMIT_COMMAND[@]}" </dev/null >/dev/null 2>&1
+SUBMIT_STATUS=$?
+set -e
+
+if [[ "$SUBMIT_STATUS" -ne 0 ]]; then
+  echo "ERRO: submissão falhou com código $SUBMIT_STATUS; a saída bruta foi suprimida." >&2
+  exit "$SUBMIT_STATUS"
+fi
+
+echo "Submissão aceita pelo EAS. Confirme o processamento no console da loja."

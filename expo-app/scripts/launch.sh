@@ -72,8 +72,8 @@ if [[ "$LOCAL_BUILD" == true && "$PROFILE" == "production" ]]; then
   exec ./scripts/eas-local-production-build.sh --platform "$PLATFORM"
 fi
 
-command -v eas >/dev/null 2>&1 || {
-  echo "ERRO: EAS CLI não encontrado." >&2
+[[ -x ./scripts/eas-pinned.sh ]] || {
+  echo "ERRO: executor EAS fixado não encontrado." >&2
   exit 1
 }
 
@@ -83,7 +83,7 @@ echo "Perfil: $PROFILE"
 echo "Execução: $([[ "$LOCAL_BUILD" == true ]] && echo local || echo EAS Build)"
 
 if [[ "$PROFILE" == "production" ]]; then
-  ./scripts/validate-prod-env.sh production
+  RUMO_EAS_CLI_MODE=pinned ./scripts/validate-prod-env.sh production
 else
   echo "Perfil interno: validação de secrets de produção não se aplica."
 fi
@@ -97,7 +97,7 @@ if [[ "$SCREENSHOT_COUNT" -eq 0 ]]; then
 fi
 
 BUILD_COMMAND=(
-  eas build
+  ./scripts/eas-pinned.sh build
   --platform "$PLATFORM"
   --profile "$PROFILE"
   --non-interactive
@@ -112,7 +112,16 @@ printf 'Executando build sem submissão automática: eas build --platform %s --p
 [[ "$LOCAL_BUILD" == true ]] && printf ' --local'
 printf '\n'
 
-"${BUILD_COMMAND[@]}"
+echo "Saída bruta do EAS suprimida; acompanhe detalhes no painel autenticado do EAS."
+set +e
+CI=1 "${BUILD_COMMAND[@]}" </dev/null >/dev/null 2>&1
+BUILD_STATUS=$?
+set -e
+
+if [[ "$BUILD_STATUS" -ne 0 ]]; then
+  echo "ERRO: EAS Build falhou com código $BUILD_STATUS; a saída bruta foi suprimida." >&2
+  exit "$BUILD_STATUS"
+fi
 
 echo "Build concluído ou enfileirado. Nenhuma submissão foi iniciada."
 echo "Uma submissão exige autorização explícita e o comando separado ./scripts/submit.sh."

@@ -6,16 +6,15 @@ umask 077
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACTS_DIR="$APP_ROOT/.artifacts"
-REDACTOR="$APP_ROOT/scripts/redact-eas-output.mjs"
-NODE_VERSION="22.22.3"
-EAS_CLI_PACKAGE="eas-cli@21.0.0"
+EAS_EXECUTOR="$APP_ROOT/scripts/eas-pinned.sh"
 
 usage() {
   cat <<'EOF'
 Uso: ./scripts/eas-local-production-build.sh --platform ios|android
 
 Gera um build EAS local de produção, nunca submete às lojas e grava somente
-saída sanitizada em .artifacts/. Uma plataforma por execução é obrigatória.
+um registro de status controlado em .artifacts/. A saída bruta do EAS é
+suprimida. Uma plataforma por execução é obrigatória.
 EOF
 }
 
@@ -52,24 +51,13 @@ case "$PLATFORM" in
     ;;
 esac
 
-command -v fnm >/dev/null 2>&1 || {
-  echo "ERRO: fnm não encontrado; Node $NODE_VERSION é obrigatório." >&2
+[[ -x "$EAS_EXECUTOR" ]] || {
+  echo "ERRO: executor EAS fixado não encontrado." >&2
   exit 1
 }
-
-[[ -f "$REDACTOR" ]] || {
-  echo "ERRO: redator seguro de saída EAS não encontrado." >&2
-  exit 1
-}
-
-ACTUAL_NODE_VERSION="$(fnm exec --using="$NODE_VERSION" -- node --version 2>/dev/null)"
-if [[ "$ACTUAL_NODE_VERSION" != "v$NODE_VERSION" ]]; then
-  echo "ERRO: Node $NODE_VERSION indisponível via fnm." >&2
-  exit 1
-fi
 
 cd "$APP_ROOT"
-./scripts/validate-prod-env.sh production
+RUMO_EAS_CLI_MODE=pinned ./scripts/validate-prod-env.sh production
 
 install -d -m 700 "$ARTIFACTS_DIR"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -83,39 +71,36 @@ fi
 
 echo "Rumo Pragas — build EAS local de produção protegido"
 echo "Plataforma: $PLATFORM"
-echo "Node: $NODE_VERSION"
-echo "Log sanitizado: $LOG_PATH"
+echo "Executor: Node 22.22.3 + EAS CLI 21.0.0 fixados"
+echo "Log seguro de status: $LOG_PATH"
 echo "Artefato esperado: $ARTIFACT_PATH"
 echo "Sentry: upload automático desabilitado somente nesta execução local."
+echo "Saída do EAS: suprimida para impedir exposição de credenciais."
 echo "Nenhuma submissão será iniciada."
 
+{
+  echo "Rumo Pragas — status do build EAS local de produção"
+  echo "Plataforma: $PLATFORM"
+  echo "Início UTC: $TIMESTAMP"
+  echo "Saída bruta do EAS suprimida por segurança."
+} >"$LOG_PATH"
+chmod 600 "$LOG_PATH"
+
 set +e
-NO_COLOR=1 FORCE_COLOR=0 SENTRY_DISABLE_AUTO_UPLOAD=true \
-  fnm exec --using="$NODE_VERSION" -- \
-  npx --yes "$EAS_CLI_PACKAGE" build \
+CI=1 DISABLE_EAS_ANALYTICS=1 NO_COLOR=1 FORCE_COLOR=0 SENTRY_DISABLE_AUTO_UPLOAD=true \
+  "$EAS_EXECUTOR" build \
     --platform "$PLATFORM" \
     --profile production \
     --local \
     --non-interactive \
     --freeze-credentials \
     --output "$ARTIFACT_PATH" \
-    2>&1 \
-  | fnm exec --using="$NODE_VERSION" -- node "$REDACTOR" \
-  | tee "$LOG_PATH"
-PIPELINE_STATUS=("${PIPESTATUS[@]}")
+    </dev/null >/dev/null 2>&1
+BUILD_STATUS=$?
 set -e
 
-BUILD_STATUS="${PIPELINE_STATUS[0]:-1}"
-REDACTOR_STATUS="${PIPELINE_STATUS[1]:-1}"
-TEE_STATUS="${PIPELINE_STATUS[2]:-1}"
-
-if [[ "$REDACTOR_STATUS" -ne 0 || "$TEE_STATUS" -ne 0 ]]; then
-  echo "ERRO: a sanitização ou a gravação segura do log falhou; o build não é aceito." >&2
-  exit 1
-fi
-
 if [[ "$BUILD_STATUS" -ne 0 ]]; then
-  echo "Build EAS local falhou com código $BUILD_STATUS; consulte somente o log sanitizado." \
+  echo "Build EAS local falhou com código $BUILD_STATUS; a saída bruta foi suprimida." \
     | tee -a "$LOG_PATH"
   exit "$BUILD_STATUS"
 fi
@@ -126,4 +111,4 @@ if [[ ! -s "$ARTIFACT_PATH" ]]; then
 fi
 
 chmod 600 "$ARTIFACT_PATH" "$LOG_PATH"
-echo "Build concluído. Artefato e log sanitizado estão em .artifacts/."
+echo "Build concluído. Artefato e log seguro de status estão em .artifacts/."

@@ -11,15 +11,40 @@ case "$EAS_ENVIRONMENT" in
   *) echo "ERRO: ambiente EAS inválido: $EAS_ENVIRONMENT" >&2; exit 2 ;;
 esac
 
-command -v eas >/dev/null 2>&1 || {
-  echo "ERRO: EAS CLI não encontrado." >&2
-  exit 1
-}
-
-command -v node >/dev/null 2>&1 || {
-  echo "ERRO: Node.js não encontrado." >&2
-  exit 1
-}
+case "${RUMO_EAS_CLI_MODE:-system}" in
+  pinned)
+    command -v fnm >/dev/null 2>&1 || {
+      echo "ERRO: fnm não encontrado para executar o EAS CLI fixado." >&2
+      exit 1
+    }
+    fnm exec --using=22.22.3 -- node --version >/dev/null 2>&1 || {
+      echo "ERRO: Node 22.22.3 indisponível via fnm." >&2
+      exit 1
+    }
+    [[ -x ./scripts/eas-pinned.sh ]] || {
+      echo "ERRO: executor EAS fixado não encontrado." >&2
+      exit 1
+    }
+    EAS_COMMAND=(./scripts/eas-pinned.sh)
+    NODE_COMMAND=(fnm exec --using=22.22.3 -- node)
+    ;;
+  system)
+    command -v node >/dev/null 2>&1 || {
+      echo "ERRO: Node.js não encontrado." >&2
+      exit 1
+    }
+    command -v eas >/dev/null 2>&1 || {
+      echo "ERRO: EAS CLI não encontrado." >&2
+      exit 1
+    }
+    EAS_COMMAND=(eas)
+    NODE_COMMAND=(node)
+    ;;
+  *)
+    echo "ERRO: modo interno de EAS CLI inválido." >&2
+    exit 2
+    ;;
+esac
 
 [[ -f eas.json ]] || {
   echo "ERRO: expo-app/eas.json não encontrado." >&2
@@ -42,30 +67,85 @@ OPTIONAL_GOOGLE_NAMES=(
 
 echo "Validando configuração do ambiente EAS '$EAS_ENVIRONMENT' sem exibir valores..."
 
-# A saída fica somente em memória. Sem --include-sensitive, e sem echo do conteúdo,
-# nenhum valor público ou secreto chega aos logs.
-if ! EAS_ENV_LIST=$(eas env:list --environment "$EAS_ENVIRONMENT" --scope project --format short 2>/dev/null); then
-  echo "ERRO: não foi possível consultar o EAS Environment. Verifique autenticação e projeto." >&2
+PROBE_SCRIPT="./scripts/probe-eas-env.mjs"
+[[ -f "$PROBE_SCRIPT" ]] || {
+  echo "ERRO: verificador seguro do EAS Environment não encontrado." >&2
   exit 1
-fi
+}
+
+probe_name() {
+  local name="$1"
+  "${NODE_COMMAND[@]}" "$PROBE_SCRIPT" "$name" "$EAS_ENVIRONMENT" "${EAS_COMMAND[@]}"
+}
+
+ALL_REMOTE_NAMES=("${REQUIRED_REMOTE_NAMES[@]}" "${OPTIONAL_GOOGLE_NAMES[@]}")
+PROBE_PIDS=()
+
+cancel_probes() {
+  local exit_code="$1"
+  trap - HUP INT TERM
+  for pid in "${PROBE_PIDS[@]}"; do
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+  for pid in "${PROBE_PIDS[@]}"; do
+    wait "$pid" 2>/dev/null || true
+  done
+  exit "$exit_code"
+}
+
+trap 'cancel_probes 129' HUP
+trap 'cancel_probes 130' INT
+trap 'cancel_probes 143' TERM
+
+for name in "${ALL_REMOTE_NAMES[@]}"; do
+  probe_name "$name" &
+  PROBE_PIDS+=("$!")
+done
+
+PROBE_STATUSES=()
+set +e
+for index in "${!PROBE_PIDS[@]}"; do
+  wait "${PROBE_PIDS[$index]}"
+  PROBE_STATUSES[index]=$?
+done
+set -e
+trap - HUP INT TERM
 
 MISSING=()
-for name in "${REQUIRED_REMOTE_NAMES[@]}"; do
-  if grep -Eq "(^|[[:space:]])${name}([[:space:]=]|$)" <<<"$EAS_ENV_LIST"; then
-    echo "OK: variável remota presente: $name"
-  else
-    MISSING+=("EAS Environment:$name")
-  fi
+REQUIRED_COUNT=${#REQUIRED_REMOTE_NAMES[@]}
+for ((index = 0; index < REQUIRED_COUNT; index++)); do
+  name="${ALL_REMOTE_NAMES[$index]}"
+  probe_status="${PROBE_STATUSES[$index]}"
+  case "$probe_status" in
+    0) echo "OK: variável remota presente: $name" ;;
+    3) MISSING+=("EAS Environment:$name") ;;
+    124)
+      echo "ERRO: consulta EAS excedeu 30 segundos para $name." >&2
+      exit 1
+      ;;
+    *)
+      echo "ERRO: não foi possível consultar $name no EAS Environment." >&2
+      exit 1
+      ;;
+  esac
 done
 
-for name in "${OPTIONAL_GOOGLE_NAMES[@]}"; do
-  if grep -Eq "(^|[[:space:]])${name}([[:space:]=]|$)" <<<"$EAS_ENV_LIST"; then
-    echo "OK: provedor Google opcional configurado: $name"
-  else
-    echo "N/A: $name ausente; CTA Google correspondente ficará oculto."
-  fi
+for ((index = REQUIRED_COUNT; index < ${#ALL_REMOTE_NAMES[@]}; index++)); do
+  name="${ALL_REMOTE_NAMES[$index]}"
+  probe_status="${PROBE_STATUSES[$index]}"
+  case "$probe_status" in
+    0) echo "OK: provedor Google opcional configurado: $name" ;;
+    3) echo "N/A: $name ausente; CTA Google correspondente ficará oculto." ;;
+    124)
+      echo "ERRO: consulta EAS excedeu 30 segundos para $name." >&2
+      exit 1
+      ;;
+    *)
+      echo "ERRO: não foi possível consultar $name no EAS Environment." >&2
+      exit 1
+      ;;
+  esac
 done
-unset EAS_ENV_LIST
 
 if ((${#MISSING[@]} > 0)); then
   echo "ERRO: configuração obrigatória ausente:" >&2
