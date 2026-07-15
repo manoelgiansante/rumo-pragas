@@ -35,9 +35,9 @@ const expoRouter = app.plugins?.find(
 );
 const expoRouterConfig = Array.isArray(expoRouter) ? expoRouter[1] : null;
 requireCondition(
-  expoRouterConfig?.asyncRoutes?.web === true &&
+  expoRouterConfig?.asyncRoutes?.web === 'development' &&
     expoRouterConfig?.asyncRoutes?.default === 'development',
-  'Expo Router deve dividir rotas web em produção sem alterar bundles nativos',
+  'rotas assíncronas devem ficar restritas ao desenvolvimento para preservar navegação offline',
 );
 
 const broadIconImports = [];
@@ -135,5 +135,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  'Configuração web validada: noindex, headers, roteamento, code splitting e semântica acessível.',
+  'Configuração web validada: noindex, headers, roteamento offline-safe e semântica acessível.',
 );

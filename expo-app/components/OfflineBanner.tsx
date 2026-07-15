@@ -27,39 +27,49 @@ export function OfflineBanner() {
   // Ignore the initial null state (still detecting).
   const isOffline = isConnected === false || isInternetReachable === false;
 
-  const height = useSharedValue(0);
+  const spacerHeight = useSharedValue(0);
+  const bannerHeight = useSharedValue(0);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOffline) {
       setVisible(true);
-      height.value = withTiming(BANNER_HEIGHT + insets.top, { duration: 300 });
+      spacerHeight.value = withTiming(BANNER_HEIGHT, { duration: 300 });
+      bannerHeight.value = withTiming(BANNER_HEIGHT + insets.top, { duration: 300 });
       opacity.value = withTiming(1, { duration: 300 });
     } else {
-      height.value = withTiming(0, { duration: 300 });
+      spacerHeight.value = withTiming(0, { duration: 300 });
+      bannerHeight.value = withTiming(0, { duration: 300 });
       opacity.value = withTiming(0, { duration: 300 }, (finished) => {
         if (finished) {
           runOnJS(setVisible)(false);
         }
       });
     }
-  }, [isOffline, insets.top, height, opacity]);
+  }, [isOffline, insets.top, spacerHeight, bannerHeight, opacity]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    height: height.value,
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: spacerHeight.value,
+  }));
+  const bannerStyle = useAnimatedStyle(() => ({
+    height: bannerHeight.value,
     opacity: opacity.value,
   }));
 
   if (!visible) return null;
 
   return (
-    <Animated.View
-      style={[styles.banner, animatedStyle, { paddingTop: insets.top }]}
-      accessibilityLabel={t('common.offlineBanner')}
-      accessibilityRole="alert"
-    >
-      <Ionicons name="cloud-offline-outline" size={16} color={Colors.black} />
-      <Text style={styles.text}>{t('common.offline')}</Text>
+    <Animated.View testID="offline-banner-spacer" style={[styles.spacer, spacerStyle]}>
+      <Animated.View
+        testID="offline-banner"
+        style={[styles.banner, bannerStyle, { paddingTop: insets.top }]}
+        pointerEvents="none"
+        accessibilityLabel={t('common.offlineBanner')}
+        accessibilityRole="alert"
+      >
+        <Ionicons name="cloud-offline-outline" size={16} color={Colors.black} />
+        <Text style={styles.text}>{t('common.offline')}</Text>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -67,6 +77,10 @@ export function OfflineBanner() {
 const BANNER_HEIGHT = 40;
 
 const styles = StyleSheet.create({
+  spacer: {
+    position: 'relative',
+    zIndex: 1000,
+  },
   banner: {
     backgroundColor: Colors.warmAmber,
     flexDirection: 'row',
