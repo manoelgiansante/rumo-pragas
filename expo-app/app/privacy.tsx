@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -14,6 +14,10 @@ import {
 
 export default function PrivacyScreen() {
   const { t } = useTranslation();
+  const legalLanguageProps =
+    Platform.OS === 'web'
+      ? ({ lang: 'pt-BR' } as const)
+      : ({ accessibilityLanguage: 'pt-BR' } as const);
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -33,13 +37,14 @@ export default function PrivacyScreen() {
             importantForAccessibility="no"
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header">
+        <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>
           {t('privacy.headerTitle')}
         </Text>
         <View style={styles.backButton} />
       </View>
 
       <ScrollView
+        {...legalLanguageProps}
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -53,7 +58,7 @@ export default function PrivacyScreen() {
           necessidade, transparência, segurança e livre acesso.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           1. Dados tratados e finalidades
         </Text>
         <Text style={styles.paragraph}>
@@ -137,7 +142,7 @@ export default function PrivacyScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           2. Como usamos os dados
         </Text>
         <Text style={styles.paragraph}>
@@ -148,7 +153,7 @@ export default function PrivacyScreen() {
           pessoais.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           3. Armazenamento e conservação
         </Text>
         <Text style={styles.paragraph}>
@@ -161,7 +166,7 @@ export default function PrivacyScreen() {
           obrigação legal, à proteção de dados ou ao exercício regular de direitos.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           4. Provedores e compartilhamentos
         </Text>
         <Text style={styles.importantBox}>
@@ -186,7 +191,7 @@ export default function PrivacyScreen() {
           necessidade de exercício regular de direitos.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           5. Inteligência artificial
         </Text>
         <Text style={styles.importantBox}>
@@ -196,7 +201,7 @@ export default function PrivacyScreen() {
           aplicação.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           6. Seus direitos (LGPD)
         </Text>
         <Text style={styles.paragraph}>Nos termos da LGPD, você pode solicitar, sem custo:</Text>
@@ -274,7 +279,7 @@ export default function PrivacyScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           7. Segurança
         </Text>
         <Text style={styles.paragraph}>
@@ -284,7 +289,7 @@ export default function PrivacyScreen() {
           comunicados conforme a legislação e a regulamentação aplicáveis.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           8. Exclusão dos dados do Rumo Pragas
         </Text>
         <Text style={styles.paragraph}>
@@ -311,7 +316,7 @@ export default function PrivacyScreen() {
           do art. 16 da LGPD podem ser conservados somente para a finalidade cabível.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           9. Dados no dispositivo
         </Text>
         <Text style={styles.paragraph}>
@@ -321,7 +326,7 @@ export default function PrivacyScreen() {
           aplicativo.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           10. Crianças e adolescentes
         </Text>
         <Text style={styles.paragraph}>
@@ -330,7 +335,7 @@ export default function PrivacyScreen() {
           solicitar a atuação do responsável legal.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           11. Alterações nesta Política
         </Text>
         <Text style={styles.paragraph}>
@@ -339,7 +344,7 @@ export default function PrivacyScreen() {
           adequado.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           12. Controlador e canal de privacidade
         </Text>
         <Text style={styles.paragraph}>

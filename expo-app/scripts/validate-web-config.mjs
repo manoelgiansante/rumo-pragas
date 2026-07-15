@@ -10,6 +10,10 @@ const html = fs.readFileSync(path.join(root, 'app/+html.tsx'), 'utf8');
 const onboarding = fs.readFileSync(path.join(root, 'app/onboarding.tsx'), 'utf8');
 const login = fs.readFileSync(path.join(root, 'app/(auth)/login.tsx'), 'utf8');
 const rootLayout = fs.readFileSync(path.join(root, 'app/_layout.tsx'), 'utf8');
+const legalSources = ['terms', 'privacy'].map((route) => ({
+  route,
+  source: fs.readFileSync(path.join(root, `app/${route}.tsx`), 'utf8'),
+}));
 const failures = [];
 const requireCondition = (condition, message) => {
   if (!condition) failures.push(message);
@@ -67,6 +71,15 @@ for (const route of ['/terms', '/privacy']) {
   requireCondition(
     login.includes(`<Link href="${route}" asChild>`),
     `link legal sem semântica navegável no login: ${route}`,
+  );
+}
+for (const { route, source } of legalSources) {
+  requireCondition(
+    source.includes("? ({ lang: 'pt-BR' } as const)") &&
+      source.includes("({ accessibilityLanguage: 'pt-BR' } as const)") &&
+      source.includes('aria-level={1}') &&
+      source.includes('aria-level={2}'),
+    `documento legal sem idioma ou hierarquia de títulos acessível: /${route}`,
   );
 }
 

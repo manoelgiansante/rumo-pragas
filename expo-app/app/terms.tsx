@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -14,6 +14,10 @@ import {
 
 export default function TermsScreen() {
   const { t } = useTranslation();
+  const legalLanguageProps =
+    Platform.OS === 'web'
+      ? ({ lang: 'pt-BR' } as const)
+      : ({ accessibilityLanguage: 'pt-BR' } as const);
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -33,20 +37,21 @@ export default function TermsScreen() {
             importantForAccessibility="no"
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header">
+        <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>
           {t('terms.headerTitle')}
         </Text>
         <View style={styles.backButton} />
       </View>
 
       <ScrollView
+        {...legalLanguageProps}
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.lastUpdated}>Última atualização: 14 de julho de 2026</Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           1. Aceitação dos Termos
         </Text>
         <Text style={styles.paragraph}>
@@ -55,7 +60,7 @@ export default function TermsScreen() {
           Privacidade.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           2. Descrição do Serviço
         </Text>
         <Text style={styles.paragraph}>
@@ -66,7 +71,7 @@ export default function TermsScreen() {
           nova tentativa quando a conexão retornar. Não há inferência offline.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           3. Uso do Aplicativo
         </Text>
         <Text style={styles.paragraph}>
@@ -78,7 +83,7 @@ export default function TermsScreen() {
           profissional definitiva.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           4. Diagnósticos Informativos
         </Text>
         <Text style={styles.importantBox}>
@@ -89,7 +94,7 @@ export default function TermsScreen() {
           profissional responsável antes de qualquer decisão de manejo.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           5. Responsabilidades do Usuário
         </Text>
         <Text style={styles.paragraph}>
@@ -100,7 +105,7 @@ export default function TermsScreen() {
           as permissões aplicáveis.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           6. Limitação de Responsabilidade
         </Text>
         <Text style={styles.paragraph}>
@@ -110,7 +115,7 @@ export default function TermsScreen() {
           limites legais, o usuário deve validar as informações antes de agir.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           7. Propriedade Intelectual
         </Text>
         <Text style={styles.paragraph}>
@@ -119,7 +124,7 @@ export default function TermsScreen() {
           autorização necessária para processá-lo e prestar a funcionalidade solicitada.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           8. Dados e Privacidade
         </Text>
         <Text style={styles.paragraph}>
@@ -128,7 +133,7 @@ export default function TermsScreen() {
           titular.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           9. Serviço gratuito
         </Text>
         <Text style={styles.paragraph}>
@@ -137,7 +142,7 @@ export default function TermsScreen() {
           serviço.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           10. Exclusão de dados e encerramento do uso
         </Text>
         <Text style={styles.paragraph}>
@@ -162,7 +167,7 @@ export default function TermsScreen() {
           legislação aplicável.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           11. Alterações nos Termos
         </Text>
         <Text style={styles.paragraph}>
@@ -171,7 +176,7 @@ export default function TermsScreen() {
           por meio adequado.
         </Text>
 
-        <Text style={styles.sectionTitle} accessibilityRole="header">
+        <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           12. Lei aplicável e contato
         </Text>
         <Text style={styles.paragraph}>
