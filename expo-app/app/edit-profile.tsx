@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from '../services/sentry-shim';
 import {
   Colors,
   Spacing,
@@ -35,7 +35,12 @@ import {
 } from '../constants/theme';
 import { CROPS } from '../constants/crops';
 import { useAuthContext } from '../contexts/AuthContext';
-import { supabase, timeoutHeader } from '../services/supabase';
+import { supabase } from '../services/supabase';
+import {
+  getPragasAvatarSignedUrl,
+  parseOwnedLegacyAvatarUrl,
+  replacePragasAvatar,
+} from '../services/avatar';
 import { Avatar } from '../components/Avatar';
 import { KeyboardDoneAccessory, DONE_ACCESSORY_ID } from '../components/KeyboardDoneAccessory';
 
@@ -75,10 +80,11 @@ interface ProfileData {
   state: string;
   phone: string;
   crops: string[];
+  avatar_path: string | null;
+  avatar_legacy_url: string | null;
   avatar_url: string | null;
 }
 
-const AVATAR_BUCKET = 'avatars';
 const AVATAR_MAX_DIM = 512;
 
 export default function EditProfileScreen() {
@@ -100,6 +106,8 @@ export default function EditProfileScreen() {
     state: '',
     phone: '',
     crops: [],
+    avatar_path: null,
+    avatar_legacy_url: null,
     avatar_url: null,
   });
 
@@ -109,25 +117,36 @@ export default function EditProfileScreen() {
 
     (async () => {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('pragas_profiles')
-          .select('full_name, city, state, phone, crops, avatar_url')
+          .select('full_name, city, state, phone, crops, avatar_path, avatar_url')
           .eq('user_id', user.id)
           .single();
+        if (error) throw new Error('PROFILE_LOAD_FAILED');
 
         if (mounted && data) {
+          const signedAvatar = await getPragasAvatarSignedUrl(user.id, data.avatar_path ?? null);
+          const legacyAvatar = parseOwnedLegacyAvatarUrl(user.id, data.avatar_url ?? null)
+            ? data.avatar_url
+            : null;
+          if (!mounted) return;
           setProfile({
             full_name: data.full_name || '',
             city: data.city || '',
             state: data.state || '',
             phone: data.phone || '',
             crops: data.crops || [],
-            avatar_url: data.avatar_url || null,
+            avatar_path: data.avatar_path || null,
+            avatar_legacy_url: data.avatar_url || null,
+            avatar_url: signedAvatar || legacyAvatar,
           });
         }
-      } catch (err) {
-        if (__DEV__) console.error('Failed to load profile:', err);
-        Sentry.captureException(err, { tags: { feature: 'editProfile.load' } });
+      } catch {
+        if (__DEV__) console.warn('[editProfile] profile load failed');
+        captureMessage('profile load failed', {
+          level: 'warning',
+          tags: { feature: 'editProfile.load' },
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -148,8 +167,7 @@ export default function EditProfileScreen() {
   }, []);
 
   /**
-   * Pick + compress + upload to Supabase Storage.
-   * Path convention: `<user_id>/avatar-<timestamp>.jpg` (RLS enforced).
+   * Pick + compress + upload to private app-scoped Supabase Storage.
    */
   const uploadAvatar = useCallback(
     async (source: 'camera' | 'library') => {
@@ -196,44 +214,33 @@ export default function EditProfileScreen() {
         // Upload as ArrayBuffer (cross-platform RN-safe)
         const response = await fetch(manipulated.uri);
         const arrayBuffer = await response.arrayBuffer();
-        const path = `${user.id}/avatar-${Date.now()}.jpg`;
+        const saved = await replacePragasAvatar({
+          userId: user.id,
+          bytes: arrayBuffer,
+          mimeType: 'image/jpeg',
+          previousPath: profile.avatar_path,
+          previousLegacyUrl: profile.avatar_legacy_url,
+        });
 
-        const { error: uploadError } = await supabase.storage
-          .from(AVATAR_BUCKET)
-          .upload(path, arrayBuffer, {
-            contentType: 'image/jpeg',
-            upsert: true,
-            // Avatar uploads move real image bytes and must survive slow rural
-            // networks — opt this one request out of the blanket 20s client
-            // timeout (60s). Global default stays 20s for auth/data (FIX-13).
-            headers: timeoutHeader(60_000),
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrl } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
-        // Cache-bust so React Native Image picks up the new bytes immediately.
-        const finalUrl = `${publicUrl.publicUrl}?t=${Date.now()}`;
-
-        // Persist URL on profile (and metadata for quick reads in headers).
-        // upsert (not update) so the avatar persists even when the profile row
-        // doesn't exist yet — a plain update against a missing row is a silent
-        // no-op (0 rows, no error) and the avatar would appear to save but vanish.
-        await supabase
-          .from('pragas_profiles')
-          .upsert({ user_id: user.id, avatar_url: finalUrl }, { onConflict: 'user_id' });
-
-        setProfile((p) => ({ ...p, avatar_url: finalUrl }));
+        setProfile((p) => ({
+          ...p,
+          avatar_path: saved.path,
+          avatar_legacy_url: null,
+          avatar_url: saved.signedUrl ?? manipulated.uri,
+        }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      } catch (err) {
-        if (__DEV__) console.error('Avatar upload failed:', err);
-        Sentry.captureException(err, { tags: { feature: 'editProfile.avatarUpload' } });
+      } catch {
+        if (__DEV__) console.warn('[editProfile] avatar upload failed');
+        captureMessage('avatar upload failed', {
+          level: 'warning',
+          tags: { feature: 'editProfile.avatarUpload' },
+        });
         showAlert(t('common.error'), t('editProfile.avatarUploadError'));
       } finally {
         setUploadingAvatar(false);
       }
     },
-    [user, t],
+    [profile.avatar_legacy_url, profile.avatar_path, user, t],
   );
 
   const handleAvatarPress = useCallback(() => {
@@ -304,9 +311,12 @@ export default function EditProfileScreen() {
       showAlert(t('settings.editProfile'), t('settings.profileSaved'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    } catch (err) {
-      if (__DEV__) console.error('Failed to save profile:', err);
-      Sentry.captureException(err, { tags: { feature: 'editProfile.save' } });
+    } catch {
+      if (__DEV__) console.warn('[editProfile] profile save failed');
+      captureMessage('profile save failed', {
+        level: 'warning',
+        tags: { feature: 'editProfile.save' },
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       showAlert(t('settings.editProfile'), t('settings.profileSaveError'));
     } finally {

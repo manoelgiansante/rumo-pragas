@@ -1,12 +1,13 @@
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
-import { addBreadcrumb, captureException } from './sentry-shim';
+import { addBreadcrumb } from './sentry-shim';
 import { Config } from '../constants/config';
-import type { DiagnosisResult, AgrioPrediction } from '../types/diagnosis';
+import type { DiagnosisResult } from '../types/diagnosis';
 import { parseNotes } from '../types/diagnosis';
 import i18n from '../i18n';
 import { hasLocationConsent } from './userPreferences';
-import { getIAHubClient, isIAHubEnabled, isIAHubDiagnoseEnabled } from '../lib/ia-hub';
-import type { DiagnoseResponse } from '@agrorumo/ia-hub-client';
+import { AI_CONSENT_VERSION, assertAIConsent, revokeAIConsent } from './aiConsent';
+import * as Crypto from 'expo-crypto';
+import { minimizeCoordinates } from './locationPrivacy';
 
 export type { DiagnosisResult };
 
@@ -14,6 +15,73 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 // P0: hard timeout for diagnose edge function — reviewer on slow network must
 // see a clear error within 60s, never an infinite spinner (App Store 2.1.0 rejection risk).
 const DIAGNOSE_TIMEOUT_MS = 60_000;
+const REST_TIMEOUT_MS = 15_000;
+const MAX_DIAGNOSIS_RESPONSE_BYTES = 1024 * 1024;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function readBoundedJson(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (new TextEncoder().encode(text).byteLength > MAX_DIAGNOSIS_RESPONSE_BYTES) {
+    throw new Error(i18n.t('errors.invalidServer'));
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(i18n.t('errors.invalidServer'));
+  }
+}
+
+function parseDiagnosisRow(value: unknown): DiagnosisResult | null {
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.id !== 'string' ||
+    value.id.length < 1 ||
+    value.id.length > 128 ||
+    typeof value.crop !== 'string' ||
+    value.crop.length < 1 ||
+    value.crop.length > 80 ||
+    typeof value.created_at !== 'string' ||
+    !Number.isFinite(Date.parse(value.created_at))
+  ) {
+    return null;
+  }
+  const optionalStrings = ['pest_id', 'pest_name', 'image_url', 'notes'] as const;
+  for (const key of optionalStrings) {
+    if (value[key] !== undefined && value[key] !== null && typeof value[key] !== 'string') {
+      return null;
+    }
+  }
+  if (
+    value.confidence !== undefined &&
+    value.confidence !== null &&
+    (typeof value.confidence !== 'number' ||
+      !Number.isFinite(value.confidence) ||
+      value.confidence < 0 ||
+      value.confidence > 1)
+  ) {
+    return null;
+  }
+  const row = value as unknown as DiagnosisResult;
+  return { ...row, parsedNotes: parseNotes(row.notes) };
+}
+
+async function fetchWithTimeout(input: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(i18n.t('errors.requestTimeout'), { cause: error });
+    }
+    throw new Error(i18n.t('errors.networkError'), { cause: error });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function validateBase64ImageSize(base64: string): void {
   // Base64 encodes 3 bytes into 4 chars, so decoded size ~ base64.length * 3/4
@@ -38,6 +106,8 @@ function sanitizeErrorMessage(status: number): string {
       return i18n.t('errors.noPermission');
     case status === 413:
       return i18n.t('errors.imageTooLargeServer');
+    case status === 428:
+      return i18n.t('aiConsent.requiredError');
     case status === 429:
       return i18n.t('errors.tooManyRequests');
     case status >= 500:
@@ -54,7 +124,12 @@ export async function sendDiagnosis(
   longitude: number | null,
   token: string,
   userId?: string,
+  idempotencyKey: string = Crypto.randomUUID(),
 ): Promise<DiagnosisResult> {
+  // Defense in depth: screens show the disclosure, but no transport path may
+  // send a photo unless the current disclosure version was accepted locally.
+  await assertAIConsent(userId, 'diagnosis');
+
   // ── P0-3 (LGPD): gate lat/lng by explicit opt-in consent ──
   // Default is "no consent → no location sent". Even if the caller provides
   // coordinates, we drop them before leaving the device unless the user has
@@ -65,8 +140,9 @@ export async function sendDiagnosis(
     try {
       const consented = await hasLocationConsent(userId);
       if (consented) {
-        safeLatitude = latitude;
-        safeLongitude = longitude;
+        const approximate = minimizeCoordinates(latitude, longitude);
+        safeLatitude = approximate?.latitude ?? null;
+        safeLongitude = approximate?.longitude ?? null;
       }
     } catch (e) {
       // Fail closed — any error → no location sent
@@ -76,51 +152,12 @@ export async function sendDiagnosis(
 
   addBreadcrumb({
     category: 'diagnosis',
-    message: `Sending diagnosis for crop: ${cropType}`,
+    message: 'Sending diagnosis',
     level: 'info',
-    data: {
-      cropType,
-      hasLocation: !!(safeLatitude && safeLongitude),
-      provider: isIAHubDiagnoseEnabled() ? 'ia-hub' : 'supabase-edge',
-      iaHubAvailable: isIAHubEnabled(),
-    },
   });
 
   // Validate image size before sending (applies to both transport paths)
   validateBase64ImageSize(imageBase64);
-
-  // ── Feature-flagged IA Hub path (IH-6 / IH-7) ────────────────────────
-  // Gated by `isIAHubDiagnoseEnabled()` (NOT just `isIAHubEnabled()`): the
-  // diagnose flow only routes through the IA Hub once the server-side
-  // contract is attested (JWT verify + pragas_diagnoses persistence +
-  // monthly quota — see lib/ia-hub.ts header). Until then we keep the
-  // legacy edge function, which already enforces all three. On any IA Hub
-  // failure we throw the same error shape the legacy path throws so the
-  // caller (loading screen) doesn't need to know which provider answered.
-  if (isIAHubDiagnoseEnabled()) {
-    const ia = getIAHubClient();
-    // ZERO-X: never call the IA Hub without the user's Supabase JWT — the
-    // hub must derive identity/billing from `auth.getUser(jwt)`, never from
-    // a body `userId`. Missing token → fall back to the legacy path.
-    if (ia && token) {
-      return sendDiagnosisViaIAHub(ia, {
-        imageBase64,
-        cropType,
-        latitude: safeLatitude,
-        longitude: safeLongitude,
-        userId,
-        token,
-      });
-    }
-    // Flag on but client unavailable OR no user JWT → fall through to legacy
-    // with a Sentry breadcrumb so we notice the silent downgrade.
-    addBreadcrumb({
-      category: 'diagnosis',
-      message: 'ia_hub_diagnose_on_but_client_or_token_missing_fallback_legacy',
-      level: 'warning',
-      data: { hasClient: !!ia, hasToken: !!token },
-    });
-  }
 
   return sendDiagnosisLegacy({
     imageBase64,
@@ -128,6 +165,8 @@ export async function sendDiagnosis(
     safeLatitude,
     safeLongitude,
     token,
+    ...(userId !== undefined ? { userId } : {}),
+    idempotencyKey,
   });
 }
 
@@ -137,9 +176,12 @@ async function sendDiagnosisLegacy(args: {
   safeLatitude: number | null;
   safeLongitude: number | null;
   token: string;
+  userId?: string;
+  idempotencyKey: string;
 }): Promise<DiagnosisResult> {
-  const { imageBase64, cropType, safeLatitude, safeLongitude, token } = args;
-  const url = `${Config.SUPABASE_URL}/functions/v1/diagnose`;
+  const { imageBase64, cropType, safeLatitude, safeLongitude, token, userId, idempotencyKey } =
+    args;
+  const url = `${Config.SUPABASE_URL}/functions/v1/diagnose-pragas`;
 
   // Validate URL is HTTPS
   validateHttpsUrl(url);
@@ -155,6 +197,9 @@ async function sendDiagnosisLegacy(args: {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        'Idempotency-Key': idempotencyKey,
+        'X-Pragas-AI-Consent-Version': AI_CONSENT_VERSION,
+        'X-Pragas-AI-Consent-Purpose': 'diagnosis',
       },
       body: JSON.stringify({
         image_base64: imageBase64,
@@ -175,213 +220,41 @@ async function sendDiagnosisLegacy(args: {
   clearTimeout(timeoutId);
 
   if (!response.ok) {
-    // FREE BUILD (Apple Guideline 3.1.1): the app is 100% free with UNLIMITED
-    // diagnoses, so there is nowhere to send the user to buy. Should the backend
-    // ever still return a 403 limit, surface it as a plain error — NEVER
-    // navigate to any buy flow.
-    if (response.status === 403) {
+    if (response.status === 428 && userId) {
+      // The server ledger is authoritative. Persist a local fail-closed
+      // tombstone so a withdrawal made on another device takes effect here.
       try {
-        const errorData = await response.json();
-        if (errorData?.limit !== undefined && errorData?.plan) {
-          const planLabel = errorData.plan === 'free' ? i18n.t('errors.planFree') : errorData.plan;
-          throw new Error(i18n.t('errors.planLimit', { limit: errorData.limit, plan: planLabel }));
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message.includes(String(i18n.t('errors.planFree')))) throw e;
+        await revokeAIConsent(userId, 'diagnosis');
+      } catch {
+        // Keep the sanitized 428 response. A later request will remain blocked
+        // by the server even if this device's storage is temporarily unusable.
       }
     }
+    // The product is free and unlimited. Never interpret a legacy 403 payload
+    // as a quota/paywall response or expose backend details to the user.
     throw new Error(sanitizeErrorMessage(response.status));
   }
 
-  const data = await response.json();
-
-  // Parse notes if they come as string
-  if (data.notes && !data.parsedNotes) {
-    data.parsedNotes = parseNotes(data.notes);
-  }
-
-  return data as DiagnosisResult;
+  const data = parseDiagnosisRow(await readBoundedJson(response));
+  if (!data) throw new Error(i18n.t('errors.invalidServer'));
+  return data;
 }
-
-/**
- * IA Hub transport for the Pragas vision diagnose flow.
- *
- * Maps the IA Hub `POST /v1/diagnose` JSON response (`{diagnosis, confidence,
- * candidates, recommendations}`) onto the legacy `DiagnosisResult` shape that
- * the UI already understands. The Supabase edge function used to do this
- * mapping server-side; here we do it client-side so the rest of the app
- * (result screen, history) sees identical data regardless of provider.
- *
- * The IA Hub call uses multipart upload (base64 → Blob) so we don't pay the
- * +33% transport overhead of sending a base64-as-JSON string.
- */
-async function sendDiagnosisViaIAHub(
-  ia: ReturnType<typeof getIAHubClient> & object,
-  args: {
-    imageBase64: string;
-    cropType: string;
-    latitude: number | null;
-    longitude: number | null;
-    userId?: string | undefined;
-    /** Supabase access token (JWT) — forwarded for server-side auth.getUser. */
-    token: string;
-  },
-): Promise<DiagnosisResult> {
-  const { imageBase64, cropType, latitude, longitude, userId, token } = args;
-
-  // Build a multipart-compatible file shape that works on both RN (FormData
-  // accepts {uri,type,name} or Blob) and Hermes. We prefer Blob when the
-  // runtime supports it, falling back to a data URI for older RN.
-  let imageFile: { uri: string; type: string; name: string } | Blob;
-  try {
-    if (typeof Blob !== 'undefined' && typeof atob === 'function') {
-      const binary = atob(imageBase64);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-      imageFile = new Blob([bytes], { type: 'image/jpeg' });
-    } else {
-      imageFile = {
-        uri: `data:image/jpeg;base64,${imageBase64}`,
-        type: 'image/jpeg',
-        name: 'diagnosis.jpg',
-      };
-    }
-  } catch {
-    imageFile = {
-      uri: `data:image/jpeg;base64,${imageBase64}`,
-      type: 'image/jpeg',
-      name: 'diagnosis.jpg',
-    };
-  }
-
-  let response: DiagnoseResponse;
-  try {
-    response = await ia.diagnose(
-      {
-        // The IA Hub uses `prompt` for free-text symptoms and `context` for
-        // structured signals (crop, geo). Pragas only has the photo; the
-        // prompt is a tiny hint the routing layer uses to pick the vision
-        // backend variant.
-        prompt: `Diagnose plant disease/pest in crop "${cropType}".`,
-        images: [imageFile],
-        // ZERO-X: `context` carries ONLY non-authoritative signals. The
-        // user's identity is NEVER passed here — the IA Hub must resolve it
-        // from the forwarded JWT via `auth.getUser(jwt)` and use that for
-        // scope, persistence (pragas_diagnoses), and quota/billing. Sending
-        // `userId` in the body would be trivially spoofable.
-        context: {
-          crop: cropType,
-          latitude,
-          longitude,
-          app: 'rumo-pragas',
-        },
-      },
-      {
-        // Forward the caller's Supabase access token so the IA Hub can
-        // authenticate the end user server-side (ZERO-X). The app-scoped
-        // API key (bundled plaintext) only authenticates the *app*, never
-        // the *user*.
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-  } catch (err) {
-    captureException(err, {
-      tags: { stage: 'ia_hub_diagnose', provider: 'ia-hub' },
-    });
-    // Re-throw with a user-friendly message; loading.tsx will route the
-    // user to the error result screen the same way as the legacy path.
-    if (err instanceof Error) {
-      // IA Hub rate-limit (RumoIARateLimitError) maps to "too many requests";
-      // auth errors → "session expired"; everything else → generic.
-      const name = err.name ?? '';
-      if (name.includes('RateLimit')) {
-        throw new Error(i18n.t('errors.tooManyRequests'), { cause: err });
-      }
-      if (name.includes('Auth')) {
-        throw new Error(i18n.t('errors.sessionExpired'), { cause: err });
-      }
-      if (name.includes('Abort') || name.includes('Network')) {
-        throw new Error(i18n.t('errors.networkError'), { cause: err });
-      }
-      throw new Error(i18n.t('errors.diagnosisError'), { cause: err });
-    }
-    throw new Error(i18n.t('errors.diagnosisError'), { cause: err });
-  }
-
-  return adaptIAHubDiagnoseResponse(response, { cropType, userId, latitude, longitude });
-}
-
-/**
- * Pure adapter: IA Hub `DiagnoseResponse` → legacy `DiagnosisResult`.
- *
- * Kept exported (via `__internal`) so the unit tests can pin the shape
- * without spinning up a fake fetch.
- */
-function adaptIAHubDiagnoseResponse(
-  response: DiagnoseResponse,
-  ctx: {
-    cropType: string;
-    userId?: string | undefined;
-    latitude: number | null;
-    longitude: number | null;
-  },
-): DiagnosisResult {
-  const candidates = Array.isArray(response.candidates) ? response.candidates : [];
-  const predictions: AgrioPrediction[] = candidates.map((c, idx) => ({
-    id: c.label || `candidate_${idx}`,
-    confidence: typeof c.confidence === 'number' ? c.confidence : 0,
-    common_name: c.label,
-  }));
-
-  const top = predictions[0];
-  const notesPayload = {
-    message: response.diagnosis,
-    crop: ctx.cropType,
-    predictions,
-    id_array: predictions,
-    enrichment: {
-      // Recommendations from the IA Hub map onto the chemical-treatment
-      // bucket as a sensible default. When the IA Hub starts returning
-      // structured enrichment we'll widen this mapping.
-      chemical_treatment: response.recommendations ?? [],
-    },
-  };
-  const notesString = JSON.stringify(notesPayload);
-
-  const result: DiagnosisResult = {
-    // The IA Hub does not yet persist the diagnosis itself — we synthesise
-    // a transient id so the result screen can navigate / share. The
-    // canonical persisted id will be added in IH-7 once the server-side
-    // pragas_diagnoses INSERT moves to the IA Hub worker.
-    id: response.requestId ?? `iahub_${Date.now()}`,
-    user_id: ctx.userId ?? '',
-    crop: ctx.cropType,
-    pest_id: top?.id,
-    pest_name: top?.common_name ?? response.diagnosis,
-    confidence: typeof response.confidence === 'number' ? response.confidence : top?.confidence,
-    notes: notesString,
-    parsedNotes: parseNotes(notesString),
-    location_lat: ctx.latitude ?? undefined,
-    location_lng: ctx.longitude ?? undefined,
-    created_at: new Date().toISOString(),
-  };
-  return result;
-}
-
-/** Test-only exports — DO NOT import from app code. */
-export const __internal = { adaptIAHubDiagnoseResponse };
 
 export async function fetchDiagnoses(
   token: string,
   userId: string,
   limit: number = 50,
 ): Promise<DiagnosisResult[]> {
-  const url =
-    `${Config.SUPABASE_URL}/rest/v1/pragas_diagnoses` +
-    `?user_id=eq.${userId}&order=created_at.desc&limit=${limit}`;
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 50);
+  const params = new URLSearchParams({
+    select: 'id,crop,pest_id,pest_name,confidence,notes,created_at',
+    user_id: `eq.${userId}`,
+    order: 'created_at.desc',
+    limit: String(safeLimit),
+  });
+  const url = `${Config.SUPABASE_URL}/rest/v1/pragas_diagnoses?${params.toString()}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       apikey: Config.SUPABASE_ANON_KEY,
@@ -390,20 +263,23 @@ export async function fetchDiagnoses(
   });
 
   if (!response.ok) {
-    throw new Error(`${i18n.t('errors.fetchDiagnoses')}: ${response.status}`);
+    throw new Error(i18n.t('errors.fetchDiagnoses'));
   }
 
-  const rows = await response.json();
-  return rows.map((row: DiagnosisResult) => ({
-    ...row,
-    parsedNotes: parseNotes(row.notes),
-  }));
+  const raw = await readBoundedJson(response);
+  if (!Array.isArray(raw) || raw.length > safeLimit) {
+    throw new Error(i18n.t('errors.invalidServer'));
+  }
+  const rows = raw.map(parseDiagnosisRow);
+  if (rows.some((row) => row === null)) throw new Error(i18n.t('errors.invalidServer'));
+  return rows as DiagnosisResult[];
 }
 
 export async function deleteDiagnosis(token: string, id: string): Promise<void> {
-  const url = `${Config.SUPABASE_URL}/rest/v1/pragas_diagnoses?id=eq.${id}`;
+  const params = new URLSearchParams({ id: `eq.${id}` });
+  const url = `${Config.SUPABASE_URL}/rest/v1/pragas_diagnoses?${params.toString()}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -413,14 +289,15 @@ export async function deleteDiagnosis(token: string, id: string): Promise<void> 
   });
 
   if (!response.ok) {
-    throw new Error(`${i18n.t('errors.deleteDiagnosis')}: ${response.status}`);
+    throw new Error(i18n.t('errors.deleteDiagnosis'));
   }
 }
 
 export async function fetchDiagnosisCount(token: string, userId: string): Promise<number> {
-  const url = `${Config.SUPABASE_URL}/rest/v1/pragas_diagnoses` + `?user_id=eq.${userId}&select=id`;
+  const params = new URLSearchParams({ user_id: `eq.${userId}`, select: 'id' });
+  const url = `${Config.SUPABASE_URL}/rest/v1/pragas_diagnoses?${params.toString()}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'HEAD',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -430,7 +307,7 @@ export async function fetchDiagnosisCount(token: string, userId: string): Promis
   });
 
   if (!response.ok) {
-    throw new Error(`${i18n.t('errors.fetchCount')}: ${response.status}`);
+    throw new Error(i18n.t('errors.fetchCount'));
   }
 
   const count = response.headers.get('content-range');
@@ -438,7 +315,9 @@ export async function fetchDiagnosisCount(token: string, userId: string): Promis
     const match = count.match(/\/(\d+)/);
     // Capture group 1 is guaranteed present when `match` is truthy; assert for
     // noUncheckedIndexedAccess without changing runtime behavior.
-    return match ? parseInt(match[1]!, 10) : 0;
+    if (!match) return 0;
+    const parsed = Number(match[1]);
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
   }
   return 0;
 }

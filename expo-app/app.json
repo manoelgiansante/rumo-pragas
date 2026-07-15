@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rumo Pragas IA",
     "slug": "rumo-pragas",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,23 +15,19 @@
     "assetBundlePatterns": [
       "assets/icon.png",
       "assets/splash-icon.png",
-      "assets/adaptive-icon.png",
       "assets/favicon.png",
-      "assets/android-icon-foreground.png",
-      "assets/android-icon-background.png",
       "assets/android-icon-monochrome.png"
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.agrorumo.rumopragas",
-      "buildNumber": "46",
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:pragas.agrorumo.com"],
       "requireFullScreen": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "O Rumo Pragas IA usa a câmera para que você fotografe plantas, folhas, frutos e sintomas visíveis de pragas ou doenças diretamente na lavoura, para diagnóstico imediato por IA agrícola.",
-        "NSPhotoLibraryUsageDescription": "O Rumo Pragas IA usa sua galeria para que você selecione fotos de plantas, folhas ou frutos afetados (feitas anteriormente na lavoura) e envie ao diagnóstico por IA agrícola, incluindo registros de infestações, sintomas de doenças e comparações de tratamento.",
-        "NSLocationWhenInUseUsageDescription": "O Rumo Pragas IA usa sua localização (apenas quando o app está em uso) para enriquecer o diagnóstico com dados de clima regional (temperatura, umidade, precipitação) que influenciam o ciclo das pragas, e para enviar alertas de infestações próximas à sua lavoura. É opcional — o app funciona normalmente sem localização.",
+        "RCTNewArchEnabled": true,
+        "NSCameraUsageDescription": "O Rumo Pragas IA usa a câmera para fotografar plantas, folhas, frutos e sintomas visíveis e realizar uma triagem visual educativa e probabilística por IA. O resultado pode estar incorreto e não substitui avaliação profissional.",
+        "NSPhotoLibraryUsageDescription": "O Rumo Pragas IA usa sua galeria para selecionar uma foto de planta, folha ou fruto e realizar uma triagem visual educativa e probabilística por IA. O resultado pode estar incorreto e não substitui avaliação profissional.",
+        "NSLocationWhenInUseUsageDescription": "Se você autorizar, o Rumo Pragas IA usa localização aproximada enquanto o app está aberto para consultar temperatura, umidade e precipitação da área e contextualizar o diagnóstico. A permissão é opcional e pode ser revogada nos Ajustes.",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": ["whatsapp"],
         "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
@@ -59,7 +55,49 @@
             "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
           }
         ],
+        "NSPrivacyTracking": false,
         "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeName",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhoneNumber",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhysicalAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+              "NSPrivacyCollectedDataTypePurposeAnalytics"
+            ]
+          },
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotosorVideos",
             "NSPrivacyCollectedDataTypeLinked": true,
@@ -75,6 +113,20 @@
             "NSPrivacyCollectedDataTypePurposes": [
               "NSPrivacyCollectedDataTypePurposeAppFunctionality"
             ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherUserContent",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeProductInteraction",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAnalytics"]
           },
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
@@ -97,7 +149,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#022822",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
@@ -117,20 +169,6 @@
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "pragas.agrorumo.com",
-              "pathPrefix": "/"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
       ]
     },
     "web": {
@@ -155,29 +193,29 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "O Rumo Pragas IA usa a câmera para que você fotografe plantas, folhas, frutos e sintomas visíveis de pragas ou doenças diretamente na lavoura, para diagnóstico imediato por IA agrícola."
+          "cameraPermission": "O Rumo Pragas IA usa a câmera para fotografar plantas, folhas, frutos e sintomas visíveis e realizar uma triagem visual educativa e probabilística por IA. O resultado pode estar incorreto e não substitui avaliação profissional."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "O Rumo Pragas IA usa sua galeria para que você selecione fotos de plantas, folhas ou frutos afetados (feitas anteriormente na lavoura) e envie ao diagnóstico por IA agrícola, incluindo registros de infestações, sintomas de doenças e comparações de tratamento.",
-          "cameraPermission": "O Rumo Pragas IA usa a câmera para que você fotografe plantas, folhas, frutos e sintomas visíveis de pragas ou doenças diretamente na lavoura, para diagnóstico imediato por IA agrícola."
+          "photosPermission": "O Rumo Pragas IA usa sua galeria para selecionar uma foto de planta, folha ou fruto e realizar uma triagem visual educativa e probabilística por IA. O resultado pode estar incorreto e não substitui avaliação profissional.",
+          "cameraPermission": "O Rumo Pragas IA usa a câmera para fotografar plantas, folhas, frutos e sintomas visíveis e realizar uma triagem visual educativa e probabilística por IA. O resultado pode estar incorreto e não substitui avaliação profissional."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "O Rumo Pragas IA usa sua localização (apenas quando o app está em uso) para enriquecer o diagnóstico com dados de clima regional (temperatura, umidade, precipitação) que influenciam o ciclo das pragas, e para enviar alertas de infestações próximas à sua lavoura. É opcional — o app funciona normalmente sem localização."
+          "locationWhenInUsePermission": "Se você autorizar, o Rumo Pragas IA usa localização aproximada enquanto o app está aberto para consultar temperatura, umidade e precipitação da área e contextualizar o diagnóstico. A permissão é opcional e pode ser revogada nos Ajustes."
         }
       ],
       "expo-sharing",
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/android-icon-monochrome.png",
           "color": "#06281D",
-          "defaultChannel": "pest-alerts",
+          "defaultChannel": "climate-risk",
           "sounds": []
         }
       ],
@@ -185,13 +223,22 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "15.1",
+            "buildReactNativeFromSource": true
           },
           "android": {
             "minSdkVersion": 24,
             "compileSdkVersion": 36,
             "targetSdkVersion": 36
           }
+        }
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": true,
+          "barStyle": "dark",
+          "visibility": "visible"
         }
       ],
       "expo-localization",
@@ -203,7 +250,9 @@
           "project": "rumo-pragas",
           "url": "https://sentry.io/"
         }
-      ]
+      ],
+      "./plugins/withQuotedSentryXcodeScripts",
+      "expo-asset"
     ],
     "extra": {
       "eas": {

@@ -14,7 +14,7 @@ import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as Sentry from '@sentry/react-native';
+import { addBreadcrumb, captureMessage } from '../../services/sentry-shim';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -97,7 +97,7 @@ export default function LoginScreen() {
     // covers the form). The user can fill it later in edit-profile.
 
     submitGuardRef.current = true;
-    Sentry.addBreadcrumb({
+    addBreadcrumb({
       category: 'auth',
       message: `login.submit.${mode}`,
       level: 'info',
@@ -125,7 +125,7 @@ export default function LoginScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       // We swallow the surface message (the hook owns the error banner), but
       // we want Sentry to know which failure happened for prod debugging.
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: `login.submit.${mode}.failed`,
         level: 'warning',
@@ -163,7 +163,7 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     if (googleLoading || !googleReady) return;
     try {
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: 'login.google.start',
         level: 'info',
@@ -171,7 +171,7 @@ export default function LoginScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const outcome = await googleSignIn();
       if (outcome.kind === 'cancelled') {
-        Sentry.addBreadcrumb({
+        addBreadcrumb({
           category: 'auth',
           message: 'login.google.cancelled',
           level: 'info',
@@ -180,20 +180,24 @@ export default function LoginScreen() {
       }
       if (outcome.kind === 'error') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Sentry.captureException(outcome.error, {
+        captureMessage('google sign-in failed', {
+          level: 'warning',
           tags: { feature: 'auth', action: 'google_signin' },
         });
-        showAlert(t('common.error'), outcome.error.message || t('auth.googleSignInError'));
+        showAlert(t('common.error'), t('auth.googleSignInError'));
         return;
       }
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: 'login.google.success',
         level: 'info',
       });
-    } catch (err: unknown) {
+    } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Sentry.captureException(err, { tags: { feature: 'auth', action: 'google_signin' } });
+      captureMessage('google sign-in failed', {
+        level: 'warning',
+        tags: { feature: 'auth', action: 'google_signin' },
+      });
       showAlert(t('common.error'), t('auth.googleSignInError'));
     }
   };
@@ -202,7 +206,7 @@ export default function LoginScreen() {
     if (appleLoading) return;
     try {
       setAppleLoading(true);
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: 'login.apple.start',
         level: 'info',
@@ -211,23 +215,25 @@ export default function LoginScreen() {
       const result = await signInWithApple();
       if (!result) {
         // User cancelled
-        Sentry.addBreadcrumb({
+        addBreadcrumb({
           category: 'auth',
           message: 'login.apple.cancelled',
           level: 'info',
         });
         return;
       }
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: 'login.apple.success',
         level: 'info',
       });
-    } catch (err: unknown) {
+    } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const message = err instanceof Error ? err.message : t('auth.loginError');
-      Sentry.captureException(err, { tags: { feature: 'auth', action: 'apple_signin' } });
-      showAlert(t('common.error'), message);
+      captureMessage('apple sign-in failed', {
+        level: 'warning',
+        tags: { feature: 'auth', action: 'apple_signin' },
+      });
+      showAlert(t('common.error'), t('auth.appleSignInError'));
     } finally {
       setAppleLoading(false);
     }
@@ -493,8 +499,8 @@ export default function LoginScreen() {
             {/* Social sign-in divider & Apple / Google Sign In.
               Renders if at least one provider is usable on this device.
               Apple is iOS-only (gated by isAppleSignInAvailable).
-              Google is cross-platform (gated by EXPO_PUBLIC_GOOGLE_CLIENT_ID
-              being wired at build time). */}
+              Google is cross-platform, but each runtime is gated by its own
+              WEB / IOS / ANDROID OAuth client ID at build time. */}
             {(appleAvailable || googleConfigured) && (
               <>
                 <View style={styles.dividerRow}>

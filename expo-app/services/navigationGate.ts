@@ -31,7 +31,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const ONBOARDING_KEY = '@rumo_pragas_onboarding_seen';
+/** Legacy device-global key. Never trusted for an authenticated account. */
 export const LOCATION_CONSENT_SHOWN_KEY = '@rumo_pragas_location_consent_shown';
+
+export function locationConsentStorageKey(userId: string): string {
+  return `${LOCATION_CONSENT_SHOWN_KEY}:${userId}`;
+}
 
 /**
  * Top-level route groups the gate can route to. These are the values of
@@ -140,13 +145,18 @@ export function needsRedirect(
 }
 
 /** Read both gate flags from AsyncStorage. Never throws; defaults to false. */
-export async function readGateFlags(): Promise<{
+export async function readGateFlags(userId: string | null): Promise<{
   hasSeenOnboarding: boolean;
   hasSeenLocationConsent: boolean;
 }> {
   const [onboarding, consent] = await Promise.all([
     AsyncStorage.getItem(ONBOARDING_KEY).catch(() => null),
-    AsyncStorage.getItem(LOCATION_CONSENT_SHOWN_KEY).catch(() => null),
+    userId
+      ? AsyncStorage.getItem(locationConsentStorageKey(userId)).catch(() => null)
+      : Promise.resolve(null),
+    // Drop the former device-global flag. It could otherwise let account B
+    // inherit account A's disclosure state after a sign-out/account switch.
+    AsyncStorage.removeItem(LOCATION_CONSENT_SHOWN_KEY).catch(() => undefined),
   ]);
   return {
     hasSeenOnboarding: onboarding === 'true',
@@ -164,9 +174,10 @@ export async function persistOnboardingSeen(): Promise<void> {
 }
 
 /** Persist the location-consent-shown flag. Never throws. */
-export async function persistLocationConsentSeen(): Promise<void> {
+export async function persistLocationConsentSeen(userId: string): Promise<void> {
+  if (!userId) return;
   try {
-    await AsyncStorage.setItem(LOCATION_CONSENT_SHOWN_KEY, 'true');
+    await AsyncStorage.setItem(locationConsentStorageKey(userId), 'true');
   } catch {
     /* never block navigation on storage failure */
   }
@@ -185,9 +196,10 @@ export async function persistLocationConsentSeen(): Promise<void> {
  * NavigationGate state (which stays "seen"), so there is no mid-session bounce.
  * Never throws / never blocks.
  */
-export async function clearLocationConsentSeen(): Promise<void> {
+export async function clearLocationConsentSeen(userId: string): Promise<void> {
+  if (!userId) return;
   try {
-    await AsyncStorage.removeItem(LOCATION_CONSENT_SHOWN_KEY);
+    await AsyncStorage.removeItem(locationConsentStorageKey(userId));
   } catch {
     /* never block navigation on storage failure */
   }

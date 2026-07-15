@@ -13,6 +13,7 @@ import {
 // (and the Android edge-to-edge status bar) instead of assuming fixed heights.
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 // Família única de ícones do app é Ionicons (anti-AI-slop: consistência >
 // variedade). O onboarding era a única superfície usando lucide-react-native.
 import { Ionicons } from '@expo/vector-icons';
@@ -185,6 +186,10 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar
+        style="light"
+        backgroundColor={PAGES[currentIndex]?.gradientColors[0] ?? Colors.brandDark}
+      />
       <FlatList
         ref={flatListRef}
         data={PAGES}

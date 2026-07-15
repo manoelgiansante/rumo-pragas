@@ -33,8 +33,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 import { Platform } from 'react-native';
-import * as Sentry from '@sentry/react-native';
 import type { Session, User } from '@supabase/supabase-js';
+import i18n from '../i18n';
+import { addBreadcrumb } from './sentry-shim';
+import { beginAuthMetadataUpdate } from './authMetadataGate';
 
 /** Result of a sign-in attempt. `null` == user cancelled (not an error). */
 export type AppleSignInResult = { session: Session | null; user: User | null } | null;
@@ -94,10 +96,10 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   let hashedNonce: string;
   try {
     hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
-  } catch {
+  } catch (error) {
     // Re-throw a clear, retryable message. The single Sentry capture happens at
     // the call site (login.tsx) so we don't double-report the same failure.
-    throw new Error('Could not start Sign in with Apple. Please try again.');
+    throw new Error(i18n.t('auth.appleSignInError'), { cause: error });
   }
 
   try {
@@ -113,62 +115,68 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     // 2. Apple must return an identityToken. If it's null the flow can't
     //    continue — surface a clear, retryable error (and breadcrumb it).
     if (!credential.identityToken) {
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: 'apple.signin.no_identity_token',
         level: 'warning',
       });
-      throw new Error('Apple did not return an identity token. Please try again.');
+      throw new Error(i18n.t('auth.appleSignInError'));
     }
 
-    // 3. Hand the token + RAW nonce to Supabase. Supabase re-hashes rawNonce and
-    //    compares it to the token's `nonce` claim.
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: 'apple',
-      token: credential.identityToken,
-      nonce: rawNonce,
-    });
+    // Apple returns this name only on first authorization. Arm the link gate
+    // before SIGNED_IN is emitted so pragas_link_account cannot create a
+    // null-name profile while the one-time metadata is still being persisted.
+    const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+      .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+      .map((part) => part.trim())
+      .join(' ')
+      .slice(0, 200);
+    const releaseMetadataGate = fullName ? beginAuthMetadataUpdate() : null;
 
-    if (error) {
-      // This is the most likely failure for the reviewer: a Supabase-side
-      // rejection (e.g. "Unacceptable audience" when the bundle id isn't in the
-      // Apple provider Client IDs, or issuer/nonce mismatch). Breadcrumb the
-      // exact step here; the call site captures the thrown error ONCE with the
-      // Supabase message preserved (so the cause is visible in Sentry, not
-      // swallowed, and not double-reported).
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'apple.signin.supabase_exchange_failed',
-        level: 'error',
-        data: { supabaseMessage: error.message },
+    try {
+      // 3. Hand the token + RAW nonce to Supabase. Supabase re-hashes rawNonce
+      // and compares it to the token's `nonce` claim.
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
       });
-      throw new Error(error.message);
-    }
 
-    // 4. Best-effort profile name backfill (only present on first sign-in).
-    //    Never block auth on a profile write failure.
-    if (credential.fullName?.givenName && data.user) {
-      const fullName = [credential.fullName.givenName, credential.fullName.familyName]
-        .filter(Boolean)
-        .join(' ');
+      if (error) {
+        // Record only the failed step; provider details may contain identifiers.
+        addBreadcrumb({
+          category: 'auth',
+          message: 'apple.signin.supabase_exchange_failed',
+          level: 'error',
+        });
+        throw new Error(i18n.t('auth.appleSignInError'));
+      }
 
-      if (fullName) {
-        try {
-          await supabase
-            .from('pragas_profiles')
-            .update({ full_name: fullName })
-            .eq('user_id', data.user.id);
-        } catch {
-          // swallowed on purpose — auth must not be blocked by profile drift
+      // 4. Persist before releasing the link gate. The RPC derives the initial
+      // profile name from auth.users.raw_user_meta_data; a direct profile UPDATE
+      // is racy and affects zero rows when linking has not created it yet.
+      if (fullName && data.user) {
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: { full_name: fullName },
+        });
+        if (metadataError) {
+          addBreadcrumb({
+            category: 'auth',
+            message: 'apple.signin.metadata_update_failed',
+            level: 'error',
+          });
+          throw new Error(i18n.t('auth.appleSignInError'));
         }
       }
-    }
 
-    return { session: data.session, user: data.user };
+      return { session: data.session, user: data.user };
+    } finally {
+      releaseMetadataGate?.();
+    }
   } catch (error: unknown) {
     // User cancellation / benign catch-all → breadcrumb, NOT captureException.
     if (isBenignAppleError(error)) {
-      Sentry.addBreadcrumb({
+      addBreadcrumb({
         category: 'auth',
         message: 'apple.signin.cancelled_or_unknown',
         level: 'info',
@@ -181,7 +189,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       });
       return null;
     }
-    // Genuine failure → rethrow for the caller to report + surface to the user.
-    throw error;
+    // Genuine provider failures are normalized before reaching UI/telemetry.
+    throw new Error(i18n.t('auth.appleSignInError'), { cause: error });
   }
 }

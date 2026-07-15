@@ -39,14 +39,21 @@ interface NavigationGateValue {
 
 const NavigationGateContext = createContext<NavigationGateValue | null>(null);
 
-export function NavigationGateProvider({ children }: { children: React.ReactNode }) {
+export function NavigationGateProvider({
+  children,
+  userId = null,
+}: {
+  children: React.ReactNode;
+  userId?: string | null;
+}) {
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
   const [hasSeenLocationConsent, setHasSeenLocationConsent] = useState<boolean | null>(null);
 
-  // Initial read of both flags from AsyncStorage (once, on mount).
+  // Onboarding is device-scoped; location disclosure is account-scoped.
   useEffect(() => {
     let mounted = true;
-    readGateFlags()
+    setHasSeenLocationConsent(null);
+    readGateFlags(userId)
       .then(({ hasSeenOnboarding: onboarding, hasSeenLocationConsent: consent }) => {
         if (!mounted) return;
         setHasSeenOnboarding(onboarding);
@@ -62,7 +69,7 @@ export function NavigationGateProvider({ children }: { children: React.ReactNode
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [userId]);
 
   const markOnboardingSeen = useCallback(() => {
     // Reactive update FIRST so the layout effect re-runs with the fresh flag
@@ -72,9 +79,10 @@ export function NavigationGateProvider({ children }: { children: React.ReactNode
   }, []);
 
   const markLocationConsentSeen = useCallback(() => {
+    if (!userId) return;
     setHasSeenLocationConsent(true);
-    void persistLocationConsentSeen();
-  }, []);
+    void persistLocationConsentSeen(userId);
+  }, [userId]);
 
   const value = useMemo<NavigationGateValue>(
     () => ({

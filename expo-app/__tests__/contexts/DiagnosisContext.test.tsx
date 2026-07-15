@@ -56,7 +56,6 @@ describe('DiagnosisContext', () => {
 
     const diagResult: DiagnosisResult = {
       id: '123',
-      user_id: 'u1',
       crop: 'soy',
       pest_name: 'Rust',
       created_at: '2025-01-01',

@@ -24,17 +24,20 @@ import {
   FontFamily,
 } from '../../constants/theme';
 import { DiagnosisCard } from '../../components/DiagnosisCard';
-import type { DiagnosisResult, AgrioPrediction } from '../../types/diagnosis';
+import type { DiagnosisResult } from '../../types/diagnosis';
 import { parseNotes } from '../../types/diagnosis';
 import { SearchInput } from '../../components/SearchInput';
 import { savePestToCache } from '../../services/pestRegistry';
-import { supabase } from '../../services/supabase';
+import {
+  deleteDiagnosis as deleteDiagnosisRequest,
+  fetchDiagnoses,
+} from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { HistorySkeleton } from '../../components/HistorySkeleton';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
 import * as Haptics from 'expo-haptics';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from '../../services/sentry-shim';
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
@@ -52,17 +55,13 @@ export default function HistoryScreen() {
     setLoading(true);
     setError(false);
     try {
-      const { data, error: queryError } = await supabase
-        .from('pragas_diagnoses')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (queryError) throw queryError;
-      setDiagnoses(data ?? []);
-    } catch (err) {
-      if (__DEV__) console.error('[History] Erro ao buscar diagnosticos:', err);
-      Sentry.captureException(err, { tags: { feature: 'history.load' } });
+      setDiagnoses(await fetchDiagnoses(session.access_token, user.id, 50));
+    } catch {
+      if (__DEV__) console.warn('[History] Falha ao buscar diagnósticos');
+      captureMessage('history load failed', {
+        level: 'warning',
+        tags: { feature: 'history.load' },
+      });
       setError(true);
     }
     setLoading(false);
@@ -84,16 +83,15 @@ export default function HistoryScreen() {
         onPress: async () => {
           try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            const { error } = await supabase.from('pragas_diagnoses').delete().eq('id', id);
-            if (error) {
-              Sentry.captureException(error, { tags: { feature: 'history.delete' } });
-              showAlert(t('common.error'), t('history.deleteError'));
-              return;
-            }
+            if (!session?.access_token) throw new Error('AUTH_REQUIRED');
+            await deleteDiagnosisRequest(session.access_token, id);
             setDiagnoses((d) => d.filter((x) => x.id !== id));
-          } catch (err) {
-            if (__DEV__) console.error('[History] Failed to delete diagnosis:', err);
-            Sentry.captureException(err, { tags: { feature: 'history.delete' } });
+          } catch {
+            if (__DEV__) console.warn('[History] Falha ao excluir diagnóstico');
+            captureMessage('history delete failed', {
+              level: 'warning',
+              tags: { feature: 'history.delete' },
+            });
             showAlert(t('common.error'), t('history.deleteError'));
           }
         },
@@ -107,36 +105,35 @@ export default function HistoryScreen() {
   // populated by result.tsx on the device that ran the diagnosis). Healthy /
   // invalid-image records have no pest fact sheet, so we rebuild the full result
   // screen from the record instead (it is self-contained via the `data` param).
-  const openDiagnosis = useCallback((item: DiagnosisResult) => {
-    void Haptics.selectionAsync().catch(() => {
-      /* haptics best-effort */
-    });
-    const pestId = item.pest_id;
-    const isHealthy =
-      !pestId || pestId === 'Healthy' || (item.pest_name || '').toLowerCase().includes('healthy');
-    const isInvalid = pestId === 'invalid_image';
+  const openDiagnosis = useCallback(
+    (item: DiagnosisResult) => {
+      void Haptics.selectionAsync().catch(() => {
+        /* haptics best-effort */
+      });
+      const pestId = item.pest_id;
+      const isHealthy =
+        !pestId || pestId === 'Healthy' || (item.pest_name || '').toLowerCase().includes('healthy');
+      const isInvalid = pestId === 'invalid_image';
 
-    if (!pestId || isHealthy || isInvalid) {
-      router.push({ pathname: '/diagnosis/result', params: { data: JSON.stringify(item) } });
-      return;
-    }
+      if (!pestId || isHealthy || isInvalid) {
+        router.push({ pathname: '/diagnosis/result', params: { data: JSON.stringify(item) } });
+        return;
+      }
 
-    const notes = item.parsedNotes ?? parseNotes(item.notes);
-    const enrichment = notes?.enrichment ?? {};
-    const predictions: AgrioPrediction[] = notes?.predictions ?? notes?.id_array ?? [];
-    const alternatives = predictions.filter((p) => p.id !== pestId).slice(0, 3);
-    void savePestToCache({
-      id: pestId,
-      pest_name: item.pest_name,
-      scientific_name: enrichment.scientific_name,
-      crop: item.crop,
-      image_uri: item.image_url,
-      confidence: item.confidence,
-      enrichment,
-      alternatives,
-    });
-    router.push(`/diagnosis/pest/${encodeURIComponent(pestId)}`);
-  }, []);
+      const notes = item.parsedNotes ?? parseNotes(item.notes);
+      const enrichment = notes?.enrichment ?? {};
+      if (user?.id)
+        void savePestToCache(user.id, {
+          id: pestId,
+          pest_name: item.pest_name,
+          scientific_name: enrichment.scientific_name,
+          crop: item.crop,
+          enrichment,
+        });
+      router.push(`/diagnosis/pest/${encodeURIComponent(pestId)}`);
+    },
+    [user?.id],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

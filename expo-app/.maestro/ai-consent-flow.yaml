@@ -1,0 +1,30 @@
+appId: com.agrorumo.rumopragas
+tags:
+  - ai-consent
+  - privacy
+---
+- runFlow: auth-flow.yaml
+- tapOn:
+    id: "tab-ai-chat"
+- extendedWaitUntil:
+    visible:
+      id: "aichat-input"
+    timeout: 15000
+- tapOn:
+    id: "aichat-input"
+- inputText: "Como monitorar sintomas na folha?"
+- hideKeyboard
+- tapOn:
+    id: "aichat-send"
+- extendedWaitUntil:
+    visible:
+      id: "ai-consent-chat"
+    timeout: 10000
+- assertVisible:
+    id: "ai-consent-privacy"
+- assertVisible:
+    id: "ai-consent-terms"
+- tapOn:
+    id: "ai-consent-cancel"
+- assertVisible:
+    id: "aichat-input"

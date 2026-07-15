@@ -1,1 +1,1 @@
-pragas,soja,milho,cafe,algodao,fungicida,lagarta,ferrugem,doenca,lavoura,IA,agronomo,agricultura
+lavoura,soja,milho,cafe,algodao,folha,inseto,doenca,cultivo,MIP,monitoramento,agricultura

@@ -25,6 +25,23 @@ jest.mock('../../types/diagnosis', () => ({
   }),
 }));
 
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(() => '00000000-0000-4000-8000-000000000001'),
+}));
+
+const mockAssertAIConsent = jest.fn().mockResolvedValue(undefined);
+const mockRevokeAIConsent = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../services/aiConsent', () => ({
+  AI_CONSENT_VERSION: '2026-07-14.1',
+  assertAIConsent: (...args: unknown[]) => mockAssertAIConsent(...args),
+  revokeAIConsent: (...args: unknown[]) => mockRevokeAIConsent(...args),
+}));
+
+const mockHasLocationConsent = jest.fn().mockResolvedValue(true);
+jest.mock('../../services/userPreferences', () => ({
+  hasLocationConsent: (...args: unknown[]) => mockHasLocationConsent(...args),
+}));
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -38,7 +55,6 @@ function makeBase64(sizeBytes: number): string {
 function makeDiagnosisRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'diag-1',
-    user_id: 'user-1',
     crop: 'soja',
     pest_name: 'Ferrugem',
     confidence: 0.92,
@@ -53,22 +69,34 @@ function makeDiagnosisRow(overrides: Record<string, unknown> = {}) {
 describe('sendDiagnosis', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAssertAIConsent.mockResolvedValue(undefined);
+    mockHasLocationConsent.mockResolvedValue(true);
   });
 
   it('throws when base64 image exceeds 5 MB', async () => {
     const bigImage = makeBase64(6 * 1024 * 1024);
-    await expect(sendDiagnosis(bigImage, 'soja', null, null, 'token')).rejects.toThrow(
+    await expect(sendDiagnosis(bigImage, 'soja', null, null, 'token', 'user-1')).rejects.toThrow(
       /muito grande/,
     );
+  });
+
+  it('does not transmit a photo before versioned AI consent', async () => {
+    mockAssertAIConsent.mockRejectedValueOnce(new Error('AI_CONSENT_REQUIRED'));
+    await expect(
+      sendDiagnosis(makeBase64(100), 'soja', null, null, 'token', 'user-1'),
+    ).rejects.toThrow('AI_CONSENT_REQUIRED');
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('does not throw for images under 5 MB', async () => {
     const smallImage = makeBase64(1 * 1024 * 1024);
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => makeDiagnosisRow(),
+      text: async () => JSON.stringify(makeDiagnosisRow()),
     });
-    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).resolves.toBeDefined();
+    await expect(
+      sendDiagnosis(smallImage, 'soja', null, null, 'token', 'user-1'),
+    ).resolves.toBeDefined();
   });
 
   it('validates that the endpoint URL uses HTTPS', async () => {
@@ -102,7 +130,7 @@ describe('sendDiagnosis', () => {
 
     const { sendDiagnosis: sendInsecure } = require('../../services/diagnosis');
     const smallImage = makeBase64(100);
-    await expect(sendInsecure(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
+    await expect(sendInsecure(smallImage, 'soja', null, null, 'token', 'user-1')).rejects.toThrow(
       /servidor inv|invalid/i,
     );
     jest.resetModules();
@@ -112,19 +140,44 @@ describe('sendDiagnosis', () => {
     const row = makeDiagnosisRow();
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => row,
+      text: async () => JSON.stringify(row),
     });
 
     const smallImage = makeBase64(100);
-    const result = await sendDiagnosis(smallImage, 'soja', -23.5, -46.6, 'token');
+    const result = await sendDiagnosis(smallImage, 'soja', -23.5, -46.6, 'token', 'user-1');
 
     expect(result).toMatchObject({ id: 'diag-1', crop: 'soja' });
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toContain('/functions/v1/diagnose');
+    expect(url).toContain('/functions/v1/diagnose-pragas');
+    expect(url).not.toMatch(/\/functions\/v1\/diagnose(?:$|[?#])/);
     expect(options.method).toBe('POST');
     expect(options.headers.Authorization).toBe('Bearer token');
+    expect(options.headers['X-Pragas-AI-Consent-Version']).toBe('2026-07-14.1');
+    expect(options.headers['X-Pragas-AI-Consent-Purpose']).toBe('diagnosis');
+  });
+
+  it('never transmits coordinates while app-level location consent is withdrawn', async () => {
+    mockHasLocationConsent.mockResolvedValueOnce(false);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify(makeDiagnosisRow()),
+    });
+
+    await sendDiagnosis(makeBase64(100), 'soja', -23.55052, -46.633308, 'token', 'user-1');
+
+    const [, options] = mockFetch.mock.calls[0];
+    expect(JSON.parse(options.body)).toMatchObject({ latitude: null, longitude: null });
+  });
+
+  it('maps backend consent precondition failures to a safe local message', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 428, json: async () => ({}) });
+
+    await expect(
+      sendDiagnosis(makeBase64(100), 'soja', null, null, 'token', 'user-1'),
+    ).rejects.toThrow(/autorize|consent/i);
+    expect(mockRevokeAIConsent).toHaveBeenCalledWith('user-1', 'diagnosis');
   });
 
   // FREE BUILD (2026-06-30) — fix/pragas-free-2026-06-30: the app ships 100%
@@ -139,7 +192,7 @@ describe('sendDiagnosis', () => {
 
     const smallImage = makeBase64(100);
     let caught: unknown;
-    await sendDiagnosis(smallImage, 'soja', null, null, 'token').catch((e) => {
+    await sendDiagnosis(smallImage, 'soja', null, null, 'token', 'user-1').catch((e) => {
       caught = e;
     });
 
@@ -157,7 +210,7 @@ describe('sendDiagnosis', () => {
     });
 
     const smallImage = makeBase64(100);
-    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
+    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token', 'user-1')).rejects.toThrow(
       /[Ss]ess[aã]o expirad/,
     );
   });
@@ -170,7 +223,7 @@ describe('sendDiagnosis', () => {
     });
 
     const smallImage = makeBase64(100);
-    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token')).rejects.toThrow(
+    await expect(sendDiagnosis(smallImage, 'soja', null, null, 'token', 'user-1')).rejects.toThrow(
       /servidor.*indispon|temporariamente/i,
     );
   });
@@ -185,13 +238,18 @@ describe('fetchDiagnoses', () => {
     const rows = [makeDiagnosisRow(), makeDiagnosisRow({ id: 'diag-2' })];
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => rows,
+      text: async () => JSON.stringify(rows),
     });
 
     const result = await fetchDiagnoses('token', 'user-1');
     expect(result).toHaveLength(2);
     expect(result[0]).toHaveProperty('id', 'diag-1');
     expect(result[1]).toHaveProperty('id', 'diag-2');
+    const requestUrl = new URL(mockFetch.mock.calls[0][0]);
+    expect(requestUrl.searchParams.get('select')).toBe(
+      'id,crop,pest_id,pest_name,confidence,notes,created_at',
+    );
+    expect(requestUrl.searchParams.get('select')).not.toMatch(/user_id|image_url|location_/);
   });
 
   it('throws on non-OK response', async () => {
@@ -240,7 +298,7 @@ describe('deleteDiagnosis', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toContain('pragas_diagnoses?id=eq.diag-abc');
+    expect(decodeURIComponent(url)).toContain('pragas_diagnoses?id=eq.diag-abc');
     expect(options.method).toBe('DELETE');
     expect(options.headers.Authorization).toBe('Bearer token');
   });

@@ -11,9 +11,11 @@ jest.mock('../../hooks/useNetworkStatus', () => ({
 
 // Mock useAuthContext
 const mockSession = { access_token: 'test-token' };
+const mockUser = { id: 'user-1' };
 jest.mock('../../contexts/AuthContext', () => ({
   useAuthContext: () => ({
     session: mockSession,
+    user: mockUser,
     isAuthenticated: true,
     loading: false,
   }),
@@ -31,6 +33,7 @@ const mockRemoveFromQueue = jest.fn().mockResolvedValue(undefined);
 const mockIncrementRetry = jest.fn().mockResolvedValue(undefined);
 const mockGetQueueCount = jest.fn().mockResolvedValue(0);
 const mockReadQueuedImageBase64 = jest.fn().mockResolvedValue('base64data');
+const mockMoveToFailedQueue = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../services/diagnosisQueue', () => ({
   getQueue: (...args: unknown[]) => mockGetQueue(...args),
@@ -38,17 +41,13 @@ jest.mock('../../services/diagnosisQueue', () => ({
   incrementRetry: (...args: unknown[]) => mockIncrementRetry(...args),
   getQueueCount: (...args: unknown[]) => mockGetQueueCount(...args),
   readQueuedImageBase64: (...args: unknown[]) => mockReadQueuedImageBase64(...args),
+  moveToFailedQueue: (...args: unknown[]) => mockMoveToFailedQueue(...args),
+  subscribeDiagnosisQueue: () => () => undefined,
 }));
 
-// Mock AsyncStorage for DLQ persistence
-const mockAsyncStorageGet = jest.fn().mockResolvedValue(null);
-const mockAsyncStorageSet = jest.fn().mockResolvedValue(undefined);
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  __esModule: true,
-  default: {
-    getItem: (...args: unknown[]) => mockAsyncStorageGet(...args),
-    setItem: (...args: unknown[]) => mockAsyncStorageSet(...args),
-  },
+jest.mock('../../services/aiConsent', () => ({
+  isAIConsentRequiredError: (error: unknown) =>
+    error instanceof Error && error.name === 'AIConsentRequiredError',
 }));
 
 // Mock Sentry
@@ -66,8 +65,7 @@ beforeEach(() => {
   mockGetQueue.mockResolvedValue([]);
   mockGetQueueCount.mockResolvedValue(0);
   mockReadQueuedImageBase64.mockResolvedValue('base64data');
-  mockAsyncStorageGet.mockResolvedValue(null);
-  mockAsyncStorageSet.mockResolvedValue(undefined);
+  mockMoveToFailedQueue.mockResolvedValue(undefined);
 });
 
 describe('useDiagnosisSync', () => {
@@ -119,11 +117,13 @@ describe('useDiagnosisSync', () => {
         -23.0,
         -49.0,
         'test-token',
+        'user-1',
+        'q1',
       );
     });
 
     await waitFor(() => {
-      expect(mockRemoveFromQueue).toHaveBeenCalledWith('q1');
+      expect(mockRemoveFromQueue).toHaveBeenCalledWith('q1', {}, 'user-1');
     });
   });
 
@@ -146,7 +146,7 @@ describe('useDiagnosisSync', () => {
     renderHook(() => useDiagnosisSync());
 
     await waitFor(() => {
-      expect(mockIncrementRetry).toHaveBeenCalledWith('q2');
+      expect(mockIncrementRetry).toHaveBeenCalledWith('q2', 'user-1');
     });
   });
 
@@ -171,32 +171,23 @@ describe('useDiagnosisSync', () => {
     // retryCount=2 triggers backoff (~2s+jitter) before the send attempt, so allow up to 6s.
     await waitFor(
       () => {
-        expect(mockRemoveFromQueue).toHaveBeenCalledWith('q3');
+        expect(mockRemoveFromQueue).toHaveBeenCalledWith('q3', { deleteImage: false }, 'user-1');
       },
       { timeout: 6000 },
     );
     expect(mockIncrementRetry).not.toHaveBeenCalled();
 
-    // DLQ persisted to AsyncStorage with an entry bearing the item id
-    expect(mockAsyncStorageSet).toHaveBeenCalled();
-    const dlqWriteCall = mockAsyncStorageSet.mock.calls.find(
-      (c) => c[0] === '@rumo_pragas_diagnosis_dlq',
-    );
-    expect(dlqWriteCall).toBeDefined();
-    const written = JSON.parse(dlqWriteCall![1]);
-    expect(Array.isArray(written)).toBe(true);
-    expect(written[0]).toMatchObject({
-      id: 'q3',
-      lastError: 'Fail',
-    });
-    expect(written[0].movedToDLQAt).toEqual(expect.any(String));
+    expect(mockMoveToFailedQueue).toHaveBeenCalledWith(queueItem, 'SYNC_UNAVAILABLE');
 
-    // Sentry captured the DLQ event with itemId extras
+    // Sentry captures only a stable, non-sensitive queue context.
     expect(mockSentryCapture).toHaveBeenCalled();
     const sentryCall = mockSentryCapture.mock.calls[0];
     expect(sentryCall[0]).toBeInstanceOf(Error);
-    expect((sentryCall[0] as Error).message).toBe('Diagnosis sync DLQ');
-    expect(sentryCall[1]).toMatchObject({ extra: expect.objectContaining({ itemId: 'q3' }) });
+    expect((sentryCall[0] as Error).message).toBe('Diagnosis sync failed queue');
+    expect(sentryCall[1]).toMatchObject({
+      extra: expect.objectContaining({ context: 'diagnosis_sync_failed_queue' }),
+    });
+    expect(sentryCall[1]).not.toEqual(expect.objectContaining({ itemId: expect.anything() }));
   }, 10000);
 
   it('exposes calculateBackoff with exponential growth + jitter + ceiling', () => {

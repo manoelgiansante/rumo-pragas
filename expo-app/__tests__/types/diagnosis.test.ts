@@ -19,7 +19,6 @@ import type { DiagnosisResult, AgrioNotesData } from '../../types/diagnosis';
 function makeDiagnosis(overrides: Partial<DiagnosisResult> = {}): DiagnosisResult {
   return {
     id: 'diag-1',
-    user_id: 'user-1',
     crop: 'soy',
     created_at: '2025-01-01T00:00:00Z',
     ...overrides,

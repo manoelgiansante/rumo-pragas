@@ -75,12 +75,24 @@ import {
   shouldReactToRealtime,
   shouldRunOnForeground,
 } from '../lib/updateCheckPolicy';
+import {
+  isSafeStoreUrl,
+  parseVersionCheckResponse,
+  type UpdateInfo,
+  type UpdateMode,
+  type VersionCheckResponse,
+} from '../lib/updateCheckResponse';
+
+export { isSafeStoreUrl, parseVersionCheckResponse } from '../lib/updateCheckResponse';
+export type { UpdateInfo, UpdateMode, VersionCheckResponse } from '../lib/updateCheckResponse';
 
 // This app's key in the multiplexed jxcn `app_versions` table / Edge Function.
 const APP_SLUG = 'pragas' as const;
 
 const CACHE_KEY = '@pragas/update_check_v2';
 const DISMISSED_KEY = '@pragas/update_dismissed_v2';
+const FETCH_TIMEOUT_MS = 8_000;
+const MAX_RESPONSE_CHARS = 64 * 1024;
 
 // Shared jxcn Edge Function (pre-auth, but the gateway still requires the anon
 // apikey + bearer). Direct fetch — the app has no generic API wrapper. Config
@@ -106,51 +118,11 @@ function pickAllowedLocale(input: string | undefined | null): AllowedLocale {
   return 'pt-BR';
 }
 
-// Defense-in-depth: Supabase admin compromise could inject `javascript:` /
-// `tel:` / `data:` URLs into `store_url_native` / `store_url_fallback` and
-// achieve RCE-via-deeplink on user devices. We require store URLs to start
-// with one of these known-safe prefixes BEFORE handing them to Linking.openURL.
-// Mirrored in UpdateBanner + ForceUpdateModal so banner + modal + cache-read
-// all share the same allowlist.
-export const ALLOWED_STORE_URL_PREFIXES = [
-  'itms-apps:',
-  'market://',
-  'https://apps.apple.com',
-  'https://play.google.com',
-] as const;
-
-export function isSafeStoreUrl(url: string | undefined | null): boolean {
-  if (!url || typeof url !== 'string') return false;
-  return ALLOWED_STORE_URL_PREFIXES.some((p) => url.startsWith(p));
-}
-
-export type UpdateMode = 'silent' | 'soft' | 'force';
-
-export interface UpdateInfo {
-  latestVersionName: string;
-  latestBuildNumber: number;
-  storeUrlNative: string;
-  storeUrlFallback: string;
-  releaseNotes: string | null;
-  releasedAt: string;
-}
-
 export interface UseAppUpdateCheckReturn {
   mode: UpdateMode;
   updateInfo: UpdateInfo | null;
   dismiss: () => Promise<void>;
   isChecking: boolean;
-}
-
-interface VersionCheckResponse {
-  has_update: boolean;
-  mode: UpdateMode;
-  latest_version_name: string;
-  latest_build_number: number;
-  store_url_native: string;
-  store_url_fallback: string;
-  release_notes: string | null;
-  released_at: string;
 }
 
 interface CachedResponse {
@@ -211,38 +183,35 @@ function toUpdateInfo(r: VersionCheckResponse): UpdateInfo {
 }
 
 async function readCache(): Promise<CachedResponse | null> {
-  let raw: string | null = null;
   try {
-    raw = await AsyncStorage.getItem(CACHE_KEY);
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedResponse;
-    if (typeof parsed?.timestamp !== 'number' || typeof parsed?.response?.mode !== 'string') {
+    if (raw.length > MAX_RESPONSE_CHARS) return null;
+    const parsed = JSON.parse(raw) as Partial<CachedResponse>;
+    const response = parseVersionCheckResponse(parsed?.response);
+    if (
+      typeof parsed?.timestamp !== 'number' ||
+      !Number.isFinite(parsed.timestamp) ||
+      parsed.timestamp <= 0 ||
+      !response
+    ) {
       return null;
     }
     // Sanitize cached store URLs the same way we sanitize the live response.
     // A previously-cached entry written before the whitelist existed (or one
     // poisoned through some other vector) must not slip past Linking.openURL.
-    const r = parsed.response;
+    const r = response;
     if (!isSafeStoreUrl(r.store_url_native) && !isSafeStoreUrl(r.store_url_fallback)) {
       // Both invalid → drop the cache entirely; we'll re-fetch on next call.
-      safeBreadcrumb('cache contained unsafe store URLs — dropping', {
-        nativePrefix:
-          typeof r.store_url_native === 'string' ? r.store_url_native.slice(0, 24) : null,
-        fallbackPrefix:
-          typeof r.store_url_fallback === 'string' ? r.store_url_fallback.slice(0, 24) : null,
-      });
+      safeBreadcrumb('cache contained unsafe store URLs — dropping');
       return null;
     }
-    return parsed;
-  } catch (err) {
+    return { timestamp: parsed.timestamp, response };
+  } catch {
     // JSON.parse failure → emit Sentry breadcrumb so we can spot corruption.
     // An empty catch would hide genuine corruption (partial AsyncStorage
     // write, key collision from an old version, etc.) — now we know.
-    safeBreadcrumb('readCache JSON.parse failed', {
-      cacheKey: CACHE_KEY,
-      valuePreview: raw ? raw.slice(0, 80) : null,
-      error: err instanceof Error ? err.message : String(err),
-    });
+    safeBreadcrumb('readCache JSON.parse failed');
     return null;
   }
 }
@@ -287,6 +256,8 @@ async function fetchVersionCheck(
     });
     return null;
   }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(VERSION_CHECK_URL, {
       method: 'POST',
@@ -305,6 +276,7 @@ async function fetchVersionCheck(
         current_version_name: currentVersionName,
         locale,
       }),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -316,17 +288,27 @@ async function fetchVersionCheck(
       return null;
     }
 
-    const data = (await res.json()) as VersionCheckResponse;
-    if (typeof data?.mode !== 'string') {
+    const declaredLength = Number(res.headers.get('content-length') ?? '0');
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_CHARS) {
+      safeBreadcrumb('version-check response too large');
+      return null;
+    }
+    const raw = await res.text();
+    if (raw.length > MAX_RESPONSE_CHARS) {
+      safeBreadcrumb('version-check response too large');
+      return null;
+    }
+    const data = parseVersionCheckResponse(JSON.parse(raw) as unknown);
+    if (!data) {
       safeBreadcrumb('version-check malformed payload', { platform });
       return null;
     }
     return data;
-  } catch (err) {
-    safeBreadcrumb('version-check threw', {
-      error: err instanceof Error ? err.message : String(err),
-    });
+  } catch {
+    safeBreadcrumb('version-check unavailable');
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -389,9 +371,7 @@ export function useAppUpdateCheck(): UseAppUpdateCheckReturn {
           // release with broken `nativeBuildVersion` (e.g. EAS profile
           // misconfig) gets detected before user reports trickle in.
           captureUpdateCheckIssue('nativeBuildVersion is NaN', {
-            rawBuild,
             platform,
-            version: currentVersionName,
           });
           if (!cancelled) {
             currentModeRef.current = 'silent';
@@ -508,14 +488,6 @@ export function useAppUpdateCheck(): UseAppUpdateCheckReturn {
         ) {
           captureUpdateCheckIssue('unsafe_store_url_blocked', {
             source: 'hook',
-            nativePrefix:
-              typeof response.store_url_native === 'string'
-                ? response.store_url_native.slice(0, 24)
-                : null,
-            fallbackPrefix:
-              typeof response.store_url_fallback === 'string'
-                ? response.store_url_fallback.slice(0, 24)
-                : null,
             platform,
             cacheHit,
           });
@@ -657,11 +629,9 @@ export function useAppUpdateCheck(): UseAppUpdateCheckReturn {
             safeBreadcrumb('realtime channel not connected', { status });
           }
         });
-    } catch (err) {
+    } catch {
       // Never throw from the boot path because realtime setup failed.
-      safeBreadcrumb('realtime subscribe threw', {
-        error: err instanceof Error ? err.message : String(err),
-      });
+      safeBreadcrumb('realtime subscribe unavailable');
       realtimeChannel = null;
     }
 

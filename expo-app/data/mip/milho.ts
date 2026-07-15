@@ -98,15 +98,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 10 % de plantas com raspagens (V2-V4)',
-        acao: 'Bt (Bacillus thuringiensis) ou baculovírus',
       },
       medio: {
         criterio: '10-20 % de plantas com cartucho atacado',
-        acao: 'Bt + IGR ou diamida, rotação IRAC',
       },
       alto: {
         criterio: '> 20 % com cartuchos atacados OU presença de lagartas grandes',
-        acao: 'Aplicação química imediata com IRAC 28 ou 5',
       },
     },
     mip: {
@@ -123,64 +120,7 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
         'Trichogramma pretiosum',
         'Doru luteipes (tesourinha — predador natural conservar!)',
       ],
-      mecanico: ['Armadilhas de feromônio para monitoramento'],
-      quimico: {
-        classes: ['diamidas', 'espinosinas', 'IGR', 'metoxifenozide'],
-        ingredientesAtivos: [
-          {
-            nome: 'Clorantraniliprole',
-            graudeIRACouFRAC: 'IRAC 28',
-            produtosComerciais: [
-              {
-                nome: 'Diamida ribodina',
-                formulacao: 'SC',
-                dosagem: '40-60 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-          {
-            nome: 'Espinetoram',
-            graudeIRACouFRAC: 'IRAC 5',
-            produtosComerciais: [
-              {
-                nome: 'Espinosina',
-                formulacao: 'SC',
-                dosagem: '100-200 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-          {
-            nome: 'Lufenuron (IGR)',
-            graudeIRACouFRAC: 'IRAC 15',
-            produtosComerciais: [
-              {
-                nome: 'Inibidor síntese quitina',
-                formulacao: 'EC',
-                dosagem: '300-500 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'RESISTÊNCIA documentada de S. frugiperda a Cry1F, piretroides, e diamidas em algumas regiões',
-          'Bt isolado NÃO é suficiente — sempre combinar com biológico ou químico em pressão alta',
-          'Aplicar ANTES da lagarta entrar no cartucho (mais difícil atingir)',
-          'Refúgio Bt obrigatório (10-20 % conforme tecnologia)',
-        ],
-      },
     },
-    rotacaoResistencia:
-      'Rotacionar IRAC 28 → 5 → 15 → 18. Bt + biológico em V2-V4 evita seleção de ' +
-      'resistentes em químicos. Refúgio estrutural obrigatório.',
     monitoramento: {
       metodo:
         'Inspeção visual em 10 plantas/talhão. Contagem de raspagens, furos, lagartas. ' +
@@ -188,9 +128,6 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
       frequencia: 'Bi-semanal V2-V8, semanal V8 em diante',
       nivelControle: '10 % de plantas atacadas em V2-V4 / 20 % V5+',
     },
-    observacoesAgronomicas:
-      'Praga #1 do milho no Brasil. Manejo integrado é OBRIGATÓRIO — Bt sozinho falha. ' +
-      'Em algumas regiões há populações já resistentes a múltiplos IAs. Acompanhar boletins regionais.',
     referencias: [REF_EMBRAPA_CARTUCHO, REF_EMBRAPA_MILHO, REF_IRAC, REF_MAPA],
   },
 
@@ -237,15 +174,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 1 cigarrinha/planta em V2-V6',
-        acao: 'TS sistêmico já protege fase crítica',
       },
       medio: {
         criterio: '1-3 cigarrinhas/planta',
-        acao: 'Aplicação foliar com neonicotinoide ou piretroide',
       },
       alto: {
         criterio: '> 3 cigarrinhas/planta',
-        acao: 'Aplicação imediata + reaplicação 7-10 dias',
       },
     },
     mip: {
@@ -256,55 +190,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
         'Não sucessão milho-milho (espalhar regionalmente)',
       ],
       biologico: ['Beauveria bassiana (eficácia parcial em adultos)'],
-      mecanico: ['Armadilhas amarelas adesivas'],
-      quimico: {
-        classes: ['neonicotinoides', 'piretroides', 'TS sistêmico'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam (TS)',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'TS tiametoxam',
-                formulacao: 'FS',
-                dosagem: 'Conforme bula (sementes)',
-                intervaloAplicacoes: 'TS único',
-                intervaloSegurancaDias: 0,
-                carencia: 0,
-              },
-            ],
-          },
-          {
-            nome: 'Acetamiprido + Bifentrina',
-            graudeIRACouFRAC: 'IRAC 4A + 3A',
-            produtosComerciais: [
-              {
-                nome: 'Mistura neonic + piretroide',
-                formulacao: 'SC',
-                dosagem: '150-200 mL p.c./ha',
-                intervaloAplicacoes: '7-10 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'TS protege apenas até V4-V6 — após, monitorar foliar',
-          'Aplicações foliares devem cobrir base e topo (cigarrinha móvel)',
-        ],
-      },
     },
-    rotacaoResistencia: 'Alternar IRAC 4A → 3A. Sempre TS + foliar conforme MIP.',
     monitoramento: {
       metodo: 'Inspeção visual + armadilhas amarelas',
       frequencia: '2x/semana V2-V8',
       nivelControle: '1 cigarrinha/planta em V2-V4 (período crítico)',
     },
-    observacoesAgronomicas:
-      'Praga EMERGENTE com importância crescente. Causou perdas > 50 % em safrinhas ' +
-      'recentes. Manejo regional integrado (eliminar tiguera) é crítico. Híbrido ' +
-      'tolerante reduz mas não elimina dano.',
     referencias: [REF_EMBRAPA_MILHO, REF_IRAC, REF_MAPA],
   },
 
@@ -341,15 +232,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 1 perc/m linear',
-        acao: 'TS sistêmico controla',
       },
       medio: {
         criterio: '1-2 perc/m linear',
-        acao: 'Aplicação foliar de piretroide ou neonic',
       },
       alto: {
         criterio: '> 2 perc/m linear',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
@@ -359,37 +247,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
         'Controle de plantas hospedeiras em entressafra',
       ],
       biologico: ['Telenomus podisi'],
-      mecanico: ['Inspeção pós-emergência'],
-      quimico: {
-        classes: ['neonicotinoides', 'piretroides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam + Lambda-cialotrina',
-            graudeIRACouFRAC: 'IRAC 4A + 3A',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '150-250 mL p.c./ha',
-                intervaloAplicacoes: '10 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Atacar precocemente — encharutamento é irreversível'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 4A → 3A → 1B.',
     monitoramento: {
       metodo: 'Pano-de-batida ou inspeção solo na emergência',
       frequencia: 'Diária V1-V4',
       nivelControle: '1 percevejo/m linear',
     },
-    observacoesAgronomicas:
-      'Sintoma "encharutamento" reduz produtividade > 30 % em ataques severos. ' +
-      'TS é a melhor defesa.',
     referencias: [REF_EMBRAPA_MILHO, REF_IRAC, REF_MAPA],
   },
 
@@ -426,50 +289,23 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 % plantas com coração morto',
-        acao: 'Monitoramento + irrigação se possível',
       },
       medio: {
         criterio: '5-10 % plantas atacadas',
-        acao: 'TS + aplicação dirigida ao solo',
       },
       alto: {
         criterio: '> 10 % com falhas',
-        acao: 'Replantio possível + tratamento sulco',
       },
     },
     mip: {
       cultural: ['Plantio em condições adequadas de umidade', 'Cobertura morta', 'Rotação'],
       biologico: ['Beauveria bassiana'],
-      mecanico: ['Inspeção solo'],
-      quimico: {
-        classes: ['neonicotinoides TS', 'piretroides solo'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam TS',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'TS sistêmico',
-                formulacao: 'FS',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: 'TS único',
-                intervaloSegurancaDias: 0,
-                carencia: 0,
-              },
-            ],
-          },
-        ],
-        observacoes: ['TS é a melhor defesa preventiva'],
-      },
     },
-    rotacaoResistencia: 'TS rotacionar com químicos sulco IRAC distinto.',
     monitoramento: {
       metodo: 'Inspeção visual de plantas murchas',
       frequencia: 'Diária V1-V5',
       nivelControle: '5 % plantas com coração morto',
     },
-    observacoesAgronomicas:
-      'Praga oportunista em veranicos. Manejo de solo (cobertura, umidade) reduz dano.',
     referencias: [REF_EMBRAPA_MILHO, REF_IRAC, REF_MAPA],
   },
 
@@ -504,50 +340,23 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Colônias pequenas isoladas',
-        acao: 'Conservar inimigos naturais (joaninhas, crisopídeos)',
       },
       medio: {
         criterio: 'Colônias generalizadas em pendão',
-        acao: 'Aplicação seletiva com IGR ou neonic',
       },
       alto: {
         criterio: 'Pendões e folhas cobertos',
-        acao: 'Aplicação química',
       },
     },
     mip: {
       cultural: ['Híbridos menos suscetíveis', 'Adubação equilibrada'],
       biologico: ['Joaninhas (Eriopis, Hippodamia)', 'Crisopídeos', 'Aphidius (parasitoides)'],
-      mecanico: ['Inspeção visual'],
-      quimico: {
-        classes: ['neonicotinoides', 'IGR', 'piretroides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Imidacloprido',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Imidacloprido 700 WG',
-                formulacao: 'WG',
-                dosagem: '100-200 g p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 21,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Preservar inimigos naturais quando possível'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 4A → 9 → 23.',
     monitoramento: {
       metodo: 'Inspeção visual pendão e folhas',
       frequencia: 'Semanal pré-pendoamento',
       nivelControle: 'Colônias generalizadas',
     },
-    observacoesAgronomicas:
-      'Frequentemente controlado por inimigos naturais. Evitar aplicações desnecessárias.',
     referencias: [REF_EMBRAPA_MILHO, REF_IRAC, REF_MAPA],
   },
 
@@ -589,15 +398,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 % plantas sintomáticas',
-        acao: 'Manejo agressivo cigarrinha próximo ciclo',
       },
       medio: {
         criterio: '5-20 % plantas',
-        acao: 'Avaliar replantio + plano cigarrinha intensificado',
       },
       alto: {
         criterio: '> 20 % plantas',
-        acao: 'Perda já instalada — focar próximo ciclo',
       },
     },
     mip: {
@@ -608,37 +414,12 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
         'Plantio na janela (evitar safrinha muito tardia)',
       ],
       biologico: ['Indireto via Beauveria em cigarrinha'],
-      mecanico: ['Monitoramento cigarrinha'],
-      quimico: {
-        classes: ['controle do vetor (cigarrinha)'],
-        ingredientesAtivos: [
-          {
-            nome: 'TS tiametoxam + foliar acetamiprido',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Ver Cigarrinha-do-milho',
-                formulacao: 'FS+SC',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: 'Conforme cigarrinha',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['NÃO existe controle químico DA DOENÇA — só do vetor'],
-      },
     },
-    rotacaoResistencia: 'Igual cigarrinha — rotação IRAC 4A/3A.',
     monitoramento: {
       metodo: 'Inspeção visual cigarrinha + sintomas plantas',
       frequencia: 'Semanal V2-V8',
       nivelControle: 'Foco no vetor (cigarrinha)',
     },
-    observacoesAgronomicas:
-      'Doença EMERGENTE com perdas massivas em safrinhas recentes. Único controle efetivo = ' +
-      'manejo do vetor + híbridos tolerantes + vazio sanitário.',
     referencias: [REF_EMBRAPA_MILHO, REF_MAPA],
   },
 
@@ -674,50 +455,24 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Lesões isoladas em baixeiras',
-        acao: 'Híbrido resistente cobre',
       },
       medio: {
         criterio: 'Severidade 10-20 %',
-        acao: 'Aplicação fungicida triazol + estrobilurina',
       },
       alto: {
         criterio: '> 20 % severidade pré-pendoamento',
-        acao: 'Aplicação imediata + revisão híbrido próximo ciclo',
       },
     },
     mip: {
       cultural: ['Híbridos resistentes (Ht genes)', 'Rotação', 'Eliminar restos culturais'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'multissitios'],
-        ingredientesAtivos: [
-          {
-            nome: 'Azoxistrobina + Ciproconazol',
-            graudeIRACouFRAC: 'FRAC 11 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '0,3-0,4 L p.c./ha',
-                intervaloAplicacoes: '20-25 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Aplicar em V8-VT (pré-pendoamento) tem melhor retorno'],
-      },
     },
-    rotacaoResistencia: 'Alternar FRAC 11 → 3 → 7.',
     monitoramento: {
       metodo: 'Inspeção visual a partir de V6',
       frequencia: 'Semanal V6-VT',
-      nivelControle: 'Lesões + clima úmido = aplicar',
+      nivelControle:
+        'Lesões + clima úmido: intensificar o monitoramento e consultar um engenheiro agrônomo.',
     },
-    observacoesAgronomicas:
-      'Doença regional — mais severa em climas amenos (Sul, planaltos). Híbrido resistente é a defesa primária.',
     referencias: [REF_EMBRAPA_MILHO, REF_FRAC, REF_MAPA],
   },
 
@@ -753,50 +508,23 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Pústulas isoladas',
-        acao: 'Híbrido resistente cobre',
       },
       medio: {
         criterio: 'Severidade 10-25 %',
-        acao: 'Aplicação tripla mistura',
       },
       alto: {
         criterio: '> 25 % pré-enchimento',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
       cultural: ['Híbridos resistentes', 'Rotação'],
       biologico: ['Bacillus subtilis (parcial)'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'carboxamidas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tripla mistura (FRAC 11+7+3)',
-            graudeIRACouFRAC: 'FRAC 11 + 7 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Tripla mistura comercial',
-                formulacao: 'SC',
-                dosagem: '0,4-0,6 L p.c./ha',
-                intervaloAplicacoes: '20-25 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Aplicar em V8-VT para máxima proteção'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar grupos FRAC + multissítio.',
     monitoramento: {
       metodo: 'Inspeção visual face superior',
       frequencia: 'Semanal V6-VT',
       nivelControle: 'Pústulas + clima quente úmido',
     },
-    observacoesAgronomicas:
-      'Ferrugem mais agressiva em climas tropicais. Pode causar perdas > 30 % em ataques severos.',
     referencias: [REF_EMBRAPA_MILHO, REF_FRAC, REF_MAPA],
   },
 
@@ -832,50 +560,23 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 10 % severidade',
-        acao: 'Híbrido resistente cobre',
       },
       medio: {
         criterio: '10-25 %',
-        acao: 'Aplicação tripla mistura',
       },
       alto: {
         criterio: '> 25 % pré-enchimento',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
       cultural: ['Híbridos resistentes', 'Rotação'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'carboxamidas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Piraclostrobina + Epoxiconazol',
-            graudeIRACouFRAC: 'FRAC 11 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '0,5-0,75 L p.c./ha',
-                intervaloAplicacoes: '20-25 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Híbrido resistente é mais barato que controle químico'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + multissítio.',
     monitoramento: {
       metodo: 'Inspeção visual a partir de V6',
       frequencia: 'Semanal',
       nivelControle: '10 % severidade + clima favorável',
     },
-    observacoesAgronomicas:
-      'Mais frequente no Centro-Oeste e Sudeste. Híbridos modernos têm boa tolerância.',
     referencias: [REF_EMBRAPA_MILHO, REF_FRAC, REF_MAPA],
   },
 
@@ -908,49 +609,23 @@ export const MILHO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 10 % severidade',
-        acao: 'Híbrido resistente cobre',
       },
       medio: {
         criterio: '10-25 %',
-        acao: 'Aplicação tripla mistura',
       },
       alto: {
         criterio: '> 25 %',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
       cultural: ['Híbridos resistentes', 'Rotação', 'Eliminar restos culturais'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'carboxamidas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tripla mistura padrão',
-            graudeIRACouFRAC: 'FRAC 11 + 7 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Tripla comercial',
-                formulacao: 'SC',
-                dosagem: '0,4-0,6 L p.c./ha',
-                intervaloAplicacoes: '20-25 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Resistência QoI documentada — sempre em mistura'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + multissítio.',
     monitoramento: {
       metodo: 'Inspeção visual',
       frequencia: 'Semanal a partir de V8',
       nivelControle: '10 % severidade + clima',
     },
-    observacoesAgronomicas: 'Frequente em regiões úmidas. Resistência QoI documentada.',
     referencias: [REF_EMBRAPA_MILHO, REF_FRAC, REF_MAPA],
   },
 ];

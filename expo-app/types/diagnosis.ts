@@ -8,15 +8,6 @@ export interface AgrioPrediction {
   type?: string;
 }
 
-export interface AgrioProduct {
-  name: string;
-  active_ingredient?: string;
-  dosage?: string;
-  interval?: string;
-  safety_period?: string;
-  toxic_class?: string;
-}
-
 export interface AgrioEnrichment {
   name_pt?: string;
   name_es?: string;
@@ -27,8 +18,6 @@ export interface AgrioEnrichment {
   causes_es?: string[];
   symptoms?: string[];
   symptoms_es?: string[];
-  chemical_treatment?: string[];
-  chemical_treatment_es?: string[];
   biological_treatment?: string[];
   biological_treatment_es?: string[];
   cultural_treatment?: string[];
@@ -41,7 +30,6 @@ export interface AgrioEnrichment {
   monitoring?: string[];
   favorable_conditions?: string[];
   resistance_info?: string;
-  recommended_products?: AgrioProduct[];
   related_pests?: string[];
   action_threshold?: string;
   mip_strategy?: string;
@@ -49,6 +37,7 @@ export interface AgrioEnrichment {
 
 export interface AgrioNotesData {
   message?: string;
+  legal_warning?: string;
   crop?: string;
   crop_confidence?: number;
   id_array?: AgrioPrediction[];
@@ -62,7 +51,6 @@ export type ConfidenceLevelName = 'high' | 'medium' | 'low' | 'very_low';
 
 export interface DiagnosisResult {
   id: string;
-  user_id: string;
   crop: string;
   pest_id?: string | undefined;
   pest_name?: string | undefined;
@@ -71,9 +59,6 @@ export interface DiagnosisResult {
   image_url?: string | undefined;
   notes?: string | undefined;
   metadata?: Record<string, unknown> | undefined;
-  location_lat?: number | undefined;
-  location_lng?: number | undefined;
-  location_name?: string | undefined;
   created_at: string;
   parsedNotes?: AgrioNotesData | undefined;
 }

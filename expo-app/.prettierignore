@@ -1,6 +1,7 @@
 node_modules
 .expo
 dist
+coverage
 *.lock
 
 # Vendored snapshot of @agrorumo/ia-hub-client (see VENDORED.md). We do

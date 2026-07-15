@@ -20,16 +20,22 @@ import { SearchInput } from '../../components/SearchInput';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useTranslation } from 'react-i18next';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { AIConsentModal } from '../../components/AIConsentModal';
+import { grantAIConsent, hasAIConsent } from '../../services/aiConsent';
+import { showAlert } from '../../services/dialog';
 
 export default function CropSelectScreen() {
   const { t } = useTranslation();
   const { imageUri, setCrop } = useDiagnosis();
+  const { user } = useAuthContext();
   // CROPS is a non-empty constant array; CROPS[0] always exists. Assert for
   // noUncheckedIndexedAccess without changing runtime behavior.
   const [selected, setSelected] = useState<CropType>(CROPS[0]!);
   const [search, setSearch] = useState('');
   const { isTablet, contentMaxWidth, numColumns } = useResponsive();
   const isNavigating = useRef(false);
+  const [consentVisible, setConsentVisible] = useState(false);
 
   const filtered = CROPS.filter(
     (c) => !search || c.displayName.toLowerCase().includes(search.toLowerCase()),
@@ -40,7 +46,7 @@ export default function CropSelectScreen() {
     setSelected(crop);
   };
 
-  const startDiagnosis = () => {
+  const continueToDiagnosis = () => {
     if (isNavigating.current) return;
     isNavigating.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -52,6 +58,30 @@ export default function CropSelectScreen() {
     setTimeout(() => {
       isNavigating.current = false;
     }, 2000);
+  };
+
+  const startDiagnosis = async () => {
+    if (isNavigating.current) return;
+    if (!user?.id) {
+      showAlert(t('common.error'), t('aiChat.loginRequired'));
+      return;
+    }
+    if (await hasAIConsent(user.id, 'diagnosis')) {
+      continueToDiagnosis();
+      return;
+    }
+    setConsentVisible(true);
+  };
+
+  const acceptConsent = async () => {
+    if (!user?.id) return;
+    try {
+      await grantAIConsent(user.id, 'diagnosis');
+      setConsentVisible(false);
+      continueToDiagnosis();
+    } catch {
+      showAlert(t('common.error'), t('aiConsent.saveError'));
+    }
   };
 
   return (
@@ -101,6 +131,11 @@ export default function CropSelectScreen() {
       </View>
 
       <Text style={styles.question}>{t('cropSelect.question')}</Text>
+
+      <View style={styles.photoGuidance} testID="cropselect-photo-guidance">
+        <Ionicons name="camera-outline" size={20} color={Colors.accent} />
+        <Text style={styles.photoGuidanceText}>{t('cropSelect.photoGuidance')}</Text>
+      </View>
 
       <FlatList
         data={filtered}
@@ -157,6 +192,13 @@ export default function CropSelectScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <AIConsentModal
+        visible={consentVisible}
+        purpose="diagnosis"
+        onAccept={acceptConsent}
+        onCancel={() => setConsentVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -208,6 +250,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
+  },
+  photoGuidance: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: `${Colors.accent}12`,
+  },
+  photoGuidanceText: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    lineHeight: 18,
   },
   cropItem: {
     flex: 1,

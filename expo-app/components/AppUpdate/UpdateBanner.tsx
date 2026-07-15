@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { ArrowUpCircle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Application from 'expo-application';
 
 import { BorderRadius, Colors, FontFamily, FontWeight, Spacing } from '../../constants/theme';
@@ -119,8 +119,6 @@ export function UpdateBanner({ updateInfo, onDismiss }: UpdateBannerProps) {
     if (!nativeSafe && !fallbackSafe) {
       captureUpdateCheckIssue('unsafe_store_url_blocked', {
         source: 'banner',
-        nativePrefix: typeof native === 'string' ? native.slice(0, 24) : null,
-        fallbackPrefix: typeof fallback === 'string' ? fallback.slice(0, 24) : null,
       });
       setLinkError(true);
       return;
@@ -174,14 +172,11 @@ export function UpdateBanner({ updateInfo, onDismiss }: UpdateBannerProps) {
           // analytics never breaks UI
         }
         return;
-      } catch (err) {
+      } catch {
         // Both native AND fallback links died — capture to Sentry so support
         // has signal beyond the inline error.
         captureUpdateCheckIssue('update_banner_open_failed', {
           source: 'banner',
-          native,
-          fallback,
-          error: err instanceof Error ? err.message : String(err),
         });
       }
     }
@@ -204,7 +199,7 @@ export function UpdateBanner({ updateInfo, onDismiss }: UpdateBannerProps) {
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.iconBox}>
-            <ArrowUpCircle size={22} color={Colors.accent} />
+            <Ionicons name="arrow-up-circle" size={22} color={Colors.accent} />
           </View>
 
           <View style={styles.textBox}>

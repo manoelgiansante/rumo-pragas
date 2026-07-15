@@ -1,57 +1,69 @@
-# iOS App Store Connect — Rumo Pragas (pt-BR)
+# Metadata iOS — Rumo Pragas
 
-**App ID:** 6762232682
-**Bundle ID:** com.agrorumo.rumopragas
-**Version:** 1.0.0 (build 1)
-**Primary Locale:** pt-BR
+Versão preparada: 1.0.11
 
-## Campos
+App ID: 6762232682
 
-| Campo            | Arquivo                      | Limite | Atual |
-| ---------------- | ---------------------------- | ------ | ----- |
-| App Name         | `pt-BR/name.txt`             | 30     | 11    |
-| Subtitle         | `pt-BR/subtitle.txt`         | 30     | 25    |
-| Keywords         | `pt-BR/keywords.txt`         | 100    | 96    |
-| Promotional Text | `pt-BR/promotional_text.txt` | 170    | 159   |
-| Description      | `pt-BR/description.txt`      | 4000   | ~3780 |
-| What's New       | `pt-BR/whats_new.txt`        | 4000   | ~585  |
+Bundle ID: com.agrorumo.rumopragas
 
-## Categorias
+Localidade principal: pt-BR
+Modelo comercial: gratuito, sem compra interna
 
-- Primary: Utilities
-- Secondary: Productivity
-- Age Rating: 4+
+## Fonte canônica
 
-## Screenshots (1290x2796 = 6.7" iPhone)
+Os arquivos em pt-BR nesta pasta são a única fonte de texto para a próxima submissão. Não copiar textos históricos de outros documentos.
 
-Ordem no ASC:
+Limites que precisam permanecer bloqueantes:
 
-1. `../../ios/6.7/01-hero.png` — Diagnostique pragas em segundos com IA
-2. `../../ios/6.7/02-diagnostico.png` — Foto. Analise. Tratamento.
-3. `../../ios/6.7/03-biblioteca.png` — Biblioteca completa por cultura
-4. `../../ios/6.7/04-historico.png` — Acompanhe sua lavoura o ano todo
-5. `../../ios/6.7/05-login.png` — Seu agronomo de bolso. Gratis.
-
-Também disponíveis em 6.5" (1242x2688) em `../../ios/6.5/`.
+| Campo             | Limite Apple |
+| ----------------- | -----------: |
+| Nome              |           30 |
+| Subtítulo         |           30 |
+| Palavras-chave    |          100 |
+| Texto promocional |          170 |
+| Descrição         |        4.000 |
+| Novidades         |        4.000 |
 
 ## URLs
 
-- Privacy: https://pragas.agrorumo.com/privacidade
-- Terms: https://pragas.agrorumo.com/termos
-- Support: https://pragas.agrorumo.com/
-- Marketing: https://pragas.agrorumo.com/
-- Delete Account: https://pragas.agrorumo.com/delete-account
+| Uso                               | URL                                        |
+| --------------------------------- | ------------------------------------------ |
+| Política de privacidade           | https://pragas.agrorumo.com/privacidade    |
+| Termos                            | https://pragas.agrorumo.com/termos         |
+| Suporte                           | https://pragas.agrorumo.com/suporte        |
+| Marketing                         | https://pragas.agrorumo.com                |
+| Exclusão dos dados do Rumo Pragas | https://pragas.agrorumo.com/delete-account |
 
-## Upload via ASC MCP
+## Capturas reais obrigatórias
 
-```
-mcp__app-store-connect__list_apps
-# -> find app 6762232682
-mcp__app-store-connect__list_app_store_version_localizations
-mcp__app-store-connect__update_app_store_version_localization
-  --id <localization_id>
-  --description "<content of description.txt>"
-  --keywords "<content of keywords.txt>"
-  --promotional-text "<content of promotional_text.txt>"
-  --whats-new "<content of whats_new.txt>"
-```
+Os PNGs antigos foram removidos do caminho de submissão e arquivados com proibição explícita de
+uso. Não copiar, redimensionar ou enviar qualquer arquivo de `store-assets/archive/`.
+
+Capturar no build de release, sem dados pessoais e sem dados inventados:
+
+1. Home com ação de fotografar.
+2. Seleção de cultura e captura ou recorte.
+3. Resultado real de QA com hipótese, confiança, alternativas e aviso de limite da IA.
+4. Histórico real mostrando apenas os campos efetivamente persistidos.
+5. Biblioteca.
+6. Assistente de IA com aviso de caráter educativo.
+7. Configurações com privacidade, suporte e exclusão dos dados do Rumo Pragas.
+
+Critérios de aceite:
+
+- Conteúdo integralmente visível, sem teclado, toast, spinner ou permissão aberta.
+- Nenhuma alegação de velocidade, acurácia, severidade medida, tratamento, dose, mapa, comunidade ou identificação offline.
+- Nenhuma foto, e-mail, coordenada ou notificação de pessoa real.
+- Aparência clara coerente; o candidato é intencionalmente bloqueado em modo claro.
+- Captura em iPhone 6,9 pol. e iPad 13 pol. se o App Store Connect solicitar essas classes.
+- Dimensões e formatos devem ser validados na ajuda atual do App Store Connect antes do upload.
+- Testar ordem e legibilidade no preview de produto do App Store Connect.
+
+O upload e a publicação são ações externas e permanecem bloqueados até validação humana do build e das imagens reais.
+
+## Accessibility Nutrition Labels
+
+A matriz de recursos e tarefas comuns está em `docs/accessibility-matrix.md`; o gate de preenchimento
+fica em `ACCESSIBILITY_CHECKLIST.md`. Não inferir suporte a partir de propriedades acessíveis no
+código. Cada recurso só pode ser declarado depois de passar integralmente na build candidata,
+separadamente em iPhone e iPad.

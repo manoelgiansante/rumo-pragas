@@ -8,7 +8,6 @@ import {
   getEntriesByType,
   getEntryById,
   getRecommendation,
-  MIP_CREA_DISCLAIMER,
   searchByKeywords,
 } from '../../../data/mip';
 
@@ -117,32 +116,35 @@ describe('getRecommendation', () => {
     expect(getRecommendation('xyz_inexistente', 'medio')).toBeUndefined();
   });
 
-  it('em nível BAIXO não traz ações químicas', () => {
+  it('em nível BAIXO retorna somente manejo educativo não químico', () => {
     const rec = getRecommendation('soja_lagarta_da_soja', 'baixo');
     expect(rec).toBeDefined();
-    expect(rec?.acoesQuimicas).toBeUndefined();
-    expect(rec?.acaoPrincipal).toBeTruthy();
-    expect(rec?.disclaimerCREA).toBe(MIP_CREA_DISCLAIMER);
+    expect(rec).not.toHaveProperty('acoesQuimicas');
+    expect(rec).not.toHaveProperty('acaoPrincipal');
+    expect(rec?.acoesCulturais.length).toBeGreaterThan(0);
+    expect(rec?.monitoramento.metodo).toBeTruthy();
   });
 
-  it('em nível MÉDIO traz sugestão química com IAs', () => {
+  it('em nível MÉDIO continua sem produto, ingrediente ativo ou dose', () => {
     const rec = getRecommendation('soja_ferrugem_asiatica', 'medio');
     expect(rec).toBeDefined();
-    expect(rec?.acoesQuimicas).toBeDefined();
-    expect(rec?.acoesQuimicas?.ingredientesAtivosSugeridos.length).toBeGreaterThan(0);
+    expect(rec).not.toHaveProperty('acoesQuimicas');
+    expect(JSON.stringify(rec)).not.toMatch(/ingrediente|produto|dosagem|dose/i);
   });
 
-  it('em nível ALTO traz sugestão química', () => {
+  it('em nível ALTO permanece educativo e não prescritivo', () => {
     const rec = getRecommendation('milho_lagarta_cartucho', 'alto');
     expect(rec).toBeDefined();
-    expect(rec?.acoesQuimicas).toBeDefined();
+    expect(rec).not.toHaveProperty('acoesQuimicas');
+    expect(rec?.infestationLevel).toBe('alto');
   });
 
-  it('sempre carrega referências e disclaimer CREA', () => {
+  it('sempre carrega monitoramento e manejo cultural/biológico', () => {
     const rec = getRecommendation('cafe_ferrugem_cafeeiro', 'medio');
     expect(rec).toBeDefined();
-    expect(rec?.referencias.length).toBeGreaterThan(0);
-    expect(rec?.disclaimerCREA).toBe(MIP_CREA_DISCLAIMER);
+    expect(rec?.monitoramento.frequencia).toBeTruthy();
+    expect(Array.isArray(rec?.acoesCulturais)).toBe(true);
+    expect(Array.isArray(rec?.acoesBiologicas)).toBe(true);
   });
 });
 

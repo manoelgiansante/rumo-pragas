@@ -44,149 +44,141 @@ export default function TermsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 1 de julho de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 14 de julho de 2026</Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           1. Aceitação dos Termos
         </Text>
         <Text style={styles.paragraph}>
-          Ao acessar e utilizar o aplicativo Rumo Pragas IA ("App"), você concorda com estes Termos
-          de Uso. Caso não concorde com algum dos termos aqui descritos, por favor, não utilize o
-          App.
+          O Rumo Pragas é oferecido pela MM CAMPO FORTE LTDA., CNPJ 57.169.838/0001-20, sob a marca
+          AgroRumo. Ao usar o aplicativo, você concorda com estes Termos e com a Política de
+          Privacidade.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           2. Descrição do Serviço
         </Text>
         <Text style={styles.paragraph}>
-          O Rumo Pragas IA é um aplicativo de diagnóstico inteligente de pragas agrícolas que
-          utiliza inteligência artificial para analisar imagens de plantas e identificar possíveis
-          pragas, doenças e deficiências nutricionais. O App oferece funcionalidades como captura e
-          envio de fotos, histórico de diagnósticos, chat com IA especializada e relatórios.
+          O aplicativo recebe uma foto e apresenta hipótese probabilística de identificação, nível
+          de confiança e possíveis alternativas. Também oferece histórico estruturado, biblioteca
+          educativa e assistente de IA para organizar informações gerais. A análise por foto e o
+          assistente exigem internet; uma solicitação interrompida pode ficar em fila local para
+          nova tentativa quando a conexão retornar. Não há inferência offline.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           3. Uso do Aplicativo
         </Text>
         <Text style={styles.paragraph}>
-          Você se compromete a utilizar o App de forma responsável e em conformidade com a
-          legislação vigente. É proibido:{'\n\n'}- Utilizar o App para fins ilegais ou não
-          autorizados;{'\n'}- Tentar acessar áreas restritas do sistema;{'\n'}- Compartilhar sua
-          conta com terceiros;{'\n'}- Reproduzir, distribuir ou modificar o conteúdo do App sem
-          autorização.
+          Você deve fornecer dados corretos, proteger suas credenciais e usar o aplicativo de forma
+          responsável. É proibido:{'\n\n'}- Usar o serviço para atividade ilegal, fraude ou violação
+          de direitos;{'\n'}- Tentar contornar autenticação, autorização, limites técnicos ou
+          controles de segurança;{'\n'}- Introduzir código malicioso, automatizar abuso ou
+          sobrecarregar a infraestrutura;{'\n'}- Usar a saída da IA como laudo, receita ou decisão
+          profissional definitiva.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           4. Diagnósticos Informativos
         </Text>
         <Text style={styles.importantBox}>
-          Os diagnósticos fornecidos pelo Rumo Pragas IA são meramente informativos e baseados em
-          modelos de inteligência artificial. Eles NÃO substituem a avaliação de um engenheiro
-          agrônomo ou profissional habilitado. Recomendamos que todo diagnóstico seja validado por
-          um profissional antes de qualquer tomada de decisão sobre manejo, aplicação de defensivos
-          ou tratamento de culturas.
+          Os resultados são informativos, probabilísticos e podem estar incorretos ou incompletos.
+          Eles não substituem avaliação de campo ou profissional habilitado. O Rumo Pragas não emite
+          receituário agronômico e não prescreve produto, dose, mistura, intervalo ou forma de
+          aplicação. Confirme o registro e as condições oficiais no AGROFIT e siga a orientação do
+          profissional responsável antes de qualquer decisão de manejo.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           5. Responsabilidades do Usuário
         </Text>
         <Text style={styles.paragraph}>
-          O usuário é responsável por:{'\n\n'}- Manter a confidencialidade de suas credenciais de
-          acesso;{'\n'}- Garantir a qualidade das imagens enviadas para análise;{'\n'}- Validar os
-          diagnósticos com profissionais qualificados antes de agir;{'\n'}- Manter seus dados
-          cadastrais atualizados.
+          A análise depende da qualidade e iluminação da imagem, do estágio da planta, de sintomas
+          semelhantes e das condições locais. Você é responsável por revisar a informação e buscar
+          avaliação habilitada antes de agir. A identidade de acesso AgroRumo pode ser compartilhada
+          entre produtos, enquanto os dados específicos do Rumo Pragas permanecem separados conforme
+          as permissões aplicáveis.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           6. Limitação de Responsabilidade
         </Text>
         <Text style={styles.paragraph}>
-          A AgroRumo não se responsabiliza por danos diretos, indiretos, incidentais ou consequentes
-          decorrentes do uso dos diagnósticos fornecidos pelo App. A precisão dos diagnósticos
-          depende de diversos fatores, incluindo qualidade da imagem, estágio da praga e condições
-          ambientais.
+          Trabalhamos para manter o serviço seguro e disponível, mas podem ocorrer manutenção,
+          falhas de conexão ou indisponibilidade de terceiros. Nada nestes Termos exclui direitos ou
+          responsabilidades que não possam ser afastados pela legislação brasileira. Dentro dos
+          limites legais, o usuário deve validar as informações antes de agir.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           7. Propriedade Intelectual
         </Text>
         <Text style={styles.paragraph}>
-          Todo o conteúdo do App, incluindo mas não se limitando a textos, gráficos, logotipos,
-          ícones, imagens, modelos de IA e software, é de propriedade exclusiva da AgroRumo ou de
-          seus licenciadores e é protegido pelas leis de propriedade intelectual aplicáveis.
+          Marca, interface, código e conteúdo próprio pertencem à MM CAMPO FORTE LTDA. ou a seus
+          licenciadores. Você mantém os direitos sobre o conteúdo que envia e nos concede somente a
+          autorização necessária para processá-lo e prestar a funcionalidade solicitada.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           8. Dados e Privacidade
         </Text>
         <Text style={styles.paragraph}>
-          A coleta e o tratamento de dados pessoais são regidos pela nossa Política de Privacidade,
-          que complementa estes Termos de Uso. Ao utilizar o App, você também concorda com a
-          Política de Privacidade.
+          A coleta e o tratamento de dados pessoais são regidos pela Política de Privacidade, que
+          informa as finalidades, provedores, conservação, exclusão por aplicativo e direitos do
+          titular.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          9. Planos
+          9. Serviço gratuito
         </Text>
         <Text style={styles.paragraph}>
-          O App é oferecido gratuitamente, com todas as funcionalidades disponíveis sem custo. No
-          momento não há assinatura, compra dentro do aplicativo nem qualquer cobrança. Caso planos
-          pagos venham a ser oferecidos no futuro, os detalhes — incluindo preços, forma de
-          renovação e cancelamento — serão apresentados de forma clara no próprio App e na
-          respectiva loja (App Store / Google Play), e nenhuma cobrança será realizada sem o seu
-          consentimento expresso, respeitado o direito de arrependimento previsto no art. 49 do
-          Código de Defesa do Consumidor.
+          O Rumo Pragas é gratuito e não oferece plano pago, assinatura, compra interna ou período
+          de teste. Podem existir limites técnicos e de uso justo para proteger a disponibilidade do
+          serviço.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          10. Cancelamento e Encerramento
+          10. Exclusão de dados e encerramento do uso
         </Text>
         <Text style={styles.paragraph}>
-          Você pode encerrar sua conta e excluir todos os seus dados a qualquer momento. Pelo
-          próprio aplicativo, em Ajustes {'>'} Excluir conta, a exclusão é imediata e irreversível.
-          Alternativamente, você pode solicitar a exclusão pela página
-          https://pragas.agrorumo.com/excluir-conta; nesse caso o pedido é processado e concluído em
-          até 15 (quinze) dias. A AgroRumo reserva-se o direito de suspender ou encerrar contas que
-          violem estes Termos de Uso, sem aviso prévio.
+          Pela opção de exclusão em Ajustes, você solicita a eliminação dos dados específicos do
+          Rumo Pragas. Quando o aplicativo confirma a conclusão, esses dados foram eliminados e os
+          tokens push foram revogados. A identidade global AgroRumo, usada por outros produtos, não
+          é apagada por essa operação específica. Registros históricos compartilhados sem
+          identificação segura do aplicativo também são mantidos para não excluir dados de outros
+          produtos.
+        </Text>
+        <Text style={styles.paragraph}>
+          Um marcador técnico mínimo de desvinculação — UUID global, estado, tentativas, códigos
+          técnicos limitados e datas — é mantido para repetir uma limpeza interrompida, comprovar a
+          eliminação específica e impedir recriação silenciosa. Ele não contém nome, e-mail, foto,
+          mensagem, conteúdo ou token e permanece até a reativação explícita do Rumo Pragas ou a
+          exclusão da identidade global. Reativar não recupera dados antigos. O aplicativo informa
+          se a solicitação foi concluída, continua em processamento ou precisa ser tentada
+          novamente. Também há orientação em pragas.agrorumo.com/excluir-conta.
+        </Text>
+        <Text style={styles.paragraph}>
+          Podemos restringir uso abusivo, ilegal ou que comprometa a segurança, respeitada a
+          legislação aplicável.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
           11. Alterações nos Termos
         </Text>
         <Text style={styles.paragraph}>
-          A AgroRumo pode alterar estes Termos de Uso a qualquer momento. As alterações serão
-          comunicadas pelo App e entrarão em vigor na data de publicação. O uso continuado do App
-          após as alterações constitui aceitação dos novos termos.
+          Estes Termos podem ser atualizados para refletir mudanças legais, técnicas ou
+          operacionais. A data acima indica a versão vigente; mudanças materiais serão comunicadas
+          por meio adequado.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          12. Contato
+          12. Lei aplicável e contato
         </Text>
         <Text style={styles.paragraph}>
-          Em caso de dúvidas sobre estes Termos de Uso, entre em contato conosco pelo email:
+          Aplica-se a legislação brasileira, inclusive o Código de Defesa do Consumidor e a LGPD.
+          Direitos de foro previstos em lei permanecem preservados.{'\n\n'}Controlador: MM CAMPO
+          FORTE LTDA.{'\n'}CNPJ: 57.169.838/0001-20{'\n'}Contato e canal de privacidade:
           contato@agrorumo.com
-        </Text>
-
-        <Text style={styles.sectionTitle} accessibilityRole="header">
-          13. Contato Legal
-        </Text>
-        <Text style={styles.paragraph}>
-          Razão Social: MM CAMPO FORTE LTDA.{'\n'}
-          CNPJ: 57.169.838/0001-20{'\n'}
-          Email: contato@agrorumo.com{'\n'}
-          Encarregado de Proteção de Dados (DPO): contato@agrorumo.com
-        </Text>
-
-        <Text style={styles.sectionTitle} accessibilityRole="header">
-          14. Lei Aplicável e Foro
-        </Text>
-        <Text style={styles.paragraph}>
-          Este Termo é regido pelas leis da República Federativa do Brasil, incluindo o Código de
-          Defesa do Consumidor (Lei 8.078/1990) e a LGPD (Lei 13.709/2018). Fica eleito o foro da
-          Comarca de Ribeirão Preto - SP para dirimir quaisquer disputas. Tratando-se de relação de
-          consumo, fica assegurado ao consumidor o direito de, a seu critério, ajuizar a demanda no
-          foro de seu próprio domicílio, nos termos do art. 101, inciso I, do Código de Defesa do
-          Consumidor.
         </Text>
 
         <View style={styles.bottomSpacer} />

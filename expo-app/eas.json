@@ -1,21 +1,20 @@
 {
   "cli": {
-    "version": ">= 12.0.0",
+    "version": ">= 20.0.0",
     "appVersionSource": "remote"
   },
   "build": {
     "development": {
+      "environment": "development",
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
       "ios": {
         "simulator": true
-      },
-      "env": {
-        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168"
       }
     },
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
       "channel": "preview",
       "android": {
@@ -25,11 +24,11 @@
         "simulator": true
       },
       "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true,
       "channel": "production",
       "ios": {
@@ -40,30 +39,8 @@
         "image": "latest",
         "buildType": "app-bundle"
       },
-      // ── IA Hub diagnose path — INTENTIONALLY DISABLED in production ──
-      // Do NOT add EXPO_PUBLIC_IA_HUB_ENABLED / _DIAGNOSE_READY / _API_KEY
-      // here until ALL THREE server-side conditions are verified, or the
-      // diagnose flow regresses (history loss + free-cap bypass + ZERO-X
-      // auth gap). Code lives in services/diagnosis.ts + lib/ia-hub.ts.
-      //   1. ZERO-X: IA Hub validates the user's Supabase JWT server-side
-      //      (auth.getUser(jwt)); NEVER trusts a body/header userId for
-      //      scope or billing. (Client already forwards Authorization.)
-      //   2. PERSISTENCE: IA Hub worker INSERTs each diagnosis into
-      //      pragas_diagnoses (or the client mirrors it) — else history
-      //      and the monthly free cap break.
-      //   3. QUOTA: IA Hub enforces the per-(user, app) monthly free cap (3)
-      //      that the legacy /functions/v1/diagnose edge fn enforces today.
-      // Pre-build check (ZERO-P, never grep .env):
-      //   eas env:list --environment production  → confirm none are "true".
-      // Two flags are required to enable: EXPO_PUBLIC_IA_HUB_ENABLED=true
-      // makes the SDK available; EXPO_PUBLIC_IA_HUB_DIAGNOSE_READY=true
-      // attests conditions 1–3 above. Flipping only the first keeps the
-      // safe legacy path (isIAHubDiagnoseEnabled() stays false).
       "env": {
-        "EXPO_PUBLIC_SENTRY_DSN": "https://1ac1dd873b362f1420cea3b6164b9bda@o4510964507148288.ingest.us.sentry.io/4511190963847168",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "false",
-        "SENTRY_DISABLE_NATIVE_DEBUG_UPLOAD": "false",
-        "SENTRY_ALLOW_FAILURE": "true",
+        "NODE_ENV": "production",
         "SENTRY_ORG": "rumo-maquinas",
         "SENTRY_PROJECT": "rumo-pragas"
       }

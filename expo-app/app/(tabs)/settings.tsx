@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   useColorScheme,
   Platform,
   ActionSheetIOS,
+  ActivityIndicator,
 } from 'react-native';
 import { showAlert } from '../../services/dialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,8 +19,9 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
+import * as Crypto from 'expo-crypto';
 import { useTranslation } from 'react-i18next';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from '../../services/sentry-shim';
 import { LANGUAGE_KEY } from '../../i18n';
 import {
   Colors,
@@ -34,8 +36,30 @@ import { useResponsive } from '../../hooks/useResponsive';
 import { useOTAUpdate } from '../../hooks/useOTAUpdate';
 import { supabase } from '../../services/supabase';
 import { Avatar } from '../../components/Avatar';
-
-const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
+import { getPragasAvatarSignedUrl, parseOwnedLegacyAvatarUrl } from '../../services/avatar';
+import {
+  isPushNotificationsEnabled,
+  isRemotePushBuildConfigured,
+  setPushNotificationsEnabled,
+} from '../../services/notifications';
+import {
+  getUserPreferences,
+  setLocationConsent,
+  LOCATION_CONSENT_PURPOSE,
+} from '../../services/userPreferences';
+import { useLocation } from '../../hooks/useLocation';
+import { isPragasDeletionComplete } from '../../services/accountDeletion';
+import { purgePragasLocalUserData } from '../../services/localDataPurge';
+import {
+  deliverPragasUserDataExport,
+  requestPragasUserDataExport,
+  UserDataExportError,
+} from '../../services/userDataExport';
+import {
+  AIConsentPurpose,
+  hasAIConsent,
+  revokeAIConsentEverywhere,
+} from '../../services/aiConsent';
 
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
   { code: 'pt-BR', label: 'Português' },
@@ -84,6 +108,7 @@ interface RowProps {
   isLast?: boolean | undefined;
   testID?: string | undefined;
   accessibilityHint?: string | undefined;
+  busy?: boolean | undefined;
 }
 
 function Row({
@@ -98,18 +123,20 @@ function Row({
   isLast,
   testID,
   accessibilityHint,
+  busy,
 }: RowProps) {
-  const isInteractive = !!onPress;
+  const isInteractive = !!onPress && !busy;
   return (
     <TouchableOpacity
       style={[styles.row, isLast && styles.rowLast]}
-      onPress={onPress}
-      disabled={!onPress && !trailing}
+      onPress={isInteractive ? onPress : undefined}
+      disabled={busy || (!onPress && !trailing)}
       activeOpacity={0.6}
       accessibilityLabel={label}
       accessibilityRole={isInteractive ? 'button' : 'none'}
       accessibilityValue={value ? { text: value } : undefined}
       accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!busy, busy: !!busy }}
       testID={testID}
     >
       <View style={[styles.rowIconWrap, { backgroundColor: (iconColor ?? Colors.accent) + '14' }]}>
@@ -148,21 +175,36 @@ function Row({
 
 export default function SettingsScreen() {
   const isDark = useColorScheme() === 'dark';
-  const { user, signOut } = useAuthContext();
+  const { user, session, signOut } = useAuthContext();
   const { isTablet, contentMaxWidth } = useResponsive();
   const { t, i18n } = useTranslation();
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushPreferenceLoading, setPushPreferenceLoading] = useState(true);
+  const [locationSharing, setLocationSharing] = useState(false);
+  const [locationPreferenceLoading, setLocationPreferenceLoading] = useState(true);
+  const [locationPreferenceSaving, setLocationPreferenceSaving] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+  const [aiConsentLoading, setAIConsentLoading] = useState(true);
+  const [aiConsentSaving, setAIConsentSaving] = useState<AIConsentPurpose | null>(null);
+  const [aiConsentState, setAIConsentState] = useState<Record<AIConsentPurpose, boolean>>({
+    diagnosis: false,
+    chat: false,
+  });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { isChecking, checkForUpdate } = useOTAUpdate();
+  const { requestPermission } = useLocation();
+  const deletionIdempotencyKeyRef = useRef(Crypto.randomUUID());
+  const exportIdempotencyKeyRef = useRef(Crypto.randomUUID());
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
 
   // Load persisted push notification preference
   useEffect(() => {
     let mounted = true;
-    AsyncStorage.getItem(PUSH_ENABLED_KEY).then((value) => {
-      if (mounted && value !== null) {
-        setPushEnabled(value === 'true');
+    isPushNotificationsEnabled().then((value) => {
+      if (mounted) {
+        setPushEnabled(value);
+        setPushPreferenceLoading(false);
       }
     });
     return () => {
@@ -170,18 +212,23 @@ export default function SettingsScreen() {
     };
   }, []);
 
-  // Load avatar URL alongside subscription data (single round trip optimisation)
+  // Load a short-lived URL from the private Pragas avatar bucket.
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
     (async () => {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('pragas_profiles')
-          .select('avatar_url')
+          .select('avatar_path, avatar_url')
           .eq('user_id', user.id)
           .maybeSingle();
-        if (mounted && data?.avatar_url) setAvatarUrl(data.avatar_url);
+        if (error || !data) return;
+        const signed = await getPragasAvatarSignedUrl(user.id, data.avatar_path ?? null);
+        const legacy = parseOwnedLegacyAvatarUrl(user.id, data.avatar_url ?? null)
+          ? data.avatar_url
+          : null;
+        if (mounted) setAvatarUrl(signed ?? legacy);
       } catch {
         // Non-fatal: fall back to initial-letter avatar
       }
@@ -191,11 +238,194 @@ export default function SettingsScreen() {
     };
   }, [user?.id]);
 
-  const handlePushToggle = useCallback((value: boolean) => {
-    setPushEnabled(value);
-    AsyncStorage.setItem(PUSH_ENABLED_KEY, String(value));
-    Haptics.selectionAsync().catch(() => {});
-  }, []);
+  useEffect(() => {
+    let mounted = true;
+    setAIConsentLoading(true);
+    setAIConsentState({ diagnosis: false, chat: false });
+    if (!user?.id) {
+      setAIConsentLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    Promise.all([hasAIConsent(user.id, 'diagnosis'), hasAIConsent(user.id, 'chat')]).then(
+      ([diagnosis, chat]) => {
+        if (!mounted) return;
+        setAIConsentState({ diagnosis, chat });
+        setAIConsentLoading(false);
+      },
+    );
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    setLocationPreferenceLoading(true);
+    setLocationSharing(false);
+    if (!user?.id) {
+      setLocationPreferenceLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    getUserPreferences(user.id).then((preferences) => {
+      if (!mounted) return;
+      setLocationSharing(preferences.share_location === true);
+      setLocationPreferenceLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  const handlePushToggle = useCallback(
+    async (value: boolean) => {
+      const previous = pushEnabled;
+      setPushEnabled(value);
+      try {
+        const actual = await setPushNotificationsEnabled(value);
+        setPushEnabled(actual);
+        if (value && !actual) {
+          showAlert(t('common.error'), t('settings.notificationsPermissionDenied'));
+        }
+        Haptics.selectionAsync().catch(() => {});
+      } catch {
+        setPushEnabled(previous);
+        showAlert(t('common.error'), t('settings.pushPreferenceError'));
+      }
+    },
+    [pushEnabled, t],
+  );
+
+  const persistLocationPreference = useCallback(
+    async (enabled: boolean) => {
+      if (!user?.id || locationPreferenceSaving) return;
+      setLocationPreferenceSaving(true);
+      const previousValue = locationSharing;
+      setLocationSharing(enabled);
+      try {
+        await setLocationConsent(user.id, enabled, LOCATION_CONSENT_PURPOSE);
+        setLocationSharing(enabled);
+        Haptics.selectionAsync().catch(() => {});
+      } catch {
+        setLocationSharing(previousValue);
+        captureMessage('location preference save failed', {
+          level: 'warning',
+          tags: { feature: 'settings.locationConsent', action: enabled ? 'grant' : 'revoke' },
+        });
+        showAlert(t('common.error'), t('settings.locationPreferenceError'));
+      } finally {
+        setLocationPreferenceSaving(false);
+      }
+    },
+    [locationPreferenceSaving, locationSharing, t, user?.id],
+  );
+
+  const handleLocationToggle = useCallback(
+    (enabled: boolean) => {
+      if (!enabled) {
+        void persistLocationPreference(false);
+        return;
+      }
+      showAlert(t('settings.locationDisclosureTitle'), t('settings.locationDisclosureMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.locationAllow'),
+          onPress: () => {
+            void (async () => {
+              setLocationPreferenceSaving(true);
+              let granted: boolean;
+              try {
+                granted = await requestPermission();
+              } catch {
+                granted = false;
+              } finally {
+                setLocationPreferenceSaving(false);
+              }
+              if (!granted) {
+                showAlert(
+                  t('settings.locationPermissionDeniedTitle'),
+                  t('settings.locationPermissionDeniedMessage'),
+                );
+                return;
+              }
+              await persistLocationPreference(true);
+            })();
+          },
+        },
+      ]);
+    },
+    [persistLocationPreference, requestPermission, t],
+  );
+
+  const handleAIConsentToggle = useCallback(
+    async (purpose: AIConsentPurpose, enabled: boolean) => {
+      if (!user?.id || aiConsentSaving) return;
+      if (enabled) {
+        showAlert(t('settings.aiConsentTitle'), t('settings.aiConsentReacceptAtUse'));
+        return;
+      }
+      setAIConsentSaving(purpose);
+      try {
+        await revokeAIConsentEverywhere(user.id, purpose);
+        setAIConsentState((current) => ({ ...current, [purpose]: false }));
+        showAlert(t('settings.aiConsentRevokedTitle'), t('settings.aiConsentRevoked'));
+      } catch {
+        // Do not claim withdrawal or flip the UI after a server/local partial
+        // failure. Retry uses an idempotent server RPC.
+        showAlert(t('common.error'), t('settings.aiConsentRevokeError'));
+      } finally {
+        setAIConsentSaving(null);
+      }
+    },
+    [aiConsentSaving, t, user?.id],
+  );
+
+  const handleExportData = useCallback(async () => {
+    if (exportingData) return;
+    let accessToken = session?.access_token ?? '';
+    if (!accessToken) {
+      const { data } = await supabase.auth.getSession();
+      accessToken = data.session?.access_token ?? '';
+    }
+    if (!accessToken) {
+      showAlert(t('common.error'), t('settings.exportUnavailableError'));
+      return;
+    }
+    setExportingData(true);
+    try {
+      const result = await requestPragasUserDataExport(
+        accessToken,
+        exportIdempotencyKeyRef.current,
+      );
+      await deliverPragasUserDataExport(
+        result.json,
+        result.filename,
+        t('settings.exportShareTitle'),
+      );
+      exportIdempotencyKeyRef.current = Crypto.randomUUID();
+      showAlert(t('settings.exportSuccessTitle'), t('settings.exportSuccessMessage'));
+    } catch (error) {
+      captureMessage('data export failed', {
+        level: 'warning',
+        tags: {
+          feature: 'settings.exportData',
+          code: error instanceof UserDataExportError ? error.code : 'unexpected',
+        },
+      });
+      const incomplete =
+        error instanceof UserDataExportError &&
+        (error.code === 'invalid_export' || error.code === 'too_large');
+      showAlert(
+        t('common.error'),
+        t(incomplete ? 'settings.exportIncompleteError' : 'settings.exportUnavailableError'),
+      );
+    } finally {
+      setExportingData(false);
+    }
+  }, [exportingData, session?.access_token, t]);
 
   const handleLanguageChange = useCallback(() => {
     const options = LANGUAGE_OPTIONS.map((opt) => opt.label);
@@ -243,48 +473,84 @@ export default function SettingsScreen() {
   // informed confirmation in handleDeleteAccount below.
   const runAccountDeletion = async () => {
     try {
-      // LGPD Art. 18, V + Apple 5.1.1(v): immediate in-app deletion.
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      // The request erases only data provably scoped to Rumo Pragas; the shared
+      // AgroRumo authentication identity is intentionally retained.
+      // Prefer the already-resolved context token; getSession is a safe fallback
+      // on native and on web (whose auth storage now persists across reloads).
+      let accessToken = session?.access_token ?? '';
+      if (!accessToken) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        accessToken = sessionData?.session?.access_token ?? '';
+      }
 
-      if (sessionError || !sessionData?.session?.access_token) {
+      if (!accessToken) {
         showAlert(t('common.error'), t('settings.deletionError'));
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('delete-user-account', {
+      const { data, error } = await supabase.functions.invoke('pragas-delete-user-account', {
         headers: {
-          Authorization: `Bearer ${sessionData.session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
+          'Idempotency-Key': deletionIdempotencyKeyRef.current,
         },
       });
 
-      if (error || !data?.ok) {
-        if (__DEV__) console.error('delete-user-account failed:', error, data);
-        Sentry.captureMessage('delete-user-account failed', {
+      if (data?.code === 'APP_DATA_DELETION_IN_PROGRESS') {
+        showAlert(t('settings.deletionPendingTitle'), t('settings.deletionPendingMessage'));
+        return;
+      }
+
+      const deletionComplete = !error && isPragasDeletionComplete(data);
+
+      if (!deletionComplete) {
+        if (__DEV__) console.warn('[settings] app-data deletion incomplete');
+        captureMessage('pragas-delete-user-account failed', {
           level: 'error',
           tags: { feature: 'settings.deleteAccount' },
         });
-        showAlert(t('common.error'), t('settings.deletionError'));
+        showAlert(t('settings.deletionIncompleteTitle'), t('settings.deletionError'));
+        return;
+      }
+
+      if (!user?.id) {
+        showAlert(t('settings.deletionIncompleteTitle'), t('settings.deletionError'));
+        return;
+      }
+      try {
+        await purgePragasLocalUserData(user.id);
+      } catch {
+        captureMessage('local app-data purge failed', {
+          level: 'warning',
+          tags: { feature: 'settings.deleteAccount', step: 'local_purge' },
+        });
+        // Backend erasure is idempotent; keep the session so the user can retry
+        // local cleanup. Never claim completion or sign out on partial purge.
+        showAlert(t('settings.deletionIncompleteTitle'), t('settings.deletionLocalPurgeError'));
         return;
       }
 
       await signOut();
       showAlert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
-    } catch (e) {
-      if (__DEV__) console.error('handleDeleteAccount exception:', e);
-      Sentry.captureException(e, { tags: { feature: 'settings.deleteAccount' } });
+    } catch {
+      if (__DEV__) console.warn('[settings] app-data deletion failed');
+      captureMessage('app-data deletion failed', {
+        level: 'warning',
+        tags: { feature: 'settings.deleteAccount' },
+      });
       showAlert(t('common.error'), t('settings.deletionError'));
     }
   };
 
   const handleDeleteAccount = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    // The delete-user-account edge fn HARD-deletes the auth.users row, which is
-    // the SHARED AgroRumo login (same email signs into Rumo Vet / Finance /
-    // Operacional / CampoVivo). Make that consequence explicit BEFORE deletion,
-    // and require a deliberate two-step confirmation. This tab is not rendered
+    // The edge function deletes provably Rumo Pragas-scoped data but
+    // intentionally retains the shared AgroRumo auth identity and historical
+    // analytics/audit rows that have no reliable app discriminator.
+    // Make that boundary explicit and require a deliberate two-step confirmation.
+    // This tab is not rendered
     // inside a full-screen Modal, so the native Alert shows in front (the RN
     // new-arch "Alert behind Modal" no-op does not apply here — verified).
-    // Step 1: spell out the shared-login / other-apps impact.
+    // Step 1: spell out app-data deletion + retained shared identity.
     showAlert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
       { text: t('settings.cancel'), style: 'cancel' },
       {
@@ -413,22 +679,32 @@ export default function SettingsScreen() {
         </Section>
 
         {/* NOTIFICATIONS */}
-        <Section isDark={isDark} title={t('settings.sectionNotifications')}>
+        <Section
+          isDark={isDark}
+          title={t('settings.sectionNotifications')}
+          {...(Platform.OS === 'android' && !isRemotePushBuildConfigured()
+            ? { footer: t('settings.androidLocalNotificationsOnly') }
+            : {})}
+        >
           <Row
             isDark={isDark}
             icon="notifications-outline"
             label={t('settings.pushNotifications')}
             trailing={
-              <Switch
-                value={pushEnabled}
-                onValueChange={handlePushToggle}
-                trackColor={{ true: Colors.accent, false: Colors.systemGray4 }}
-                ios_backgroundColor={Colors.systemGray4}
-                accessibilityLabel={t('settings.pushNotifA11y')}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: pushEnabled }}
-                testID="settings-switch-push"
-              />
+              pushPreferenceLoading ? (
+                <ActivityIndicator color={Colors.accent} />
+              ) : (
+                <Switch
+                  value={pushEnabled}
+                  onValueChange={handlePushToggle}
+                  trackColor={{ true: Colors.accent, false: Colors.systemGray4 }}
+                  ios_backgroundColor={Colors.systemGray4}
+                  accessibilityLabel={t('settings.pushNotifA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: pushEnabled }}
+                  testID="settings-switch-push"
+                />
+              )
             }
             isLast
           />
@@ -442,9 +718,93 @@ export default function SettingsScreen() {
         >
           <Row
             isDark={isDark}
+            icon="location-outline"
+            label={t('settings.locationSharing')}
+            trailing={
+              locationPreferenceLoading ? (
+                <ActivityIndicator color={Colors.accent} />
+              ) : (
+                <Switch
+                  value={locationSharing}
+                  onValueChange={handleLocationToggle}
+                  disabled={locationPreferenceSaving}
+                  trackColor={{ true: Colors.accent, false: Colors.systemGray4 }}
+                  ios_backgroundColor={Colors.systemGray4}
+                  accessibilityLabel={t('settings.locationSharingA11y')}
+                  accessibilityHint={t('settings.locationSharingHint')}
+                  accessibilityRole="switch"
+                  accessibilityState={{
+                    checked: locationSharing,
+                    disabled: locationPreferenceSaving,
+                    busy: locationPreferenceSaving,
+                  }}
+                  testID="settings-switch-location"
+                />
+              )
+            }
+          />
+          <Row
+            isDark={isDark}
+            icon="camera-outline"
+            label={t('settings.aiConsentDiagnosis')}
+            trailing={
+              aiConsentLoading ? (
+                <ActivityIndicator color={Colors.accent} />
+              ) : (
+                <Switch
+                  value={aiConsentState.diagnosis}
+                  disabled={aiConsentSaving !== null}
+                  onValueChange={(value) => void handleAIConsentToggle('diagnosis', value)}
+                  accessibilityLabel={t('settings.aiConsentDiagnosisA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{
+                    checked: aiConsentState.diagnosis,
+                    disabled: aiConsentSaving !== null,
+                  }}
+                  testID="settings-switch-ai-consent-diagnosis"
+                />
+              )
+            }
+          />
+          <Row
+            isDark={isDark}
+            icon="chatbubble-ellipses-outline"
+            label={t('settings.aiConsentChat')}
+            trailing={
+              aiConsentLoading ? (
+                <ActivityIndicator color={Colors.accent} />
+              ) : (
+                <Switch
+                  value={aiConsentState.chat}
+                  disabled={aiConsentSaving !== null}
+                  onValueChange={(value) => void handleAIConsentToggle('chat', value)}
+                  accessibilityLabel={t('settings.aiConsentChatA11y')}
+                  accessibilityRole="switch"
+                  accessibilityState={{
+                    checked: aiConsentState.chat,
+                    disabled: aiConsentSaving !== null,
+                  }}
+                  testID="settings-switch-ai-consent-chat"
+                />
+              )
+            }
+          />
+          <Row
+            isDark={isDark}
+            icon="download-outline"
+            label={t('settings.exportData')}
+            onPress={handleExportData}
+            trailing={exportingData ? <ActivityIndicator color={Colors.accent} /> : undefined}
+            busy={exportingData}
+            testID="settings-row-export-data"
+            accessibilityHint={t('settings.exportDataHint')}
+          />
+          <Row
+            isDark={isDark}
             icon="lock-closed-outline"
             label={t('auth.privacyPolicy')}
             onPress={() => router.push('/privacy')}
+            testID="settings-row-privacy-policy"
           />
           <Row
             isDark={isDark}
@@ -452,6 +812,7 @@ export default function SettingsScreen() {
             label={t('auth.termsOfUse')}
             onPress={() => router.push('/terms')}
             isLast
+            testID="settings-row-terms"
           />
         </Section>
 

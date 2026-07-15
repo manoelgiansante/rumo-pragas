@@ -25,11 +25,13 @@ import {
 } from '../constants/theme';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useNavigationGate } from '../contexts/NavigationGateContext';
+import { LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY } from '../services/navigationGate';
 import {
-  LOCATION_CONSENT_SHOWN_KEY as GATE_LOCATION_CONSENT_SHOWN_KEY,
-  clearLocationConsentSeen,
-} from '../services/navigationGate';
-import { setLocationConsent, enqueuePendingLocationConsent } from '../services/userPreferences';
+  enqueuePendingLocationConsent,
+  flushPendingLocationConsent,
+  getLocationConsentRevision,
+  LOCATION_CONSENT_PURPOSE,
+} from '../services/userPreferences';
 import { useLocation } from '../hooks/useLocation';
 import { trackEvent } from '../services/analytics';
 
@@ -37,7 +39,7 @@ import { trackEvent } from '../services/analytics';
  * P0-3 (LGPD) — Location consent screen.
  *
  * Shown once per user after first login. Records an explicit opt-in or opt-out
- * decision in `public.user_preferences` (see migration 20260414000000).
+ * decision in the app-scoped `public.pragas_user_preferences` table.
  * The user can later change this choice from Settings.
  *
  * Default when the user skips or fails to reach this screen: no consent.
@@ -46,52 +48,25 @@ import { trackEvent } from '../services/analytics';
 // Re-exported from the canonical navigation-gate module to avoid key drift.
 export const LOCATION_CONSENT_SHOWN_KEY = GATE_LOCATION_CONSENT_SHOWN_KEY;
 
-const CONSENT_PURPOSE_PT =
-  'Compartilhar localização com o agrônomo IA para melhorar o diagnóstico de pragas regionais e alertas climáticos.';
-
 /**
- * Persist the LGPD consent decision WITHOUT blocking navigation.
+ * Persist the LGPD consent decision without blocking on the network.
  *
- * The user's choice is still recorded (LGPD), but a flaky/offline network can
- * never trap them on this gate — that reads as "app incomplete" to Apple
- * review. The write runs in the background with a few retries; if ALL retries
- * fail (prolonged offline), the decision is queued to AsyncStorage and replayed
- * on the next boot with a session (see flushPendingLocationConsent) so the LGPD
- * proof is never silently lost while the local "seen" flag already advanced.
+ * The local choice is already durable before this function starts. Network
+ * retries therefore cannot reopen a stale opt-in window; a prolonged offline
+ * failure leaves the record queued for the next authenticated boot.
  */
 function persistConsentInBackground(userId: string, granted: boolean): void {
   const MAX_ATTEMPTS = 3;
-  // Capture the decision timestamp once so retries and the queued replay all
-  // record when consent was actually given, not when it eventually synced.
-  const consentedAt = new Date().toISOString();
   void (async () => {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        await setLocationConsent(userId, granted, CONSENT_PURPOSE_PT, consentedAt);
+      const synced = await flushPendingLocationConsent(userId);
+      if (synced) return;
+      if (attempt === MAX_ATTEMPTS) {
+        if (__DEV__) console.warn('[consent-location] persist failed after retries');
+        trackEvent('location_consent_persist_failed', { granted });
         return;
-      } catch (err) {
-        if (attempt === MAX_ATTEMPTS) {
-          if (__DEV__) console.warn('[consent-location] persist failed after retries:', err);
-          trackEvent('location_consent_persist_failed', { granted });
-          // Queue for replay on the next boot — LGPD proof preserved.
-          const queued = await enqueuePendingLocationConsent(
-            userId,
-            granted,
-            CONSENT_PURPOSE_PT,
-            consentedAt,
-          );
-          if (!queued) {
-            // Double failure: neither the server nor the offline queue kept the
-            // consent proof. Undo the optimistic "consent seen" flag so this LGPD
-            // gate reappears on the next cold start and the choice is recaptured.
-            // Only affects the next boot — the current session already advanced
-            // and is left undisturbed (no bounce, non-blocking).
-            void clearLocationConsentSeen();
-          }
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
       }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
     }
   })();
 }
@@ -100,7 +75,7 @@ export default function ConsentLocationScreen() {
   const { t } = useTranslation();
   const { user } = useAuthContext();
   const { markLocationConsentSeen } = useNavigationGate();
-  const { requestPermission, getCurrentLocation } = useLocation();
+  const { requestPermission, getCurrentLocationWithConsent } = useLocation();
   const [isSaving, setIsSaving] = useState(false);
 
   // Harden the LGPD consent gate on Android: the hardware/gesture back button
@@ -123,15 +98,64 @@ export default function ConsentLocationScreen() {
     markLocationConsentSeen();
   };
 
-  // Apple Guideline 5.1.1(iv) fix (2026-05-27): the primary button is now
-  // "Continuar"/"Continue" and there is NO exit ("Not now") button. Tapping the
-  // button ALWAYS fires the native iOS location permission prompt, and we record
-  // the LGPD consent decision from the user's choice in that native prompt:
-  //   - granted  -> setLocationConsent(true)  + fetch location
-  //   - denied   -> setLocationConsent(false)
-  // The purpose is disclosed on this screen before the prompt, so explicit-consent
-  // (LGPD) remains intact and is revocable later in Settings > Privacy.
-  const handleContinue = async () => {
+  const completeChoice = async (granted: boolean) => {
+    if (!user?.id) {
+      finish();
+      return;
+    }
+    // Write the per-user local decision before either navigation or a server
+    // retry. A withdrawal therefore blocks stale server opt-in immediately.
+    const consentedAt = new Date().toISOString();
+    let observedRevision: number | null = null;
+    if (granted) {
+      // Never overwrite/rebase a queued offline withdrawal. A grant is bound to
+      // the exact server revision observed after every older local decision is
+      // synchronized; failure leaves the user opted out at this gate.
+      const previousDecisionSynced = await flushPendingLocationConsent(user.id);
+      if (!previousDecisionSynced) {
+        setIsSaving(false);
+        return;
+      }
+      try {
+        observedRevision = await getLocationConsentRevision(user.id);
+      } catch {
+        setIsSaving(false);
+        return;
+      }
+    }
+    const queued = await enqueuePendingLocationConsent(
+      user.id,
+      granted,
+      LOCATION_CONSENT_PURPOSE,
+      consentedAt,
+      observedRevision,
+    );
+    if (!queued) {
+      // Do not advance the gate without a durable local decision. The user can
+      // retry; no native coordinate API or server consent write has started.
+      setIsSaving(false);
+      return;
+    }
+    trackEvent(granted ? 'location_consent_accepted' : 'location_consent_declined');
+    persistConsentInBackground(user.id, granted);
+
+    if (granted) {
+      // Re-check the serialized app-level decision before touching coordinates.
+      // This protects against a newer withdrawal arriving while the grant was
+      // being persisted.
+      void getCurrentLocationWithConsent(user.id)
+        .then((coords) =>
+          trackEvent('location_first_fetch', { success: !!coords, source: 'consent_allow' }),
+        )
+        .catch((err) => {
+          if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
+          trackEvent('location_first_fetch', { success: false, source: 'consent_allow' });
+        });
+    }
+    finish();
+  };
+
+  const handleAllow = async () => {
     if (!user?.id) {
       finish();
       return;
@@ -149,31 +173,14 @@ export default function ConsentLocationScreen() {
       granted = false;
     }
 
-    // Record the decision analytics immediately — it reflects the user's choice
-    // regardless of whether the network write below succeeds.
-    trackEvent(granted ? 'location_consent_accepted' : 'location_consent_declined');
+    await completeChoice(granted);
+  };
 
-    // LGPD: persist the consent decision, but NEVER block entry on it. The
-    // write runs in the background with retry so a flaky/offline network cannot
-    // trap the user on this gate (Apple "incomplete app" risk).
-    persistConsentInBackground(user.id, granted);
-
-    if (granted) {
-      // Fire-and-forget the first location fetch (permission already granted).
-      // Home reads useLocation when it lands. Degrades gracefully on failure.
-      void getCurrentLocation()
-        .then((coords) =>
-          trackEvent('location_first_fetch', { success: !!coords, source: 'consent_continue' }),
-        )
-        .catch((err) => {
-          if (__DEV__) console.warn('[consent-location] first fetch failed:', err);
-          trackEvent('location_first_fetch', { success: false, source: 'consent_continue' });
-        });
-    }
-
-    // Advance immediately (optimistic). The gate flag flips and the single
-    // routing effect in app/_layout.tsx replaces to '/(tabs)' exactly once.
-    finish();
+  const handleContinueWithoutLocation = () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    // Explicit opt-out: records false and never opens an OS permission prompt.
+    void completeChoice(false);
   };
 
   return (
@@ -206,7 +213,7 @@ export default function ConsentLocationScreen() {
           <TouchableOpacity
             testID="consent-location-accept"
             style={styles.acceptBtn}
-            onPress={handleContinue}
+            onPress={handleAllow}
             activeOpacity={0.8}
             disabled={isSaving}
             accessibilityRole="button"
@@ -218,6 +225,18 @@ export default function ConsentLocationScreen() {
             ) : (
               <Text style={styles.acceptText}>{t('consent.location.accept')}</Text>
             )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="consent-location-decline"
+            style={styles.declineBtn}
+            onPress={handleContinueWithoutLocation}
+            activeOpacity={0.8}
+            disabled={isSaving}
+            accessibilityRole="button"
+            accessibilityLabel={t('consent.location.declineA11y')}
+            accessibilityState={{ disabled: isSaving, busy: isSaving }}
+          >
+            <Text style={styles.declineText}>{t('consent.location.decline')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -339,6 +358,19 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: '#FFF',
+  },
+  declineBtn: {
+    paddingVertical: 14,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.accent,
+  },
+  declineText: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.semibold,
+    fontWeight: FontWeight.semibold,
+    color: Colors.accent,
   },
   footnote: {
     fontFamily: FontFamily.regular,

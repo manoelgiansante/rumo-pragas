@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { ArrowUpCircle } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Application from 'expo-application';
 
 import { BorderRadius, Colors, FontFamily, FontWeight, Spacing } from '../../constants/theme';
@@ -89,8 +89,6 @@ export function ForceUpdateModal({ updateInfo }: ForceUpdateModalProps) {
     if (!nativeSafe && !fallbackSafe) {
       captureUpdateCheckIssue('unsafe_store_url_blocked', {
         source: 'force-modal',
-        nativePrefix: typeof native === 'string' ? native.slice(0, 24) : null,
-        fallbackPrefix: typeof fallback === 'string' ? fallback.slice(0, 24) : null,
       });
       setLinkingError(true);
       return;
@@ -176,7 +174,7 @@ export function ForceUpdateModal({ updateInfo }: ForceUpdateModalProps) {
       >
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.iconBox}>
-            <ArrowUpCircle size={64} color={Colors.accent} />
+            <Ionicons name="arrow-up-circle" size={64} color={Colors.accent} />
           </View>
 
           <Text style={styles.title}>{t('appUpdate.forceTitle')}</Text>

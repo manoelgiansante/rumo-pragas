@@ -10,8 +10,8 @@ End-to-end flows for the Rumo Pragas mobile app.
 ## Running
 
 ```bash
-# All flows
-maestro test .maestro/
+# Authenticated flows require credentials supplied at runtime (never committed)
+TEST_EMAIL='qa@example.com' TEST_PASSWORD='...' maestro test .maestro/
 
 # Single flow
 maestro test .maestro/smoke-test.yaml
@@ -23,31 +23,34 @@ maestro --device iPhone_15 test .maestro/smoke-test.yaml
 maestro test --include-tags=smoke .maestro/
 ```
 
-## Flows (12 critical paths, post 2026-05-20 QA audit)
+## Flows
 
-| File                          | Purpose                                                                     | Requires auth     |
-| ----------------------------- | --------------------------------------------------------------------------- | ----------------- |
-| `smoke-test.yaml`             | Launch app, verify ANY landing screen renders                               | No                |
-| `onboarding-flow.yaml`        | Walks through all 4 onboarding pages + cold-start gate (Apple 2.1.0)        | No                |
-| `auth-flow.yaml`              | Login with test credentials (via testIDs). Used as sub-flow by others.      | No (it does auth) |
-| `signup-flow.yaml`            | Switches to signup tab, fills form, checks UI doesn't lock up               | No                |
-| `apple-signin-flow.yaml`      | Sign in with Apple button reachable (iOS only)                              | No                |
-| `sign-out-flow.yaml`          | Settings → Sign out → Confirm → land on login                               | Yes               |
-| `diagnosis-flow.yaml`         | Full diagnosis flow: Home → Camera → Gallery → Crop → Loading → Results     | Yes               |
-| `whatsapp-share-flow.yaml`    | Diagnosis result → tap WhatsApp share → graceful fallback (wa.me)           | Yes               |
-| `history-flow.yaml`           | Navigate to History tab, exercise search/empty-state                        | Yes               |
-| `library-flow.yaml`           | Pest library: crop chips + search                                           | Yes               |
-| `ai-chat-flow.yaml`           | AI chat tab: type + send a message                                          | Yes               |
-| `paywall-flow.yaml`           | Settings → Upgrade → paywall plans + restore + legal links                  | Yes               |
-| `restore-purchases-flow.yaml` | Apple Guideline 3.1.1: restore reachable from Settings + Paywall            | Yes               |
-| `delete-account-flow.yaml`    | Apple Guideline 5.1.1(v): delete reachable + confirmation (does NOT delete) | Yes               |
-| `edit-profile-flow.yaml`      | Settings → Edit Profile → fill → Save                                       | Yes               |
-| `settings-flow.yaml`          | Settings tab: assert all rows render + toggle push switch                   | Yes               |
-| `aso-screenshots.yaml`        | Capture ASO screenshots for App Store + Play Store                          | No                |
+| File                         | Purpose                                                                     | Requires auth     |
+| ---------------------------- | --------------------------------------------------------------------------- | ----------------- |
+| `smoke-test.yaml`            | Launch app, verify ANY landing screen renders                               | No                |
+| `onboarding-flow.yaml`       | Walks through all 4 onboarding pages + cold-start gate (Apple 2.1.0)        | No                |
+| `auth-flow.yaml`             | Login with test credentials (via testIDs). Used as sub-flow by others.      | No (it does auth) |
+| `signup-flow.yaml`           | Switches to signup tab, fills form, checks UI doesn't lock up               | No                |
+| `apple-signin-flow.yaml`     | Sign in with Apple button reachable (iOS only)                              | No                |
+| `sign-out-flow.yaml`         | Settings → Sign out → Confirm → land on login                               | Yes               |
+| `diagnosis-flow.yaml`        | Full diagnosis flow: Home → Camera → Gallery → Crop → Loading → Results     | Yes               |
+| `whatsapp-share-flow.yaml`   | Diagnosis result → tap WhatsApp share → graceful fallback (wa.me)           | Yes               |
+| `history-flow.yaml`          | Navigate to History tab, exercise search/empty-state                        | Yes               |
+| `library-flow.yaml`          | Pest library: crop chips + search                                           | Yes               |
+| `ai-chat-flow.yaml`          | AI chat tab: type + send a message                                          | Yes               |
+| `free-app-route-flow.yaml`   | Legacy `/paywall` deep link explains the free app and returns safely        | Yes               |
+| `ai-consent-flow.yaml`       | Third-party AI disclosure blocks chat transmission until accepted           | Yes               |
+| `ai-report-flow.yaml`        | AI response report form and reasons                                         | Yes               |
+| `offline-recovery-flow.yaml` | Failed diagnosis exposes retry and explicit discard                         | Yes               |
+| `permissions-flow.yaml`      | Camera/gallery permission entry points                                      | Yes               |
+| `delete-account-flow.yaml`   | Apple Guideline 5.1.1(v): delete reachable + confirmation (does NOT delete) | Yes               |
+| `edit-profile-flow.yaml`     | Settings → Edit Profile → fill → Save                                       | Yes               |
+| `settings-flow.yaml`         | Settings tab: assert all rows render + toggle push switch                   | Yes               |
+| `aso-screenshots.yaml`       | Capture ASO screenshots for App Store + Play Store                          | No                |
 
 ## Credentials
 
-Test user: `test_diag_full@mailinator.com` / `Validator-2026-Rumo!`
+Provide `TEST_EMAIL` and `TEST_PASSWORD` through the shell or CI secret store. No test credential is versioned.
 
 ## Selector strategy
 
@@ -55,8 +58,8 @@ Test user: `test_diag_full@mailinator.com` / `Validator-2026-Rumo!`
 
 Conventions:
 
-- `<screen>-<element>` (e.g. `paywall-cta-subscribe`, `diagnosis-camera-capture`)
-- `<screen>-<element>-<id>` for dynamic items (e.g. `cropselect-crop-soja`, `paywall-plan-pro`, `edit-profile-state-SP`)
+- `<screen>-<element>` (e.g. `ai-consent-accept`, `diagnosis-camera-capture`)
+- `<screen>-<element>-<id>` for dynamic items (e.g. `cropselect-crop-soja`, `failed-diagnosis-retry-<id>`)
 - Tab bar: `tab-home`, `tab-history`, `tab-library`, `tab-ai-chat`, `tab-settings`
 
 Prefer `id:` selectors in Maestro — they're language-agnostic and survive copy changes.
@@ -80,7 +83,6 @@ Prefer `id:` selectors in Maestro — they're language-agnostic and survive copy
 ### Home
 
 - `home-cta-diagnose`
-- `home-trial-remaining`, `home-trial-exhausted`
 - `home-retry-load-data`, `home-retry-load-weather`
 
 ### Diagnosis
@@ -91,16 +93,13 @@ Prefer `id:` selectors in Maestro — they're language-agnostic and survive copy
 - `diagnosis-result-share-whatsapp`, `diagnosis-result-export-pdf`
 - `diagnosis-result-try-again`, `diagnosis-result-new`, `diagnosis-result-back-home`
 
-### Paywall
+### Free-app compatibility route
 
-- `paywall-close`, `paywall-plan-free`, `paywall-plan-pro`, `paywall-plan-enterprise`
-- `paywall-cta-subscribe`, `paywall-restore-purchases`
-- `paywall-legal-privacy`, `paywall-legal-terms`
+- `free-app-screen`, `free-app-back`
 
 ### Settings
 
-- `settings-edit-profile`, `settings-row-current-plan`, `settings-row-monthly-usage`
-- `settings-upgrade-plan`, `settings-restore-purchases`, `settings-manage-subscription`
+- `settings-edit-profile`
 - `settings-row-dark-mode`, `settings-row-language`, `settings-row-notifications`
 - `settings-switch-push`
 - `settings-row-privacy`, `settings-row-terms`, `settings-row-check-updates`

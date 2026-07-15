@@ -44,20 +44,20 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 10 de julho de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 14 de julho de 2026</Text>
 
         <Text style={styles.intro}>
-          A AgroRumo ("nós") se compromete a proteger a privacidade dos usuários do aplicativo Rumo
-          Pragas IA. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e
-          protegemos seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD
-          - Lei n. 13.709/2018).
+          Esta Política explica como a MM CAMPO FORTE LTDA., CNPJ 57.169.838/0001-20, responsável
+          pelo Rumo Pragas sob a marca AgroRumo, trata dados pessoais no aplicativo. Aplicamos a Lei
+          Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018) e os princípios de finalidade,
+          necessidade, transparência, segurança e livre acesso.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          1. Dados Coletados
+          1. Dados tratados e finalidades
         </Text>
         <Text style={styles.paragraph}>
-          Coletamos os seguintes dados para fornecer e melhorar nossos serviços:
+          Tratamos somente os dados necessários para oferecer, proteger e manter o serviço:
         </Text>
         <View style={styles.list}>
           <View style={styles.listItem}>
@@ -70,8 +70,9 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Email:</Text> utilizado para autenticação, comunicação e
-              recuperação de conta.
+              <Text style={styles.bold}>Conta:</Text> nome, e-mail, identificador de autenticação e
+              dados de sessão para criar a conta, autenticar, recuperar acesso e prestar suporte. A
+              identidade de acesso AgroRumo pode ser compartilhada com outros produtos.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -84,8 +85,9 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Nome:</Text> utilizado para personalização da experiência no
-              aplicativo.
+              <Text style={styles.bold}>Imagem enviada:</Text> a foto selecionada é processada para
+              gerar a hipótese solicitada. O histórico atual salva o resultado estruturado, como
+              hipótese, confiança e alternativas, sem gravar uma URL da foto nesse registro.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -98,8 +100,10 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Localização (opcional):</Text> utilizada para
-              georreferenciar diagnósticos e gerar relatórios com coordenadas da lavoura.
+              <Text style={styles.bold}>Localização aproximada (opcional):</Text> coordenadas podem
+              ser usadas, após a permissão do sistema, para consultar contexto meteorológico. A
+              análise por foto também funciona sem essa permissão. Novos registros são minimizados
+              para duas casas decimais.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -112,9 +116,8 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Fotos de plantas:</Text> enviadas ao serviço de
-              identificação por imagem Agrio (operado pela Saillog Ltd.) para identificar pragas,
-              doenças e deficiências a partir da imagem.
+              <Text style={styles.bold}>Histórico e conteúdo:</Text> resultados salvos, mensagens
+              enviadas ao assistente e preferências necessárias para os recursos solicitados.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -127,69 +130,76 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Dados de uso:</Text> informações sobre como você interage
-              com o App (telas visitadas, funcionalidades utilizadas) para melhoria do serviço.
+              <Text style={styles.bold}>Dados técnicos:</Text> token de notificação quando
+              autorizado, versão do aplicativo, sistema, eventos de uso, desempenho e falhas
+              necessários para entregar notificações, prevenir abuso e manter o serviço.
             </Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          2. Como Usamos seus Dados
+          2. Como usamos os dados
         </Text>
         <Text style={styles.paragraph}>
-          Seus dados são utilizados para:{'\n\n'}- Fornecer os serviços de diagnóstico de pragas;
-          {'\n'}- Personalizar sua experiência no App;{'\n'}- Gerar relatórios e histórico de
-          diagnósticos;{'\n'}- Enviar comunicações sobre o serviço (atualizações, novidades);{'\n'}-
-          Melhorar nossos modelos de inteligência artificial;{'\n'}- Cumprir obrigações legais.
+          Usamos esses dados para autenticar sua conta; processar a análise por foto e as mensagens
+          do assistente; salvar o histórico solicitado; consultar o contexto meteorológico quando
+          autorizado; entregar notificações opcionais; prestar suporte; prevenir abuso; corrigir
+          falhas; e cumprir obrigações legais ou exercer direitos. Não vendemos nem alugamos dados
+          pessoais.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          3. Armazenamento de Dados
+          3. Armazenamento e conservação
         </Text>
         <Text style={styles.paragraph}>
-          Seus dados são armazenados de forma segura utilizando a plataforma Supabase, com
-          servidores protegidos por criptografia em trânsito (TLS) e em repouso. As imagens enviadas
-          para análise são armazenadas em buckets seguros com controle de acesso por usuário.
+          Conta, histórico e dados necessários ao serviço usam a infraestrutura Supabase, com
+          conexão protegida e controles de acesso por usuário. Sessão e preferências necessárias
+          também podem ser mantidas no dispositivo. A foto é encaminhada pelo backend ao provedor
+          ativo para processar a solicitação; o resultado estruturado atual não grava uma URL da
+          foto. O tratamento realizado pelo provedor segue o contrato e a política aplicáveis.
+          Conservamos cada categoria somente enquanto necessária à finalidade informada, a uma
+          obrigação legal, à proteção de dados ou ao exercício regular de direitos.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          4. Compartilhamento com Terceiros
+          4. Provedores e compartilhamentos
         </Text>
         <Text style={styles.importantBox}>
-          As imagens de plantas são enviadas, por meio do nosso servidor de diagnóstico, ao serviço
-          de identificação por imagem Agrio (operado pela Saillog Ltd.), exclusivamente para
-          identificar a cultura e as pragas ou doenças a partir da foto. Seu nome e email NÃO são
-          enviados junto com as imagens.{'\n\n'}O chat com o Agrônomo IA processa apenas o texto que
-          você digita, por meio do serviço Claude, da Anthropic (inteligência artificial),
-          exclusivamente para gerar as respostas do assistente — as suas fotos NÃO são enviadas à
-          Anthropic.{'\n\n'}Quando você autoriza o uso da localização, as coordenadas (latitude e
-          longitude) são armazenadas para georreferenciar seus diagnósticos e obter dados
-          meteorológicos da sua região (ver a seguir); elas NÃO são enviadas ao Agrio nem à
-          Anthropic. Se você não autorizar a localização, nenhuma coordenada é registrada
-          (comportamento restritivo por padrão). Tanto a Saillog/Agrio quanto a Anthropic tratam os
-          dados de acordo com suas próprias políticas de privacidade; a Anthropic não utiliza os
-          dados enviados via API para treinar seus modelos.
+          A análise por imagem usa o Agrio, da Saillog, como provedor padrão. O servidor pode
+          selecionar o Anthropic Claude como alternativa. O assistente usa o Google Gemini como
+          provedor padrão e o servidor pode selecionar o Anthropic Claude como alternativa. Em cada
+          rota, enviamos ao provedor ativo a foto, mensagem e contexto estritamente necessários,
+          somente depois do consentimento para IA.
         </Text>
         <Text style={styles.importantBox}>
-          Suas coordenadas de localização (latitude e longitude), quando fornecidas, são enviadas
-          para o serviço Open-Meteo para obter dados meteorológicos da sua região (temperatura,
-          umidade, precipitação). O Open-Meteo é um serviço de dados climáticos abertos que não
-          requer autenticação e não armazena dados pessoais dos usuários. Nenhuma informação que
-          identifique o usuário é transmitida junto com as coordenadas.
+          Quando você autoriza a localização, coordenadas aproximadas são enviadas ao Open-Meteo
+          para retornar temperatura, umidade e precipitação; nome e e-mail não fazem parte dessa
+          consulta. Supabase presta autenticação e backend, Sentry monitora falhas técnicas e Expo
+          entrega notificações opcionais.
         </Text>
         <Text style={styles.paragraph}>
-          Não vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros para fins de
-          marketing. Podemos compartilhar dados apenas nas seguintes situações:{'\n\n'}- Com
-          provedores de serviço essenciais (hospedagem, processamento de pagamentos);{'\n'}- Quando
-          exigido por lei ou ordem judicial;{'\n'}- Para proteger nossos direitos legais.
+          O provedor ativo é definido no servidor. Não afirmamos retenção zero, processamento
+          somente no Brasil ou ausência de uso para treinamento sem garantia contratual verificável.
+          Alguns provedores podem processar dados fora do Brasil; nesses casos, limitamos o envio ao
+          necessário e aplicamos os mecanismos de transferência internacional cabíveis. Também
+          podemos compartilhar informações quando houver obrigação legal, ordem válida ou
+          necessidade de exercício regular de direitos.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          5. Seus Direitos (LGPD)
+          5. Inteligência artificial
         </Text>
-        <Text style={styles.paragraph}>
-          De acordo com a LGPD, voce tem os seguintes direitos sobre seus dados pessoais:
+        <Text style={styles.importantBox}>
+          A resposta da IA é probabilística e pode conter erros. Ela apresenta hipótese, confiança e
+          alternativas, mas não substitui avaliação de campo, profissional habilitado ou receituário
+          agronômico. Não use a resposta como indicação autônoma de produto, dose, mistura ou
+          aplicação.
         </Text>
+
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          6. Seus direitos (LGPD)
+        </Text>
+        <Text style={styles.paragraph}>Nos termos da LGPD, você pode solicitar, sem custo:</Text>
         <View style={styles.list}>
           <View style={styles.listItem}>
             <Ionicons
@@ -229,8 +239,9 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Eliminação:</Text> solicitar a exclusão de dados pessoais
-              tratados com seu consentimento.
+              <Text style={styles.bold}>Bloqueio ou eliminação:</Text> solicitar anonimização,
+              bloqueio ou eliminação de dados desnecessários, excessivos ou tratados em
+              desconformidade, e eliminação quando cabível.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -257,62 +268,85 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Revogação:</Text> revogar o consentimento a qualquer
-              momento.
+              <Text style={styles.bold}>Consentimento e oposição:</Text> receber informação sobre as
+              consequências de não consentir, revogar o consentimento e se opor quando cabível.
             </Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          6. Segurança
+          7. Segurança
         </Text>
         <Text style={styles.paragraph}>
-          Implementamos medidas técnicas e organizacionais para proteger seus dados, incluindo:
-          {'\n\n'}- Criptografia de dados em trânsito e em repouso;{'\n'}- Autenticação segura com
-          tokens JWT;{'\n'}- Armazenamento de credenciais sensíveis em SecureStore;{'\n'}- Controle
-          de acesso baseado em políticas (Row Level Security);{'\n'}- Monitoramento contínuo de
-          segurança.
+          Adotamos conexão HTTPS, autenticação e autorização, isolamento de registros por usuário,
+          armazenamento protegido de sessão no dispositivo, limites contra abuso e monitoramento
+          técnico. Nenhum sistema é isento de risco; incidentes relevantes serão tratados e
+          comunicados conforme a legislação e a regulamentação aplicáveis.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          7. Retenção de Dados
+          8. Exclusão dos dados do Rumo Pragas
         </Text>
         <Text style={styles.paragraph}>
-          Mantemos seus dados pessoais pelo tempo necessário para fornecer os serviços contratados
-          ou conforme exigido por lei. Ao solicitar a exclusão da conta no aplicativo, sua conta e
-          seus dados são eliminados imediatamente, exceto quando houver obrigação legal de retenção.
+          Ao concluir a exclusão dentro do aplicativo, os dados específicos do Rumo Pragas são
+          eliminados e os tokens push são revogados. A identidade global AgroRumo é compartilhada
+          com outros produtos e não é apagada por essa ação específica. Registros históricos
+          compartilhados sem um discriminador seguro de aplicativo também são mantidos para evitar a
+          exclusão de dados pertencentes a outros produtos.
+        </Text>
+        <Text style={styles.paragraph}>
+          Mantemos um marcador técnico mínimo de desvinculação: identificador global em formato
+          UUID, estado operacional, número de tentativas, códigos técnicos limitados e datas do
+          processamento. Ele não contém nome, e-mail, foto, mensagem, conteúdo ou token. Serve para
+          repetir uma limpeza interrompida, comprovar a eliminação específica e impedir recriação
+          silenciosa dos dados enquanto a identidade compartilhada continua ativa. Conforme o caso,
+          esse tratamento se apoia no cumprimento da solicitação, em obrigações de proteção de dados
+          e no exercício regular de direitos.
+        </Text>
+        <Text style={styles.paragraph}>
+          O marcador permanece até a reativação explícita do Rumo Pragas ou a exclusão da identidade
+          global AgroRumo. Reativar não recupera dados antigos. O aplicativo informa se a operação
+          foi concluída, continua em processamento ou precisa ser tentada novamente. Cópias
+          residuais tecnicamente necessárias, dados anonimizados e registros sujeitos às hipóteses
+          do art. 16 da LGPD podem ser conservados somente para a finalidade cabível.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          8. Cookies e Tecnologias Similares
+          9. Dados no dispositivo
         </Text>
         <Text style={styles.paragraph}>
-          O App pode utilizar tecnologias de rastreamento local (AsyncStorage) para manter
-          preferências do usuário e estado da sessão. Esses dados são armazenados apenas no
-          dispositivo do usuário.
+          O aplicativo usa armazenamento local para sessão, consentimentos, preferências e filas
+          necessárias ao funcionamento. Você pode apagar os dados locais pelas configurações do
+          sistema; a exclusão dos dados do serviço deve ser concluída pelo fluxo próprio do
+          aplicativo.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          9. Alterações nesta Política
+          10. Crianças e adolescentes
         </Text>
         <Text style={styles.paragraph}>
-          Podemos atualizar esta Política de Privacidade periodicamente. Notificaremos você sobre
-          alterações significativas através do App. Recomendamos que revise esta política
-          regularmente.
+          O serviço não é direcionado a crianças. Se identificarmos tratamento incompatível com o
+          melhor interesse de criança ou adolescente, adotaremos as medidas cabíveis e poderemos
+          solicitar a atuação do responsável legal.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          10. Controlador e Encarregado de Dados (DPO)
+          11. Alterações nesta Política
         </Text>
         <Text style={styles.paragraph}>
-          O controlador dos seus dados pessoais é a MM CAMPO FORTE LTDA., inscrita no CNPJ sob o n.
-          57.169.838/0001-20, que opera o aplicativo Rumo Pragas IA sob a marca AgroRumo.{'\n\n'}A
-          MM CAMPO FORTE LTDA. designou um Encarregado de Proteção de Dados (DPO), responsável por
-          receber e atender as solicitações dos titulares, que serão respondidas em até 15 dias.
-          {'\n\n'}
-          Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de seus dados
-          pessoais, entre em contato com o Encarregado (DPO):{'\n\n'}
-          Email: contato@agrorumo.com
+          Podemos atualizar esta Política para refletir mudanças legais, técnicas ou operacionais. A
+          data acima indica a versão vigente; mudanças materiais serão comunicadas por meio
+          adequado.
+        </Text>
+
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          12. Controlador e canal de privacidade
+        </Text>
+        <Text style={styles.paragraph}>
+          Controlador: MM CAMPO FORTE LTDA.{'\n'}CNPJ: 57.169.838/0001-20{'\n'}Canal do encarregado
+          e dos titulares: contato@agrorumo.com{'\n\n'}Podemos solicitar dados mínimos para
+          confirmar sua identidade e proteger a conta. Se a resposta não for satisfatória, você pode
+          peticionar à ANPD ou procurar os órgãos de defesa do consumidor.
         </Text>
 
         <View style={styles.bottomSpacer} />

@@ -130,14 +130,7 @@ describe('needsRedirect', () => {
   });
 
   it('does NOT redirect away from any non-gate top-level route', () => {
-    for (const route of [
-      'diagnosis',
-      'edit-profile',
-      'paywall',
-      'terms',
-      'privacy',
-      '+not-found',
-    ]) {
+    for (const route of ['diagnosis', 'edit-profile', 'terms', 'privacy', '+not-found']) {
       expect(needsRedirect(route, '(tabs)')).toBe(false);
       // ...even if the resolved target happens to be a different gate segment.
       expect(needsRedirect(route, 'consent-location')).toBe(false);
@@ -165,7 +158,7 @@ describe('isGateOwnedSegment', () => {
   });
 
   it('treats deliberate modal/detail routes as NOT owned', () => {
-    for (const s of ['diagnosis', 'edit-profile', 'paywall', 'terms', 'privacy', '+not-found']) {
+    for (const s of ['diagnosis', 'edit-profile', 'terms', 'privacy', '+not-found']) {
       expect(isGateOwnedSegment(s)).toBe(false);
     }
   });
@@ -385,6 +378,7 @@ describe('reviewer flow reaches a fixed point (loop-proof)', () => {
 
 describe('readGateFlags / persist helpers (storage layer)', () => {
   const AsyncStorage = require('@react-native-async-storage/async-storage');
+  const userId = 'user-1';
 
   beforeEach(async () => {
     await AsyncStorage.clear();
@@ -392,7 +386,7 @@ describe('readGateFlags / persist helpers (storage layer)', () => {
 
   it('readGateFlags returns false/false on a fresh install', async () => {
     const { readGateFlags } = require('../../services/navigationGate');
-    await expect(readGateFlags()).resolves.toEqual({
+    await expect(readGateFlags(userId)).resolves.toEqual({
       hasSeenOnboarding: false,
       hasSeenLocationConsent: false,
     });
@@ -405,8 +399,8 @@ describe('readGateFlags / persist helpers (storage layer)', () => {
       readGateFlags,
     } = require('../../services/navigationGate');
     await persistOnboardingSeen();
-    await persistLocationConsentSeen();
-    await expect(readGateFlags()).resolves.toEqual({
+    await persistLocationConsentSeen(userId);
+    await expect(readGateFlags(userId)).resolves.toEqual({
       hasSeenOnboarding: true,
       hasSeenLocationConsent: true,
     });
@@ -420,10 +414,18 @@ describe('readGateFlags / persist helpers (storage layer)', () => {
     } = require('../../services/navigationGate');
     // Simulate the optimistic "seen" flag being set, then the LGPD double-failure
     // path undoing it (server retries + offline queue both failed).
-    await persistLocationConsentSeen();
-    await clearLocationConsentSeen();
-    await expect(readGateFlags()).resolves.toEqual({
+    await persistLocationConsentSeen(userId);
+    await clearLocationConsentSeen(userId);
+    await expect(readGateFlags(userId)).resolves.toEqual({
       hasSeenOnboarding: false,
+      hasSeenLocationConsent: false,
+    });
+  });
+
+  it('does not inherit location disclosure state across accounts', async () => {
+    const { persistLocationConsentSeen, readGateFlags } = require('../../services/navigationGate');
+    await persistLocationConsentSeen('user-a');
+    await expect(readGateFlags('user-b')).resolves.toMatchObject({
       hasSeenLocationConsent: false,
     });
   });

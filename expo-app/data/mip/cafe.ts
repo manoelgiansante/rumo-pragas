@@ -85,15 +85,12 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 3 % frutos broqueados',
-        acao: 'Repasse de colheita + Beauveria',
       },
       medio: {
         criterio: '3-5 % frutos',
-        acao: 'Beauveria + aplicação química seletiva',
       },
       alto: {
         criterio: '> 5 % frutos',
-        acao: 'Aplicação química com rotação IRAC',
       },
     },
     mip: {
@@ -104,62 +101,15 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
         'Higiene de talhão',
       ],
       biologico: [
-        'Beauveria bassiana — eficaz e amplamente registrado',
+        'Beauveria bassiana (referência educativa; validar registro para cultura e alvo)',
         'Cephalonomia stephanoderis (vespa parasitoide — programas de liberação)',
       ],
-      mecanico: ['Armadilhas com álcool + metanol (1:1) p/ monitoramento'],
-      quimico: {
-        classes: ['neonicotinoides', 'piretroides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Clorantraniliprole',
-            graudeIRACouFRAC: 'IRAC 28',
-            produtosComerciais: [
-              {
-                nome: 'Diamida',
-                formulacao: 'SC',
-                dosagem: '300-500 mL p.c./ha',
-                intervaloAplicacoes: '21-30 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-          {
-            nome: 'Endosulfan (DESCONTINUADO no Brasil)',
-            graudeIRACouFRAC: 'IRAC 2A',
-            produtosComerciais: [],
-          },
-          {
-            nome: 'Cipermetrina',
-            graudeIRACouFRAC: 'IRAC 3A',
-            produtosComerciais: [
-              {
-                nome: 'Cipermetrina 250 EC',
-                formulacao: 'EC',
-                dosagem: '50-100 mL p.c./ha',
-                intervaloAplicacoes: '30 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'Beauveria é a defesa biológica primária — ampla adoção em MG',
-          'Aplicar quando broca está fora do fruto (entre orifícios)',
-        ],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 28 → 3A. Priorizar Beauveria.',
     monitoramento: {
       metodo: 'Armadilhas + amostragem de 100 frutos/talhão',
       frequencia: 'Quinzenal frutificação',
       nivelControle: '3 % frutos broqueados',
     },
-    observacoesAgronomicas:
-      'Praga #1 do café no Brasil. Repasse de colheita reduz dramaticamente a próxima safra. ' +
-      'Beauveria é case de sucesso brasileiro.',
     referencias: [REF_EMBRAPA_CAFE, REF_PROCAFE, REF_IRAC, REF_MAPA],
   },
 
@@ -196,65 +146,23 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 20 % folhas minadas',
-        acao: 'Monitoramento + conservar inimigos naturais',
       },
       medio: {
         criterio: '20-30 % folhas minadas',
-        acao: 'Aplicação seletiva',
       },
       alto: {
         criterio: '> 30 % folhas com mina',
-        acao: 'Aplicação química imediata',
       },
     },
     mip: {
       cultural: ['Cultivares menos suscetíveis', 'Irrigação reduz pressão'],
       biologico: ['Vespas parasitoides (Closterocerus, Mirax)', 'Bacillus thuringiensis'],
-      mecanico: ['Inspeção sistemática'],
-      quimico: {
-        classes: ['neonicotinoides', 'IGR', 'diamidas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam (foliar/sistêmico)',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Tiametoxam 250 WG',
-                formulacao: 'WG',
-                dosagem: '200-400 g p.c./ha',
-                intervaloAplicacoes: '30 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-          {
-            nome: 'Clorantraniliprole',
-            graudeIRACouFRAC: 'IRAC 28',
-            produtosComerciais: [
-              {
-                nome: 'Diamida',
-                formulacao: 'SC',
-                dosagem: '300 mL p.c./ha',
-                intervaloAplicacoes: '30 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Resistência a piretroides documentada em algumas regiões'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 4A → 28 → 6.',
     monitoramento: {
       metodo: 'Amostragem de 100 folhas (3º ou 4º par) por talhão',
       frequencia: 'Quinzenal',
       nivelControle: '20-30 % folhas com minas vivas',
     },
-    observacoesAgronomicas:
-      'Praga típica de estiagens. Irrigação reduz pressão. Cultivares Catuaí têm tolerância ' +
-      'moderada.',
     referencias: [REF_EMBRAPA_CAFE, REF_PROCAFE, REF_IRAC, REF_MAPA],
   },
 
@@ -290,64 +198,23 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Ácaros isolados',
-        acao: 'Monitoramento + Neoseiulus',
       },
       medio: {
         criterio: 'Bronzeamento incipiente',
-        acao: 'Acaricida seletivo',
       },
       alto: {
         criterio: 'Bronzeamento generalizado',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
       cultural: ['Irrigação', 'Adubação equilibrada'],
       biologico: ['Neoseiulus (ácaro predador)', 'Stethorus (joaninha pequena)'],
-      mecanico: ['Inspeção lupa'],
-      quimico: {
-        classes: ['acaricidas seletivos'],
-        ingredientesAtivos: [
-          {
-            nome: 'Abamectina',
-            graudeIRACouFRAC: 'IRAC 6',
-            produtosComerciais: [
-              {
-                nome: 'Abamectina 18 EC',
-                formulacao: 'EC',
-                dosagem: '300-600 mL p.c./ha',
-                intervaloAplicacoes: '21 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-          {
-            nome: 'Enxofre molhável',
-            graudeIRACouFRAC: 'FRAC M2 / IRAC UN',
-            produtosComerciais: [
-              {
-                nome: 'Enxofre 800 WP',
-                formulacao: 'WP',
-                dosagem: '5-7 kg p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Acaricidas seletivos para preservar inimigos'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 6 → 23.',
     monitoramento: {
       metodo: 'Inspeção visual + lupa 10x',
       frequencia: 'Quinzenal estiagem',
       nivelControle: 'Pontuações em 30 % das folhas',
     },
-    observacoesAgronomicas:
-      'Praga oportunista de estiagem. Inimigos naturais geralmente controlam.',
     referencias: [REF_EMBRAPA_CAFE, REF_IRAC, REF_MAPA],
   },
 
@@ -382,49 +249,23 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Focos isolados',
-        acao: 'Aplicação localizada',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Aplicação química + Beauveria',
       },
       alto: {
         criterio: 'Talhão comprometido',
-        acao: 'Aplicação química sistêmica',
       },
     },
     mip: {
       cultural: ['Adubação equilibrada', 'Manejo de formigas (cortadeiras)'],
       biologico: ['Beauveria bassiana', 'Cryptolaemus montrouzieri (joaninha)'],
-      mecanico: ['Inspeção rosetas'],
-      quimico: {
-        classes: ['neonicotinoides sistêmicos', 'óleo mineral'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam (solo/foliar)',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Tiametoxam 250 WG',
-                formulacao: 'WG',
-                dosagem: '200-400 g p.c./ha',
-                intervaloAplicacoes: '60 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Sistêmico atinge raízes (cochonilha subterrânea)'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 4A → 23.',
     monitoramento: {
       metodo: 'Inspeção rosetas e raízes',
       frequencia: 'Mensal',
       nivelControle: 'Focos com 10+ cochonilhas/roseta',
     },
-    observacoesAgronomicas: 'Controle de formigas reduz pressão (formigas protegem cochonilhas).',
     referencias: [REF_EMBRAPA_CAFE, REF_IRAC, REF_MAPA],
   },
 
@@ -465,15 +306,12 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Incidência < 10 %',
-        acao: 'Aplicação preventiva no início chuvas',
       },
       medio: {
         criterio: 'Incidência 10-30 %',
-        acao: 'Aplicação curativa cobre + triazol',
       },
       alto: {
         criterio: '> 30 % incidência',
-        acao: 'Aplicação imediata + revisão programa próxima safra',
       },
     },
     mip: {
@@ -484,55 +322,13 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
         'Poda sanitária',
       ],
       biologico: ['Bacillus subtilis', 'Trichoderma'],
-      mecanico: ['Monitoramento sistemático'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'cúpricos', 'carboxamidas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Epoxiconazol + Piraclostrobina',
-            graudeIRACouFRAC: 'FRAC 3 + 11',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '1,0-1,5 L p.c./ha',
-                intervaloAplicacoes: '60-90 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 60,
-              },
-            ],
-          },
-          {
-            nome: 'Oxicloreto de Cobre',
-            graudeIRACouFRAC: 'FRAC M1',
-            produtosComerciais: [
-              {
-                nome: 'Cobre oxicloreto 500 WP',
-                formulacao: 'WP',
-                dosagem: '2,5-4,0 kg p.c./ha',
-                intervaloAplicacoes: '30 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'Programa de aplicações começa no início das chuvas',
-          'Cúprico em rotação melhora controle e adiciona nutrição (Cu)',
-          'Resistência a QoI documentada em algumas regiões — sempre em mistura',
-        ],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC 3 → 11 → cúpricos. Cultivar resistente é defesa #1.',
     monitoramento: {
       metodo: 'Amostragem 100 folhas/talhão (3º par)',
       frequencia: 'Mensal',
-      nivelControle: '5 % incidência inicial chuvas = aplicar',
+      nivelControle:
+        'Incidência observada no início das chuvas: registrar e consultar um engenheiro agrônomo.',
     },
-    observacoesAgronomicas:
-      'Doença mais importante do café arábica no Brasil. Cultivares resistentes ' +
-      'reduziram drasticamente custo de manejo nos últimos 20 anos.',
     referencias: [REF_EMBRAPA_CAFE, REF_PROCAFE, REF_FRAC, REF_MAPA],
   },
 
@@ -569,15 +365,12 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 10 % folhas',
-        acao: 'Adubação correta + monitoramento',
       },
       medio: {
         criterio: '10-25 %',
-        acao: 'Aplicação cúprica + triazol',
       },
       alto: {
         criterio: '> 25 % desfolha',
-        acao: 'Aplicação imediata + correção nutricional',
       },
     },
     mip: {
@@ -587,37 +380,12 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
         'Irrigação adequada',
       ],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'cúpricos'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tebuconazol + Trifloxistrobina',
-            graudeIRACouFRAC: 'FRAC 3 + 11',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '0,75-1,0 L p.c./ha',
-                intervaloAplicacoes: '45 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Frequentemente controlada junto com ferrugem'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + cúprico.',
     monitoramento: {
       metodo: 'Amostragem folhas',
       frequencia: 'Mensal',
       nivelControle: '10 % folhas afetadas',
     },
-    observacoesAgronomicas:
-      'Doença oportunista — café bem nutrido tem menor incidência. Manejo nutricional ' +
-      'é mais barato que químico.',
     referencias: [REF_EMBRAPA_CAFE, REF_PROCAFE, REF_FRAC, REF_MAPA],
   },
 
@@ -647,50 +415,23 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Sintomas isolados',
-        acao: 'Cúprico preventivo',
       },
       medio: {
         criterio: 'Brotação afetada em manchões',
-        acao: 'Aplicação curativa triazol + cúprico',
       },
       alto: {
         criterio: 'Mortalidade generalizada de brotos',
-        acao: 'Aplicação imediata + revisão programa',
       },
     },
     mip: {
       cultural: ['Quebra-ventos', 'Cultivares menos suscetíveis', 'Adubação equilibrada'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'cúpricos'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tebuconazol + Cobre',
-            graudeIRACouFRAC: 'FRAC 3 + M1',
-            produtosComerciais: [
-              {
-                nome: 'Mistura/aplicações sequenciais',
-                formulacao: 'SC+WP',
-                dosagem: 'Ver bulas individuais',
-                intervaloAplicacoes: '30-45 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Vento é importante no espalhamento — quebra-ventos ajudam muito'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + cúprico.',
     monitoramento: {
       metodo: 'Inspeção brotos novos',
       frequencia: 'Quinzenal inverno em altitude',
       nivelControle: 'Sintomas iniciais em brotos',
     },
-    observacoesAgronomicas:
-      'Praga típica de cafés de altitude. Quebra-ventos arborizados reduzem dramaticamente o dano.',
     referencias: [REF_EMBRAPA_CAFE, REF_FRAC, REF_MAPA],
   },
 
@@ -724,51 +465,23 @@ export const CAFE_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Sintomas isolados',
-        acao: 'Cúprico preventivo',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Triazol + cúprico',
       },
       alto: {
         criterio: 'Queda generalizada de frutos',
-        acao: 'Aplicação imediata + revisão programa',
       },
     },
     mip: {
       cultural: ['Cultivares menos suscetíveis', 'Adubação', 'Poda sanitária'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'cúpricos'],
-        ingredientesAtivos: [
-          {
-            nome: 'Triazol + cobre',
-            graudeIRACouFRAC: 'FRAC 3 + M1',
-            produtosComerciais: [
-              {
-                nome: 'Aplicação rotativa',
-                formulacao: 'SC+WP',
-                dosagem: 'Ver bulas',
-                intervaloAplicacoes: '30 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Costuma associar-se a ferrugem — programa conjunto'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + cúprico.',
     monitoramento: {
       metodo: 'Inspeção frutos e folhas',
       frequencia: 'Mensal',
       nivelControle: 'Sintomas em frutos próximos colheita',
     },
-    observacoesAgronomicas:
-      'Pode causar perdas severas em safras chuvosas. Programa preventivo é essencial em ' +
-      'regiões com histórico.',
     referencias: [REF_EMBRAPA_CAFE, REF_FRAC, REF_MAPA],
   },
 ];

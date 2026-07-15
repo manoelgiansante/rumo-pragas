@@ -1,78 +1,114 @@
-#!/bin/bash
-# launch.sh — Orquestra build e submit do Rumo Pragas v1.0.0
-# Uso: ./scripts/launch.sh [--skip-validate]
+#!/usr/bin/env bash
+# launch.sh — valida e gera builds do Rumo Pragas. Nunca submete às lojas.
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "🚀 Rumo Pragas — Build + Submit"
-echo ""
+usage() {
+  cat <<'EOF'
+Uso: ./scripts/launch.sh [opções]
 
-if [[ "${1:-}" != "--skip-validate" ]]; then
-  echo "🔍 Validando env vars..."
-  ./scripts/validate-prod-env.sh || {
-    echo "❌ Validação falhou. Rode './scripts/launch.sh --skip-validate' pra pular."
-    exit 1
-  }
-fi
+Opções:
+  --platform ios|android|all       Plataforma do build (padrão: all)
+  --profile production|preview|development
+                                  Perfil EAS (padrão: production)
+  --local                         Executa eas build --local; exige uma plataforma
+  --help                          Mostra esta ajuda
 
-echo "🔐 Verificando EAS secrets..."
-REQUIRED=(
-  "EXPO_PUBLIC_REVENUECAT_IOS_KEY"
-  "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"
-  "SENTRY_AUTH_TOKEN"
-)
-MISSING_SECRETS=()
-if command -v eas >/dev/null 2>&1; then
-  SECRETS_LIST=$(eas secret:list 2>/dev/null || true)
-  for secret in "${REQUIRED[@]}"; do
-    if ! echo "$SECRETS_LIST" | grep -q "$secret"; then
-      MISSING_SECRETS+=("$secret")
-    fi
-  done
-  if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
-    echo "⚠️  Secrets ausentes no EAS:"
-    printf '   - %s\n' "${MISSING_SECRETS[@]}"
-    echo ""
-    echo "Criar com: eas secret:create --scope project --name NOME --value VALOR"
-    read -p "Continuar mesmo assim? (y/N) " -n 1 -r
-    echo
-    [[ $REPLY =~ ^[Yy]$ ]] || exit 1
-  fi
-fi
+Este comando nunca usa --auto-submit e nunca envia um binário às lojas.
+EOF
+}
 
-echo "🎨 Verificando play-store-key..."
-if [ ! -f play-store-key.json ]; then
-  echo "❌ play-store-key.json não existe. Rode:"
-  echo "   ./scripts/setup-play-store-key.sh ~/Downloads/sua-sa.json"
-  exit 1
-fi
+PLATFORM="all"
+PROFILE="production"
+LOCAL_BUILD=false
 
-if grep -q "analytics-mcp" play-store-key.json; then
-  echo "❌ play-store-key.json ainda é a SA errada (analytics-mcp)."
-  echo "   Crie SA no Play Console → Setup → API access → baixe JSON →"
-  echo "   ./scripts/setup-play-store-key.sh ~/Downloads/sua-sa.json"
-  exit 1
-fi
-
-echo "📸 Verificando screenshots..."
-for size in "6.5" "6.7" "6.9"; do
-  count=$(ls "store-assets/ios/$size/"*.png 2>/dev/null | wc -l | tr -d ' ')
-  echo "   iOS $size\": $count PNGs"
-  if [ "$count" -lt 5 ]; then
-    echo "   ⚠️  Mínimo 5 screenshots recomendado"
-  fi
+while (($# > 0)); do
+  case "$1" in
+    --platform)
+      [[ $# -ge 2 ]] || { echo "ERRO: --platform exige um valor." >&2; exit 2; }
+      PLATFORM="$2"
+      shift 2
+      ;;
+    --profile)
+      [[ $# -ge 2 ]] || { echo "ERRO: --profile exige um valor." >&2; exit 2; }
+      PROFILE="$2"
+      shift 2
+      ;;
+    --local)
+      LOCAL_BUILD=true
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERRO: opção desconhecida: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
 done
 
-echo ""
-echo "🏗️  Iniciando EAS build production (iOS + Android) com auto-submit..."
-echo ""
-eas build --platform all --profile production --auto-submit --non-interactive
+case "$PLATFORM" in
+  ios|android|all) ;;
+  *) echo "ERRO: plataforma inválida: $PLATFORM" >&2; exit 2 ;;
+esac
 
-echo ""
-echo "✅ Build enviado. Acompanhar:"
-echo "   - iOS TestFlight: https://appstoreconnect.apple.com"
-echo "   - Play Console Internal: https://play.google.com/console"
-echo ""
-echo "⏱️  Estimativa: iOS 30-60min, Android 1h"
+case "$PROFILE" in
+  production|preview|development) ;;
+  *) echo "ERRO: perfil inválido: $PROFILE" >&2; exit 2 ;;
+esac
+
+if [[ "$LOCAL_BUILD" == true && "$PLATFORM" == "all" ]]; then
+  echo "ERRO: build local aceita uma plataforma por execução." >&2
+  echo "Use --platform ios ou --platform android." >&2
+  exit 2
+fi
+
+command -v eas >/dev/null 2>&1 || {
+  echo "ERRO: EAS CLI não encontrado." >&2
+  exit 1
+}
+
+echo "Rumo Pragas — validação e build"
+echo "Plataforma: $PLATFORM"
+echo "Perfil: $PROFILE"
+echo "Execução: $([[ "$LOCAL_BUILD" == true ]] && echo local || echo EAS Build)"
+
+if [[ "$PROFILE" == "production" ]]; then
+  ./scripts/validate-prod-env.sh production
+else
+  echo "Perfil interno: validação de secrets de produção não se aplica."
+fi
+
+SCREENSHOT_COUNT=$(find store-assets/ios store-assets/android \
+  -type f -name '*.png' ! -path '*/archive/*' ! -name 'feature-graphic.png' 2>/dev/null \
+  | wc -l | tr -d ' ')
+if [[ "$SCREENSHOT_COUNT" -eq 0 ]]; then
+  echo "AVISO: não há screenshots reais no caminho de submissão."
+  echo "Isso não bloqueia o build, mas bloqueia ./scripts/submit.sh."
+fi
+
+BUILD_COMMAND=(
+  eas build
+  --platform "$PLATFORM"
+  --profile "$PROFILE"
+  --non-interactive
+)
+
+if [[ "$LOCAL_BUILD" == true ]]; then
+  BUILD_COMMAND+=(--local)
+fi
+
+printf 'Executando build sem submissão automática: eas build --platform %s --profile %s' \
+  "$PLATFORM" "$PROFILE"
+[[ "$LOCAL_BUILD" == true ]] && printf ' --local'
+printf '\n'
+
+"${BUILD_COMMAND[@]}"
+
+echo "Build concluído ou enfileirado. Nenhuma submissão foi iniciada."
+echo "Uma submissão exige autorização explícita e o comando separado ./scripts/submit.sh."

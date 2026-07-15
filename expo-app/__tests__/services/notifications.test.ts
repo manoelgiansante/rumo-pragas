@@ -10,6 +10,8 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
   getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: 'ExponentPushToken[xxx]' }),
   scheduleNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  cancelAllScheduledNotificationsAsync: jest.fn().mockResolvedValue(undefined),
+  unregisterForNotificationsAsync: jest.fn().mockResolvedValue(undefined),
   AndroidImportance: { HIGH: 4, DEFAULT: 3 },
   SchedulableTriggerInputTypes: { TIME_INTERVAL: 1 },
 }));
@@ -48,6 +50,7 @@ jest.mock('expo-constants', () => ({
       android: { versionCode: 36 },
       extra: {
         eas: { projectId: 'test-project-id' },
+        remotePush: { androidConfigured: false },
       },
     },
   },
@@ -62,6 +65,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     removeItem: jest.fn().mockResolvedValue(undefined),
     multiGet: jest.fn().mockResolvedValue([]),
     multiSet: jest.fn().mockResolvedValue(undefined),
+    multiRemove: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -71,12 +75,16 @@ jest.mock('react-native', () => ({
 }));
 
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import {
   configureNotificationHandler,
   registerForPushNotificationsAsync,
   getSavedPushToken,
-  schedulePestAlertNotifications,
-  scheduleLocalPestAlert,
+  scheduleClimateRiskNotifications,
+  scheduleLocalClimateRiskAlert,
+  isPushNotificationsEnabled,
+  setPushNotificationsEnabled,
   __resetForTests,
 } from '../../services/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -94,8 +102,11 @@ beforeEach(() => {
     data: 'ExponentPushToken[xxx]',
   });
   (Notifications.scheduleNotificationAsync as jest.Mock).mockResolvedValue(undefined);
-  (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+  (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key: string) =>
+    key === '@rumo_pragas_push_enabled' ? 'true' : null,
+  );
   (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+  (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
 });
 
 describe('configureNotificationHandler', () => {
@@ -135,6 +146,44 @@ describe('registerForPushNotificationsAsync', () => {
     );
   });
 
+  it('does not call remote token APIs in an Android build without the FCM file capability', async () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    (Constants.expoConfig!.extra as Record<string, unknown>).remotePush = {
+      androidConfigured: false,
+    };
+    try {
+      await expect(registerForPushNotificationsAsync()).resolves.toBeNull();
+      expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+      // Channel setup remains available for local climate alerts.
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+        'climate-risk',
+        expect.any(Object),
+      );
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: originalOs, configurable: true });
+    }
+  });
+
+  it('registers Android remote push when app.config marked the FCM file capability', async () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    (Constants.expoConfig!.extra as Record<string, unknown>).remotePush = {
+      androidConfigured: true,
+    };
+    try {
+      await expect(registerForPushNotificationsAsync()).resolves.toBe('ExponentPushToken[xxx]');
+      expect(Notifications.getExpoPushTokenAsync).toHaveBeenCalledWith({
+        projectId: 'test-project-id',
+      });
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: originalOs, configurable: true });
+      (Constants.expoConfig!.extra as Record<string, unknown>).remotePush = {
+        androidConfigured: false,
+      };
+    }
+  });
+
   it('returns null when not a physical device', async () => {
     // expo-device mock needs to be modified at the module level
     jest.doMock('expo-device', () => ({ isDevice: false }));
@@ -154,7 +203,9 @@ describe('registerForPushNotificationsAsync', () => {
     jest.doMock('@react-native-async-storage/async-storage', () => ({
       __esModule: true,
       default: {
-        getItem: jest.fn().mockResolvedValue(null),
+        getItem: jest.fn(async (key: string) =>
+          key === '@rumo_pragas_push_enabled' ? 'true' : null,
+        ),
         setItem: jest.fn().mockResolvedValue(undefined),
         removeItem: jest.fn().mockResolvedValue(undefined),
         multiGet: jest.fn().mockResolvedValue([]),
@@ -172,13 +223,21 @@ describe('registerForPushNotificationsAsync', () => {
     expect(token).toBeNull();
   });
 
-  it('requests permissions when not already granted', async () => {
+  it('never requests permissions during automatic registration', async () => {
     (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
     (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
 
     const token = await registerForPushNotificationsAsync();
-    expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
-    expect(token).toBe('ExponentPushToken[xxx]');
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(token).toBeNull();
+  });
+
+  it('requests permission only from the explicit settings opt-in', async () => {
+    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
+    (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    await expect(setPushNotificationsEnabled(true)).resolves.toBe(true);
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('@rumo_pragas_push_enabled', 'true');
   });
 
   it('returns null when permissions are denied', async () => {
@@ -216,7 +275,9 @@ describe('registerForPushNotificationsAsync', () => {
     jest.doMock('@react-native-async-storage/async-storage', () => ({
       __esModule: true,
       default: {
-        getItem: jest.fn().mockResolvedValue(null),
+        getItem: jest.fn(async (key: string) =>
+          key === '@rumo_pragas_push_enabled' ? 'true' : null,
+        ),
         setItem: jest.fn().mockResolvedValue(undefined),
         removeItem: jest.fn().mockResolvedValue(undefined),
         multiGet: jest.fn().mockResolvedValue([]),
@@ -251,7 +312,48 @@ describe('getSavedPushToken', () => {
   });
 });
 
-describe('schedulePestAlertNotifications', () => {
+describe('push preference enforcement', () => {
+  it('defaults to disabled and honors an explicit false value', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    await expect(isPushNotificationsEnabled()).resolves.toBe(false);
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('false');
+    await expect(isPushNotificationsEnabled()).resolves.toBe(false);
+  });
+
+  it('blocks native registration when disabled', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('false');
+    await expect(registerForPushNotificationsAsync()).resolves.toBeNull();
+    expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
+    expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+  });
+
+  it('blocks local scheduling when disabled', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('false');
+    await scheduleLocalClimateRiskAlert('Title', 'Body');
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('cancels, unregisters, soft-revokes and removes local tokens when disabled', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('ExponentPushToken[saved]');
+
+    await setPushNotificationsEnabled(false);
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('@rumo_pragas_push_enabled', 'false');
+    expect(Notifications.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+    expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled();
+    expect(mockRpc).toHaveBeenCalledWith('touch_pragas_push_token', {
+      p_token: 'ExponentPushToken[saved]',
+      p_platform: 'ios',
+      p_notifications_enabled: false,
+    });
+    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith([
+      '@rumo_pragas_push_token',
+      '@rumo_pragas_push_token_last_sync',
+    ]);
+  });
+});
+
+describe('scheduleClimateRiskNotifications', () => {
   it('schedules notifications only for high severity alerts', async () => {
     const alerts = [
       { id: '1', title: 'Ferrugem', description: 'Risco alto', severity: 'high' },
@@ -259,7 +361,7 @@ describe('schedulePestAlertNotifications', () => {
       { id: '3', title: 'Mofo', description: 'Risco alto', severity: 'high' },
     ];
 
-    await schedulePestAlertNotifications(alerts);
+    await scheduleClimateRiskNotifications(alerts);
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
   });
 
@@ -271,7 +373,7 @@ describe('schedulePestAlertNotifications', () => {
       { id: '4', title: 'D', description: 'D', severity: 'high' },
     ];
 
-    await schedulePestAlertNotifications(alerts);
+    await scheduleClimateRiskNotifications(alerts);
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
   });
 
@@ -281,14 +383,14 @@ describe('schedulePestAlertNotifications', () => {
       { id: '2', title: 'B', description: 'D', severity: 'medium' },
     ];
 
-    await schedulePestAlertNotifications(alerts);
+    await scheduleClimateRiskNotifications(alerts);
     expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 });
 
-describe('scheduleLocalPestAlert', () => {
+describe('scheduleLocalClimateRiskAlert', () => {
   it('schedules a notification with correct content and trigger', async () => {
-    await scheduleLocalPestAlert('Test Title', 'Test Body', { screen: 'home' }, 10);
+    await scheduleLocalClimateRiskAlert('Test Title', 'Test Body', { screen: 'home' }, 10);
 
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -306,14 +408,14 @@ describe('scheduleLocalPestAlert', () => {
   });
 
   it('uses default delay of 1 second when not specified', async () => {
-    await scheduleLocalPestAlert('Title', 'Body');
+    await scheduleLocalClimateRiskAlert('Title', 'Body');
 
     const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
     expect(call.trigger.seconds).toBe(1);
   });
 
   it('uses empty data when not provided', async () => {
-    await scheduleLocalPestAlert('Title', 'Body');
+    await scheduleLocalClimateRiskAlert('Title', 'Body');
 
     const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
     expect(call.content.data).toEqual({});
@@ -403,24 +505,14 @@ describe('persistPushTokenToServer', () => {
     expect(mockSupabaseRpc).not.toHaveBeenCalled();
   });
 
-  it('calls touch_push_token RPC with platform + device fingerprint', async () => {
+  it('calls the minimal app-scoped push RPC without a device fingerprint', async () => {
     const ok = await svc.persistPushTokenToServer(TOKEN, { force: true });
     expect(ok).toBe(true);
-    expect(mockSupabaseRpc).toHaveBeenCalledWith(
-      'touch_push_token',
-      expect.objectContaining({
-        p_expo_token: TOKEN,
-        p_platform: 'ios',
-        p_device_info: expect.objectContaining({
-          os: 'ios',
-          osVersion: '17.0',
-          modelName: 'iPhone 15 Pro',
-          brand: 'Apple',
-          appVersion: '1.0.0',
-          buildNumber: '36',
-        }),
-      }),
-    );
+    expect(mockSupabaseRpc).toHaveBeenCalledWith('touch_pragas_push_token', {
+      p_token: TOKEN,
+      p_platform: 'ios',
+      p_notifications_enabled: true,
+    });
   });
 
   it('returns false and captures Sentry warning when RPC returns error', async () => {
@@ -438,13 +530,16 @@ describe('persistPushTokenToServer', () => {
     );
   });
 
-  it('returns false and captures exception when RPC throws', async () => {
+  it('returns false and captures a scrubbed warning when RPC throws', async () => {
     mockSupabaseRpc.mockRejectedValue(new Error('network down'));
     const ok = await svc.persistPushTokenToServer(TOKEN, { force: true });
     expect(ok).toBe(false);
-    expect(mockSentry.captureException).toHaveBeenCalledWith(
-      expect.any(Error),
-      expect.objectContaining({ tags: expect.objectContaining({ feature: 'push' }) }),
+    expect(mockSentry.captureMessage).toHaveBeenCalledWith(
+      'push token persistence failed',
+      expect.objectContaining({
+        level: 'warning',
+        tags: expect.objectContaining({ feature: 'push' }),
+      }),
     );
   });
 

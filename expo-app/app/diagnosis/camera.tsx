@@ -30,7 +30,6 @@ import {
   FontFamily,
 } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
-import { VoiceRecorderButton } from '../../components/VoiceRecorderButton';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
 
@@ -42,7 +41,7 @@ export default function CameraScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [processing, setProcessing] = useState(false);
-  const { setImage, appendNotes } = useDiagnosis();
+  const { setImage } = useDiagnosis();
 
   const compressImage = async (uri: string): Promise<{ uri: string; base64: string }> => {
     const result = await manipulateAsync(
@@ -258,22 +257,6 @@ export default function CameraScreen() {
               </View>
             </PremiumCard>
           </TouchableOpacity>
-
-          {/*
-            Voice push-to-talk — feature-flagged by EXPO_PUBLIC_VOICE_ENABLED.
-            Returns null when flag is OFF (default). When ON, the transcript is
-            appended to `DiagnosisContext.notes` (initially empty) so downstream
-            screens (result.tsx) can surface the user-dictated description.
-            Existing button placement and copy are UNCHANGED — ZERO-N is
-            preserved by the null short-circuit and the additive append.
-          */}
-          <VoiceRecorderButton
-            context="diagnosis_camera"
-            language="pt"
-            style={{ marginTop: Spacing.sm }}
-            testID="diagnosis-voice-recorder"
-            onTranscribed={appendNotes}
-          />
         </View>
 
         <View style={styles.tips}>

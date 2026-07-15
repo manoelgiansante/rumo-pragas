@@ -1,0 +1,28 @@
+appId: com.agrorumo.rumopragas
+tags:
+  - ai-report
+---
+- runFlow: auth-flow.yaml
+- tapOn:
+    id: "tab-ai-chat"
+- extendedWaitUntil:
+    visible:
+      id: "aichat-input"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "ai-message-report-.*"
+    commands:
+      - tapOn:
+          id: "ai-message-report-.*"
+      - assertVisible:
+          id: "ai-report-modal"
+      - tapOn:
+          id: "ai-report-reason-incorrect"
+      - tapOn:
+          id: "ai-report-details"
+      - inputText: "Resposta não corresponde aos sintomas observados."
+      - hideKeyboard
+      - assertVisible:
+          id: "ai-report-submit"

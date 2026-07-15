@@ -23,14 +23,13 @@ jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
 }));
 
-// Sentry: no-op breadcrumbs/captures in tests.
-jest.mock('@sentry/react-native', () => ({
+// Sentry shim: no-op breadcrumbs/captures in tests.
+jest.mock('../../services/sentry-shim', () => ({
   addBreadcrumb: jest.fn(),
-  captureException: jest.fn(),
 }));
 
 const mockSignInWithIdToken = jest.fn();
-const mockUpdateProfile = jest.fn();
+const mockUpdateUser = jest.fn();
 
 // 32 zero bytes → 64 zero hex chars; matches getRandomBytes mock above.
 const EXPECTED_RAW_NONCE = '0'.repeat(64);
@@ -39,15 +38,8 @@ jest.mock('../../services/supabase', () => ({
   supabase: {
     auth: {
       signInWithIdToken: (...args: unknown[]) => mockSignInWithIdToken(...args),
+      updateUser: (...args: unknown[]) => mockUpdateUser(...args),
     },
-    from: jest.fn(() => ({
-      update: (...args: unknown[]) => {
-        mockUpdateProfile(...args);
-        return {
-          eq: jest.fn().mockResolvedValue({ error: null }),
-        };
-      },
-    })),
   },
 }));
 
@@ -57,9 +49,15 @@ jest.mock('react-native', () => ({
 }));
 
 import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import {
+  __internal as metadataGate,
+  waitForPendingAuthMetadata,
+} from '../../services/authMetadataGate';
+import { waitFor } from '@testing-library/react-native';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUpdateUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
 });
 
 describe('isAppleSignInAvailable', () => {
@@ -147,7 +145,7 @@ describe('signInWithApple', () => {
     );
   });
 
-  it('updates profile with Apple-provided name on first sign-in', async () => {
+  it('persists Apple-provided name in auth metadata before releasing the link gate', async () => {
     mockSignInAsync.mockResolvedValueOnce({
       identityToken: 'apple-id-token',
       fullName: { givenName: 'Maria', familyName: 'Silva' },
@@ -159,9 +157,46 @@ describe('signInWithApple', () => {
       error: null,
     });
 
-    await signInWithApple();
+    let releaseUpdate!: (value: unknown) => void;
+    mockUpdateUser.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseUpdate = resolve;
+        }),
+    );
 
-    expect(mockUpdateProfile).toHaveBeenCalledWith({ full_name: 'Maria Silva' });
+    const signInPromise = signInWithApple();
+    await waitFor(() =>
+      expect(mockUpdateUser).toHaveBeenCalledWith({ data: { full_name: 'Maria Silva' } }),
+    );
+    expect(metadataGate.pendingCount()).toBe(1);
+    let gateFinished = false;
+    const gatePromise = waitForPendingAuthMetadata().then(() => {
+      gateFinished = true;
+    });
+    await Promise.resolve();
+    expect(gateFinished).toBe(false);
+
+    releaseUpdate({ data: { user: mockUser }, error: null });
+    await signInPromise;
+    await gatePromise;
+    expect(gateFinished).toBe(true);
+    expect(metadataGate.pendingCount()).toBe(0);
+  });
+
+  it('fails closed when the one-time Apple name cannot be persisted', async () => {
+    mockSignInAsync.mockResolvedValueOnce({
+      identityToken: 'apple-id-token',
+      fullName: { givenName: 'Maria', familyName: 'Silva' },
+    });
+    mockSignInWithIdToken.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {} },
+      error: null,
+    });
+    mockUpdateUser.mockResolvedValueOnce({ data: { user: null }, error: { code: 'network' } });
+
+    await expect(signInWithApple()).rejects.toThrow('Erro ao entrar com Apple. Tente novamente.');
+    expect(metadataGate.pendingCount()).toBe(0);
   });
 
   it('throws when no identity token is received', async () => {
@@ -170,7 +205,7 @@ describe('signInWithApple', () => {
       fullName: null,
     });
 
-    await expect(signInWithApple()).rejects.toThrow('did not return an identity token');
+    await expect(signInWithApple()).rejects.toThrow('Erro ao entrar com Apple. Tente novamente.');
   });
 
   it('returns null when user cancels (ERR_REQUEST_CANCELED)', async () => {
@@ -210,12 +245,12 @@ describe('signInWithApple', () => {
       error: new Error('Auth provider error'),
     });
 
-    await expect(signInWithApple()).rejects.toThrow('Auth provider error');
+    await expect(signInWithApple()).rejects.toThrow('Erro ao entrar com Apple. Tente novamente.');
   });
 
   it('re-throws non-cancel errors from Apple Auth', async () => {
     mockSignInAsync.mockRejectedValueOnce(new Error('Unknown Apple error'));
 
-    await expect(signInWithApple()).rejects.toThrow('Unknown Apple error');
+    await expect(signInWithApple()).rejects.toThrow('Erro ao entrar com Apple. Tente novamente.');
   });
 });

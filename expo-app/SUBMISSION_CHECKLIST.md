@@ -1,121 +1,75 @@
-# Submission Checklist — Rumo Pragas
+# Store submission checklist — Rumo Pragas 1.0.11
 
-> Auditoria 30 agentes concluída 2026-04-17 (v1.0.0). App já PÚBLICO nas duas lojas
-> desde então; os steps manuais de loja abaixo já foram feitos uma vez.
->
-> ⚠️ ATUALIZADO 2026-07-10: o app é **100% GRÁTIS** (Guideline 3.1.1). O
-> `react-native-purchases` foi REMOVIDO e não há paywall/assinatura/IAP. NÃO
-> recrie chaves RevenueCat nem declare "purchase history" — reintroduzir IAP já
-> causou rejeições 3.1.1 no histórico. A verdade voltada ao revisor está em
-> `store-assets/ios/REVIEWER_NOTES.md`.
+## Shared preflight
 
-## Steps manuais do Manoel (UMA VEZ)
+- [ ] Build was generated separately; no `--auto-submit` or build hook initiated submission.
+- [ ] Candidate commit frozen and CI green on Node 22.22.3.
+- [ ] expo-doctor, lint, typecheck, tests and web export green.
+- [ ] Signed IPA and AAB installed from TestFlight/Internal testing.
+- [ ] Fresh install, upgrade and denied-permission paths pass.
+- [ ] Diagnosis works online and queued retry works after reconnection.
+- [ ] No copy says the identification model runs offline.
+- [ ] AI uncertainty and professional-validation warnings are visible.
+- [ ] `store-assets/ACCOUNT_DELETION_BLOCKER.md` is resolved through an approved and tested
+      full-account flow or recorded formal store/legal acceptance; app-scoped deletion alone does not
+      release submission.
+- [ ] Privacy, Terms, Support and app-data deletion URLs return 200; deletion copy retains the shared AgroRumo identity.
+- [ ] Dedicated deletion QA account is removed end to end.
+- [ ] Sentry release and symbolication verified without sensitive log data.
+- [ ] Store text matches expo-app/store-assets/metadata exactly.
+- [ ] Unsafe live copy from the previous release has been replaced in both consoles and the public
+      pt-BR pages no longer claim fixed speed, measured accuracy, offline inference or agronomist
+      equivalence.
+- [ ] Screenshots pass store-assets/SCREENSHOT_CHECKLIST.md.
+- [ ] No subscription, trial, paid tier, billing product or restoration claim appears.
 
-### 1. EAS Secrets (Sentry)
+## App Store Connect
 
-```bash
-cd ~/AgroRumo\ Projetos/Apps/rumo-pragas/expo-app
+- [ ] Reviewer account exists and credentials are entered only in App Review Information.
+- [ ] Reviewer notes copied from store-assets/ios/REVIEWER_NOTES.md.
+- [ ] Privacy labels reconciled with Agrio, Supabase, Gemini, optional Anthropic route, Open-Meteo, Sentry and Expo Push.
+- [ ] iPhone and iPad captures are real and match the submitted build.
+- [ ] Category, age rating, URLs and export-compliance answers reviewed.
+- [ ] Build uses the current Apple-required Xcode and SDK.
+- [ ] TestFlight smoke and account-deletion tests pass.
 
-# Sentry auth token (de sentry.io → Settings → Auth Tokens → "Source Maps: read & write")
-eas secret:create --scope project --name SENTRY_AUTH_TOKEN --value sntrys_XXXXXXX
+## Google Play Console
 
-# Verificar
-eas env:list --environment production
-```
+- [ ] AAB target SDK and permissions inspected.
+- [ ] Data Safety copied only after the contractual sharing review in store-assets/android/DATA_SAFETY.md.
+- [ ] App access contains the secure review account.
+- [ ] Ads marked No and in-app products absent.
+- [ ] Phone and supported-tablet captures match the AAB.
+- [ ] Internal testing smoke passes before closed or production promotion.
 
-> RevenueCat NÃO se aplica — app 100% grátis, `react-native-purchases` removido.
+## Gradual release
 
-### 2. Google Play Service Account (BLOQUEADOR)
+- [ ] Start with the smallest supported staged cohort.
+- [ ] Define stop thresholds for crash-free sessions, login failures, diagnosis 5xx/429, queue failures and deletion errors.
+- [ ] Assign an operator for the first 24 hours.
+- [ ] Record rollback owner and last known-good versions.
 
-1. Abrir https://play.google.com/console
-2. Setup → API access → Create new service account
-3. Dar permissões: "Release manager" (Release apps to testing + production)
-4. Download JSON → mover para Downloads
-5. Rodar:
-   ```bash
-   cd ~/AgroRumo\ Projetos/Apps/rumo-pragas/expo-app
-   ./scripts/setup-play-store-key.sh ~/Downloads/SEU-NOME-DO-JSON.json
-   ```
-   (script valida que NÃO é o analytics-mcp errado)
+## External blockers
 
-### 3. Play Console (uma vez)
+- Live metadata correction: authenticated App Store Connect and Play Console changes are required;
+  on 2026-07-14 both public listings still showed the prohibited prior-release claims even though
+  the repository metadata had been corrected.
+- Signed build: not pre-classified as external; local Apple/Android signing material exists and the release builds must be attempted first.
+- Upload: authenticated App Store Connect and Play Console access.
+- Reviewer access: dedicated QA account stored in the approved secret manager.
+- Data Safety Shared answers: evidence that provider contracts meet Google service-provider definitions.
+- Account deletion: portfolio-wide authorization/implementation or formal acceptance for the
+  shared AgroRumo identity; the current app-data-only flow is insufficient to clear this gate.
+- Publication: explicit store release action after internal validation.
+- Screenshots: zero real candidate screenshots are currently in the submission paths; archived
+  images are prohibited and `scripts/submit.sh` fails closed until at least five real images exist
+  for the selected platform.
 
-No https://play.google.com/console/u/0/developers/.../app/.../data-safety:
+No credential value belongs in this file.
 
-- Preencher Data Safety seguindo [store-assets/android/DATA_SAFETY.md](store-assets/android/DATA_SAFETY.md)
-- Content rating: Everyone / Livre
-- Privacy policy URL: `https://pragas.agrorumo.com/privacy`
-- Support URL: `https://pragas.agrorumo.com/support`
+After every checkbox is evidenced and an authorized operator approves the exact artifact, use
+`./scripts/submit.sh` with one platform, the real immutable build ID or signed artifact path, and
+`--confirm-authorized-submission`. The script does not accept `--latest`.
 
-### 4. App Store Connect (uma vez)
-
-No https://appstoreconnect.apple.com para app id `6762232682`:
-
-- App Information → Review Notes: copiar de [store-assets/ios/REVIEWER_NOTES.md](store-assets/ios/REVIEWER_NOTES.md)
-- Privacy nutrition labels: preencher (camera, location, email, photos, crash data) — SEM "purchase history" (não há IAP)
-- Age Rating: 4+
-- Category: Utilities (primary) + Productivity (secondary)
-
-### 5. Reviewer demo account (Apple exige)
-
-No Supabase (jxcnfyeemdltdfqtgbcl) → Auth → Add User:
-
-- Email: `reviewer@agrorumo.com`
-- Password: senha forte (anotar em 1Password/Obsidian)
-- Atualizar credenciais em `store-assets/ios/REVIEWER_NOTES.md`
-
-### 6. RevenueCat Offerings — N/A
-
-App 100% grátis: sem offerings, sem IAP. Quando/se a re-monetização voltar (Pro
-R$19,90/mês · R$199/ano — ver `CLAUDE.md` §Monetização), usar **product IDs NOVOS**
-(os antigos foram queimados) e submeter a 1ª assinatura via "submit with version"
-no console (UI-only, gate CEO).
-
-## Build + Submit
-
-```bash
-cd ~/AgroRumo\ Projetos/Apps/rumo-pragas/expo-app
-
-# Validar env vars antes
-./scripts/validate-prod-env.sh
-
-# Build + auto-submit ambos
-eas build --platform all --profile production --auto-submit --non-interactive
-
-# Monitorar:
-# - iOS: TestFlight ~30-60min
-# - Android: Play Internal Testing ~1h
-```
-
-## Landing Deploy
-
-```bash
-cd ~/AgroRumo\ Projetos/Apps/rumo-pragas-landing
-git add -A
-git commit -m "feat(landing): SEO + security + Meta events + store links real"
-git push origin main  # auto-deploy Vercel
-```
-
-## Pendências pós-rate-limit (Wave 2 incomplete)
-
-Reset às 11am America/Sao_Paulo. Re-lançar:
-
-1. **Edge Functions rate limiting** (ai-chat + diagnose) — deployar via `supabase functions deploy`
-2. **4 tests failing** (diagnosisQueue.test.ts:109 `.id` undefined + ConfidenceBar cores) — fix não-blocker, não impede submit
-3. **library.tsx i18n** (40 strings hardcoded de pragas) — não-blocker
-4. **Dynamic imports Framer Motion** na landing — perf improvement
-
-## Estado atual (scores)
-
-| Area               | Antes      | Depois                      |
-| ------------------ | ---------- | --------------------------- |
-| iOS Apple Review   | 6/10       | 9/10                        |
-| Android Play Store | 5/10       | 9/10                        |
-| RN Code Quality    | 7.5/10     | 8.5/10                      |
-| Web SEO            | 8/10       | 9/10                        |
-| Code Health        | 5.5/10     | 7.5/10                      |
-| Security           | 7.5/10     | 8.0/10 (rate limit pending) |
-| Performance        | 7/10       | 8.5/10 (PNGs 95% ↓)         |
-| ASO                | 8.5/10     | 9/10                        |
-| A11Y + i18n        | 7/7.5      | 8.5/9                       |
-| **Overall**        | **6.7/10** | **8.7/10**                  |
+The confirmation marker records operator intent in the command; it does not grant authorization,
+publish automatically or replace App Store Connect/Play Console review.
