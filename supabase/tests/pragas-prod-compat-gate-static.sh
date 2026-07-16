@@ -263,6 +263,7 @@ for required_backup_tls_contract in \
   "--format '{{.Architecture}}'" \
   'pragas_validate_pinned_image_metadata' \
   'env -u SUPABASE_DB_PASSWORD docker run --rm --pull never --read-only' \
+  '--user "$(id -u):$(id -g)"' \
   '--mount "type=bind,source=$root_ca,target=/run/pragas/root-ca.pem,readonly"' \
   '--mount "type=bind,source=$pgpass_file,target=/run/pragas/pgpass,readonly"' \
   '--env "PGSSLMODE=verify-full"' \

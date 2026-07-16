@@ -236,6 +236,7 @@ pragas_run_pinned_pg_backup() {
 
   env -u SUPABASE_DB_PASSWORD docker run --rm --pull never --read-only \
     --cap-drop ALL --security-opt no-new-privileges \
+    --user "$(id -u):$(id -g)" \
     --network "$network" \
     --mount "type=bind,source=$root_ca,target=/run/pragas/root-ca.pem,readonly" \
     --mount "type=bind,source=$pgpass_file,target=/run/pragas/pgpass,readonly" \
