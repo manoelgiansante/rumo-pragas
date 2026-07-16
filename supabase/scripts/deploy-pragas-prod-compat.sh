@@ -780,6 +780,7 @@ expected_extension_inventory="$(printf '%s\n' \
   'pg_trgm|public|1.6' \
   'pgcrypto|extensions|1.3' \
   'plpgsql|pg_catalog|1.0' \
+  'plpgsql_check|public|2.7' \
   'supabase_vault|vault|0.3.1' \
   'uuid-ossp|extensions|1.1' \
   'vector|extensions|0.8.0')"
