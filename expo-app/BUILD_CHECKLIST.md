@@ -35,9 +35,10 @@ Every command is blocking. Do not weaken warnings, skip suites or convert failur
 - Confirm camera, approximate location and notification purpose strings.
 - Confirm precise location, broad media access and microphone remain blocked for this release.
 - Confirm PrivacyInfo.xcprivacy, entitlements, universal/app links, icons and splash assets are embedded.
-- Confirm release Sentry DSN without exposing credentials. For native EAS Build, verify the official
-  Expo/Sentry plugin's automatic source-map upload in build logs and then prove symbolication with a
-  controlled non-PII test event. Do not run the retired custom finalization hook.
+- Confirm release Sentry DSN without exposing credentials. The protected local build sets
+  `SENTRY_DISABLE_AUTO_UPLOAD=true`; any separate native source-map upload requires its own
+  authorization and gate. Then prove symbolication with a controlled non-PII test event. Do not run
+  the retired custom finalization hook or migrate the build to cloud.
 - Confirm the app contains no active purchase SDK path or store product.
 
 ## Secrets and signing
@@ -52,7 +53,7 @@ Release operations may still require:
 
 - Apple distribution and App Store Connect authorization.
 - Android upload keystore and Play service-account authorization.
-- Expo/EAS authorization if cloud build is selected.
+- Expo/EAS authorization used by the pinned local runner for environment names, versioning and credentials, without a cloud build.
 - Sentry authorization for release symbol upload.
 - Runtime Supabase and provider configuration for the release environment.
 
@@ -61,17 +62,20 @@ Only a missing or expired value proven by the build attempt is a precise externa
 ## Build sequence
 
 1. Tag the exact candidate commit in the release record.
-2. Run `./scripts/validate-prod-env.sh production`; it uses the current EAS Environment command,
-   checks names only and never prints values.
+2. Run `./scripts/validate-prod-env.sh production`; it defaults fail-closed to the project-pinned
+   executor, checks EAS Environment names only and never prints values. The system-CLI mode is
+   reserved for isolated test fixtures and must never be used for release work.
 3. Run the reproducible validation suite.
-4. Generate iOS and Android release artifacts with `./scripts/launch.sh --profile production`.
-   This command is build-only and contains no submit path.
+4. Generate one local release artifact at a time with
+   `./scripts/launch.sh --profile production --platform ios --local`, followed by
+   `./scripts/launch.sh --profile production --platform android --local`.
+   These commands are build-only and contain no submit path.
 5. Inspect the signed IPA and AAB for identifiers, permissions, SDKs and versions.
 6. Install through TestFlight/Internal testing, not by direct production promotion.
 7. Execute smoke tests: fresh install, login, social login, permissions denied, capture, picker, online result, queued retry, history, PDF sharing, assistant, settings and deletion.
-8. Verify the actual remote build numbers, Sentry release mapping, native symbolication and absence
-   of personal data in logs.
-9. Retain checksums and build URLs in the private release record.
+8. Read the actual values from the remote version registry without creating a build, then verify
+   Sentry release mapping, native symbolication and absence of personal data in logs.
+9. Retain artifact checksums and any later store-submission URLs in the private release record.
 
 ## Rollback
 
@@ -85,19 +89,18 @@ Local signed builds must be attempted with the detected material. Uploading and 
 Supported build-only examples:
 
 ```bash
-# Cloud release builds; validates production first and never submits.
-./scripts/launch.sh --profile production --platform all
-
-# Local signed artifacts, one platform per invocation.
+# Local signed artifacts only, one platform per invocation. Cloud has no supported path.
 ./scripts/launch.sh --profile production --platform ios --local
 ./scripts/launch.sh --profile production --platform android --local
 
-# Internal preview build; production-secret validation is not applicable.
-./scripts/launch.sh --profile preview --platform android
+# Internal preview build, still local; production-secret validation is not applicable.
+./scripts/launch.sh --profile preview --platform android --local
 ```
 
 Missing real screenshots block submission, not artifact generation. No flag bypasses environment
-validation, and unknown options fail before EAS is called.
+validation, `--platform all` is rejected, and unknown options fail before EAS is called. The
+`--local` flag is accepted for command compatibility, but the launcher always adds it and never
+falls back to EAS Build cloud.
 
 ## OTA source maps
 

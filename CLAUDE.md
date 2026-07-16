@@ -8,9 +8,10 @@ obrigatórias.
 - Aplicativo publicado: `expo-app/` (Expo SDK 55, React Native 0.83, Expo Router, TypeScript).
 - Backend e dados: `supabase/`, em projeto compartilhado com outros apps AgroRumo.
 - Materiais de loja: `expo-app/store-assets/`.
-- Landing de produção: implantação Vercel separada. O live coincide com a fonte Astro em
-  `Landing Pages/rumo-pragas-landing`, mas há dois repositórios concorrentes que também declaram
-  a superfície; a fonte canônica permanece um gate explícito do proprietário.
+- Fonte canônica da landing: remote
+  `https://github.com/manoelgiansante/rumo-pragas-landing-nextjs.git`, worktree sibling
+  `../rumo-pragas-landing` e candidato atual no PR #3; a implantação Vercel de produção permanece
+  separada.
 - `RumoPragas/` e `RumoPragas.xcodeproj`: protótipo SwiftUI legado; não é o app das lojas.
 
 Leia antes de alterar comportamento:
@@ -72,8 +73,9 @@ Preserve os gates nos workflows. Não use `--no-verify`, não enfraqueça testes
 falhas. A versão de produto é definida em `expo-app/app.json`; a numeração efetiva de builds de
 loja é remota no EAS e deve ser consultada antes de cada build e submissão. O inventário somente
 leitura de 2026-07-14 observou iOS 63 e Android 54; são baselines mutáveis, não valores do candidato.
-O upload nativo de source maps é responsabilidade do plugin oficial Expo/Sentry no EAS Build. OTA
-é uma ação separada; depois do `eas update` autorizado, use o script explícito de upload de mapas.
+O build local protegido define `SENTRY_DISABLE_AUTO_UPLOAD=true`; qualquer upload nativo separado
+exige autorização e gate próprios, sem migrar o build para a nuvem. OTA é uma ação separada; depois
+do `eas update` autorizado, use o script explícito de upload de mapas.
 
 ## Cicatrizes importantes
 

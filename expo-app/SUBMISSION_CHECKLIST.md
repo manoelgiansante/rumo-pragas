@@ -4,6 +4,8 @@
 
 - [ ] Build was generated separately; no `--auto-submit` or build hook initiated submission.
 - [ ] Candidate commit frozen and CI green on Node 22.22.3.
+- [ ] CI checkout uses `fetch-depth: 0` (or fetches the exact manifest candidate commit) before
+      validating non-empty screenshot sets; missing Git history fails closed.
 - [ ] expo-doctor, lint, typecheck, tests and web export green.
 - [ ] Signed IPA and AAB installed from TestFlight/Internal testing.
 - [ ] Fresh install, upgrade and denied-permission paths pass.
@@ -21,6 +23,8 @@
       pt-BR pages no longer claim fixed speed, measured accuracy, offline inference or agronomist
       equivalence.
 - [ ] Screenshots pass store-assets/SCREENSHOT_CHECKLIST.md.
+- [ ] `store-assets/screenshots-manifest.json` maps the exact candidate version/commit, canonical
+      scenes and SHA-256 of every screenshot, with an independent second review.
 - [ ] No subscription, trial, paid tier, billing product or restoration claim appears.
 
 ## App Store Connect
@@ -54,7 +58,10 @@
 - Live metadata correction: authenticated App Store Connect and Play Console changes are required;
   on 2026-07-14 both public listings still showed the prohibited prior-release claims even though
   the repository metadata had been corrected.
-- Signed build: not pre-classified as external; local Apple/Android signing material exists and the release builds must be attempted first.
+- Apple signing rotation: revoke/replace the exposed distribution certificate, provisioning
+  profile and password, update EAS/the approved secret store and record non-secret evidence before
+  removing `store-assets/APPLE_SIGNING_ROTATION_BLOCKER.md`. No pre-rotation IPA is eligible.
+- Android signed build: not pre-classified as external; the release build must be attempted first.
 - Upload: authenticated App Store Connect and Play Console access.
 - Reviewer access: dedicated QA account stored in the approved secret manager.
 - Data Safety Shared answers: evidence that provider contracts meet Google service-provider definitions.
@@ -62,14 +69,22 @@
   shared AgroRumo identity; the current app-data-only flow is insufficient to clear this gate.
 - Publication: explicit store release action after internal validation.
 - Screenshots: zero real candidate screenshots are currently in the submission paths; archived
-  images are prohibited and `scripts/submit.sh` fails closed until at least five real images exist
-  for the selected platform.
+  images are prohibited and `scripts/submit.sh` fails closed until all four required device sets
+  exist, both platform manifests cover all seven canonical scenes, and the feature graphic and
+  selected local signed artifact matches its independently reviewed hash and provenance.
 
 No credential value belongs in this file.
 
 After every checkbox is evidenced and an authorized operator approves the exact artifact, use
-`./scripts/submit.sh` with one platform, the real immutable build ID or signed artifact path, and
-`--confirm-authorized-submission`. The script does not accept `--latest`.
+`./scripts/submit.sh` with one platform, the local signed artifact path, and
+`--confirm-authorized-submission`. Before inspecting credentials or invoking EAS, the script runs
+the complete `scripts/store-submission-status.mjs` gate for both stores and shared blockers. It does
+not accept remote build IDs or `--latest`, and selecting one platform cannot bypass a blocker on
+the other platform or the shared-account deletion/Apple-signing blockers. Local paths must select
+`.ipa` for iOS or `.aab` for Android; the chosen file SHA-256 must equal
+`store-assets/screenshots-manifest.json`. Immediately before EAS submit, the script verifies the
+production Supabase URL and the versioned public-key fingerprint inside that exact private
+artifact snapshot.
 
 The confirmation marker records operator intent in the command; it does not grant authorization,
 publish automatically or replace App Store Connect/Play Console review.

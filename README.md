@@ -23,11 +23,10 @@ envio posterior; isso não significa diagnóstico offline.
 - `docs/audit/competitive-matrix-2026-07-14.md`: pesquisa competitiva atual, com fontes.
 
 `RumoPragas/` e `RumoPragas.xcodeproj` são um protótipo SwiftUI legado e não geram o binário
-atual das lojas. A landing pública em `pragas.agrorumo.com` é uma implantação Vercel separada:
-o inventário autenticado do projeto Vercel `rumo-pragas-landing` confirma a integração GitHub
-`manoelgiansante/rumo-pragas-landing`, branch de produção `main`. Esse repositório separado é a
-fonte canônica; `rumo-pragas-landing-nextjs` e o diretório homônimo no monorepo são apenas fontes
-divergentes e não devem ser implantados no domínio.
+atual das lojas. A landing pública em `pragas.agrorumo.com` é uma implantação Vercel separada.
+Sua única fonte canônica é o remote
+`https://github.com/manoelgiansante/rumo-pragas-landing-nextjs.git`, com worktree sibling em
+`../rumo-pragas-landing`; o candidato atual está no PR #3 desse repositório.
 
 ## Arquitetura do produto
 
@@ -127,10 +126,12 @@ dosagem ou funcionalidade inexistente.
 `expo-app/scripts/submit.sh`, exige autorização explícita para um artefato imutável e falha enquanto
 as capturas reais do candidato estiverem ausentes.
 
-No EAS Build, o plugin oficial Expo/Sentry envia os source maps nativos automaticamente; valide o
-upload e a symbolication no artefato real. Um EAS Update é uma mudança separada e autorizada: depois
-de publicar e revisar a atualização exata, use `expo-app/scripts/upload-sentry-ota.sh` para enviar
-somente os mapas já gerados. O script não publica OTA.
+O build local protegido define `SENTRY_DISABLE_AUTO_UPLOAD=true`, portanto não envia source maps
+nativos durante o subprocesso. Qualquer upload separado exige autorização e gate próprios, além de
+evidência de symbolication sem dados pessoais; nunca migre o build para a nuvem para obter esse
+upload. Um EAS Update é uma mudança separada e autorizada: depois de publicar e revisar a atualização
+exata, use `expo-app/scripts/upload-sentry-ota.sh` para enviar somente os mapas já gerados. O script
+não publica OTA.
 
 ## Segurança, privacidade e operação
 
