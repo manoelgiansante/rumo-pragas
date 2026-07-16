@@ -69,7 +69,7 @@ readonly EDGE_DEPLOY_ORDER=(
   "admin-ai-content-reports"
 )
 readonly EXISTING_EDGE_SLUG="pragas-send-push"
-readonly EXISTING_EDGE_VERSION="19"
+readonly EXISTING_EDGE_VERSION="21"
 readonly EXISTING_EDGE_EZBR="2138ada8ec877822216eff72cdf957754257d9373579d6e437124ac16e3f284a"
 readonly EXISTING_EDGE_VERIFY_JWT="true"
 
