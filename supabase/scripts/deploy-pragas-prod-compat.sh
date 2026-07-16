@@ -14,10 +14,15 @@ readonly REVIEWED_SYSTEM_CURL="/usr/bin/curl"
 readonly TEMP_LOGIN_ROLE_MIN_TTL_SECONDS="300"
 readonly TEMP_LOGIN_ROLE_MAX_TTL_SECONDS="3600"
 readonly TEMP_LOGIN_ROLE_MIN_REMAINING_SECONDS="120"
+readonly PHYSICAL_BACKUP_MAX_AGE_SECONDS="129600"
+readonly REVIEWED_APPLE_SIGN_IN_KEY_ID="S7F5NF2BN7"
+readonly REVIEWED_APPLE_SIGN_IN_KEY_ID_SHA256="7e3835d041807f1b3013af69924f4c67feae09b2e147af5589576f0d34c72ade"
+readonly REVIEWED_APPLE_SIGN_IN_PRIVATE_KEY_SHA256="ce1992e53f55a4fdc98d535d088b95e0a71faf841cb52288f0c0764a1eaa08a0"
 readonly TARGET_VERSIONS=(
   "20260715170000"
   "20260715171000"
   "20260715172000"
+  "20260715173000"
 )
 readonly EDGE_SLUGS=(
   "diagnose-pragas"
@@ -32,6 +37,7 @@ readonly EDGE_SLUGS=(
   "pragas-process-deletions"
   "pragas-process-ai-idempotency"
   "pragas-send-push"
+  "pragas-global-account-deletion"
 )
 readonly NEW_EDGE_SLUGS=(
   "diagnose-pragas"
@@ -45,11 +51,13 @@ readonly NEW_EDGE_SLUGS=(
   "admin-ai-content-reports"
   "pragas-process-deletions"
   "pragas-process-ai-idempotency"
+  "pragas-global-account-deletion"
 )
 readonly EDGE_DEPLOY_ORDER=(
   "pragas-process-deletions"
   "pragas-process-ai-idempotency"
   "pragas-send-push"
+  "pragas-global-account-deletion"
   "diagnose-pragas"
   "ai-chat-pragas"
   "pragas-delete-user-account"
@@ -80,6 +88,7 @@ migration_name() {
     20260715170000) echo "20260715170000_pragas_link_account_prod_hotfix.sql" ;;
     20260715171000) echo "20260715171000_pragas_prod_compat_runtime.sql" ;;
     20260715172000) echo "20260715172000_pragas_prod_compat_export.sql" ;;
+    20260715173000) echo "20260715173000_agrorumo_global_account_deletion_requests.sql" ;;
     *) return 1 ;;
   esac
 }
@@ -89,13 +98,14 @@ expected_hash() {
     20260715170000) echo "e75f0ea10b80d8021aaa1ddccd0307098cb313b67b1042a777311d1d038b64d5" ;;
     20260715171000) echo "6166cb7282e4e5f16300b29404cec218dcca81255ca09202f2e094658077c9bb" ;;
     20260715172000) echo "46ab43a60bf9adf52ec99aed85eaee22010132e6afc4364fd6d47589ed4b087e" ;;
+    20260715173000) echo "cb07b53d5016f7710e1910fdb27a590d040358ceeaddc60c5ee973d9c62e7b78" ;;
     *) return 1 ;;
   esac
 }
 
 expected_edge_verify_jwt() {
   case "$1" in
-    pragas-process-deletions|pragas-process-ai-idempotency|pragas-send-push)
+    pragas-process-deletions|pragas-process-ai-idempotency|pragas-send-push|pragas-global-account-deletion)
       echo "false"
       ;;
     *) echo "true" ;;
@@ -104,12 +114,12 @@ expected_edge_verify_jwt() {
 
 expected_edge_hash() {
   case "$1" in
-    _shared) echo "bd89c14255044a0688cc4e2ff2b1991982dcd3d0c98f61ab06d94026f1657507" ;;
+    _shared) echo "61529feb4a91fb5dd3093cd38e0dd25f1e9b073743577e290163eef55d283d4c" ;;
     diagnose-pragas) echo "4e8293678b98cb6e2b3061fef6a8483aa4d1450efa3c8a9991e1a33b5bd2447b" ;;
     ai-chat-pragas) echo "b07ef59e6857ac131b5df00691d14f0fe94581d9396ee8e5a3fdc52b3f867b5f" ;;
     pragas-delete-user-account) echo "5a8601bf3d8caa6200f983d65cd4cd66e0801deb4cccbbadd6d54d9b117b0513" ;;
     pragas-export-user-data) echo "c37964b4e4194a9add2188e4e0dc2207dbed0bd4b5aa5239ea56e6274dc8cfd4" ;;
-    pragas-reactivate-account) echo "3d820118cfc36160511d161c9d22ad5bd67d0af80cac8912d4926110b64e5d08" ;;
+    pragas-reactivate-account) echo "7919180b3d618b4c67c67bce9c4665338af42972c4eb801ee4c9fa9d84c0a638" ;;
     pragas-analytics) echo "fa031fd68caf3bd58ee21d39c1696d8d09108afcacfdca388fea48d7f9a7b386" ;;
     report-ai-content) echo "4120e5aa54137cea56118a42047689996d1f3b8f3f0f592488a496a0d312e1bf" ;;
     report-diagnosis-feedback) echo "2bbed865bf4420eae7ec98108af22a82de91b9c4731eb75f43111cc0a179c93e" ;;
@@ -117,6 +127,7 @@ expected_edge_hash() {
     pragas-process-deletions) echo "9dcfd5b9cb2e14bc4a075c71acd9315d17bf3fa6254f8f24166d29a3e1b66a38" ;;
     pragas-process-ai-idempotency) echo "fc896e878917c441c3f622c5b568599cf0ceaab84aaed246185417db2654c185" ;;
     pragas-send-push) echo "897078f6ffd884e8eb272ce024a095adaa4c96f286428875b2cfa583f0a9e880" ;;
+    pragas-global-account-deletion) echo "df633ba8db0334294cc5f2299e1171cec72c8c05fa399b75a4236bccb10fd760" ;;
     *) return 1 ;;
   esac
 }
@@ -148,6 +159,10 @@ fi
 
 tmp="$(mktemp -d /tmp/rumo-pragas-prod-compat.XXXXXX)"
 restore_container=""
+backup_dir=""
+backup_pgpass=""
+sensitive_work_dir=""
+restore_pgdata=""
 temp_login_cleanup_required="false"
 temp_login_access_token=""
 temp_login_role=""
@@ -166,7 +181,9 @@ clear_temp_login_role_local() {
   if [[ -n "$temp_login_response" ]]; then
     rm -f "$temp_login_response"
   fi
-  rm -f "$tmp/prod-backup.pgpass"
+  if [[ -n "$backup_pgpass" ]]; then
+    rm -f -- "$backup_pgpass"
+  fi
   temp_login_cleanup_required="false"
   temp_login_access_token=""
   temp_login_role=""
@@ -199,6 +216,13 @@ cleanup() {
   backup_db_password=""
   if [[ -n "$restore_container" ]]; then
     docker rm -f "$restore_container" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$sensitive_work_dir" && -n "$backup_dir" \
+        && -d "$sensitive_work_dir" && ! -L "$sensitive_work_dir" ]] \
+      && pragas_assert_private_backup_leaf \
+        "$backup_dir" "$sensitive_work_dir" >/dev/null 2>&1; then
+    chmod -R u+w "$sensitive_work_dir" >/dev/null 2>&1 || true
+    rm -rf -- "$sensitive_work_dir"
   fi
   chmod -R u+w "$tmp" >/dev/null 2>&1 || true
   rm -rf "$tmp"
@@ -269,19 +293,20 @@ fi
 
 bash "$repo_root/supabase/tests/pragas-prod-compat-gate-static.sh"
 bash "$repo_root/supabase/tests/pragas-prod-compat-integration.sh"
+bash "$repo_root/supabase/tests/agrorumo-global-account-deletion-integration.sh"
 
 if [[ "$(shasum -a 256 "$repo_root/supabase/config.toml" | awk '{print $1}')" \
-      != "d2f956c4d5e18bc74c3126e841bc9fd30db0c2a5537e21eb6808a5983cc48661" ]]; then
+      != "48df42067b5307e8a968f0716ea7473ea045581a2df9c0109cdba9c68b12fede" ]]; then
   echo "Supabase function configuration hash mismatch" >&2
   exit 1
 fi
 if [[ "$(shasum -a 256 "$repo_root/supabase/functions/deno.json" | awk '{print $1}')" \
-      != "e7d9f82e1847be6003f15b2bceacfaea0f7756e4eddd09a082e3781fb7de1dd9" ]]; then
+      != "2ba7fa4d273962008d261c1d4f0438fa636ba94939edf989206b5bd605428d1c" ]]; then
   echo "Edge Deno configuration hash mismatch" >&2
   exit 1
 fi
 if [[ "$(shasum -a 256 "$repo_root/supabase/functions/deno.lock" | awk '{print $1}')" \
-      != "331337935052fdcb6ff8bdce86f9c1abe9d9cb19d5b5af4c4e886144794ae5fd" ]]; then
+      != "cb09d8fcef6cffb7efe7f733a48d3f5bdb773187b99afba2fb26c7e1e6dcd0df" ]]; then
   echo "Edge Deno lock hash mismatch" >&2
   exit 1
 fi
@@ -353,7 +378,9 @@ if ! pragas_copy_verified_file \
   exit 1
 fi
 mkdir -p "$tmp/supabase/.temp" "$tmp/supabase/migrations"
-cp "$repo_root/supabase/config.toml" "$tmp/supabase/config.toml"
+pragas_copy_verified_file \
+  "$repo_root/supabase/config.toml" "$tmp/supabase/config.toml" \
+  "48df42067b5307e8a968f0716ea7473ea045581a2df9c0109cdba9c68b12fede"
 
 # Snapshot every reviewed Edge input before any remote access. The deploy CLI
 # later receives only this private read-only tree, so edits in the shared
@@ -363,15 +390,15 @@ mkdir -p "$edge_candidate_work/supabase/functions"
 pragas_copy_verified_file \
   "$repo_root/supabase/config.toml" \
   "$edge_candidate_work/supabase/config.toml" \
-  "d2f956c4d5e18bc74c3126e841bc9fd30db0c2a5537e21eb6808a5983cc48661"
+  "48df42067b5307e8a968f0716ea7473ea045581a2df9c0109cdba9c68b12fede"
 pragas_copy_verified_file \
   "$repo_root/supabase/functions/deno.json" \
   "$edge_candidate_work/supabase/functions/deno.json" \
-  "e7d9f82e1847be6003f15b2bceacfaea0f7756e4eddd09a082e3781fb7de1dd9"
+  "2ba7fa4d273962008d261c1d4f0438fa636ba94939edf989206b5bd605428d1c"
 pragas_copy_verified_file \
   "$repo_root/supabase/functions/deno.lock" \
   "$edge_candidate_work/supabase/functions/deno.lock" \
-  "331337935052fdcb6ff8bdce86f9c1abe9d9cb19d5b5af4c4e886144794ae5fd"
+  "cb09d8fcef6cffb7efe7f733a48d3f5bdb773187b99afba2fb26c7e1e6dcd0df"
 for slug in _shared "${EDGE_SLUGS[@]}"; do
   pragas_copy_verified_tree \
     "$repo_root/supabase/functions/$slug" \
@@ -383,12 +410,15 @@ chmod -R u=rX,go= "$edge_candidate_work"
 assert_edge_candidate_snapshot() {
   local slug="$1"
 
+  chmod -R u=rX,go= "$edge_candidate_work" || return 1
+  pragas_assert_owned_readonly_tree "$edge_candidate_work" >/dev/null \
+    || return 1
   [[ "$(shasum -a 256 "$edge_candidate_work/supabase/config.toml" | awk '{print $1}')" \
-      == "d2f956c4d5e18bc74c3126e841bc9fd30db0c2a5537e21eb6808a5983cc48661" \
+      == "48df42067b5307e8a968f0716ea7473ea045581a2df9c0109cdba9c68b12fede" \
     && "$(shasum -a 256 "$edge_candidate_work/supabase/functions/deno.json" | awk '{print $1}')" \
-      == "e7d9f82e1847be6003f15b2bceacfaea0f7756e4eddd09a082e3781fb7de1dd9" \
+      == "2ba7fa4d273962008d261c1d4f0438fa636ba94939edf989206b5bd605428d1c" \
     && "$(shasum -a 256 "$edge_candidate_work/supabase/functions/deno.lock" | awk '{print $1}')" \
-      == "331337935052fdcb6ff8bdce86f9c1abe9d9cb19d5b5af4c4e886144794ae5fd" \
+      == "cb09d8fcef6cffb7efe7f733a48d3f5bdb773187b99afba2fb26c7e1e6dcd0df" \
     && "$(directory_hash "$edge_candidate_work/supabase/functions/_shared")" \
       == "$(expected_edge_hash _shared)" \
     && "$(directory_hash "$edge_candidate_work/supabase/functions/$slug")" \
@@ -496,6 +526,12 @@ do
     cp "$repo_root/supabase/.temp/$metadata" "$tmp/supabase/.temp/$metadata"
   fi
 done
+chmod -R u=rX,go= "$tmp/supabase/.temp"
+if ! pragas_assert_owned_readonly_tree "$tmp/supabase/.temp" >/dev/null; then
+  echo "Supabase linked metadata snapshot is not private and immutable" >&2
+  exit 1
+fi
+linked_metadata_snapshot_hash="$(directory_hash "$tmp/supabase/.temp")"
 
 if [[ ! -f "$tmp/supabase/.temp/pooler-url" ]]; then
   echo "Supabase pooler identity is missing" >&2
@@ -804,6 +840,8 @@ if ! jq -r '.[].name' "$remote_secrets" \
 fi
 required_secret_names=(
   AGRIO_API_KEY
+  APPLE_SIGN_IN_KEY_ID
+  APPLE_SIGN_IN_PRIVATE_KEY
   CLAUDE_API_KEY
   EXPO_ACCESS_TOKEN
   GEMINI_API_KEY
@@ -819,12 +857,23 @@ validate_required_edge_secret_metadata() {
 
   for secret_name in "${required_secret_names[@]}"; do
     expected_secret_digest=""
-    if [[ "$secret_name" == "EXPO_ACCESS_TOKEN" ]]; then
-      expected_secret_digest="$expo_access_token_expected_digest"
-    fi
+    case "$secret_name" in
+      EXPO_ACCESS_TOKEN)
+        expected_secret_digest="$expo_access_token_expected_digest"
+        ;;
+      APPLE_SIGN_IN_KEY_ID)
+        expected_secret_digest="$REVIEWED_APPLE_SIGN_IN_KEY_ID_SHA256"
+        ;;
+      APPLE_SIGN_IN_PRIVATE_KEY)
+        expected_secret_digest="$REVIEWED_APPLE_SIGN_IN_PRIVATE_KEY_SHA256"
+        ;;
+    esac
     if ! pragas_validate_required_secret_metadata \
         "$inventory_file" "$secret_name" "$expected_secret_digest"; then
       echo "required Edge secret metadata is absent or unverified: $secret_name" >&2
+      if [[ "$secret_name" == APPLE_SIGN_IN_* ]]; then
+        echo "expected dedicated Rumo Pragas SIWA key id: $REVIEWED_APPLE_SIGN_IN_KEY_ID" >&2
+      fi
       return 1
     fi
   done
@@ -912,8 +961,10 @@ expected_planned="$tmp/expected-planned.txt"
 : > "$expected_planned"
 for version in "${TARGET_VERSIONS[@]}"; do
   migration_name_value="$(migration_name "$version")"
-  cp "$repo_root/supabase/migrations/$migration_name_value" \
-    "$tmp/supabase/migrations/$migration_name_value"
+  pragas_copy_verified_file \
+    "$repo_root/supabase/migrations/$migration_name_value" \
+    "$tmp/supabase/migrations/$migration_name_value" \
+    "$(expected_hash "$version")"
   copied_hash="$(shasum -a 256 \
     "$tmp/supabase/migrations/$migration_name_value" | awk '{print $1}')"
   if [[ "$copied_hash" != "$(expected_hash "$version")" ]]; then
@@ -991,6 +1042,71 @@ if [[ "$candidate_file_count" != "3" ]]; then
   exit 1
 fi
 
+expected_snapshot_migration_names="$tmp/expected-snapshot-migration-names.txt"
+{
+  sed 's/$/_remote_history.sql/' "$remote_versions"
+  for version in "${TARGET_VERSIONS[@]}"; do
+    migration_name "$version"
+  done
+} | LC_ALL=C sort >"$expected_snapshot_migration_names"
+
+assert_database_candidate_snapshot() {
+  local label="$1"
+  local version
+  local migration_name_value
+  local actual_snapshot_migration_names="$tmp/actual-snapshot-migration-names-$label.txt"
+
+  chmod u=r,go= "$tmp/supabase/config.toml" || return 1
+  chmod -R u=rX,go= "$tmp/supabase/.temp" "$tmp/supabase/migrations" \
+    || return 1
+  if [[ ! -f "$tmp/supabase/config.toml" \
+        || -L "$tmp/supabase/config.toml" \
+        || "$(pragas_stat_uid "$tmp/supabase/config.toml")" != "$(id -u)" \
+        || "$(pragas_stat_mode "$tmp/supabase/config.toml")" != "400" \
+        || "$(shasum -a 256 "$tmp/supabase/config.toml" | awk '{print $1}')" \
+           != "48df42067b5307e8a968f0716ea7473ea045581a2df9c0109cdba9c68b12fede" \
+        || "$(directory_hash "$tmp/supabase/.temp")" \
+           != "$linked_metadata_snapshot_hash" \
+        || "$(tr -d '[:space:]' <"$tmp/supabase/.temp/project-ref")" \
+           != "$TARGET_REF" ]]; then
+    echo "reviewed database candidate snapshot changed: $label" >&2
+    return 1
+  fi
+  pragas_assert_owned_readonly_tree "$tmp/supabase/.temp" >/dev/null \
+    || return 1
+  pragas_assert_owned_readonly_tree "$tmp/supabase/migrations" >/dev/null \
+    || return 1
+  find "$tmp/supabase/migrations" -maxdepth 1 -type f -print \
+    | sed 's#.*/##' | LC_ALL=C sort >"$actual_snapshot_migration_names"
+  if ! cmp -s \
+      "$expected_snapshot_migration_names" "$actual_snapshot_migration_names"; then
+    echo "reviewed migration snapshot inventory changed: $label" >&2
+    return 1
+  fi
+  for version in "${TARGET_VERSIONS[@]}"; do
+    migration_name_value="$(migration_name "$version")"
+    if [[ "$(shasum -a 256 \
+        "$tmp/supabase/migrations/$migration_name_value" | awk '{print $1}')" \
+          != "$(expected_hash "$version")" ]]; then
+      echo "reviewed migration snapshot hash changed: $version ($label)" >&2
+      return 1
+    fi
+  done
+  while IFS= read -r version; do
+    if [[ ! -f "$tmp/supabase/migrations/${version}_remote_history.sql" \
+          || -L "$tmp/supabase/migrations/${version}_remote_history.sql" \
+          || -s "$tmp/supabase/migrations/${version}_remote_history.sql" ]]; then
+      echo "remote migration-history placeholder changed: $version ($label)" >&2
+      return 1
+    fi
+  done <"$remote_versions"
+}
+
+if ! assert_database_candidate_snapshot "before-dry-run"; then
+  echo "isolated database candidate failed its final dry-run identity check" >&2
+  exit 1
+fi
+
 dry_run_output="$(
   PGSSLMODE=verify-full PGSSLROOTCERT="$db_sslrootcert" \
     supabase db push --linked --dry-run --workdir "$tmp" --yes 2>&1
@@ -1011,7 +1127,7 @@ if ! cmp -s "$planned_versions" "$expected_planned"; then
 fi
 
 if [[ "$mode" == "--dry-run" ]]; then
-  echo "prod-compat DB + 12 Edge gate: DRY RUN PASS"
+  echo "prod-compat DB + 13 Edge gate: DRY RUN PASS"
   echo "target=$TARGET_REF profiles=$profile_count generated_ids=$generated_profile_count"
   echo "allowlist=${TARGET_VERSIONS[*]}"
   echo "edge_new_absent=11 edge_restore_baseline=pragas-send-push@19"
@@ -1038,6 +1154,8 @@ fi
 # Keep every sensitive artifact private as it is created, not only the 0700
 # parent directory. Child processes (Supabase CLI, tar and Deno) inherit this.
 umask 077
+sensitive_work_dir="$(pragas_create_private_backup_leaf \
+  "$backup_dir" "private-work")"
 
 assert_backup_storage_still_valid() {
   local current_backup_root
@@ -1052,6 +1170,221 @@ assert_backup_storage_still_valid() {
     return 1
   fi
 }
+
+assert_sensitive_backup_workspace() {
+  assert_backup_storage_still_valid \
+    && pragas_assert_private_backup_leaf \
+      "$backup_dir" "$sensitive_work_dir" >/dev/null
+}
+
+capture_physical_backup_inventory() {
+  local destination="$1"
+  local checkpoint_label="$2"
+  local stderr_file="$sensitive_work_dir/physical-backups-$checkpoint_label.stderr"
+
+  if [[ -e "$destination" || -L "$destination" \
+        || -e "$stderr_file" || -L "$stderr_file" ]] \
+      || ! assert_sensitive_backup_workspace; then
+    return 1
+  fi
+  if ! supabase backups list --project-ref "$TARGET_REF" --output json \
+      --workdir "$tmp" --agent=no >"$destination" 2>"$stderr_file"; then
+    chmod 400 "$stderr_file" >/dev/null 2>&1 || true
+    echo "physical-backup inventory failed; encrypted diagnostic: $stderr_file" >&2
+    return 1
+  fi
+  rm -f "$stderr_file"
+  chmod 400 "$destination"
+  assert_sensitive_backup_workspace
+}
+
+physical_backups_before="$backup_dir/physical-backups-before.json"
+if ! capture_physical_backup_inventory \
+    "$physical_backups_before" "before"; then
+  echo "recent physical-backup evidence is unavailable" >&2
+  exit 1
+fi
+physical_backup_before="$(pragas_validate_physical_backup_inventory \
+  "$physical_backups_before" "$(date +%s)" \
+  "$PHYSICAL_BACKUP_MAX_AGE_SECONDS")" || {
+    echo "no recent completed WAL-G physical backup is available" >&2
+    exit 1
+  }
+IFS=$'\t' read -r physical_backup_id physical_backup_inserted_at \
+  physical_backup_walg physical_backup_pitr <<<"$physical_backup_before"
+printf '%s\n' \
+  "target=$TARGET_REF" \
+  "physical_backup_id=$physical_backup_id" \
+  "inserted_at=$physical_backup_inserted_at" \
+  "status=COMPLETED" \
+  "is_physical_backup=true" \
+  "walg_enabled=$physical_backup_walg" \
+  "pitr_enabled=$physical_backup_pitr" \
+  >"$backup_dir/physical-backup-evidence.txt"
+chmod 400 "$backup_dir/physical-backup-evidence.txt"
+
+data_scope_contract_sql="$(cat <<'SQL'
+WITH RECURSIVE scoped_tables AS (
+  SELECT relation.oid,
+         namespace_row.nspname AS schema_name,
+         relation.relname AS relation_name
+    FROM pg_class AS relation
+    JOIN pg_namespace AS namespace_row
+      ON namespace_row.oid = relation.relnamespace
+   WHERE relation.relkind = 'r'
+     AND (
+       namespace_row.nspname IN ('auth', 'storage')
+       OR (
+         namespace_row.nspname = 'public'
+         AND (
+           relation.relname LIKE 'pragas\_%' ESCAPE '\'
+           OR relation.relname IN (
+             'subscriptions', 'chat_usage',
+             'analytics_events', 'audit_log'
+           )
+         )
+       )
+     )
+), partitioned_tables AS (
+  SELECT namespace_row.nspname AS schema_name,
+         relation.relname AS relation_name
+    FROM pg_class AS relation
+    JOIN pg_namespace AS namespace_row
+      ON namespace_row.oid = relation.relnamespace
+   WHERE relation.relkind = 'p'
+     AND (
+       namespace_row.nspname IN ('auth', 'storage')
+       OR (
+         namespace_row.nspname = 'public'
+         AND (
+           relation.relname LIKE 'pragas\_%' ESCAPE '\'
+           OR relation.relname IN (
+             'subscriptions', 'chat_usage',
+             'analytics_events', 'audit_log'
+           )
+         )
+       )
+     )
+), scoped_sequences AS (
+  SELECT namespace_row.nspname AS schema_name,
+         relation.relname AS relation_name
+    FROM pg_class AS relation
+    JOIN pg_namespace AS namespace_row
+      ON namespace_row.oid = relation.relnamespace
+   WHERE relation.relkind = 'S'
+     AND (
+       namespace_row.nspname IN ('auth', 'storage')
+       OR (
+         namespace_row.nspname = 'public'
+         AND (
+           relation.relname LIKE 'pragas\_%' ESCAPE '\'
+           OR EXISTS (
+             SELECT 1
+               FROM pg_depend AS dependency
+               JOIN scoped_tables AS scoped_table
+                 ON scoped_table.oid = dependency.refobjid
+              WHERE dependency.objid = relation.oid
+                AND dependency.deptype IN ('a', 'i')
+           )
+         )
+       )
+     )
+), parent_closure AS (
+  SELECT scoped_table.oid, ARRAY[scoped_table.oid]::oid[] AS visited
+    FROM scoped_tables AS scoped_table
+  UNION ALL
+  SELECT constraint_row.confrelid,
+         parent_row.visited || constraint_row.confrelid
+    FROM parent_closure AS parent_row
+    JOIN pg_constraint AS constraint_row
+      ON constraint_row.conrelid = parent_row.oid
+     AND constraint_row.contype = 'f'
+   WHERE NOT constraint_row.confrelid = ANY(parent_row.visited)
+), external_parent_relations AS (
+  SELECT DISTINCT namespace_row.nspname AS schema_name,
+         relation.relname AS relation_name
+    FROM parent_closure AS parent_row
+    JOIN pg_class AS relation ON relation.oid = parent_row.oid
+    JOIN pg_namespace AS namespace_row
+      ON namespace_row.oid = relation.relnamespace
+   WHERE NOT EXISTS (
+     SELECT 1 FROM scoped_tables AS scoped_table
+      WHERE scoped_table.oid = parent_row.oid
+   )
+)
+SELECT jsonb_build_object(
+  'scoped_tables', coalesce((
+    SELECT jsonb_agg(jsonb_build_object(
+      'schema', scoped_table.schema_name,
+      'table', scoped_table.relation_name
+    ) ORDER BY scoped_table.schema_name, scoped_table.relation_name)
+      FROM scoped_tables AS scoped_table
+  ), '[]'::jsonb),
+  'data_relations', coalesce((
+    SELECT jsonb_agg(jsonb_build_object(
+      'schema', data_relation.schema_name,
+      'relation', data_relation.relation_name,
+      'kind', data_relation.relation_kind
+    ) ORDER BY data_relation.schema_name, data_relation.relation_name)
+      FROM (
+        SELECT schema_name, relation_name, 'table'::text AS relation_kind
+          FROM scoped_tables
+        UNION ALL
+        SELECT schema_name, relation_name, 'sequence'::text AS relation_kind
+          FROM scoped_sequences
+      ) AS data_relation
+  ), '[]'::jsonb),
+  'partitioned_tables', coalesce((
+    SELECT jsonb_agg(jsonb_build_object(
+      'schema', partitioned_table.schema_name,
+      'table', partitioned_table.relation_name
+    ) ORDER BY partitioned_table.schema_name, partitioned_table.relation_name)
+      FROM partitioned_tables AS partitioned_table
+  ), '[]'::jsonb),
+  'external_parent_relations', coalesce((
+    SELECT jsonb_agg(jsonb_build_object(
+      'schema', external_parent.schema_name,
+      'table', external_parent.relation_name
+    ) ORDER BY external_parent.schema_name, external_parent.relation_name)
+      FROM external_parent_relations AS external_parent
+  ), '[]'::jsonb)
+) AS data_scope_contract;
+SQL
+)"
+
+capture_data_scope_contract() {
+  local destination="$1"
+  local checkpoint_label="$2"
+  local stderr_file="$sensitive_work_dir/data-scope-$checkpoint_label.stderr"
+
+  if [[ -e "$destination" || -L "$destination" \
+        || -e "$stderr_file" || -L "$stderr_file" ]] \
+      || ! assert_sensitive_backup_workspace; then
+    return 1
+  fi
+  if ! supabase db query --linked --workdir "$tmp" --agent=no --output json \
+      "$data_scope_contract_sql" >"$destination" 2>"$stderr_file"; then
+    chmod 400 "$stderr_file" >/dev/null 2>&1 || true
+    echo "logical data-scope inventory failed; encrypted diagnostic: $stderr_file" >&2
+    return 1
+  fi
+  rm -f "$stderr_file"
+  chmod 400 "$destination"
+  assert_sensitive_backup_workspace
+}
+
+data_scope_contract_before="$backup_dir/data-scope-before.json"
+data_scope_relations_manifest="$backup_dir/data-scope-relations.manifest"
+data_scope_tables_manifest="$backup_dir/data-scope-tables.manifest"
+if ! capture_data_scope_contract "$data_scope_contract_before" "before" \
+    || ! pragas_validate_data_scope_contract \
+      "$data_scope_contract_before" >"$data_scope_relations_manifest"; then
+  echo "logical data-scope allowlist or recursive FK closure failed" >&2
+  exit 1
+fi
+awk -F '\t' '$3 == "table" { print $1 "|" $2 }' \
+  "$data_scope_relations_manifest" >"$data_scope_tables_manifest"
+chmod 400 "$data_scope_relations_manifest" "$data_scope_tables_manifest"
 
 cp "$policy_inventory" "$backup_dir/policies-before.json"
 cp "$extension_inventory" "$backup_dir/extensions-before.csv"
@@ -1139,7 +1472,7 @@ auth_schema_backup="$backup_dir/auth-schema.sql"
 storage_schema_backup="$backup_dir/storage-schema.sql"
 schema_backup="$backup_dir/public-schema.sql"
 data_backup="$backup_dir/auth-storage-public-data.sql"
-backup_pgpass="$tmp/prod-backup.pgpass"
+backup_pgpass="$sensitive_work_dir/prod-backup.pgpass"
 backup_db_username="$pooler_username"
 backup_db_password="${SUPABASE_DB_PASSWORD:-}"
 use_temp_login_role="false"
@@ -1157,13 +1490,17 @@ else
 fi
 
 refresh_temp_login_role_credentials() {
+  if ! assert_sensitive_backup_workspace; then
+    echo "encrypted temporary-role workspace is unavailable" >&2
+    return 1
+  fi
   clear_temp_login_role_local
   if ! pragas_load_supabase_access_token temp_login_access_token; then
     echo "temporary Supabase login-role authentication is unavailable" >&2
     return 1
   fi
   temp_login_cleanup_required="true"
-  temp_login_response="$tmp/temp-login-role-response.json"
+  temp_login_response="$sensitive_work_dir/temp-login-role-response.json"
   if ! pragas_call_supabase_cli_login_role_api \
       POST "$TARGET_REF" "$temp_login_access_token" \
       "$temp_login_response" "$REVIEWED_SYSTEM_CURL"; then
@@ -1200,17 +1537,23 @@ refresh_temp_login_role_credentials() {
   backup_db_password=""
   temp_login_password=""
   temp_login_roles_issued_count=$((temp_login_roles_issued_count + 1))
+  assert_sensitive_backup_workspace
 }
 
-backup_raw_dir="$tmp/verified-backup-raw"
-mkdir -m 700 "$backup_raw_dir"
+backup_raw_dir="$(pragas_create_private_backup_leaf \
+  "$sensitive_work_dir" "verified-backup-raw")"
+backup_failure_evidence=""
 
 capture_verified_backup_raw() {
   local tool="$1"
   local raw_output="$2"
+  local raw_error="${raw_output}.stderr"
+  local encrypted_error
   shift 2
 
-  if [[ -e "$raw_output" || -L "$raw_output" ]]; then
+  if [[ "$(dirname "$raw_output")" != "$backup_raw_dir" \
+        || -e "$raw_output" || -L "$raw_output" \
+        || -e "$raw_error" || -L "$raw_error" ]]; then
     return 1
   fi
   # Re-read both the mounted encrypted-volume identity and the private leaf
@@ -1237,18 +1580,39 @@ capture_verified_backup_raw() {
       "$REVIEWED_PG_BACKUP_IMAGE" "$REVIEWED_PG_BACKUP_DIGEST" \
       "$tool" "$db_sslrootcert" "$backup_pgpass" \
       "$pooler_host" "$pooler_port" "$backup_db_username" \
-      "$pooler_database" bridge "$@" >"$raw_output" 2>/dev/null; then
+      "$pooler_database" bridge "$@" >"$raw_output" 2>"$raw_error"; then
+    if assert_sensitive_backup_workspace && [[ -s "$raw_error" ]]; then
+      encrypted_error="$backup_dir/$(basename "$raw_error")"
+      if [[ ! -e "$encrypted_error" && ! -L "$encrypted_error" ]] \
+          && mv "$raw_error" "$encrypted_error" \
+          && chmod 400 "$encrypted_error"; then
+        backup_failure_evidence="$encrypted_error"
+      fi
+    fi
     if [[ "$use_temp_login_role" == "true" ]]; then
       clear_temp_login_role_local
     fi
-    rm -f "$raw_output"
+    rm -f -- "$raw_output" "$raw_error"
     return 1
   fi
+  if ! assert_sensitive_backup_workspace; then
+    if [[ "$use_temp_login_role" == "true" ]]; then
+      clear_temp_login_role_local
+    fi
+    return 1
+  fi
+  rm -f -- "$raw_error"
   if [[ "$use_temp_login_role" == "true" ]]; then
     clear_temp_login_role_local
   fi
   chmod 400 "$raw_output"
-  [[ -s "$raw_output" ]]
+  [[ -s "$raw_output" ]] && assert_sensitive_backup_workspace
+}
+
+report_backup_failure_evidence() {
+  if [[ -n "$backup_failure_evidence" ]]; then
+    echo "encrypted diagnostic retained at $backup_failure_evidence" >&2
+  fi
 }
 
 write_verified_role_backup() {
@@ -1322,14 +1686,15 @@ write_verified_schema_backup() {
 
 write_verified_data_backup() {
   local raw_output="$backup_raw_dir/auth-storage-public-data.raw"
+  local -a relation_args=("$@")
+
+  if (( ${#relation_args[@]} == 0 )); then
+    return 1
+  fi
 
   capture_verified_backup_raw pg_dump "$raw_output" \
     --data-only --quote-all-identifiers --role postgres \
-    --exclude-schema '' \
-    --exclude-table auth.schema_migrations \
-    --exclude-table storage.migrations \
-    --exclude-table supabase_functions.migrations \
-    --schema 'auth|storage|public' || return 1
+    "${relation_args[@]}" || return 1
   if ! {
     printf '%s\n\n' 'SET session_replication_role = replica;'
     sed -E 's/^\\(un)?restrict .*$/-- &/' "$raw_output"
@@ -1344,40 +1709,64 @@ write_verified_data_backup() {
 
 if ! write_verified_role_backup 2>/dev/null; then
   echo "authenticated role backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
 if ! write_verified_schema_backup extensions \
     "$extensions_schema_backup" 2>/dev/null; then
   echo "authenticated extensions-schema backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
 if ! write_verified_schema_backup vault "$vault_schema_backup" \
     2>/dev/null; then
   echo "authenticated vault-schema backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
 if ! write_verified_schema_backup auth "$auth_schema_backup" \
     2>/dev/null; then
   echo "authenticated auth-schema backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
 if ! write_verified_schema_backup storage "$storage_schema_backup" \
     2>/dev/null; then
   echo "authenticated storage-schema backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
 if ! write_verified_schema_backup public "$schema_backup" \
     2>/dev/null; then
   echo "authenticated schema backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
 # One pg_dump invocation provides one MVCC snapshot for all identity, storage
-# and public rows. Separate schema-specific data dumps can describe different
-# moments and are not a valid rollback point for cross-schema foreign keys.
-if ! write_verified_data_backup 2>/dev/null; then
+# and allowlisted Rumo Pragas rows. Unrelated shared-portfolio tables are
+# intentionally excluded after the recursive FK parent closure proves that the
+# reviewed scope is self-contained.
+data_dump_relation_args=()
+while IFS=$'\t' read -r schema_name relation_name _; do
+  data_dump_relation_args+=("--table=$schema_name.$relation_name")
+done <"$data_scope_relations_manifest"
+if ! write_verified_data_backup "${data_dump_relation_args[@]}" \
+    2>/dev/null; then
   echo "authenticated multi-schema data backup failed; no migration was applied" >&2
+  report_backup_failure_evidence
   exit 1
 fi
+data_scope_contract_after="$backup_dir/data-scope-after.json"
+data_scope_relations_after="$sensitive_work_dir/data-scope-relations-after.manifest"
+if ! capture_data_scope_contract "$data_scope_contract_after" "after" \
+    || ! pragas_validate_data_scope_contract \
+      "$data_scope_contract_after" >"$data_scope_relations_after" \
+    || ! cmp -s \
+      "$data_scope_relations_manifest" "$data_scope_relations_after"; then
+  echo "logical data scope or recursive FK closure changed during backup" >&2
+  exit 1
+fi
+rm -f "$data_scope_relations_after"
 rm -f "$backup_pgpass"
 if [[ "$use_temp_login_role" == "true" ]]; then
   echo "temporary-role credentials cleared after $temp_login_roles_issued_count isolated dumps; server roles are bounded by their validated TTL"
@@ -1418,6 +1807,13 @@ if ! awk -F '|' '
   echo "combined COPY manifest is malformed or duplicated; no migration was applied" >&2
   exit 1
 fi
+dump_scope_tables_manifest="$sensitive_work_dir/dump-scope-tables.manifest"
+awk -F '|' '{ print $1 "|" $2 }' "$data_row_manifest" \
+  | LC_ALL=C sort >"$dump_scope_tables_manifest"
+if ! cmp -s "$data_scope_tables_manifest" "$dump_scope_tables_manifest"; then
+  echo "logical dump table inventory differs from the reviewed scope" >&2
+  exit 1
+fi
 auth_user_count="$(awk -F '|' \
   '$1 == "auth" && $2 == "users" { print $3 }' "$data_row_manifest")"
 storage_object_count="$(awk -F '|' \
@@ -1433,7 +1829,10 @@ for backup_artifact in "$roles_backup" "$extensions_schema_backup" \
   "$vault_schema_backup" "$auth_schema_backup" \
   "$storage_schema_backup" "$schema_backup" "$data_backup" "$auth_row_manifest" \
   "$storage_row_manifest" "$public_row_manifest" "$data_row_manifest" \
-  "$edge_archive"
+  "$edge_archive" "$physical_backups_before" \
+  "$backup_dir/physical-backup-evidence.txt" \
+  "$data_scope_contract_before" "$data_scope_contract_after" \
+  "$data_scope_relations_manifest" "$data_scope_tables_manifest"
 do
   if [[ ! -s "$backup_artifact" ]]; then
     echo "backup artifact is empty; no migration was applied" >&2
@@ -1446,7 +1845,10 @@ for backup_artifact in "$roles_backup" "$extensions_schema_backup" \
   "$vault_schema_backup" "$auth_schema_backup" \
   "$storage_schema_backup" "$schema_backup" "$data_backup" "$auth_row_manifest" \
   "$storage_row_manifest" "$public_row_manifest" "$data_row_manifest" \
-  "$edge_archive"
+  "$edge_archive" "$physical_backups_before" \
+  "$backup_dir/physical-backup-evidence.txt" \
+  "$data_scope_contract_before" "$data_scope_contract_after" \
+  "$data_scope_relations_manifest" "$data_scope_tables_manifest"
 do
   artifact_hash="$(shasum -a 256 "$backup_artifact" | awk '{print $1}')"
   printf '%s  %s\n' "$artifact_hash" "$(basename "$backup_artifact")" \
@@ -1470,8 +1872,17 @@ fi
 # schemas/data must all load, and the two identity invariants must match.
 restore_container="pragas-prod-restore-${RANDOM}"
 restore_password="pragas-restore-only"
+restore_pgdata="$(pragas_create_private_backup_leaf \
+  "$sensitive_work_dir" "restore-pgdata")"
+if ! assert_sensitive_backup_workspace \
+    || ! pragas_assert_private_backup_leaf \
+      "$sensitive_work_dir" "$restore_pgdata" >/dev/null; then
+  echo "encrypted restore workspace is unavailable; no migration was applied" >&2
+  exit 1
+fi
 docker run -d --name "$restore_container" \
   -e POSTGRES_PASSWORD="$restore_password" \
+  --mount "type=bind,source=$restore_pgdata,target=/var/lib/postgresql/data" \
   "$REVIEWED_PG_BACKUP_IMAGE" >/dev/null
 restore_ready="false"
 for _attempt in $(seq 1 60); do
@@ -1489,6 +1900,13 @@ for _attempt in $(seq 1 60); do
 done
 if [[ "$restore_ready" != "true" ]]; then
   echo "disposable restore database did not become ready; no migration was applied" >&2
+  exit 1
+fi
+chmod 700 "$restore_pgdata"
+if ! assert_sensitive_backup_workspace \
+    || ! pragas_assert_private_backup_leaf \
+      "$sensitive_work_dir" "$restore_pgdata" >/dev/null; then
+  echo "encrypted restore workspace changed during startup" >&2
   exit 1
 fi
 
@@ -1544,8 +1962,8 @@ fi
 # storage policies call public functions, while public objects depend on the
 # storage base schema. Split only those deferred DDL statements, validate a
 # lossless split, and restore them after public.
-auth_schema_base="$tmp/auth-schema-base.sql"
-auth_public_triggers="$tmp/auth-public-triggers.sql"
+auth_schema_base="$sensitive_work_dir/auth-schema-base.sql"
+auth_public_triggers="$sensitive_work_dir/auth-public-triggers.sql"
 awk -v deferred="$auth_public_triggers" '
   /^CREATE OR REPLACE TRIGGER .*EXECUTE FUNCTION "public"[.]/ {
     print > deferred
@@ -1566,8 +1984,8 @@ if [[ -z "$auth_trigger_source_count" || "$auth_trigger_source_count" == "0" \
   exit 1
 fi
 
-storage_schema_base="$tmp/storage-schema-base.sql"
-storage_policies="$tmp/storage-policies.sql"
+storage_schema_base="$sensitive_work_dir/storage-schema-base.sql"
+storage_policies="$sensitive_work_dir/storage-policies.sql"
 perl -0777 -e '
   $source = <>;
   open my $deferred, ">", $ARGV[0] or die $!;
@@ -1618,6 +2036,22 @@ if ! {
     --single-transaction -h 127.0.0.1 \
     -U supabase_admin -d postgres; then
   echo "multi-schema data restore failed; no migration was applied" >&2
+  exit 1
+fi
+
+restored_data_scope_contract="$sensitive_work_dir/restored-data-scope-contract.json"
+restored_data_scope_relations="$sensitive_work_dir/restored-data-scope-relations.manifest"
+if ! assert_sensitive_backup_workspace \
+    || ! docker exec -e PGPASSWORD="$restore_password" "$restore_container" \
+      psql -qAt -X -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+        -U supabase_admin -d postgres -c "$data_scope_contract_sql" \
+        >"$restored_data_scope_contract" \
+    || ! pragas_validate_data_scope_contract \
+      "$restored_data_scope_contract" >"$restored_data_scope_relations" \
+    || ! cmp -s \
+      "$data_scope_relations_manifest" "$restored_data_scope_relations" \
+    || ! assert_sensitive_backup_workspace; then
+  echo "restored logical data scope or recursive FK closure differs from production" >&2
   exit 1
 fi
 
@@ -1736,7 +2170,7 @@ fi
 # database. Missing relations and any nonempty restored table absent from the
 # dumps are hard failures; the sorted actual manifest must then match exactly.
 restored_row_manifest="$backup_dir/restored-data-row-counts.manifest"
-restored_row_manifest_unsorted="$tmp/restored-data-row-counts.unsorted"
+restored_row_manifest_unsorted="$sensitive_work_dir/restored-data-row-counts.unsorted"
 if ! {
   cat <<'SQL'
 CREATE TEMP TABLE expected_dump_rows (
@@ -1856,10 +2290,20 @@ fi
 # production sees any DDL. This is a real shape rehearsal, not only a dump
 # parse or a synthetic fixture test.
 # PRAGAS_PRODUCTION_CLONE_MIGRATION_REHEARSAL_BEGIN
+if ! assert_database_candidate_snapshot "before-clone"; then
+  echo "reviewed database candidate changed before clone rehearsal" >&2
+  exit 1
+fi
 if ! run_shared_bootstrap_on_clone; then
   echo "shared relation bootstrap failed on the production clone; no production mutation occurred" >&2
   exit 1
 fi
+# PRAGAS_CLONE_POST_BOOTSTRAP_SOURCE_RECHECK_BEGIN
+if ! assert_database_candidate_snapshot "before-clone-migration-loop"; then
+  echo "reviewed database candidate changed after clone bootstrap" >&2
+  exit 1
+fi
+# PRAGAS_CLONE_POST_BOOTSTRAP_SOURCE_RECHECK_END
 for version in "${TARGET_VERSIONS[@]}"; do
   migration_name_value="$(migration_name "$version")"
   if ! docker exec -e PGPASSWORD="$restore_password" -i \
@@ -1882,7 +2326,11 @@ clone_postflight_result="$(docker exec -e PGPASSWORD="$restore_password" \
      AND to_regclass('public.pragas_app_links') IS NOT NULL
      AND to_regclass('public.pragas_deletion_jobs') IS NOT NULL
      AND to_regclass('public.pragas_ai_idempotency_records') IS NOT NULL
-     AND position('pragas_link_account_prod_compat_v1' IN
+     AND to_regclass('public.agrorumo_account_deletion_requests') IS NOT NULL
+     AND to_regclass('public.agrorumo_account_deletion_apple_revocations') IS NOT NULL
+     AND to_regclass('public.agrorumo_account_deletion_events') IS NOT NULL
+     AND to_regprocedure('vault.create_secret(text,text,text,uuid)') IS NOT NULL
+     AND position('pragas_link_account_global_deletion_precedence_v1' IN
        pg_get_functiondef('public.pragas_link_account()'::regprocedure)) > 0
      AND position('pragas_prod_compat_export_v1' IN pg_get_functiondef(
        'public.export_pragas_notification_queue_snapshot(uuid,timestamp with time zone,integer)'::regprocedure)) > 0
@@ -1893,8 +2341,18 @@ if [[ "$clone_postflight_result" != "PRAGAS_PRODUCTION_CLONE_REHEARSAL_OK" ]]; t
   exit 1
 fi
 # PRAGAS_PRODUCTION_CLONE_MIGRATION_REHEARSAL_END
+chmod 700 "$restore_pgdata"
+if ! assert_sensitive_backup_workspace \
+    || ! pragas_assert_private_backup_leaf \
+      "$sensitive_work_dir" "$restore_pgdata" >/dev/null; then
+  echo "encrypted restore workspace changed during rehearsal" >&2
+  exit 1
+fi
 docker rm -f "$restore_container" >/dev/null
 restore_container=""
+chmod -R u+w "$restore_pgdata"
+rm -rf -- "$restore_pgdata"
+restore_pgdata=""
 
 printf '%s\n' \
   "target=$TARGET_REF" \
@@ -1904,6 +2362,13 @@ printf '%s\n' \
   "auth_users=$auth_user_count" \
   "storage_objects=$storage_object_count" \
   "dump_tables=$dump_table_count" \
+  "logical_data_scope_relations=${#data_dump_relation_args[@]}" \
+  "recursive_fk_parent_closure=closed" \
+  "physical_backup_id=$physical_backup_id" \
+  "physical_backup_status=COMPLETED" \
+  "physical_backup_walg=$physical_backup_walg" \
+  "physical_backup_pitr=$physical_backup_pitr" \
+  "sensitive_workspace=encrypted-private-leaf" \
   "restored_manifest_sha256=$restored_manifest_hash" \
   "extensions=10" \
   "edge_restore_version=$EXISTING_EDGE_VERSION" \
@@ -1917,7 +2382,7 @@ printf '%s\n' \
   "shared_relation_bootstrap=concurrent" \
   "edge_archive_restore_test=pass" \
   >"$backup_dir/restore-evidence.txt"
-if ! assert_backup_storage_still_valid \
+if ! assert_sensitive_backup_workspace \
    || ! (cd "$backup_dir" && shasum -a 256 -c SHA256SUMS >/dev/null); then
   echo "backup evidence encryption, privacy or checksums changed; no migration was applied" >&2
   exit 1
@@ -1928,6 +2393,34 @@ if [[ "$mode" == "--prepare" ]]; then
   echo "no production mutation was performed"
   echo "backup_and_restore_evidence=$backup_dir"
   exit 0
+fi
+
+physical_backups_before_mutation="$backup_dir/physical-backups-before-mutation.json"
+if ! capture_physical_backup_inventory \
+    "$physical_backups_before_mutation" "before-mutation"; then
+  echo "physical-backup evidence changed before production mutation" >&2
+  exit 1
+fi
+physical_backup_before_mutation="$(pragas_validate_physical_backup_inventory \
+  "$physical_backups_before_mutation" "$(date +%s)" \
+  "$PHYSICAL_BACKUP_MAX_AGE_SECONDS")" || {
+    echo "recent completed WAL-G physical backup disappeared before mutation" >&2
+    exit 1
+  }
+IFS=$'\t' read -r physical_backup_mutation_id _ _ _ \
+  <<<"$physical_backup_before_mutation"
+if (( physical_backup_mutation_id < physical_backup_id )); then
+  echo "physical-backup inventory regressed before production mutation" >&2
+  exit 1
+fi
+physical_mutation_hash="$(shasum -a 256 \
+  "$physical_backups_before_mutation" | awk '{print $1}')"
+printf '%s  %s\n' "$physical_mutation_hash" \
+  "$(basename "$physical_backups_before_mutation")" >>"$checksum_manifest"
+if ! assert_sensitive_backup_workspace \
+    || ! (cd "$backup_dir" && shasum -a 256 -c SHA256SUMS >/dev/null); then
+  echo "physical-backup evidence failed its mutation-boundary checksum" >&2
+  exit 1
 fi
 
 # Close the race window introduced by backup time. All data-sensitive zero
@@ -1989,14 +2482,39 @@ if ! assert_remote_migration_history_unchanged "before-shared-bootstrap"; then
   echo "production migration history changed during backup; no mutation was performed by this gate" >&2
   exit 1
 fi
-if ! assert_backup_storage_still_valid; then
+if ! assert_sensitive_backup_workspace; then
   echo "backup storage changed before the first production mutation" >&2
+  exit 1
+fi
+data_scope_contract_before_mutation="$backup_dir/data-scope-before-mutation.json"
+data_scope_relations_before_mutation="$sensitive_work_dir/data-scope-before-mutation.manifest"
+if ! capture_data_scope_contract \
+    "$data_scope_contract_before_mutation" "before-mutation" \
+    || ! pragas_validate_data_scope_contract \
+      "$data_scope_contract_before_mutation" \
+      >"$data_scope_relations_before_mutation" \
+    || ! cmp -s "$data_scope_relations_manifest" \
+      "$data_scope_relations_before_mutation"; then
+  echo "logical data scope or recursive FK closure changed before mutation" >&2
+  exit 1
+fi
+data_scope_mutation_hash="$(shasum -a 256 \
+  "$data_scope_contract_before_mutation" | awk '{print $1}')"
+printf '%s  %s\n' "$data_scope_mutation_hash" \
+  "$(basename "$data_scope_contract_before_mutation")" \
+  >>"$checksum_manifest"
+if ! (cd "$backup_dir" && shasum -a 256 -c SHA256SUMS >/dev/null); then
+  echo "logical data-scope mutation evidence checksum failed" >&2
   exit 1
 fi
 if ! refresh_required_edge_secret_metadata \
     "$tmp/remote-edge-secrets-before-production-mutation.json" \
     "before-production-mutation"; then
   echo "required Edge secret metadata changed before the first production mutation" >&2
+  exit 1
+fi
+if ! assert_database_candidate_snapshot "before-shared-bootstrap"; then
+  echo "reviewed database candidate changed before the first mutation" >&2
   exit 1
 fi
 if ! run_shared_bootstrap_on_linked_project; then
@@ -2007,6 +2525,11 @@ fi
 if ! assert_remote_migration_history_unchanged "after-shared-bootstrap"; then
   echo "production migration history changed during shared bootstrap" >&2
   echo "additive shared bootstrap objects may exist; no migration or Edge Function was applied by this gate" >&2
+  exit 1
+fi
+
+if ! assert_database_candidate_snapshot "before-db-push"; then
+  echo "reviewed database candidate changed before db push" >&2
   exit 1
 fi
 
@@ -2028,9 +2551,13 @@ SELECT CASE WHEN
   AND to_regclass('public.pragas_deletion_jobs') IS NOT NULL
   AND to_regclass('public.pragas_ai_idempotency_records') IS NOT NULL
   AND to_regclass('public.pragas_api_rate_limit_counters') IS NOT NULL
+  AND to_regclass('public.agrorumo_account_deletion_requests') IS NOT NULL
+  AND to_regclass('public.agrorumo_account_deletion_apple_revocations') IS NOT NULL
+  AND to_regclass('public.agrorumo_account_deletion_events') IS NOT NULL
+  AND to_regprocedure('vault.create_secret(text,text,text,uuid)') IS NOT NULL
   AND to_regprocedure('public.pragas_link_account()') IS NOT NULL
   AND position(
-    'pragas_link_account_prod_compat_v1' IN
+    'pragas_link_account_global_deletion_precedence_v1' IN
     pg_get_functiondef('public.pragas_link_account()'::regprocedure)
   ) > 0
   AND to_regprocedure(
@@ -2052,6 +2579,12 @@ SELECT CASE WHEN
   AND NOT has_table_privilege('anon', 'public.pragas_diagnosis_feedback', 'SELECT')
   AND NOT has_table_privilege('anon', 'public.pragas_push_tokens', 'SELECT')
   AND NOT has_table_privilege(
+    'authenticated', 'public.agrorumo_account_deletion_requests', 'SELECT'
+  )
+  AND NOT has_table_privilege(
+    'service_role', 'public.agrorumo_account_deletion_apple_revocations', 'UPDATE'
+  )
+  AND NOT has_table_privilege(
     'authenticated', 'public.pragas_profiles', 'UPDATE'
   )
   AND has_column_privilege(
@@ -2071,6 +2604,11 @@ SELECT CASE WHEN
   AND NOT EXISTS (
     SELECT 1
       FROM (VALUES
+        ('agrorumo_deletion_session_ref(uuid)', 'service_role'),
+        ('agrorumo_deletion_subject_ref(uuid)', 'service_role'),
+        ('begin_agrorumo_account_deletion_challenge(uuid,uuid,uuid,text,text)', 'service_role'),
+        ('begin_agrorumo_apple_revocation_attempt(uuid,uuid,text)', 'service_role'),
+        ('claim_agrorumo_apple_revocation_token(uuid,uuid,uuid)', 'service_role'),
         ('claim_pragas_deletion_job(uuid)', 'service_role'),
         ('claim_pragas_deletion_jobs(integer)', 'service_role'),
         ('claim_pragas_push_notification(uuid,text,text)', 'service_role'),
@@ -2080,25 +2618,37 @@ SELECT CASE WHEN
         ('complete_pragas_push_notification(uuid,text,uuid,text,integer,integer,integer)', 'service_role'),
         ('consume_pragas_api_rate_limit(uuid,text,integer,integer,uuid,text)', 'service_role'),
         ('consume_pragas_mcp_rate_limit(uuid,text)', 'authenticated'),
+        ('consume_agrorumo_deletion_status_rate_limit(text,integer,integer)', 'service_role'),
         ('export_pragas_notification_queue_snapshot(uuid,timestamp with time zone,integer)', 'service_role'),
         ('grant_pragas_ai_consent(text,text)', 'authenticated'),
+        ('get_agrorumo_account_deletion_app_gate(uuid)', 'service_role'),
+        ('get_agrorumo_account_deletion_replay(uuid,uuid)', 'service_role'),
+        ('get_agrorumo_account_deletion_status(uuid)', 'service_role'),
+        ('list_agrorumo_account_deletion_queue(text,integer)', 'service_role'),
         ('mark_pragas_ai_provider_started(uuid,text,uuid,text,uuid)', 'service_role'),
         ('mark_pragas_ai_unknown_outcome(uuid,text,uuid,text,uuid)', 'service_role'),
         ('mark_pragas_push_provider_started(uuid,text,uuid)', 'service_role'),
         ('mark_pragas_push_unknown_outcome(uuid,text,uuid,integer,integer,integer)', 'service_role'),
         ('pragas_link_account()', 'authenticated'),
+        ('pragas_current_link_allows_access()', 'authenticated'),
+        ('purge_agrorumo_account_deletion_ephemera(integer)', 'service_role'),
         ('reactivate_pragas_account(uuid,uuid,uuid)', 'service_role'),
         ('record_pragas_ai_consent(uuid,text,text)', 'service_role'),
         ('record_pragas_analytics_events(uuid,jsonb)', 'service_role'),
+        ('record_agrorumo_apple_revocation_result(uuid,uuid,uuid,text,text)', 'service_role'),
         ('release_pragas_ai_idempotency(uuid,text,uuid,text,uuid)', 'service_role'),
         ('release_pragas_push_notification(uuid,text,uuid)', 'service_role'),
         ('request_pragas_account_deletion(uuid)', 'service_role'),
+        ('reserve_agrorumo_account_deletion_request(uuid,uuid,timestamp with time zone,timestamp with time zone,uuid,text,text,text,boolean,text,uuid,uuid)', 'service_role'),
         ('reserve_pragas_ai_idempotency(uuid,text,uuid,text)', 'service_role'),
         ('retry_pragas_deletion_job(uuid,uuid,text,timestamp with time zone)', 'service_role'),
+        ('resolve_agrorumo_account_deletion_subject(uuid)', 'service_role'),
         ('revoke_pragas_ai_consent(text)', 'authenticated'),
         ('scrub_expired_pragas_ai_idempotency(integer)', 'service_role'),
         ('set_pragas_location_consent(uuid,boolean,text,timestamp with time zone,bigint)', 'authenticated'),
         ('touch_pragas_push_token(text,text,boolean)', 'authenticated'),
+        ('transition_agrorumo_account_deletion_request(uuid,text,text,text,uuid,text,text,text)', 'service_role'),
+        ('store_agrorumo_apple_revocation_token(uuid,uuid,uuid,text,text)', 'service_role'),
         ('transition_pragas_ai_content_report(uuid,text,uuid,text)', 'service_role')
       ) AS expected(signature, execution_role)
      WHERE to_regprocedure('public.' || expected.signature) IS NULL
@@ -2341,7 +2891,7 @@ for slug in "${EDGE_DEPLOY_ORDER[@]}"; do
   postdeploy_target="$edge_run_dir/$attempt_label-after-target.json"
   postdeploy_confirm_raw="$edge_run_dir/$attempt_label-confirmed-raw.json"
   postdeploy_confirm_target="$edge_run_dir/$attempt_label-confirmed-target.json"
-  deploy_debug_log="$tmp/$attempt_label-local-bundle-debug.log"
+  deploy_debug_log="$sensitive_work_dir/$attempt_label-local-bundle-debug.log"
   local_bundle_evidence="$edge_run_dir/$attempt_label-local-ezbr-sha256.txt"
 
   # Re-read immediately before every deploy. For the first iteration this is
@@ -2394,9 +2944,24 @@ for slug in "${EDGE_DEPLOY_ORDER[@]}"; do
   if [[ "$(expected_edge_verify_jwt "$slug")" == "false" ]]; then
     deploy_args+=(--no-verify-jwt)
   fi
+  if ! assert_sensitive_backup_workspace; then
+    write_edge_stop_report \
+      "encrypted_debug_workspace_unavailable" "$slug" true \
+      "$predeploy_raw"
+    exit 1
+  fi
   : >"$deploy_debug_log"
   chmod 600 "$deploy_debug_log"
+  # PRAGAS_EDGE_FINAL_SOURCE_RECHECK_BEGIN
+  if ! assert_edge_candidate_snapshot "$slug"; then
+    write_edge_stop_report \
+      "edge_candidate_snapshot_changed_after_secret_refresh" "$slug" true \
+      "$predeploy_raw"
+    exit 1
+  fi
+  # PRAGAS_EDGE_FINAL_SOURCE_RECHECK_END
   if ! supabase "${deploy_args[@]}" 2>"$deploy_debug_log"; then
+    chmod 400 "$deploy_debug_log" >/dev/null 2>&1 || true
     observed_available="false"
     if supabase functions list --project-ref "$TARGET_REF" --output json \
         --workdir "$edge_candidate_work" --agent=no >"$postdeploy_raw" \
@@ -2417,6 +2982,7 @@ for slug in "${EDGE_DEPLOY_ORDER[@]}"; do
   # endpoint is an ambiguous deployment and stops without automatic rollback.
   if ! expected_deployed_ezbr="$(pragas_extract_local_edge_bundle_hash \
       "$deploy_debug_log" "$TARGET_REF" "$slug")"; then
+    chmod 400 "$deploy_debug_log" >/dev/null 2>&1 || true
     observed_available="false"
     if supabase functions list --project-ref "$TARGET_REF" --output json \
         --workdir "$edge_candidate_work" --agent=no >"$postdeploy_raw" \
@@ -2433,7 +2999,7 @@ for slug in "${EDGE_DEPLOY_ORDER[@]}"; do
   printf '%s  %s\n' "$expected_deployed_ezbr" "$slug" \
     >"$local_bundle_evidence"
   chmod 600 "$local_bundle_evidence"
-  chmod 400 "$deploy_debug_log"
+  rm -f -- "$deploy_debug_log"
 
   if ! supabase functions list --project-ref "$TARGET_REF" --output json \
       --workdir "$edge_candidate_work" --agent=no >"$postdeploy_raw"; then
@@ -2506,7 +3072,7 @@ done
 # PRAGAS_EDGE_DEPLOY_LOOP_END
 
 # A final fresh inventory must still equal the exact state recorded after the
-# twelfth transition. Any later concurrent mutation stops without rollback.
+# thirteenth transition. Any later concurrent mutation stops without rollback.
 remote_functions_after="$backup_dir/edge-functions-after.json"
 if ! supabase functions list --project-ref "$TARGET_REF" --output json \
     --workdir "$edge_candidate_work" --agent=no >"$remote_functions_after"; then
@@ -2536,7 +3102,7 @@ for slug in _shared "${EDGE_SLUGS[@]}"; do
     >>"$edge_hash_manifest"
 done
 
-echo "prod-compat DB + 12 Edge gate: APPLY PASS"
+echo "prod-compat DB + 13 Edge gate: APPLY PASS"
 echo "backup_and_restore_evidence=$backup_dir"
 echo "Edge recovery: automatic rollback disabled; use recorded state and manual guidance"
 echo "database recovery: down scripts remain separate and manual"

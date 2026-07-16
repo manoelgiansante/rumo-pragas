@@ -4,6 +4,7 @@ set -euo pipefail
 PROJECT_REF="jxcnfyeemdltdfqtgbcl"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG_FILE="$REPO_ROOT/supabase/config.toml"
+PRODUCTION_GATE="$REPO_ROOT/supabase/scripts/deploy-pragas-prod-compat.sh"
 
 FUNCTIONS=(
   admin-ai-content-reports
@@ -12,6 +13,7 @@ FUNCTIONS=(
   pragas-analytics
   pragas-delete-user-account
   pragas-export-user-data
+  pragas-global-account-deletion
   pragas-process-ai-idempotency
   pragas-process-deletions
   pragas-reactivate-account
@@ -27,7 +29,7 @@ usage() {
     '  PRAGAS_EDGE_PRODUCTION_APPROVED=jxcnfyeemdltdfqtgbcl bash supabase/functions/deploy-pragas-allowlist.sh --execute --confirm-project jxcnfyeemdltdfqtgbcl' \
     '' \
     '--list validates local source/config and performs no network mutation.' \
-    '--execute requires prior production authorization and both exact confirmations.'
+    '--execute only delegates to the hash/backup/restore-enforced production gate.'
 }
 
 validate_allowlist() {
@@ -96,8 +98,9 @@ if [[ "${PRAGAS_EDGE_PRODUCTION_APPROVED:-}" != "$PROJECT_REF" ]]; then
   exit 2
 fi
 
-for function_name in "${FUNCTIONS[@]}"; do
-  supabase functions deploy "$function_name" \
-    --project-ref "$PROJECT_REF" \
-    --workdir "$REPO_ROOT"
-done
+if [[ ! -x "$PRODUCTION_GATE" || -L "$PRODUCTION_GATE" ]]; then
+  printf '%s\n' 'Execution refused: hardened production gate is unavailable.' >&2
+  exit 2
+fi
+
+exec "$PRODUCTION_GATE" --apply

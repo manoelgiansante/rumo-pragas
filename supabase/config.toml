@@ -85,6 +85,12 @@ verify_jwt = true
 [functions.pragas-reactivate-account]
 verify_jwt = true
 
+# Public status lookup and authenticated begin/confirm share one endpoint.
+# Gateway verification is intentionally disabled because status is public;
+# begin/confirm validate Bearer JWTs with auth.getUser inside the handler.
+[functions.pragas-global-account-deletion]
+verify_jwt = false
+
 [functions.pragas-send-push]
 verify_jwt = false
 

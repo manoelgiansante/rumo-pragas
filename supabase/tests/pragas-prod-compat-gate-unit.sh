@@ -2,9 +2,124 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+deploy_gate="$repo_root/supabase/scripts/deploy-pragas-prod-compat.sh"
 # The source path is anchored to the resolved repository.
 # shellcheck disable=SC1091
 source "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"
+
+source_line_for_unique_literal() {
+  local source_file="$1"
+  local literal="$2"
+  local occurrence_count
+
+  occurrence_count="$(rg -F -c -- "$literal" "$source_file" || true)"
+  [[ "$occurrence_count" == "1" ]] || return 1
+  rg -n -F -m 1 -- "$literal" "$source_file" | cut -d: -f1
+}
+
+next_executable_line_after() {
+  local source_file="$1"
+  local after_line="$2"
+
+  awk -v after_line="$after_line" '
+    NR > after_line {
+      statement = $0
+      sub(/^[[:space:]]+/, "", statement)
+      sub(/[[:space:]]+$/, "", statement)
+      if (statement != "" && statement !~ /^#/) {
+        print statement
+        exit
+      }
+    }
+  ' "$source_file"
+}
+
+source_line_for_unique_statement_between() {
+  local source_file="$1"
+  local statement_literal="$2"
+  local begin_line="$3"
+  local end_line="$4"
+
+  awk -v statement_literal="$statement_literal" \
+      -v begin_line="$begin_line" -v end_line="$end_line" '
+    NR > begin_line && NR < end_line {
+      statement = $0
+      sub(/^[[:space:]]+/, "", statement)
+      sub(/[[:space:]]+$/, "", statement)
+      if (statement == statement_literal) {
+        found_line = NR
+        found_count++
+      }
+    }
+    END {
+      if (found_count == 1) {
+        print found_line
+        exit 0
+      }
+      exit 1
+    }
+  ' "$source_file"
+}
+
+assert_guard_order_and_adjacency() {
+  local source_file="$1"
+  local predecessor_literal="$2"
+  local guard_begin_literal="$3"
+  local guard_literal="$4"
+  local guard_end_literal="$5"
+  local successor_literal="$6"
+  local predecessor_line guard_begin_line guard_line guard_end_line
+
+  predecessor_line="$(source_line_for_unique_literal \
+    "$source_file" "$predecessor_literal")" || return 1
+  guard_begin_line="$(source_line_for_unique_literal \
+    "$source_file" "$guard_begin_literal")" || return 1
+  guard_end_line="$(source_line_for_unique_literal \
+    "$source_file" "$guard_end_literal")" || return 1
+  guard_line="$(source_line_for_unique_statement_between \
+    "$source_file" "$guard_literal" \
+    "$guard_begin_line" "$guard_end_line")" || return 1
+  [[ "$predecessor_line" -lt "$guard_begin_line" \
+    && "$guard_begin_line" -lt "$guard_line" \
+    && "$guard_line" -lt "$guard_end_line" \
+    && "$(next_executable_line_after "$source_file" "$guard_end_line")" \
+       == "$successor_literal" ]]
+}
+
+inject_executable_gap_after_literal() {
+  local source_file="$1"
+  local marker_literal="$2"
+  local destination="$3"
+
+  awk -v marker="$marker_literal" '
+    { print }
+    index($0, marker) { print "  : # injected TOCTOU gap" }
+  ' "$source_file" >"$destination"
+}
+
+move_literal_after_literal() {
+  local source_file="$1"
+  local moved_literal="$2"
+  local destination_literal="$3"
+  local destination="$4"
+
+  awk -v moved="$moved_literal" -v destination_marker="$destination_literal" '
+    index($0, moved) {
+      deferred = $0
+      next
+    }
+    { print }
+    index($0, destination_marker) && deferred != "" {
+      print deferred
+      deferred = ""
+    }
+    END {
+      if (deferred != "") {
+        print deferred
+      }
+    }
+  ' "$source_file" >"$destination"
+}
 
 tmp="$(mktemp -d /tmp/pragas-prod-gate-unit.XXXXXX)"
 cleanup() {
@@ -78,6 +193,141 @@ do
   fi
 done
 
+cat >"$tmp/physical-backups-valid.json" <<'JSON'
+{
+  "backups": [
+    {
+      "id": 1130516363,
+      "inserted_at": "2026-07-16T10:35:53.454Z",
+      "is_physical_backup": true,
+      "status": "COMPLETED"
+    },
+    {
+      "id": 1122343504,
+      "inserted_at": "2026-07-15T10:38:35.282Z",
+      "is_physical_backup": true,
+      "status": "COMPLETED"
+    }
+  ],
+  "physical_backup_data": {},
+  "pitr_enabled": false,
+  "region": "us-west-2",
+  "walg_enabled": true
+}
+JSON
+physical_now_epoch=1784200000
+expected_physical_backup=$'1130516363\t2026-07-16T10:35:53.454Z\ttrue\tfalse'
+if [[ "$(pragas_validate_physical_backup_inventory \
+    "$tmp/physical-backups-valid.json" "$physical_now_epoch" 129600)" \
+      != "$expected_physical_backup" ]]; then
+  echo "recent completed physical backup was not selected" >&2
+  exit 1
+fi
+for physical_mutation in stale walg_disabled no_completed malformed; do
+  case "$physical_mutation" in
+    stale)
+      jq '.backups |= map(.inserted_at = "2026-07-10T10:35:53.000Z")' \
+        "$tmp/physical-backups-valid.json" >"$tmp/physical-backups-mutated.json"
+      ;;
+    walg_disabled)
+      jq '.walg_enabled = false' "$tmp/physical-backups-valid.json" \
+        >"$tmp/physical-backups-mutated.json"
+      ;;
+    no_completed)
+      jq '.backups |= map(.status = "PENDING")' \
+        "$tmp/physical-backups-valid.json" >"$tmp/physical-backups-mutated.json"
+      ;;
+    malformed)
+      printf '%s\n' '[]' >"$tmp/physical-backups-mutated.json"
+      ;;
+  esac
+  if pragas_validate_physical_backup_inventory \
+      "$tmp/physical-backups-mutated.json" "$physical_now_epoch" 129600 \
+      >/dev/null 2>&1; then
+    echo "mutated physical-backup evidence was accepted: $physical_mutation" >&2
+    exit 1
+  fi
+done
+
+cat >"$tmp/data-scope-valid.json" <<'JSON'
+[
+  {
+    "data_scope_contract": {
+      "data_relations": [
+        {"schema":"auth","relation":"users","kind":"table"},
+        {"schema":"auth","relation":"refresh_tokens_id_seq","kind":"sequence"},
+        {"schema":"storage","relation":"objects","kind":"table"},
+        {"schema":"public","relation":"analytics_events","kind":"table"},
+        {"schema":"public","relation":"audit_log","kind":"table"},
+        {"schema":"public","relation":"chat_usage","kind":"table"},
+        {"schema":"public","relation":"pragas_profiles","kind":"table"},
+        {"schema":"public","relation":"subscriptions","kind":"table"}
+      ],
+      "external_parent_relations": [],
+      "partitioned_tables": [],
+      "scoped_tables": [
+        {"schema":"auth","table":"users"},
+        {"schema":"storage","table":"objects"},
+        {"schema":"public","table":"analytics_events"},
+        {"schema":"public","table":"audit_log"},
+        {"schema":"public","table":"chat_usage"},
+        {"schema":"public","table":"pragas_profiles"},
+        {"schema":"public","table":"subscriptions"}
+      ]
+    }
+  }
+]
+JSON
+pragas_validate_data_scope_contract "$tmp/data-scope-valid.json" \
+  >"$tmp/data-scope-valid.manifest"
+printf '%s\n' \
+  $'auth\trefresh_tokens_id_seq\tsequence' \
+  $'auth\tusers\ttable' \
+  $'public\tanalytics_events\ttable' \
+  $'public\taudit_log\ttable' \
+  $'public\tchat_usage\ttable' \
+  $'public\tpragas_profiles\ttable' \
+  $'public\tsubscriptions\ttable' \
+  $'storage\tobjects\ttable' >"$tmp/data-scope-wanted.manifest"
+if ! cmp -s "$tmp/data-scope-valid.manifest" \
+    "$tmp/data-scope-wanted.manifest"; then
+  echo "logical data-scope manifest changed unexpectedly" >&2
+  exit 1
+fi
+for data_scope_mutation in external_parent partitioned missing_required duplicate outside mismatch; do
+  case "$data_scope_mutation" in
+    external_parent)
+      jq '.[0].data_scope_contract.external_parent_relations = [{schema:"public",table:"foreign_parent"}]' \
+        "$tmp/data-scope-valid.json" >"$tmp/data-scope-mutated.json"
+      ;;
+    partitioned)
+      jq '.[0].data_scope_contract.partitioned_tables = [{schema:"public",table:"pragas_partitioned"}]' \
+        "$tmp/data-scope-valid.json" >"$tmp/data-scope-mutated.json"
+      ;;
+    missing_required)
+      jq '.[0].data_scope_contract.scoped_tables |= map(select(.table != "audit_log")) | .[0].data_scope_contract.data_relations |= map(select(.relation != "audit_log"))' \
+        "$tmp/data-scope-valid.json" >"$tmp/data-scope-mutated.json"
+      ;;
+    duplicate)
+      jq '.[0].data_scope_contract.data_relations += [.[0].data_scope_contract.data_relations[0]]' \
+        "$tmp/data-scope-valid.json" >"$tmp/data-scope-mutated.json"
+      ;;
+    outside)
+      jq '.[0].data_scope_contract.scoped_tables += [{schema:"public",table:"vet_conf_fornecimentos"}] | .[0].data_scope_contract.data_relations += [{schema:"public",relation:"vet_conf_fornecimentos",kind:"table"}]' \
+        "$tmp/data-scope-valid.json" >"$tmp/data-scope-mutated.json"
+      ;;
+    mismatch)
+      jq '.[0].data_scope_contract.data_relations |= map(select(.relation != "pragas_profiles"))' \
+        "$tmp/data-scope-valid.json" >"$tmp/data-scope-mutated.json"
+      ;;
+  esac
+  if pragas_validate_data_scope_contract "$tmp/data-scope-mutated.json" \
+      >/dev/null 2>&1; then
+    echo "mutated logical data scope was accepted: $data_scope_mutation" >&2
+    exit 1
+  fi
+done
+
 mkdir -p "$tmp/source-tree/nested" "$tmp/source-snapshot-root"
 printf '%s\n' 'reviewed source' >"$tmp/source-tree/index.ts"
 printf '%s\n' 'reviewed dependency' >"$tmp/source-tree/nested/dependency.ts"
@@ -85,6 +335,8 @@ reviewed_source_hash="$(pragas_directory_hash "$tmp/source-tree")"
 pragas_copy_verified_tree \
   "$tmp/source-tree" "$tmp/source-snapshot-root/source-tree" \
   "$reviewed_source_hash"
+pragas_assert_owned_readonly_tree \
+  "$tmp/source-snapshot-root/source-tree"
 printf '%s\n' 'concurrent worktree mutation' >"$tmp/source-tree/index.ts"
 if [[ "$(pragas_directory_hash "$tmp/source-snapshot-root/source-tree")" \
       != "$reviewed_source_hash" ]]; then
@@ -99,6 +351,11 @@ if [[ "$(pragas_directory_hash "$tmp/source-snapshot-root/source-tree")" \
   echo "mutated source snapshot retained the reviewed hash" >&2
   exit 1
 fi
+if pragas_assert_owned_readonly_tree \
+    "$tmp/source-snapshot-root/source-tree" >/dev/null 2>&1; then
+  echo "writable source snapshot was accepted" >&2
+  exit 1
+fi
 mkdir -p "$tmp/symlink-source"
 ln -s "$tmp/source-tree/index.ts" "$tmp/symlink-source/index.ts"
 if pragas_copy_verified_tree \
@@ -107,6 +364,56 @@ if pragas_copy_verified_tree \
   echo "symlinked source tree was accepted" >&2
   exit 1
 fi
+
+# The dollar-prefixed expressions are intentional literal source contracts.
+# shellcheck disable=SC2016
+clone_guard_contract=(
+  'if ! run_shared_bootstrap_on_clone; then'
+  'PRAGAS_CLONE_POST_BOOTSTRAP_SOURCE_RECHECK_BEGIN'
+  'if ! assert_database_candidate_snapshot "before-clone-migration-loop"; then'
+  'PRAGAS_CLONE_POST_BOOTSTRAP_SOURCE_RECHECK_END'
+  'for version in "${TARGET_VERSIONS[@]}"; do'
+)
+# shellcheck disable=SC2016
+edge_guard_contract=(
+  '"before-edge-rollout"; then'
+  'PRAGAS_EDGE_FINAL_SOURCE_RECHECK_BEGIN'
+  'if ! assert_edge_candidate_snapshot "$slug"; then'
+  'PRAGAS_EDGE_FINAL_SOURCE_RECHECK_END'
+  'if ! supabase "${deploy_args[@]}" 2>"$deploy_debug_log"; then'
+)
+for guard_name in clone edge; do
+  case "$guard_name" in
+    clone)
+      guard_contract=("${clone_guard_contract[@]}")
+      ;;
+    edge)
+      guard_contract=("${edge_guard_contract[@]}")
+      ;;
+  esac
+  if ! assert_guard_order_and_adjacency "$deploy_gate" \
+      "${guard_contract[@]}"; then
+    echo "production source guard ordering is invalid: $guard_name" >&2
+    exit 1
+  fi
+
+  inject_executable_gap_after_literal "$deploy_gate" \
+    "${guard_contract[3]}" "$tmp/$guard_name-gap.sh"
+  if assert_guard_order_and_adjacency "$tmp/$guard_name-gap.sh" \
+      "${guard_contract[@]}"; then
+    echo "executable TOCTOU gap was accepted: $guard_name" >&2
+    exit 1
+  fi
+
+  move_literal_after_literal "$deploy_gate" \
+    "${guard_contract[0]}" "${guard_contract[3]}" \
+    "$tmp/$guard_name-reordered.sh"
+  if assert_guard_order_and_adjacency "$tmp/$guard_name-reordered.sh" \
+      "${guard_contract[@]}"; then
+    echo "reordered TOCTOU guard was accepted: $guard_name" >&2
+    exit 1
+  fi
+done
 pragas_run_with_timeout 2 sh -c 'exit 0'
 if pragas_run_with_timeout 1 sh -c 'sleep 2' >/dev/null 2>&1; then
   echo "timed command overrun was accepted" >&2
@@ -574,4 +881,4 @@ if pragas_assert_edge_deploy_transition \
 fi
 
 echo "pragas prod-compat gate unit tests: PASS"
-echo "cli_pin_mutations=3 secret_metadata_mutations=6 stat_probe=poisoned-format-files tls_root_ca_mutations=7 pooler_mutations=6 pgpass_escaping=raw oci_identity_mutations=4 source_snapshot_mutations=3 timeout_overrun=blocked local_bundle_identity=create+update/8_mutations backup_boundary=pass manifest_mutations=5 multi_schema_snapshot=pass recheck_mutations=3 edge_races=2 edge_transition_mutations=7"
+echo "cli_pin_mutations=3 physical_backup_mutations=4 data_scope_mutations=6 secret_metadata_mutations=6 stat_probe=poisoned-format-files tls_root_ca_mutations=7 pooler_mutations=6 pgpass_escaping=raw oci_identity_mutations=4 source_snapshot_mutations=4 toctou_order_mutations=4 timeout_overrun=blocked local_bundle_identity=create+update/8_mutations backup_boundary=pass manifest_mutations=5 multi_schema_snapshot=pass recheck_mutations=3 edge_races=2 edge_transition_mutations=7"

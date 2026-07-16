@@ -149,6 +149,12 @@ CREATE TABLE public.pragas_backup_tls_probe (
 INSERT INTO public.pragas_backup_tls_probe
 SELECT value, repeat('x', 128)
   FROM generate_series(1, 1000) AS value;
+CREATE TABLE public.vet_conf_fornecimentos (
+  id bigint PRIMARY KEY,
+  unrelated_payload text NOT NULL
+);
+INSERT INTO public.vet_conf_fornecimentos
+VALUES (1, repeat('unrelated', 32));
 SQL
 if ! docker exec "$server" psql -qAt -U postgres -d postgres \
     -c 'SELECT count(*) FROM public.pragas_backup_tls_probe' \
@@ -191,11 +197,7 @@ pragas_run_pinned_pg_backup \
   "$backup_image" "$backup_image_digest" pg_dump "$root_ca" "$pgpass_file" \
   "$server" 5432 postgres postgres "$network" \
   --data-only --quote-all-identifiers --role postgres \
-  --exclude-schema '' \
-  --exclude-table auth.schema_migrations \
-  --exclude-table storage.migrations \
-  --exclude-table supabase_functions.migrations \
-  --schema 'auth|storage|public' \
+  --table=public.pragas_backup_tls_probe \
   >"$tmp/correct-ca.sql" 2>"$tmp/correct-ca.err" &
 dump_pid=$!
 ssl_observed="false"
@@ -239,9 +241,13 @@ if ! rg -Fq 'COPY "public"."pragas_backup_tls_probe"' \
   echo "verified TLS data backup did not preserve COPY semantics" >&2
   exit 1
 fi
+if rg -Fq 'vet_conf_fornecimentos' "$tmp/correct-ca.sql"; then
+  echo "allowlisted TLS backup captured an unrelated shared-portfolio table" >&2
+  exit 1
+fi
 
 # A Supabase temporary login role currently inherits a two-minute statement
-# timeout, while the single-MVCC multischema data dump can legitimately take
+# timeout, while the single-MVCC allowlisted data dump can legitimately take
 # longer. Force an unusably short fixture default and prove that the reviewed
 # container applies its own bounded backup timeout.
 docker exec "$server" psql -qAt -v ON_ERROR_STOP=1 -U postgres -d postgres \
@@ -257,4 +263,4 @@ if ! rg -Fq 'CREATE ROLE postgres;' "$tmp/roles.sql"; then
 fi
 
 echo "pragas pinned backup TLS integration: PASS"
-echo "pg_dump=17.6 pg_dumpall=17.6 ca=correct+wrong pg_stat_ssl=observed password_transport=pgpass statement_timeout=15min"
+echo "pg_dump=17.6 pg_dumpall=17.6 ca=correct+wrong pg_stat_ssl=observed password_transport=pgpass statement_timeout=15min scope=pragas-only"

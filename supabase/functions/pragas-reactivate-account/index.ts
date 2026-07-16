@@ -75,6 +75,12 @@ Deno.serve(withSentry("pragas-reactivate-account", async (req, { requestId }) =>
       { status: 409, headers: { ...cors, "Retry-After": "30" }, requestId },
     );
   }
+  if (access.state === "global_deletion_pending") {
+    return jsonResponse(
+      { error: "global_deletion_pending" },
+      { status: 409, headers: { ...cors, "Retry-After": "30" }, requestId },
+    );
+  }
   if (access.state === "unlinked") {
     return jsonResponse(
       { error: "reactivation_not_required" },

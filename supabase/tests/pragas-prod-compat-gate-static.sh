@@ -9,8 +9,69 @@ if ! command -v rg >/dev/null 2>&1; then
   exit 1
 fi
 
+source_line_for_unique_literal() {
+  local source_file="$1"
+  local literal="$2"
+  local occurrence_count
+
+  occurrence_count="$(rg -F -c -- "$literal" "$source_file" || true)"
+  [[ "$occurrence_count" == "1" ]] || return 1
+  rg -n -F -m 1 -- "$literal" "$source_file" | cut -d: -f1
+}
+
+next_executable_line_after() {
+  local source_file="$1"
+  local after_line="$2"
+
+  awk -v after_line="$after_line" '
+    NR > after_line {
+      statement = $0
+      sub(/^[[:space:]]+/, "", statement)
+      sub(/[[:space:]]+$/, "", statement)
+      if (statement != "" && statement !~ /^#/) {
+        print statement
+        exit
+      }
+    }
+  ' "$source_file"
+}
+
+source_line_for_unique_statement_between() {
+  local source_file="$1"
+  local statement_literal="$2"
+  local begin_line="$3"
+  local end_line="$4"
+
+  awk -v statement_literal="$statement_literal" \
+      -v begin_line="$begin_line" -v end_line="$end_line" '
+    NR > begin_line && NR < end_line {
+      statement = $0
+      sub(/^[[:space:]]+/, "", statement)
+      sub(/[[:space:]]+$/, "", statement)
+      if (statement == statement_literal) {
+        found_line = NR
+        found_count++
+      }
+    }
+    END {
+      if (found_count == 1) {
+        print found_line
+        exit 0
+      }
+      exit 1
+    }
+  ' "$source_file"
+}
+
 bash "$repo_root/supabase/tests/pragas-prod-compat-gate-unit.sh"
 bash "$repo_root/supabase/tests/pragas-prod-compat-credential-storage-unit.sh"
+
+if ! rg -Fq \
+    'bash "$repo_root/supabase/tests/agrorumo-global-account-deletion-integration.sh"' \
+    "$deploy_gate"; then
+  echo "production gate omits the PG17 global deletion integration proof" >&2
+  exit 1
+fi
 
 for gate_dependency in \
   "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh" \
@@ -72,7 +133,11 @@ for required_gate_contract in \
   'pragas-copy-row-manifest.awk' \
   'expected_dump_rows' \
   'restored_dump_rows' \
-  "--schema 'auth|storage|public'" \
+  'pragas_validate_data_scope_contract' \
+  'data_scope_relations_manifest' \
+  'external_parent_relations' \
+  'parent_closure' \
+  'data_dump_relation_args' \
   'expected_schemas=auth,storage,public' \
   'PRAGAS_RESTORED_FOREIGN_KEYS_OK' \
   'constraint_row.convalidated' \
@@ -86,7 +151,10 @@ for required_gate_contract in \
   'write_verified_data_backup' \
   'pragas_call_supabase_cli_login_role_api' \
   'clear_temp_login_role_local' \
-  'assert_backup_storage_still_valid'
+  'assert_backup_storage_still_valid' \
+  'assert_sensitive_backup_workspace' \
+  'pragas_validate_physical_backup_inventory' \
+  'supabase backups list'
 do
   if ! rg -Fq -- "$required_gate_contract" "$deploy_gate"; then
     echo "production backup/restore contract is missing: $required_gate_contract" >&2
@@ -96,8 +164,10 @@ done
 if [[ "$(rg -c -- '--data-only' "$deploy_gate")" != "1" ]] \
     || rg -Fq 'auth-data.sql' "$deploy_gate" \
     || rg -Fq 'storage-data.sql' "$deploy_gate" \
-    || ! rg -Fq -- "--schema 'auth|storage|public'" "$deploy_gate"; then
-  echo "auth/storage/public data is not captured in one MVCC dump snapshot" >&2
+    || rg -Fq -- "--schema 'auth|storage|public'" "$deploy_gate" \
+    || ! rg -Fq 'write_verified_data_backup "${data_dump_relation_args[@]}"' \
+      "$deploy_gate"; then
+  echo "allowlisted auth/storage/Pragas data is not captured in one MVCC dump snapshot" >&2
   exit 1
 fi
 verified_backup_block="$(sed -n \
@@ -111,7 +181,7 @@ for required_verified_backup_contract in \
   '--roles-only --role postgres --quote-all-identifiers' \
   '--no-role-passwords --no-comments' \
   '--schema-only --quote-all-identifiers --role postgres' \
-  "--schema 'auth|storage|public'" \
+  '"${relation_args[@]}"' \
   'SET session_replication_role = replica;' \
   'RESET ALL;'
 do
@@ -130,6 +200,39 @@ if ! rg -Fq \
   echo "reviewed PostgreSQL backup image is not pinned by OCI digest" >&2
   exit 1
 fi
+# Dollar-prefixed paths below are intentional literal source contracts.
+# shellcheck disable=SC2016
+for prohibited_unencrypted_path in \
+  'backup_pgpass="$tmp/' \
+  'backup_raw_dir="$tmp/' \
+  'temp_login_response="$tmp/' \
+  'raw_error="$tmp/' \
+  'deploy_debug_log="$tmp/' \
+  'restored_row_manifest_unsorted="$tmp/'
+do
+  if rg -Fq "$prohibited_unencrypted_path" "$deploy_gate"; then
+    echo "sensitive backup material can be created outside encrypted storage" >&2
+    exit 1
+  fi
+done
+# Dollar-prefixed paths below are intentional literal source contracts.
+# shellcheck disable=SC2016
+for required_sensitive_path in \
+  'backup_pgpass="$sensitive_work_dir/prod-backup.pgpass"' \
+  'temp_login_response="$sensitive_work_dir/temp-login-role-response.json"' \
+  'backup_raw_dir="$(pragas_create_private_backup_leaf' \
+  'restore_pgdata="$(pragas_create_private_backup_leaf' \
+  '--mount "type=bind,source=$restore_pgdata,target=/var/lib/postgresql/data"' \
+  'deploy_debug_log="$sensitive_work_dir/' \
+  'restored_row_manifest_unsorted="$sensitive_work_dir/' \
+  'assert_sensitive_backup_workspace && [[ -s "$raw_error" ]]' \
+  'mv "$raw_error" "$encrypted_error"'
+do
+  if ! rg -Fq -- "$required_sensitive_path" "$deploy_gate"; then
+    echo "encrypted sensitive-workspace contract is missing: $required_sensitive_path" >&2
+    exit 1
+  fi
+done
 if rg -Fq 'supabase db dump' "$deploy_gate" \
     || rg -Fq 'PGPASSWORD' <<<"$verified_backup_block" \
     || rg -q -- '--password([=[:space:]]|$)' <<<"$verified_backup_block" \
@@ -203,8 +306,45 @@ do
     exit 1
   fi
 done
-if [[ "$(rg -c 'assert_backup_storage_still_valid' "$deploy_gate")" -lt 5 ]]; then
+if [[ "$(rg -c 'assert_backup_storage_still_valid' "$deploy_gate")" -lt 2 ]]; then
   echo "encrypted backup storage is not revalidated across dump/evidence/mutation boundaries" >&2
+  exit 1
+fi
+if [[ "$(rg -c 'assert_sensitive_backup_workspace' "$deploy_gate")" -lt 10 ]] \
+    || ! rg -Fq 'PHYSICAL_BACKUP_MAX_AGE_SECONDS="129600"' "$deploy_gate" \
+    || ! rg -Fq 'status=COMPLETED' "$deploy_gate" \
+    || ! rg -Fq 'walg_enabled=$physical_backup_walg' "$deploy_gate" \
+    || ! rg -Fq 'physical_backup_mutation_id < physical_backup_id' "$deploy_gate"; then
+  echo "AES workspace or recent physical-backup evidence is not revalidated" >&2
+  exit 1
+fi
+data_scope_block="$(sed -n \
+  '/^data_scope_contract_sql=/,/^capture_data_scope_contract()/p' \
+  "$deploy_gate")"
+for required_data_scope_contract in \
+  "namespace_row.nspname IN ('auth', 'storage')" \
+  "relation.relname LIKE 'pragas\\_%'" \
+  "'subscriptions', 'chat_usage'" \
+  "'analytics_events', 'audit_log'" \
+  "constraint_row.contype = 'f'" \
+  'parent_closure' \
+  'external_parent_relations' \
+  'partitioned_tables' \
+  "relation.relkind = 'S'"
+do
+  if ! printf '%s\n' "$data_scope_block" \
+      | rg -Fq "$required_data_scope_contract"; then
+    echo "logical data-scope/closure contract is missing: $required_data_scope_contract" >&2
+    exit 1
+  fi
+done
+if ! rg -Fq 'logical data scope or recursive FK closure changed during backup' \
+      "$deploy_gate" \
+    || ! rg -Fq 'restored logical data scope or recursive FK closure differs from production' \
+      "$deploy_gate" \
+    || ! rg -Fq 'logical data scope or recursive FK closure changed before mutation' \
+      "$deploy_gate"; then
+  echo "logical data-scope identity is not checked before/after/restore/mutation" >&2
   exit 1
 fi
 
@@ -214,15 +354,34 @@ clone_rehearsal_block="$(sed -n \
 # The array expression below is an intentional literal source contract.
 # shellcheck disable=SC2016
 for required_clone_contract in \
+  'assert_database_candidate_snapshot "before-clone"' \
   'run_shared_bootstrap_on_clone' \
   'for version in "${TARGET_VERSIONS[@]}"' \
   'PRAGAS_PRODUCTION_CLONE_REHEARSAL_OK' \
-  'pragas_link_account_prod_compat_v1' \
+  'pragas_link_account_global_deletion_precedence_v1' \
+  'agrorumo_account_deletion_apple_revocations' \
+  'vault.create_secret(text,text,text,uuid)' \
   'pragas_prod_compat_export_v1'
 do
   if ! printf '%s\n' "$clone_rehearsal_block" \
       | rg -Fq "$required_clone_contract"; then
     echo "production clone does not rehearse the reviewed bundle: $required_clone_contract" >&2
+    exit 1
+  fi
+done
+# Dollar-prefixed paths below are intentional literal source contracts.
+# shellcheck disable=SC2016
+for required_candidate_identity_contract in \
+  'pragas_assert_owned_readonly_tree "$tmp/supabase/.temp"' \
+  'pragas_assert_owned_readonly_tree "$tmp/supabase/migrations"' \
+  'linked_metadata_snapshot_hash' \
+  'expected_snapshot_migration_names' \
+  'assert_database_candidate_snapshot "before-shared-bootstrap"' \
+  'assert_database_candidate_snapshot "before-clone-migration-loop"' \
+  'assert_database_candidate_snapshot "before-db-push"'
+do
+  if ! rg -Fq "$required_candidate_identity_contract" "$deploy_gate"; then
+    echo "database source/ref TOCTOU guard is missing: $required_candidate_identity_contract" >&2
     exit 1
   fi
 done
@@ -235,6 +394,38 @@ production_push_line="$(rg -n -m 1 \
 if [[ -z "$clone_rehearsal_line" || -z "$production_push_line" \
       || "$clone_rehearsal_line" -ge "$production_push_line" ]]; then
   echo "production clone migration rehearsal does not precede db push" >&2
+  exit 1
+fi
+
+clone_bootstrap_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'if ! run_shared_bootstrap_on_clone; then')" || {
+    echo "clone bootstrap invocation is not unique" >&2
+    exit 1
+  }
+clone_source_recheck_begin_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'PRAGAS_CLONE_POST_BOOTSTRAP_SOURCE_RECHECK_BEGIN')" || {
+    echo "clone post-bootstrap source recheck begin marker is not unique" >&2
+    exit 1
+  }
+clone_source_recheck_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'assert_database_candidate_snapshot "before-clone-migration-loop"')" || {
+    echo "clone post-bootstrap source recheck is not unique" >&2
+    exit 1
+  }
+clone_source_recheck_end_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'PRAGAS_CLONE_POST_BOOTSTRAP_SOURCE_RECHECK_END')" || {
+    echo "clone post-bootstrap source recheck end marker is not unique" >&2
+    exit 1
+  }
+# The loop expression is an intentional literal source contract.
+# shellcheck disable=SC2016
+if [[ "$clone_bootstrap_line" -ge "$clone_source_recheck_begin_line" \
+      || "$clone_source_recheck_begin_line" -ge "$clone_source_recheck_line" \
+      || "$clone_source_recheck_line" -ge "$clone_source_recheck_end_line" \
+      || "$(next_executable_line_after \
+        "$deploy_gate" "$clone_source_recheck_end_line")" \
+         != 'for version in "${TARGET_VERSIONS[@]}"; do' ]]; then
+  echo "database snapshot recheck is not adjacent to the post-bootstrap migration loop" >&2
   exit 1
 fi
 
@@ -277,14 +468,25 @@ done
 
 required_secret_block="$(sed -n \
   '/^required_secret_names=(/,/^)/p' "$deploy_gate")"
-if ! printf '%s\n' "$required_secret_block" \
-    | grep -Eq '^[[:space:]]*EXPO_ACCESS_TOKEN[[:space:]]*$'; then
-  echo "production preflight does not require EXPO_ACCESS_TOKEN" >&2
-  exit 1
-fi
+for required_secret in EXPO_ACCESS_TOKEN APPLE_SIGN_IN_KEY_ID APPLE_SIGN_IN_PRIVATE_KEY; do
+  if ! printf '%s\n' "$required_secret_block" \
+      | grep -Eq "^[[:space:]]*$required_secret[[:space:]]*$"; then
+    echo "production preflight does not require $required_secret" >&2
+    exit 1
+  fi
+done
 if ! rg -Fq \
     'PRAGAS_PROD_EXPO_ACCESS_TOKEN_SHA256' \
     "$deploy_gate" \
+    || ! rg -Fq \
+      'readonly REVIEWED_APPLE_SIGN_IN_KEY_ID="S7F5NF2BN7"' \
+      "$deploy_gate" \
+    || ! rg -Fq \
+      'readonly REVIEWED_APPLE_SIGN_IN_KEY_ID_SHA256="7e3835d041807f1b3013af69924f4c67feae09b2e147af5589576f0d34c72ade"' \
+      "$deploy_gate" \
+    || ! rg -Fq \
+      'readonly REVIEWED_APPLE_SIGN_IN_PRIVATE_KEY_SHA256="ce1992e53f55a4fdc98d535d088b95e0a71faf841cb52288f0c0764a1eaa08a0"' \
+      "$deploy_gate" \
     || ! rg -Fq \
       '"$inventory_file" "$secret_name" "$expected_secret_digest"' \
       "$deploy_gate" \
@@ -363,6 +565,15 @@ if ! rg -Fq 'readonly REVIEWED_SUPABASE_CLI_VERSION="2.98.2"' \
     || ! rg -Fq 'pragas_assert_supabase_cli_version' "$deploy_gate" \
     || ! rg -Fq 'docker image inspect' "$deploy_gate"; then
   echo "reviewed CLI binary/local Edge bundler is not pinned fail-closed" >&2
+  exit 1
+fi
+
+edge_allowlist_gate="$repo_root/supabase/functions/deploy-pragas-allowlist.sh"
+if rg -Fq 'supabase functions deploy' "$edge_allowlist_gate" \
+    || ! rg -Fq 'PRODUCTION_GATE="$REPO_ROOT/supabase/scripts/deploy-pragas-prod-compat.sh"' \
+      "$edge_allowlist_gate" \
+    || ! rg -Fq 'exec "$PRODUCTION_GATE" --apply' "$edge_allowlist_gate"; then
+  echo "Edge allowlist retains a direct mutable-worktree production route" >&2
   exit 1
 fi
 
@@ -589,6 +800,8 @@ fi
 if ! rg -Fq 'edge_candidate_work="$tmp/edge-candidate-work"' "$deploy_gate" \
     || ! rg -Fq 'pragas_copy_verified_tree' "$deploy_gate" \
     || ! rg -Fq 'chmod -R u=rX,go= "$edge_candidate_work"' "$deploy_gate" \
+    || ! rg -Fq 'pragas_assert_owned_readonly_tree "$edge_candidate_work"' \
+      "$deploy_gate" \
     || ! printf '%s\n' "$edge_deploy_loop" \
       | rg -Fq -- '--workdir "$edge_candidate_work"' \
     || printf '%s\n' "$edge_deploy_loop" \
@@ -604,6 +817,48 @@ if ! printf '%s\n' "$edge_deploy_loop" | rg -Fq -- '--use-docker' \
     || printf '%s\n' "$edge_deploy_loop" \
       | grep -Eq '(cat|tee)[[:space:]].*deploy_debug_log'; then
   echo "Edge bundle identity is not derived privately from the pinned local bundler" >&2
+  exit 1
+fi
+
+edge_secret_refresh_line="$(source_line_for_unique_literal "$deploy_gate" \
+  '"before-edge-rollout"; then')" || {
+    echo "Edge secret refresh checkpoint is not unique" >&2
+    exit 1
+  }
+edge_source_recheck_begin_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'PRAGAS_EDGE_FINAL_SOURCE_RECHECK_BEGIN')" || {
+    echo "final Edge source recheck begin marker is not unique" >&2
+    exit 1
+  }
+edge_source_recheck_end_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'PRAGAS_EDGE_FINAL_SOURCE_RECHECK_END')" || {
+    echo "final Edge source recheck end marker is not unique" >&2
+    exit 1
+  }
+# The slug expression is an intentional literal source contract.
+# shellcheck disable=SC2016
+edge_source_recheck_line="$(source_line_for_unique_statement_between \
+  "$deploy_gate" 'if ! assert_edge_candidate_snapshot "$slug"; then' \
+  "$edge_source_recheck_begin_line" "$edge_source_recheck_end_line")" || {
+    echo "final Edge source recheck is not unique" >&2
+    exit 1
+  }
+# The deploy expression is an intentional literal source contract.
+# shellcheck disable=SC2016
+edge_deploy_line="$(source_line_for_unique_literal "$deploy_gate" \
+  'if ! supabase "${deploy_args[@]}" 2>"$deploy_debug_log"; then')" || {
+    echo "Edge deploy invocation is not unique" >&2
+    exit 1
+  }
+# shellcheck disable=SC2016
+if [[ "$edge_secret_refresh_line" -ge "$edge_source_recheck_begin_line" \
+      || "$edge_source_recheck_begin_line" -ge "$edge_source_recheck_line" \
+      || "$edge_source_recheck_line" -ge "$edge_source_recheck_end_line" \
+      || "$edge_source_recheck_end_line" -ge "$edge_deploy_line" \
+      || "$(next_executable_line_after \
+        "$deploy_gate" "$edge_source_recheck_end_line")" \
+         != 'if ! supabase "${deploy_args[@]}" 2>"$deploy_debug_log"; then' ]]; then
+  echo "Edge source rehash is not after secret refresh and adjacent to deploy" >&2
   exit 1
 fi
 for prohibited_automatic_edge_rollback in \
@@ -777,11 +1032,12 @@ edge_slugs=(
   pragas-process-deletions
   pragas-process-ai-idempotency
   pragas-send-push
+  pragas-global-account-deletion
 )
 
 expected_verify_jwt() {
   case "$1" in
-    pragas-process-deletions|pragas-process-ai-idempotency|pragas-send-push)
+    pragas-process-deletions|pragas-process-ai-idempotency|pragas-send-push|pragas-global-account-deletion)
       printf 'false\n'
       ;;
     *) printf 'true\n' ;;
@@ -832,6 +1088,9 @@ while IFS= read -r file; do source_files+=("$file"); done < <(
 )
 
 expected_rpcs=(
+  begin_agrorumo_account_deletion_challenge
+  begin_agrorumo_apple_revocation_attempt
+  claim_agrorumo_apple_revocation_token
   claim_pragas_deletion_job
   claim_pragas_deletion_jobs
   claim_pragas_push_notification
@@ -841,23 +1100,30 @@ expected_rpcs=(
   complete_pragas_push_notification
   consume_pragas_api_rate_limit
   consume_pragas_mcp_rate_limit
+  consume_agrorumo_deletion_status_rate_limit
   export_pragas_notification_queue_snapshot
+  get_agrorumo_account_deletion_app_gate
+  get_agrorumo_account_deletion_replay
+  get_agrorumo_account_deletion_status
   grant_pragas_ai_consent
   mark_pragas_ai_provider_started
   mark_pragas_ai_unknown_outcome
   mark_pragas_push_provider_started
   mark_pragas_push_unknown_outcome
   reactivate_pragas_account
+  record_agrorumo_apple_revocation_result
   record_pragas_ai_consent
   record_pragas_analytics_events
   release_pragas_ai_idempotency
   release_pragas_push_notification
   request_pragas_account_deletion
+  reserve_agrorumo_account_deletion_request
   reserve_pragas_ai_idempotency
   retry_pragas_deletion_job
   revoke_pragas_ai_consent
   scrub_expired_pragas_ai_idempotency
   set_pragas_location_consent
+  store_agrorumo_apple_revocation_token
   touch_pragas_push_token
   transition_pragas_ai_content_report
 )
@@ -880,6 +1146,7 @@ fi
 candidate_sql=(
   "$repo_root/supabase/migrations/20260715171000_pragas_prod_compat_runtime.sql"
   "$repo_root/supabase/migrations/20260715172000_pragas_prod_compat_export.sql"
+  "$repo_root/supabase/migrations/20260715173000_agrorumo_global_account_deletion_requests.sql"
 )
 while IFS= read -r rpc; do
   if ! rg -q "public[.]${rpc}([ (]|$)" "${candidate_sql[@]}"; then
@@ -889,4 +1156,4 @@ while IFS= read -r rpc; do
 done <<< "$actual_rpcs"
 
 echo "pragas prod-compat static gate: PASS"
-echo "migrations=3 edge_functions=12 rpc_contracts=28 cli=2.98.2 cli_tracking=recovery edge_bundle=local-ezbr shared_indexes=concurrent clone_rehearsal=exact edge_rollback=manual export_preflight=transactional superseded_143000=inert backup_restore=pinned-verify-full+single-mvcc+fk stat_portability=macos+linux-uid1001 ci_static=required"
+echo "migrations=4 edge_functions=13 rpc_contracts=38 cli=2.98.2 cli_tracking=recovery edge_bundle=local-ezbr shared_indexes=concurrent clone_rehearsal=exact edge_rollback=manual export_preflight=transactional superseded_143000=inert backup_restore=aes-private+scoped-single-mvcc+fk-closure physical_backup=recent-walg stat_portability=macos+linux-uid1001 ci_static=required"

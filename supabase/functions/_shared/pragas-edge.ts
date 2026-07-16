@@ -73,6 +73,7 @@ export type PragasAppAccessState =
   | { state: "active" }
   | { state: "unlinked" }
   | { state: "deletion_pending" }
+  | { state: "global_deletion_pending"; status: string }
   | { state: "deleted_reactivation_required"; completedAt: string }
   | { state: "unavailable" };
 
@@ -100,12 +101,32 @@ export async function getPragasAppAccessState(
   admin: SupabaseClient,
   userId: string,
 ): Promise<PragasAppAccessState> {
-  const { data, error } = await admin
-    .from("pragas_deletion_jobs")
-    .select("status,app_cleanup_completed_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) return { state: "unavailable" };
+  const globalDeletion = await admin.rpc("get_agrorumo_account_deletion_app_gate", {
+    p_user_id: userId,
+  });
+  if (globalDeletion.error) return { state: "unavailable" };
+  const globalResult =
+    (Array.isArray(globalDeletion.data) ? globalDeletion.data[0] : globalDeletion.data) as
+      | Record<string, unknown>
+      | null;
+  if (!globalResult || typeof globalResult.found !== "boolean") return { state: "unavailable" };
+  if (globalResult.found) {
+    return {
+      state: "global_deletion_pending",
+      status: typeof globalResult.status === "string" ? globalResult.status : "processing",
+    };
+  }
+
+  const rawAppStatus = globalResult.pragas_deletion_status;
+  if (rawAppStatus !== null && rawAppStatus !== undefined && typeof rawAppStatus !== "string") {
+    return { state: "unavailable" };
+  }
+  const data = typeof rawAppStatus === "string"
+    ? {
+      status: rawAppStatus,
+      app_cleanup_completed_at: globalResult.pragas_app_cleanup_completed_at,
+    }
+    : null;
   const terminalState = classifyPragasAppAccess(data, false, false, false);
   if (
     terminalState.state === "deleted_reactivation_required" ||

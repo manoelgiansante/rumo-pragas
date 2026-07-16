@@ -1114,6 +1114,189 @@ pragas_create_private_backup_leaf() {
   pragas_assert_private_backup_leaf "$backup_root" "$backup_leaf"
 }
 
+pragas_assert_owned_readonly_tree() {
+  local tree_root="${1:-}"
+  local entry
+  local entry_mode
+
+  if [[ -z "$tree_root" || ! -d "$tree_root" || -L "$tree_root" ]]; then
+    echo "read-only source snapshot root is malformed" >&2
+    return 1
+  fi
+  while IFS= read -r -d '' entry; do
+    if [[ -L "$entry" ]] \
+        || [[ ! -f "$entry" && ! -d "$entry" ]] \
+        || [[ "$(pragas_stat_uid "$entry")" != "$(id -u)" ]]; then
+      echo "read-only source snapshot contains a linked, special or foreign-owned entry" >&2
+      return 1
+    fi
+    entry_mode="$(pragas_stat_mode "$entry")" || return 1
+    if (( (8#$entry_mode & 0222) != 0 || (8#$entry_mode & 0077) != 0 )); then
+      echo "read-only source snapshot permissions are not private and immutable" >&2
+      return 1
+    fi
+  done < <(find "$tree_root" -print0)
+}
+
+pragas_validate_physical_backup_inventory() {
+  local inventory_file="${1:-}"
+  local current_epoch="${2:-}"
+  local maximum_age_seconds="${3:-}"
+
+  if [[ ! -f "$inventory_file" || -L "$inventory_file" \
+        || ! "$current_epoch" =~ ^[1-9][0-9]*$ \
+        || ! "$maximum_age_seconds" =~ ^[1-9][0-9]*$ ]]; then
+    echo "physical-backup inventory request is malformed" >&2
+    return 1
+  fi
+
+  jq -er \
+    --argjson current_epoch "$current_epoch" \
+    --argjson maximum_age "$maximum_age_seconds" '
+      if type != "object"
+         or (.backups | type) != "array"
+         or (.walg_enabled | type) != "boolean"
+         or (.pitr_enabled | type) != "boolean"
+         or .walg_enabled != true
+         or any(.backups[];
+           type != "object"
+           or (.id | type) != "number" or (.id | floor) != .id or .id < 1
+           or (.inserted_at | type) != "string"
+           or (.is_physical_backup | type) != "boolean"
+           or (.status | type) != "string" or (.status | length) == 0)
+      then
+        error("physical-backup inventory contract changed")
+      else
+        . as $inventory
+        | [
+            .backups[]
+            | select(.is_physical_backup == true and .status == "COMPLETED")
+            | . + {
+                parsed_epoch: (
+                  .inserted_at
+                  | sub("[.][0-9]+Z$"; "Z")
+                  | fromdateiso8601
+                )
+              }
+          ]
+        | sort_by(.parsed_epoch)
+        | last as $latest
+        | if $latest == null
+             or $latest.parsed_epoch > ($current_epoch + 300)
+             or ($current_epoch - $latest.parsed_epoch) > $maximum_age
+          then
+            error("no recent completed physical backup")
+          else
+            [
+              ($latest.id | tostring),
+              $latest.inserted_at,
+              ($inventory.walg_enabled | tostring),
+              ($inventory.pitr_enabled | tostring)
+            ] | @tsv
+          end
+      end
+    ' "$inventory_file"
+}
+
+pragas_validate_data_scope_contract() {
+  local contract_file="${1:-}"
+
+  if [[ ! -f "$contract_file" || -L "$contract_file" ]]; then
+    echo "logical data-scope contract file is missing or linked" >&2
+    return 1
+  fi
+
+  jq -er '
+    def selected_contract:
+      if type == "array"
+         and length == 1
+         and (.[0] | type) == "object"
+         and (.[0] | keys) == ["data_scope_contract"]
+      then .[0].data_scope_contract
+      elif type == "object" and has("data_relations")
+      then .
+      else error("unexpected logical data-scope envelope")
+      end;
+    def valid_identifier:
+      type == "string" and test("^[A-Za-z_][A-Za-z0-9_$]*$");
+    def allowed_public_table:
+      startswith("pragas_")
+      or . == "subscriptions"
+      or . == "chat_usage"
+      or . == "analytics_events"
+      or . == "audit_log";
+    def allowed_public_sequence:
+      startswith("pragas_")
+      or startswith("subscriptions_")
+      or startswith("chat_usage_")
+      or startswith("analytics_events_")
+      or startswith("audit_log_");
+    selected_contract as $contract
+    | if ($contract | type) != "object"
+         or ($contract | keys | sort) != [
+           "data_relations", "external_parent_relations",
+           "partitioned_tables", "scoped_tables"
+         ]
+         or ($contract.data_relations | type) != "array"
+         or ($contract.scoped_tables | type) != "array"
+         or ($contract.external_parent_relations | type) != "array"
+         or ($contract.partitioned_tables | type) != "array"
+         or ($contract.external_parent_relations | length) != 0
+         or ($contract.partitioned_tables | length) != 0
+         or ($contract.data_relations | length) == 0
+         or ($contract.scoped_tables | length) == 0
+         or any($contract.scoped_tables[];
+           (keys | sort) != ["schema", "table"]
+           or (.schema | valid_identifier | not)
+           or (.table | valid_identifier | not)
+           or (
+             .schema != "auth" and .schema != "storage"
+             and (.schema != "public" or (.table | allowed_public_table | not))
+           ))
+         or any($contract.data_relations[];
+           (keys | sort) != ["kind", "relation", "schema"]
+           or (.schema | valid_identifier | not)
+           or (.relation | valid_identifier | not)
+           or (.kind != "table" and .kind != "sequence")
+           or (
+             .schema != "auth" and .schema != "storage"
+             and (
+               .schema != "public"
+               or (
+                 (.kind == "table" and (.relation | allowed_public_table | not))
+                 or (.kind == "sequence" and (.relation | allowed_public_sequence | not))
+               )
+             )
+           ))
+      then error("logical data-scope contract is malformed or open")
+      else
+        ($contract.scoped_tables
+          | map(.schema + "|" + .table) | sort) as $tables
+        | ($contract.data_relations
+          | map(select(.kind == "table") | .schema + "|" + .relation)
+          | sort) as $dump_tables
+        | ($contract.data_relations
+          | map(.schema + "|" + .relation + "|" + .kind)) as $relations
+        | if ($tables | length) != ($tables | unique | length)
+             or ($relations | length) != ($relations | unique | length)
+             or $tables != $dump_tables
+             or ($tables | index("auth|users")) == null
+             or ($tables | index("storage|objects")) == null
+             or ($tables | index("public|pragas_profiles")) == null
+             or ($tables | index("public|subscriptions")) == null
+             or ($tables | index("public|chat_usage")) == null
+             or ($tables | index("public|analytics_events")) == null
+             or ($tables | index("public|audit_log")) == null
+          then error("logical data-scope allowlist is incomplete or duplicated")
+          else
+            $contract.data_relations[]
+            | [.schema, .relation, .kind]
+            | @tsv
+          end
+      end
+    ' "$contract_file" | LC_ALL=C sort
+}
+
 pragas_parse_mutation_recheck_csv() {
   local csv_file="$1"
   local expected_profiles="$2"
