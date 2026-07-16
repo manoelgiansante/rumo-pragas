@@ -74,6 +74,106 @@ pragas_validate_db_sslrootcert() {
   printf '%s\n' "$candidate"
 }
 
+pragas_validate_pinned_db_sslrootcert() {
+  local candidate="${1:-}"
+  local expected_hash="${2:-}"
+  local validated_candidate
+  local actual_hash
+
+  if [[ ! "$expected_hash" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "database TLS root CA fingerprint is malformed" >&2
+    return 1
+  fi
+  validated_candidate="$(pragas_validate_db_sslrootcert "$candidate")" \
+    || return 1
+  actual_hash="$(shasum -a 256 "$validated_candidate" | awk '{print $1}')" \
+    || return 1
+  if [[ "$actual_hash" != "$expected_hash" ]]; then
+    echo "database TLS root CA fingerprint differs from the reviewed value" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$validated_candidate"
+}
+
+pragas_install_pinned_db_sslrootcert() {
+  local destination="${1:-}"
+  local expected_url="${2:-}"
+  local expected_hash="${3:-}"
+  local curl_bin="${4:-}"
+  local official_url="https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt"
+  local destination_parent
+  local download_file
+  local request_metadata
+  local http_code
+  local effective_url
+  local redirect_count
+  local extra
+
+  destination_parent="$(dirname "$destination")"
+  download_file="$destination_parent/.pragas-db-root-ca.download.$$"
+  if [[ -z "$destination" || "$destination" != /* \
+        || -e "$destination" || -L "$destination" \
+        || ! -d "$destination_parent" || -L "$destination_parent" \
+        || "$(pragas_stat_uid "$destination_parent")" != "$(id -u)" \
+        || "$expected_url" != "$official_url" \
+        || ! "$expected_hash" =~ ^[0-9a-f]{64}$ \
+        || -z "$curl_bin" || "$curl_bin" != /* \
+        || ! -f "$curl_bin" || -L "$curl_bin" || ! -x "$curl_bin" \
+        || -e "$download_file" || -L "$download_file" ]]; then
+    echo "pinned database TLS root CA download request is malformed" >&2
+    return 1
+  fi
+
+  (umask 077 && : >"$download_file") || return 1
+  chmod 600 "$download_file" || {
+    rm -f "$download_file"
+    return 1
+  }
+  if ! request_metadata="$(
+      "$curl_bin" \
+        --proto '=https' --proto-redir '=https' --tlsv1.2 \
+        --silent --show-error --fail --max-redirs 0 \
+        --connect-timeout 10 --max-time 60 \
+        --output "$download_file" \
+        --write-out $'%{http_code}\t%{url_effective}\t%{num_redirects}' \
+        "$expected_url"
+    )"; then
+    rm -f "$download_file"
+    echo "official database TLS root CA download failed" >&2
+    return 1
+  fi
+  IFS=$'\t' read -r http_code effective_url redirect_count extra \
+    <<<"$request_metadata"
+  if [[ "$http_code" != "200" || "$effective_url" != "$expected_url" \
+        || "$redirect_count" != "0" || -n "${extra:-}" ]]; then
+    rm -f "$download_file"
+    echo "official database TLS root CA origin changed unexpectedly" >&2
+    return 1
+  fi
+  if ! pragas_validate_pinned_db_sslrootcert \
+      "$download_file" "$expected_hash" >/dev/null 2>&1; then
+    rm -f "$download_file"
+    echo "downloaded database TLS root CA failed fingerprint validation" >&2
+    return 1
+  fi
+  chmod 400 "$download_file" || {
+    rm -f "$download_file"
+    return 1
+  }
+  mv "$download_file" "$destination" || {
+    rm -f "$download_file"
+    return 1
+  }
+  pragas_validate_pinned_db_sslrootcert \
+    "$destination" "$expected_hash" >/dev/null || {
+      rm -f "$destination"
+      return 1
+    }
+
+  printf '%s\n' "$destination"
+}
+
 pragas_parse_pooler_url() {
   local pooler_url="${1:-}"
   local target_ref="${2:-}"
@@ -152,6 +252,222 @@ pragas_write_private_pgpass() {
   [[ -f "$destination" && ! -L "$destination" \
     && "$(pragas_stat_uid "$destination")" == "$(id -u)" \
     && "$(pragas_stat_mode "$destination")" == "600" ]]
+}
+
+pragas_decode_go_keyring_secret() {
+  local encoded_secret="${1:-}"
+  local output_variable="${2:-}"
+  local decoded_secret=""
+
+  if [[ ! "$output_variable" =~ ^[A-Za-z_][A-Za-z0-9_]*$ \
+        || -z "$encoded_secret" || "$encoded_secret" == *$'\n'* \
+        || "$encoded_secret" == *$'\r'* ]]; then
+    echo "Keychain secret decode request is malformed" >&2
+    return 1
+  fi
+  case "$encoded_secret" in
+    go-keyring-base64:*)
+      decoded_secret="$(
+        printf '%s' "${encoded_secret#go-keyring-base64:}" \
+          | /usr/bin/base64 --decode 2>/dev/null
+      )" || return 1
+      ;;
+    go-keyring-encoded:*)
+      decoded_secret="$(
+        printf '%s' "${encoded_secret#go-keyring-encoded:}" \
+          | /usr/bin/xxd -r -p 2>/dev/null
+      )" || return 1
+      ;;
+    *) decoded_secret="$encoded_secret" ;;
+  esac
+  if [[ -z "$decoded_secret" || "$decoded_secret" == *$'\n'* \
+        || "$decoded_secret" == *$'\r'* ]]; then
+    echo "decoded Keychain secret is malformed" >&2
+    return 1
+  fi
+
+  printf -v "$output_variable" '%s' "$decoded_secret"
+}
+
+pragas_load_supabase_access_token() {
+  local output_variable="${1:-}"
+  local token="${SUPABASE_ACCESS_TOKEN:-}"
+  local keychain_value=""
+
+  if [[ ! "$output_variable" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "Supabase access-token request is malformed" >&2
+    return 1
+  fi
+  if [[ "$-" == *x* ]]; then
+    echo "refusing to load Supabase credentials while shell tracing is enabled" >&2
+    return 1
+  fi
+  if [[ -z "$token" ]]; then
+    if [[ "$(uname -s)" != "Darwin" || ! -x /usr/bin/security ]]; then
+      echo "Supabase access token is absent and native Keychain is unavailable" >&2
+      return 1
+    fi
+    keychain_value="$(
+      /usr/bin/security find-generic-password \
+        -s 'Supabase CLI' -a 'supabase' -w 2>/dev/null
+    )" || {
+      echo "Supabase CLI Keychain credential is unavailable" >&2
+      return 1
+    }
+    pragas_decode_go_keyring_secret "$keychain_value" token || return 1
+  fi
+  if [[ ! "$token" =~ ^sbp_(oauth_)?[a-f0-9]{40}$ ]]; then
+    echo "Supabase access token does not match the pinned CLI contract" >&2
+    return 1
+  fi
+
+  printf -v "$output_variable" '%s' "$token"
+}
+
+pragas_call_supabase_cli_login_role_api() {
+  local method="${1:-}"
+  local target_ref="${2:-}"
+  local access_token="${3:-}"
+  local response_file="${4:-}"
+  local curl_bin="${5:-}"
+  local endpoint="https://api.supabase.com/v1/projects/${target_ref}/cli/login-role"
+  local expected_status
+  local response_parent
+  local request_metadata
+  local http_code
+  local effective_url
+  local redirect_count
+  local extra
+  local -a request_args
+
+  if [[ "$method" != "POST" ]]; then
+    echo "Supabase temporary login-role method is unsupported" >&2
+    return 1
+  fi
+  expected_status="201"
+  request_args=(
+    --header 'Content-Type: application/json'
+    --data-binary '{"read_only":false}'
+  )
+  response_parent="$(dirname "$response_file")"
+  if [[ "$-" == *x* \
+        || ! "$target_ref" =~ ^[a-z0-9]{20}$ \
+        || ! "$access_token" =~ ^sbp_(oauth_)?[a-f0-9]{40}$ \
+        || -z "$response_file" || "$response_file" != /* \
+        || -e "$response_file" || -L "$response_file" \
+        || ! -d "$response_parent" || -L "$response_parent" \
+        || "$(pragas_stat_uid "$response_parent")" != "$(id -u)" \
+        || -z "$curl_bin" || "$curl_bin" != /* \
+        || ! -f "$curl_bin" || -L "$curl_bin" || ! -x "$curl_bin" ]]; then
+    echo "Supabase temporary login-role request is malformed" >&2
+    return 1
+  fi
+
+  (umask 077 && : >"$response_file") || return 1
+  chmod 600 "$response_file" || {
+    rm -f "$response_file"
+    return 1
+  }
+  if ! request_metadata="$(
+      printf 'header = "Authorization: Bearer %s"\n' "$access_token" \
+        | "$curl_bin" --config - \
+          --proto '=https' --proto-redir '=https' --tlsv1.2 \
+          --silent --show-error --fail --max-redirs 0 \
+          --connect-timeout 10 --max-time 60 \
+          --request "$method" "${request_args[@]}" \
+          --output "$response_file" \
+          --write-out $'%{http_code}\t%{url_effective}\t%{num_redirects}' \
+          "$endpoint"
+    )"; then
+    rm -f "$response_file"
+    echo "Supabase temporary login-role API request failed" >&2
+    return 1
+  fi
+  IFS=$'\t' read -r http_code effective_url redirect_count extra \
+    <<<"$request_metadata"
+  if [[ "$http_code" != "$expected_status" \
+        || "$effective_url" != "$endpoint" \
+        || "$redirect_count" != "0" || -n "${extra:-}" \
+        || "$(pragas_stat_uid "$response_file")" != "$(id -u)" \
+        || "$(pragas_stat_mode "$response_file")" != "600" ]]; then
+    rm -f "$response_file"
+    echo "Supabase temporary login-role API contract changed unexpectedly" >&2
+    return 1
+  fi
+}
+
+pragas_parse_supabase_temp_login_role() {
+  local response_file="${1:-}"
+  local minimum_ttl="${2:-}"
+  local maximum_ttl="${3:-}"
+  local role_variable="${4:-}"
+  local password_variable="${5:-}"
+  local ttl_variable="${6:-}"
+  local _pragas_parsed_role
+  local _pragas_parsed_password
+  local _pragas_parsed_ttl
+
+  if [[ ! -f "$response_file" || -L "$response_file" \
+        || "$(pragas_stat_uid "$response_file")" != "$(id -u)" \
+        || "$(pragas_stat_mode "$response_file")" != "600" \
+        || ! "$minimum_ttl" =~ ^[1-9][0-9]*$ \
+        || ! "$maximum_ttl" =~ ^[1-9][0-9]*$ \
+        || "$minimum_ttl" -gt "$maximum_ttl" \
+        || ! "$role_variable" =~ ^[A-Za-z_][A-Za-z0-9_]*$ \
+        || ! "$password_variable" =~ ^[A-Za-z_][A-Za-z0-9_]*$ \
+        || ! "$ttl_variable" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "Supabase temporary login-role response request is malformed" >&2
+    return 1
+  fi
+  if ! jq -e \
+      --argjson minimum_ttl "$minimum_ttl" \
+      --argjson maximum_ttl "$maximum_ttl" '
+        type == "object"
+        and (keys | sort) == ["password", "role", "ttl_seconds"]
+        and (.role | type == "string"
+          and test("^cli_login_[A-Za-z0-9_]+$"))
+        and (.password | type == "string" and length >= 16
+          and length <= 1024 and (test("[\\r\\n]") | not))
+        and (.ttl_seconds | type == "number" and floor == .
+          and . >= $minimum_ttl and . <= $maximum_ttl)
+      ' "$response_file" >/dev/null; then
+    echo "Supabase temporary login-role response is malformed" >&2
+    return 1
+  fi
+  _pragas_parsed_role="$(jq -er '.role' "$response_file")" || return 1
+  _pragas_parsed_password="$(jq -er '.password' "$response_file")" || return 1
+  _pragas_parsed_ttl="$(jq -er '.ttl_seconds' "$response_file")" || return 1
+
+  printf -v "$role_variable" '%s' "$_pragas_parsed_role"
+  printf -v "$password_variable" '%s' "$_pragas_parsed_password"
+  printf -v "$ttl_variable" '%s' "$_pragas_parsed_ttl"
+}
+
+pragas_build_temp_pooler_username() {
+  local login_role="${1:-}"
+  local target_ref="${2:-}"
+
+  if [[ ! "$login_role" =~ ^cli_login_[A-Za-z0-9_]+$ \
+        || ! "$target_ref" =~ ^[a-z0-9]{20}$ ]]; then
+    echo "temporary Supabase pooler identity is malformed" >&2
+    return 1
+  fi
+  printf '%s.%s\n' "$login_role" "$target_ref"
+}
+
+pragas_assert_temp_login_role_fresh() {
+  local expires_at_epoch="${1:-}"
+  local minimum_remaining_seconds="${2:-}"
+  local current_epoch="${3:-$(date +%s)}"
+
+  if [[ ! "$expires_at_epoch" =~ ^[1-9][0-9]*$ \
+        || ! "$minimum_remaining_seconds" =~ ^[1-9][0-9]*$ \
+        || ! "$current_epoch" =~ ^[1-9][0-9]*$ \
+        || $((expires_at_epoch - current_epoch)) \
+           -lt "$minimum_remaining_seconds" ]]; then
+    echo "Supabase temporary login role is expired or too close to expiry" >&2
+    return 1
+  fi
 }
 
 pragas_validate_pinned_image_metadata() {
@@ -260,6 +576,41 @@ pragas_assert_supabase_cli_version() {
     echo "Supabase CLI version mismatch: expected $expected_version, got ${actual_version:-empty}" >&2
     return 1
   fi
+}
+
+pragas_validate_required_secret_metadata() {
+  local inventory_file="${1:-}"
+  local secret_name="${2:-}"
+  local expected_digest="${3:-}"
+  local empty_digest="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+  if [[ ! -f "$inventory_file" || -L "$inventory_file" \
+        || ! "$secret_name" =~ ^[A-Z][A-Z0-9_]+$ \
+        || ( -n "$expected_digest" \
+          && ! "$expected_digest" =~ ^[0-9a-f]{64}$ ) ]]; then
+    echo "required secret metadata request is malformed" >&2
+    return 1
+  fi
+
+  jq -e \
+    --arg secret_name "$secret_name" \
+    --arg expected_digest "$expected_digest" \
+    --arg empty_digest "$empty_digest" '
+      type == "array"
+      and length > 0
+      and all(.[];
+        type == "object"
+        and (.name | type == "string" and test("^[A-Z][A-Z0-9_]+$"))
+        and (.value | type == "string" and test("^[0-9a-f]{64}$"))
+      )
+      and (([.[].name] | length) == ([.[].name] | unique | length))
+      and ([.[] | select(.name == $secret_name)] | length) == 1
+      and ([.[] | select(.name == $secret_name)][0].value != $empty_digest)
+      and (
+        $expected_digest == ""
+        or [.[] | select(.name == $secret_name)][0].value == $expected_digest
+      )
+    ' "$inventory_file" >/dev/null
 }
 
 pragas_directory_hash() {
@@ -494,6 +845,214 @@ pragas_validate_backup_root() {
       return 1
       ;;
   esac
+
+  printf '%s\n' "$canonical_root"
+}
+
+pragas_validate_backup_encryption_metadata() {
+  local canonical_root="${1:-}"
+  local mount_point="${2:-}"
+  local device="${3:-}"
+  local filevault_enabled="${4:-}"
+  local volume_encryption_proper="${5:-}"
+  local root_is_on_mount="false"
+
+  if [[ -z "$canonical_root" || "$canonical_root" != /* \
+        || -z "$mount_point" || "$mount_point" != /* \
+        || ! "$device" =~ ^/dev/disk[0-9]+[A-Za-z0-9]*$ \
+        || ( "$filevault_enabled" != "true" \
+          && "$filevault_enabled" != "false" ) \
+        || ( "$volume_encryption_proper" != "true" \
+          && "$volume_encryption_proper" != "false" ) ]]; then
+    echo "backup-volume encryption metadata is malformed" >&2
+    return 1
+  fi
+  if [[ "$mount_point" == "/" ]]; then
+    root_is_on_mount="true"
+  else
+    case "$canonical_root" in
+      "$mount_point"|"$mount_point"/*) root_is_on_mount="true" ;;
+    esac
+  fi
+  # FileVault protects an ordinary directory on the system data volume. With
+  # FileVault disabled, Apple silicon still reports hardware encryption, but
+  # the key is available at boot; that is not sufficient for production dumps.
+  # macOS firmlinks expose /Users while df resolves the backing Data volume at
+  # /System/Volumes/Data, so the device identity is authoritative for FileVault.
+  if [[ "$filevault_enabled" == "true" ]]; then
+    return 0
+  fi
+  if [[ "$root_is_on_mount" != "true" ]]; then
+    echo "backup root is outside the inspected encrypted volume" >&2
+    return 1
+  fi
+  case "$mount_point" in
+    /Volumes/*)
+      if [[ "$volume_encryption_proper" == "true" ]]; then
+        return 0
+      fi
+      ;;
+  esac
+
+  echo "backup root is not protected by FileVault or a dedicated encrypted volume" >&2
+  return 1
+}
+
+pragas_validate_encrypted_disk_image_metadata() {
+  local hdiutil_json="${1:-}"
+  local mount_point="${2:-}"
+  local device="${3:-}"
+  local current_uid="${4:-}"
+  local image_path
+
+  if [[ -z "$hdiutil_json" || -z "$mount_point" \
+        || "$mount_point" != /Volumes/* \
+        || ! "$device" =~ ^/dev/disk[0-9]+[A-Za-z0-9]*$ \
+        || ! "$current_uid" =~ ^[0-9]+$ ]]; then
+    echo "encrypted disk-image metadata is malformed" >&2
+    return 1
+  fi
+  if ! image_path="$(
+    jq -er \
+      --arg mount_point "$mount_point" \
+      --arg device "$device" \
+      --argjson current_uid "$current_uid" '
+        if type != "object" or (.images | type) != "array" then
+          error("unexpected hdiutil shape")
+        else
+          [
+            .images[]
+            | select(type == "object")
+            | select(."image-encrypted" == true)
+            | select(."image-type" == "sparse bundle disk image")
+            | select(."owner-uid" == $current_uid)
+            | select(.writeable == true)
+            | select(
+                [
+                  ."system-entities"[]?
+                  | select(
+                      ."dev-entry" == $device
+                      and ."mount-point" == $mount_point
+                    )
+                ]
+                | length == 1
+              )
+            | ."image-path"
+            | select(
+                type == "string"
+                and startswith("/")
+                and (test("[\\r\\n]") | not)
+              )
+          ]
+          | if length == 1 then .[0] else error("ambiguous image") end
+        end
+      ' <<<"$hdiutil_json"
+  )"; then
+    echo "backup volume is not a unique writable encrypted sparse bundle" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$image_path"
+}
+
+pragas_assert_encrypted_backup_root() {
+  local requested_root="${1:-}"
+  local canonical_root
+  local device
+  local disk_info
+  local mount_point
+  local filevault_enabled
+  local volume_encryption_proper
+  local hdiutil_json
+  local disk_image_path
+  local disk_image_parent
+  local canonical_disk_image_parent
+  local canonical_disk_image_path
+
+  if [[ "$(uname -s)" != "Darwin" \
+        || ! -x /usr/sbin/diskutil || ! -x /usr/bin/plutil \
+        || -z "$requested_root" || ! -d "$requested_root" \
+        || -L "$requested_root" ]]; then
+    echo "encrypted backup-root inspection is unavailable or malformed" >&2
+    return 1
+  fi
+  canonical_root="$(cd "$requested_root" && pwd -P)" || return 1
+  device="$(/bin/df -P "$canonical_root" | awk 'END { print $1 }')" \
+    || return 1
+  if [[ ! "$device" =~ ^/dev/disk[0-9]+[A-Za-z0-9]*$ ]]; then
+    echo "backup root is not backed by an inspectable local disk" >&2
+    return 1
+  fi
+  disk_info="$(/usr/sbin/diskutil info -plist "$device" 2>/dev/null)" \
+    || {
+      echo "failed to inspect backup-root disk encryption" >&2
+      return 1
+    }
+  mount_point="$(
+    printf '%s' "$disk_info" \
+      | /usr/bin/plutil -extract MountPoint raw -o - - 2>/dev/null
+  )" || return 1
+  filevault_enabled="$(
+    printf '%s' "$disk_info" \
+      | /usr/bin/plutil -extract FileVault raw -o - - 2>/dev/null
+  )" || return 1
+  volume_encryption_proper="$(
+    printf '%s' "$disk_info" \
+      | /usr/bin/plutil -extract EncryptionThisVolumeProper raw -o - - \
+        2>/dev/null
+  )" || return 1
+  if pragas_validate_backup_encryption_metadata \
+      "$canonical_root" "$mount_point" "$device" \
+      "$filevault_enabled" "$volume_encryption_proper" \
+      >/dev/null 2>&1; then
+    printf '%s\n' "$canonical_root"
+    return 0
+  fi
+
+  # An AES-encrypted sparse bundle has two encryption layers in macOS
+  # metadata. The mounted inner APFS volume may report FileVault=false and
+  # EncryptionThisVolumeProper=false even though hdiutil proves that the outer
+  # disk image is encrypted. Accept that case only by matching the exact mount
+  # point and device to one private, writable, encrypted sparse bundle owned by
+  # the current user.
+  if [[ ! -x /usr/bin/hdiutil ]]; then
+    echo "encrypted sparse-bundle inspection is unavailable" >&2
+    return 1
+  fi
+  case "$canonical_root" in
+    "$mount_point"|"$mount_point"/*) ;;
+    *)
+      echo "backup root is outside the inspected mounted volume" >&2
+      return 1
+      ;;
+  esac
+  if ! hdiutil_json="$(
+      /usr/bin/hdiutil info -plist 2>/dev/null \
+        | /usr/bin/plutil -convert json -o - - 2>/dev/null
+    )"; then
+    echo "failed to inspect mounted encrypted disk images" >&2
+    return 1
+  fi
+  if ! disk_image_path="$(
+      pragas_validate_encrypted_disk_image_metadata \
+        "$hdiutil_json" "$mount_point" "$device" "$(id -u)"
+    )"; then
+    echo "backup root is not protected by FileVault or an encrypted sparse bundle" >&2
+    return 1
+  fi
+  if [[ ! -d "$disk_image_path" || -L "$disk_image_path" \
+        || "$(pragas_stat_uid "$disk_image_path")" != "$(id -u)" ]]; then
+    echo "encrypted sparse-bundle source is missing, linked or foreign-owned" >&2
+    return 1
+  fi
+  disk_image_parent="$(dirname "$disk_image_path")"
+  canonical_disk_image_parent="$(cd "$disk_image_parent" && pwd -P)" \
+    || return 1
+  canonical_disk_image_path="$canonical_disk_image_parent/$(basename "$disk_image_path")"
+  if [[ "$canonical_disk_image_path" != "$disk_image_path" ]]; then
+    echo "encrypted sparse-bundle source traverses a symbolic-link parent" >&2
+    return 1
+  fi
 
   printf '%s\n' "$canonical_root"
 }

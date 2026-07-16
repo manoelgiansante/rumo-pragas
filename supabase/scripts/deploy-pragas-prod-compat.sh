@@ -8,6 +8,12 @@ readonly REVIEWED_EDGE_RUNTIME_IMAGE="supabase/edge-runtime:v1.73.13"
 readonly REVIEWED_EDGE_RUNTIME_IMAGE_ID="sha256:cfa86b9ad11f349aa4b930f3ab295d6ad923f2e43c5513c08d79c1f3b990b486"
 readonly REVIEWED_PG_BACKUP_IMAGE="public.ecr.aws/supabase/postgres@sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426"
 readonly REVIEWED_PG_BACKUP_DIGEST="sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426"
+readonly REVIEWED_DB_CA_URL="https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt"
+readonly REVIEWED_DB_CA_SHA256="700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"
+readonly REVIEWED_SYSTEM_CURL="/usr/bin/curl"
+readonly TEMP_LOGIN_ROLE_MIN_TTL_SECONDS="300"
+readonly TEMP_LOGIN_ROLE_MAX_TTL_SECONDS="3600"
+readonly TEMP_LOGIN_ROLE_MIN_REMAINING_SECONDS="120"
 readonly TARGET_VERSIONS=(
   "20260715170000"
   "20260715171000"
@@ -98,7 +104,7 @@ expected_edge_verify_jwt() {
 
 expected_edge_hash() {
   case "$1" in
-    _shared) echo "87878b97d40918ff46599602ecf8d387e54c570819fb3e928c7759a8287c1c03" ;;
+    _shared) echo "6552f8ee3a9f5b2a8127288517abb9a2aca2636f18fd36bc1ddbf953a6454b82" ;;
     diagnose-pragas) echo "4e8293678b98cb6e2b3061fef6a8483aa4d1450efa3c8a9991e1a33b5bd2447b" ;;
     ai-chat-pragas) echo "b07ef59e6857ac131b5df00691d14f0fe94581d9396ee8e5a3fdc52b3f867b5f" ;;
     pragas-delete-user-account) echo "5a8601bf3d8caa6200f983d65cd4cd66e0801deb4cccbbadd6d54d9b117b0513" ;;
@@ -110,7 +116,7 @@ expected_edge_hash() {
     admin-ai-content-reports) echo "d9ecd60ed0e6d31748263e3762fe33afa7b33e93fb724f278a0fa4868f77ccb9" ;;
     pragas-process-deletions) echo "9dcfd5b9cb2e14bc4a075c71acd9315d17bf3fa6254f8f24166d29a3e1b66a38" ;;
     pragas-process-ai-idempotency) echo "fc896e878917c441c3f622c5b568599cf0ceaab84aaed246185417db2654c185" ;;
-    pragas-send-push) echo "d04928d8981664ec6c588ab9f0c5a03a864e19f144f1f2ef80acf4d3b19f0444" ;;
+    pragas-send-push) echo "6cd9934c259987a8dd068dd50c5d4b785eabcb5662f3f6ffe486b39d83767cdd" ;;
     *) return 1 ;;
   esac
 }
@@ -130,14 +136,100 @@ for dependency in supabase jq deno docker shasum rg perl tar openssl; do
     exit 1
   fi
 done
-if ! db_sslrootcert_source="$(pragas_validate_db_sslrootcert \
-    "${PRAGAS_PROD_DB_SSLROOTCERT:-}")"; then
+if [[ "$-" == *x* ]]; then
+  echo "refusing production gate while shell tracing is enabled" >&2
+  exit 1
+fi
+if [[ ! -f "$REVIEWED_SYSTEM_CURL" || -L "$REVIEWED_SYSTEM_CURL" \
+      || ! -x "$REVIEWED_SYSTEM_CURL" ]]; then
+  echo "reviewed system curl is unavailable" >&2
+  exit 1
+fi
+
+tmp="$(mktemp -d /tmp/rumo-pragas-prod-compat.XXXXXX)"
+restore_container=""
+temp_login_cleanup_required="false"
+temp_login_access_token=""
+temp_login_role=""
+temp_login_password=""
+temp_login_ttl=""
+temp_login_expires_at=""
+temp_login_role_issued="false"
+temp_login_response=""
+backup_db_password=""
+cleanup_started="false"
+
+clear_temp_login_role_local() {
+  if [[ "$temp_login_cleanup_required" != "true" ]]; then
+    return 0
+  fi
+  if [[ -n "$temp_login_response" ]]; then
+    rm -f "$temp_login_response"
+  fi
+  rm -f "$tmp/prod-backup.pgpass"
+  temp_login_cleanup_required="false"
+  temp_login_access_token=""
+  temp_login_role=""
+  temp_login_password=""
+  temp_login_ttl=""
+  temp_login_expires_at=""
+  temp_login_role_issued="false"
+  temp_login_response=""
+}
+
+cleanup() {
+  local exit_status=$?
+
+  if [[ "$cleanup_started" == "true" ]]; then
+    return "$exit_status"
+  fi
+  cleanup_started="true"
+  set +e
+  if [[ "$temp_login_cleanup_required" == "true" ]]; then
+    if [[ "$temp_login_role_issued" == "true" ]]; then
+      echo "clearing local temporary-role credentials; server role will expire by its validated TTL" >&2
+    fi
+    clear_temp_login_role_local
+  fi
+  temp_login_access_token=""
+  temp_login_role=""
+  temp_login_password=""
+  temp_login_ttl=""
+  temp_login_response=""
+  backup_db_password=""
+  if [[ -n "$restore_container" ]]; then
+    docker rm -f "$restore_container" >/dev/null 2>&1 || true
+  fi
+  chmod -R u+w "$tmp" >/dev/null 2>&1 || true
+  rm -rf "$tmp"
+  return "$exit_status"
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+db_sslrootcert_source="${PRAGAS_PROD_DB_SSLROOTCERT:-}"
+if [[ -n "$db_sslrootcert_source" ]]; then
+  db_sslrootcert_source="$(pragas_validate_pinned_db_sslrootcert \
+    "$db_sslrootcert_source" "$REVIEWED_DB_CA_SHA256")" || {
+      echo "verified database TLS root CA preflight failed" >&2
+      exit 1
+    }
+elif ! db_sslrootcert_source="$(pragas_install_pinned_db_sslrootcert \
+    "$tmp/official-db-root-ca.pem" "$REVIEWED_DB_CA_URL" \
+    "$REVIEWED_DB_CA_SHA256" "$REVIEWED_SYSTEM_CURL")"; then
+  echo "official database TLS root CA bootstrap failed" >&2
+  exit 1
+fi
+if ! pragas_validate_pinned_db_sslrootcert \
+    "$db_sslrootcert_source" "$REVIEWED_DB_CA_SHA256" >/dev/null; then
   echo "verified database TLS root CA preflight failed" >&2
   exit 1
 fi
 if ! db_sslrootcert_hash="$(
   shasum -a 256 "$db_sslrootcert_source" 2>/dev/null | awk '{print $1}'
-)" || [[ ! "$db_sslrootcert_hash" =~ ^[0-9a-f]{64}$ ]]; then
+)" || [[ "$db_sslrootcert_hash" != "$REVIEWED_DB_CA_SHA256" ]]; then
   echo "verified database TLS root CA fingerprint failed" >&2
   exit 1
 fi
@@ -244,17 +336,15 @@ if [[ "$mode" == "--prepare" \
   echo "prepare requires PRAGAS_PROD_COMPAT_BACKUP_DIR" >&2
   exit 1
 fi
+expo_access_token_expected_digest="${PRAGAS_PROD_EXPO_ACCESS_TOKEN_SHA256:-}"
+if [[ ! "$expo_access_token_expected_digest" =~ ^[0-9a-f]{64}$ \
+      || "$expo_access_token_expected_digest" \
+         == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ]]; then
+  echo "EXPO_ACCESS_TOKEN fingerprint preflight failed" >&2
+  echo "set PRAGAS_PROD_EXPO_ACCESS_TOKEN_SHA256 to the reviewed secret SHA-256" >&2
+  exit 1
+fi
 
-tmp="$(mktemp -d /tmp/rumo-pragas-prod-compat.XXXXXX)"
-restore_container=""
-cleanup() {
-  if [[ -n "$restore_container" ]]; then
-    docker rm -f "$restore_container" >/dev/null 2>&1 || true
-  fi
-  chmod -R u+w "$tmp" >/dev/null 2>&1 || true
-  rm -rf "$tmp"
-}
-trap cleanup EXIT
 db_sslrootcert="$tmp/db-root-ca.pem"
 if ! pragas_copy_verified_file \
     "$db_sslrootcert_source" "$db_sslrootcert" "$db_sslrootcert_hash" \
@@ -700,11 +790,16 @@ if ! jq -e \
   exit 1
 fi
 
+remote_secrets="$tmp/remote-edge-secrets.json"
 secret_names="$tmp/remote-secret-names.txt"
 if ! supabase secrets list --project-ref "$TARGET_REF" --output json \
-    --workdir "$repo_root" --agent=no \
-    | jq -r '.[].name' | LC_ALL=C sort -u >"$secret_names"; then
+    --workdir "$repo_root" --agent=no >"$remote_secrets"; then
   echo "failed to read remote Edge secret names" >&2
+  exit 1
+fi
+if ! jq -r '.[].name' "$remote_secrets" \
+    | LC_ALL=C sort -u >"$secret_names"; then
+  echo "remote Edge secret metadata is malformed" >&2
   exit 1
 fi
 required_secret_names=(
@@ -717,12 +812,43 @@ required_secret_names=(
   SUPABASE_SERVICE_ROLE_KEY
   SUPABASE_URL
 )
-for secret_name in "${required_secret_names[@]}"; do
-  if ! grep -qx "$secret_name" "$secret_names"; then
-    echo "required Edge secret is absent: $secret_name" >&2
-    exit 1
+
+validate_required_edge_secret_metadata() {
+  local inventory_file="$1"
+  local secret_name expected_secret_digest
+
+  for secret_name in "${required_secret_names[@]}"; do
+    expected_secret_digest=""
+    if [[ "$secret_name" == "EXPO_ACCESS_TOKEN" ]]; then
+      expected_secret_digest="$expo_access_token_expected_digest"
+    fi
+    if ! pragas_validate_required_secret_metadata \
+        "$inventory_file" "$secret_name" "$expected_secret_digest"; then
+      echo "required Edge secret metadata is absent or unverified: $secret_name" >&2
+      return 1
+    fi
+  done
+}
+
+refresh_required_edge_secret_metadata() {
+  local inventory_file="$1"
+  local checkpoint_label="$2"
+
+  rm -f -- "$inventory_file"
+  if ! supabase secrets list --project-ref "$TARGET_REF" --output json \
+      --workdir "$repo_root" --agent=no >"$inventory_file"; then
+    echo "failed to re-read required Edge secret metadata: $checkpoint_label" >&2
+    return 1
   fi
-done
+  if ! validate_required_edge_secret_metadata "$inventory_file"; then
+    echo "required Edge secret metadata recheck failed: $checkpoint_label" >&2
+    return 1
+  fi
+}
+
+if ! validate_required_edge_secret_metadata "$remote_secrets"; then
+  exit 1
+fi
 
 history_csv="$tmp/remote-history.csv"
 if ! supabase db query --linked --workdir "$tmp" --agent=no --output csv \
@@ -898,6 +1024,11 @@ if ! backup_root="$(pragas_validate_backup_root \
   echo "backup preparation refused before creating any artifact" >&2
   exit 1
 fi
+if ! backup_root="$(pragas_assert_encrypted_backup_root "$backup_root")"; then
+  echo "production backup root is not on verified encrypted storage" >&2
+  echo "mount an encrypted APFS volume under /Volumes or enable FileVault" >&2
+  exit 1
+fi
 backup_stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 if ! backup_dir="$(pragas_create_private_backup_leaf "$backup_root" \
     "pragas-${TARGET_REF}-${backup_stamp}")"; then
@@ -907,6 +1038,21 @@ fi
 # Keep every sensitive artifact private as it is created, not only the 0700
 # parent directory. Child processes (Supabase CLI, tar and Deno) inherit this.
 umask 077
+
+assert_backup_storage_still_valid() {
+  local current_backup_root
+
+  if ! current_backup_root="$(
+      pragas_assert_encrypted_backup_root "$backup_root"
+    )" \
+      || [[ "$current_backup_root" != "$backup_root" ]] \
+      || ! pragas_assert_private_backup_leaf \
+        "$backup_root" "$backup_dir" >/dev/null; then
+    echo "encrypted backup storage identity or privacy changed" >&2
+    return 1
+  fi
+}
+
 cp "$policy_inventory" "$backup_dir/policies-before.json"
 cp "$extension_inventory" "$backup_dir/extensions-before.csv"
 cp "$remote_functions" "$backup_dir/edge-functions-before.json"
@@ -994,12 +1140,49 @@ storage_schema_backup="$backup_dir/storage-schema.sql"
 schema_backup="$backup_dir/public-schema.sql"
 data_backup="$backup_dir/auth-storage-public-data.sql"
 backup_pgpass="$tmp/prod-backup.pgpass"
+backup_db_username="$pooler_username"
+backup_db_password="${SUPABASE_DB_PASSWORD:-}"
+if [[ -z "$backup_db_password" ]]; then
+  if ! pragas_load_supabase_access_token temp_login_access_token; then
+    echo "temporary Supabase login-role authentication is unavailable" >&2
+    exit 1
+  fi
+  temp_login_cleanup_required="true"
+  temp_login_response="$tmp/temp-login-role-response.json"
+  if ! pragas_call_supabase_cli_login_role_api \
+      POST "$TARGET_REF" "$temp_login_access_token" \
+      "$temp_login_response" "$REVIEWED_SYSTEM_CURL"; then
+    echo "temporary Supabase login-role acquisition failed" >&2
+    exit 1
+  fi
+  temp_login_role_issued="true"
+  if ! pragas_parse_supabase_temp_login_role \
+      "$temp_login_response" \
+      "$TEMP_LOGIN_ROLE_MIN_TTL_SECONDS" \
+      "$TEMP_LOGIN_ROLE_MAX_TTL_SECONDS" \
+      temp_login_role temp_login_password temp_login_ttl; then
+    echo "temporary Supabase login-role validation failed" >&2
+    exit 1
+  fi
+  rm -f "$temp_login_response"
+  if ! backup_db_username="$(pragas_build_temp_pooler_username \
+      "$temp_login_role" "$TARGET_REF")"; then
+    echo "temporary Supabase pooler identity validation failed" >&2
+    exit 1
+  fi
+  temp_login_expires_at="$(($(date +%s) + temp_login_ttl))"
+  backup_db_password="$temp_login_password"
+  temp_login_access_token=""
+  echo "using a reviewed, short-lived Supabase CLI login role for the backup"
+fi
 if ! pragas_write_private_pgpass \
     "$backup_pgpass" "$pooler_host" "$pooler_port" "$pooler_database" \
-    "$pooler_username" "${SUPABASE_DB_PASSWORD:-}" >/dev/null 2>&1; then
+    "$backup_db_username" "$backup_db_password" >/dev/null 2>&1; then
   echo "private production backup credential preflight failed" >&2
   exit 1
 fi
+backup_db_password=""
+temp_login_password=""
 backup_raw_dir="$tmp/verified-backup-raw"
 mkdir -m 700 "$backup_raw_dir"
 
@@ -1011,10 +1194,22 @@ capture_verified_backup_raw() {
   if [[ -e "$raw_output" || -L "$raw_output" ]]; then
     return 1
   fi
+  # Re-read both the mounted encrypted-volume identity and the private leaf
+  # immediately before every authenticated dump. This closes the long-running
+  # preflight window if a sparse bundle is detached or replaced mid-gate.
+  if ! assert_backup_storage_still_valid; then
+    return 1
+  fi
+  if [[ "$temp_login_cleanup_required" == "true" ]] \
+      && ! pragas_assert_temp_login_role_fresh \
+        "$temp_login_expires_at" \
+        "$TEMP_LOGIN_ROLE_MIN_REMAINING_SECONDS"; then
+    return 1
+  fi
   if ! pragas_run_pinned_pg_backup \
       "$REVIEWED_PG_BACKUP_IMAGE" "$REVIEWED_PG_BACKUP_DIGEST" \
       "$tool" "$db_sslrootcert" "$backup_pgpass" \
-      "$pooler_host" "$pooler_port" "$pooler_username" \
+      "$pooler_host" "$pooler_port" "$backup_db_username" \
       "$pooler_database" bridge "$@" >"$raw_output" 2>/dev/null; then
     rm -f "$raw_output"
     return 1
@@ -1150,6 +1345,11 @@ if ! write_verified_data_backup 2>/dev/null; then
   echo "authenticated multi-schema data backup failed; no migration was applied" >&2
   exit 1
 fi
+rm -f "$backup_pgpass"
+if [[ "$temp_login_cleanup_required" == "true" ]]; then
+  echo "temporary-role credentials cleared; server role is bounded by the validated TTL"
+  clear_temp_login_role_local
+fi
 # PRAGAS_VERIFIED_BACKUP_END
 
 # Derive complete table row-count evidence from the dump artifacts themselves.
@@ -1227,9 +1427,8 @@ if ! (cd "$backup_dir" && shasum -a 256 -c SHA256SUMS >/dev/null); then
   echo "backup checksum verification failed; no migration was applied" >&2
   exit 1
 fi
-if ! pragas_assert_private_backup_leaf \
-    "$backup_root" "$backup_dir" >/dev/null; then
-  echo "backup leaf privacy changed; no migration was applied" >&2
+if ! assert_backup_storage_still_valid; then
+  echo "backup encryption or leaf privacy changed; no migration was applied" >&2
   exit 1
 fi
 
@@ -1685,10 +1884,9 @@ printf '%s\n' \
   "shared_relation_bootstrap=concurrent" \
   "edge_archive_restore_test=pass" \
   >"$backup_dir/restore-evidence.txt"
-if ! pragas_assert_private_backup_leaf \
-    "$backup_root" "$backup_dir" >/dev/null \
+if ! assert_backup_storage_still_valid \
    || ! (cd "$backup_dir" && shasum -a 256 -c SHA256SUMS >/dev/null); then
-  echo "backup evidence privacy or checksums changed; no migration was applied" >&2
+  echo "backup evidence encryption, privacy or checksums changed; no migration was applied" >&2
   exit 1
 fi
 
@@ -1756,6 +1954,16 @@ fi
 
 if ! assert_remote_migration_history_unchanged "before-shared-bootstrap"; then
   echo "production migration history changed during backup; no mutation was performed by this gate" >&2
+  exit 1
+fi
+if ! assert_backup_storage_still_valid; then
+  echo "backup storage changed before the first production mutation" >&2
+  exit 1
+fi
+if ! refresh_required_edge_secret_metadata \
+    "$tmp/remote-edge-secrets-before-production-mutation.json" \
+    "before-production-mutation"; then
+  echo "required Edge secret metadata changed before the first production mutation" >&2
   exit 1
 fi
 if ! run_shared_bootstrap_on_linked_project; then
@@ -2130,6 +2338,15 @@ for slug in "${EDGE_DEPLOY_ORDER[@]}"; do
   if ! assert_edge_candidate_snapshot "$slug"; then
     write_edge_stop_report \
       "edge_candidate_snapshot_changed" "$slug" true "$predeploy_raw"
+    exit 1
+  fi
+
+  if ! refresh_required_edge_secret_metadata \
+      "$tmp/remote-edge-secrets-before-edge-rollout.json" \
+      "before-edge-rollout"; then
+    write_edge_stop_report \
+      "edge_secret_metadata_changed_before_rollout" "$slug" true \
+      "$predeploy_raw"
     exit 1
   fi
 

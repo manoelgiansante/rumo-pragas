@@ -10,6 +10,7 @@ if ! command -v rg >/dev/null 2>&1; then
 fi
 
 bash "$repo_root/supabase/tests/pragas-prod-compat-gate-unit.sh"
+bash "$repo_root/supabase/tests/pragas-prod-compat-credential-storage-unit.sh"
 
 for gate_dependency in \
   "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh" \
@@ -64,6 +65,7 @@ fi
 # shellcheck disable=SC2016
 for required_gate_contract in \
   'pragas_validate_backup_root' \
+  'pragas_assert_encrypted_backup_root' \
   'pragas_create_private_backup_leaf' \
   'pragas_assert_private_backup_leaf' \
   'umask 077' \
@@ -81,7 +83,10 @@ for required_gate_contract in \
   'pragas_run_pinned_pg_backup' \
   'write_verified_role_backup' \
   'write_verified_schema_backup' \
-  'write_verified_data_backup'
+  'write_verified_data_backup' \
+  'pragas_call_supabase_cli_login_role_api' \
+  'clear_temp_login_role_local' \
+  'assert_backup_storage_still_valid'
 do
   if ! rg -Fq -- "$required_gate_contract" "$deploy_gate"; then
     echo "production backup/restore contract is missing: $required_gate_contract" >&2
@@ -135,6 +140,55 @@ if rg -Fq 'supabase db dump' "$deploy_gate" \
 fi
 if rg -q 'AS (auth_user_count|storage_object_count)' "$deploy_gate"; then
   echo "production preflight contains prohibited full managed-table counts" >&2
+  exit 1
+fi
+
+# Dollar-prefixed strings below are intentional literal source contracts.
+# shellcheck disable=SC2016
+for required_temporary_role_contract in \
+  'pragas_load_supabase_access_token' \
+  'POST "$TARGET_REF" "$temp_login_access_token"' \
+  'TEMP_LOGIN_ROLE_MIN_TTL_SECONDS="300"' \
+  'TEMP_LOGIN_ROLE_MAX_TTL_SECONDS="3600"' \
+  'pragas_assert_temp_login_role_fresh' \
+  '[[ "$method" != "POST" ]]' \
+  'clear_temp_login_role_local' \
+  'trap cleanup EXIT' \
+  'server role will expire by its validated TTL'
+do
+  if ! rg -Fq "$required_temporary_role_contract" "$deploy_gate" \
+      "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"; then
+    echo "temporary Supabase login-role contract is missing: $required_temporary_role_contract" >&2
+    exit 1
+  fi
+done
+login_role_helper_block="$(sed -n \
+  '/^pragas_call_supabase_cli_login_role_api()/,/^}/p' \
+  "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh")"
+if rg -Fq 'DELETE' <<<"$login_role_helper_block"; then
+  echo "global Supabase CLI login-role revocation is reachable" >&2
+  exit 1
+fi
+for required_encrypted_storage_contract in \
+  'pragas_validate_backup_encryption_metadata' \
+  'pragas_validate_encrypted_disk_image_metadata' \
+  '"image-encrypted" == true' \
+  '"image-type" == "sparse bundle disk image"' \
+  'hdiutil info -plist' \
+  'EncryptionThisVolumeProper' \
+  'FileVault' \
+  '/Volumes/*' \
+  'assert_backup_storage_still_valid' \
+  'production backup root is not on verified encrypted storage'
+do
+  if ! rg -Fq "$required_encrypted_storage_contract" "$deploy_gate" \
+      "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"; then
+    echo "encrypted production-backup contract is missing: $required_encrypted_storage_contract" >&2
+    exit 1
+  fi
+done
+if [[ "$(rg -c 'assert_backup_storage_still_valid' "$deploy_gate")" -lt 5 ]]; then
+  echo "encrypted backup storage is not revalidated across dump/evidence/mutation boundaries" >&2
   exit 1
 fi
 
@@ -212,14 +266,73 @@ if ! printf '%s\n' "$required_secret_block" \
   echo "production preflight does not require EXPO_ACCESS_TOKEN" >&2
   exit 1
 fi
+if ! rg -Fq \
+    'PRAGAS_PROD_EXPO_ACCESS_TOKEN_SHA256' \
+    "$deploy_gate" \
+    || ! rg -Fq \
+      '"$inventory_file" "$secret_name" "$expected_secret_digest"' \
+      "$deploy_gate" \
+    || ! rg -Fq 'refresh_required_edge_secret_metadata' "$deploy_gate" \
+    || ! rg -Fq '"before-production-mutation"' "$deploy_gate" \
+    || ! rg -Fq '"before-edge-rollout"' "$deploy_gate"; then
+  echo "production preflight does not verify secret metadata fingerprints" >&2
+  exit 1
+fi
+secret_refresh_contract_count="$(
+  rg -Fc 'refresh_required_edge_secret_metadata' "$deploy_gate"
+)"
+if [[ "$secret_refresh_contract_count" -lt 3 ]]; then
+  echo "production gate does not re-read secret metadata at both mutation boundaries" >&2
+  exit 1
+fi
 push_handler="$repo_root/supabase/functions/pragas-send-push/index.ts"
 if ! rg -Fq \
+    'const EXPO_ACCESS_TOKEN = (Deno.env.get("EXPO_ACCESS_TOKEN") ?? "").trim();' \
+    "$push_handler" \
+    || ! rg -Fq \
     'if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !EXPO_ACCESS_TOKEN)' \
     "$push_handler" \
     || ! rg -Fq \
       'return jsonResponse({ ok: false, error: "misconfigured", requestId }, { status: 503 })' \
       "$push_handler"; then
   echo "push handler does not fail closed when EXPO_ACCESS_TOKEN is absent" >&2
+  exit 1
+fi
+for required_push_runtime_contract in \
+  'classifyExpoPushHttpStatus(response.status)' \
+  'classifyExpoPushTerminalStatus(claim.status)' \
+  'classifyExpoPushTerminalStatus(status)' \
+  'captureStableFailure("expo_authentication")' \
+  'delivery.state === "configuration_error"' \
+  'error: "expo_credentials_rejected_new_notification_id_required"' \
+  'error: "push_delivery_failed_new_notification_id_required"' \
+  'new_notification_id_required: true' \
+  'resolveExpoPushChannel(input.category)'
+do
+  if ! rg -Fq "$required_push_runtime_contract" "$push_handler"; then
+    echo "push credential/channel runtime contract is missing: $required_push_runtime_contract" >&2
+    exit 1
+  fi
+done
+configuration_error_block="$(sed -n \
+  '/if (delivery.state === "configuration_error") {/,/if (delivery.state === "unknown_outcome") {/p' \
+  "$push_handler")"
+for required_configuration_error_contract in \
+  'const status = "failed";' \
+  'notification_id: input.notificationId' \
+  'accepted_count: accepted' \
+  'error_count: failures'
+do
+  if ! printf '%s\n' "$configuration_error_block" \
+      | rg -Fq "$required_configuration_error_contract"; then
+    echo "rejected Expo credential completion is inconsistent: $required_configuration_error_contract" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$configuration_error_block" | rg -Fq 'Retry-After' \
+    || printf '%s\n' "$configuration_error_block" \
+      | rg -Fq 'accepted > 0 ? "partial" : "failed"'; then
+  echo "rejected Expo credentials are incorrectly advertised as retryable" >&2
   exit 1
 fi
 
@@ -241,6 +354,8 @@ fi
 # shellcheck disable=SC2016
 for required_db_tls_contract in \
   'pragas_validate_db_sslrootcert' \
+  'pragas_validate_pinned_db_sslrootcert' \
+  'pragas_install_pinned_db_sslrootcert' \
   'pragas_parse_pooler_url' \
   'pragas_write_private_pgpass' \
   'pragas_assert_pinned_docker_image' \
@@ -256,6 +371,17 @@ do
     exit 1
   fi
 done
+if ! rg -Fq \
+    'readonly REVIEWED_DB_CA_URL="https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt"' \
+    "$deploy_gate" \
+    || ! rg -Fq \
+      'readonly REVIEWED_DB_CA_SHA256="700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"' \
+      "$deploy_gate" \
+    || ! rg -Fq -- '--max-redirs 0' \
+      "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"; then
+  echo "official Supabase database CA is not origin/content pinned" >&2
+  exit 1
+fi
 # Dollar-prefixed strings below are intentional literal source contracts.
 # shellcheck disable=SC2016
 for required_backup_tls_contract in \

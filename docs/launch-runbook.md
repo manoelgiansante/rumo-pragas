@@ -214,6 +214,55 @@ cd supabase/functions
 deno task gate
 ```
 
+The production compatibility gate also requires
+`PRAGAS_PROD_EXPO_ACCESS_TOKEN_SHA256` to contain the reviewed SHA-256 fingerprint of the exact
+Expo access token installed in Supabase. Pass only the fingerprint to the gate; never place or print
+the raw token in shell history, logs or backup evidence. The gate compares that fingerprint with the
+opaque remote secret metadata and stops before remote mutation on absence, mismatch or an empty
+secret fingerprint. A real-device push canary remains mandatory because a fingerprint proves secret
+identity, while Expo `401`/`403` is the authoritative runtime credential rejection.
+
+The compatibility gate downloads the public Supabase production database CA only when
+`PRAGAS_PROD_DB_SSLROOTCERT` is absent. The source is fixed to the official dashboard URL and the
+file must match SHA-256
+`700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7`; redirects, a different
+origin, a different certificate or a writable/symlinked input fail closed. A caller-supplied CA is
+accepted only when it matches the same fingerprint.
+
+`SUPABASE_DB_PASSWORD` is an optional legacy fallback, not a reason to reset the shared jxcn
+password. When it is absent, `--prepare`/`--apply` load the existing Supabase PAT from the
+`Supabase CLI` macOS Keychain entry, request the official short-lived `cli_login_*` role through the
+Management API, and place its password only in the private temporary pgpass file consumed by the
+pinned `pg_dump` container. The role TTL is bounded and rechecked before every dump. The gate
+removes the local response, password and pgpass immediately after the final verified dump (and from
+its exit/signal trap). The server role then expires naturally within its validated 300–3600 second
+TTL. The Management API delete endpoint is intentionally never called because it revokes all CLI
+login roles for the shared project, including roles owned by another tab or operator. Never run this
+gate with shell tracing (`bash -x`) or copy credentials into command arguments.
+
+Production backup evidence must be written either to an ordinary directory protected by active
+FileVault or to a dedicated, mounted encrypted volume. With FileVault off, a normal directory on the
+internal APFS Data volume is rejected even though Apple silicon reports hardware encryption. The
+recommended no-recurring-cost setup is an AES-256 APFS sparse bundle mounted under `/Volumes`:
+
+```bash
+hdiutil create -size 4g -type SPARSEBUNDLE -fs APFS \
+  -volname RumoPragasProdBackup -encryption AES-256 \
+  /path/outside-the-repository/RumoPragasProdBackup.sparsebundle
+hdiutil attach /path/outside-the-repository/RumoPragasProdBackup.sparsebundle
+mkdir -m 700 /Volumes/RumoPragasProdBackup/backups
+export PRAGAS_PROD_COMPAT_BACKUP_DIR=/Volumes/RumoPragasProdBackup/backups
+bash supabase/scripts/deploy-pragas-prod-compat.sh --prepare
+```
+
+`hdiutil` requests the volume passphrase interactively; do not pass it on the command line. Run
+`bash supabase/tests/pragas-prod-compat-credential-storage-unit.sh` to validate the CA, mocked
+Management API, TTL, no-token-in-argv and encrypted-storage rejection contracts without creating a
+real temporary role or contacting production. On macOS,
+`bash supabase/tests/pragas-prod-compat-encrypted-volume-integration.sh` additionally creates a
+synthetic AES-256 APFS sparse bundle, verifies its live `diskutil`/`hdiutil` identity and detaches it;
+the synthetic passphrase never authenticates any user, service or production resource.
+
 Rate-limit idempotency keys are bound to a canonical SHA-256 request hash. Same-key/same-request
 retries count every execution; same-key/different-request reuse is rejected. Diagnosis and chat
 may reclaim an expired lease only before the provider-start marker. Push delivery follows the same

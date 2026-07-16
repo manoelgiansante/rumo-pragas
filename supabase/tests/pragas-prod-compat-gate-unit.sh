@@ -25,6 +25,59 @@ for mutated_cli_version in "2.109.1" "2.98.2 " ""; do
   fi
 done
 
+valid_secret_digest="$(printf 'a%.0s' {1..64})"
+empty_secret_digest="$(printf '%s' '' | shasum -a 256 | awk '{print $1}')"
+cat >"$tmp/secret-metadata-valid.json" <<JSON
+[
+  {
+    "name": "EXPO_ACCESS_TOKEN",
+    "updated_at": "2026-07-16T12:00:00Z",
+    "value": "$valid_secret_digest"
+  }
+]
+JSON
+pragas_validate_required_secret_metadata \
+  "$tmp/secret-metadata-valid.json" "EXPO_ACCESS_TOKEN" "$valid_secret_digest"
+for secret_metadata_mutation in \
+  missing duplicate malformed_digest empty_digest malformed_inventory digest_mismatch
+do
+  case "$secret_metadata_mutation" in
+    missing)
+      printf '%s\n' '[]' >"$tmp/secret-metadata-mutated.json"
+      ;;
+    duplicate)
+      jq '.[1] = .[0]' "$tmp/secret-metadata-valid.json" \
+        >"$tmp/secret-metadata-mutated.json"
+      ;;
+    malformed_digest)
+      jq '.[0].value = "not-a-digest"' "$tmp/secret-metadata-valid.json" \
+        >"$tmp/secret-metadata-mutated.json"
+      ;;
+    empty_digest)
+      jq --arg digest "$empty_secret_digest" '.[0].value = $digest' \
+        "$tmp/secret-metadata-valid.json" >"$tmp/secret-metadata-mutated.json"
+      ;;
+    malformed_inventory)
+      printf '%s\n' '{"name":"EXPO_ACCESS_TOKEN"}' \
+        >"$tmp/secret-metadata-mutated.json"
+      ;;
+    digest_mismatch)
+      cp "$tmp/secret-metadata-valid.json" "$tmp/secret-metadata-mutated.json"
+      ;;
+  esac
+  expected_secret_digest="$valid_secret_digest"
+  if [[ "$secret_metadata_mutation" == "digest_mismatch" ]]; then
+    expected_secret_digest="$(printf 'b%.0s' {1..64})"
+  fi
+  if pragas_validate_required_secret_metadata \
+      "$tmp/secret-metadata-mutated.json" "EXPO_ACCESS_TOKEN" \
+      "$expected_secret_digest" \
+      >/dev/null 2>&1; then
+    echo "mutated secret metadata was accepted: $secret_metadata_mutation" >&2
+    exit 1
+  fi
+done
+
 mkdir -p "$tmp/source-tree/nested" "$tmp/source-snapshot-root"
 printf '%s\n' 'reviewed source' >"$tmp/source-tree/index.ts"
 printf '%s\n' 'reviewed dependency' >"$tmp/source-tree/nested/dependency.ts"
@@ -521,4 +574,4 @@ if pragas_assert_edge_deploy_transition \
 fi
 
 echo "pragas prod-compat gate unit tests: PASS"
-echo "cli_pin_mutations=3 stat_probe=poisoned-format-files tls_root_ca_mutations=7 pooler_mutations=6 pgpass_escaping=raw oci_identity_mutations=4 source_snapshot_mutations=3 timeout_overrun=blocked local_bundle_identity=create+update/8_mutations backup_boundary=pass manifest_mutations=5 multi_schema_snapshot=pass recheck_mutations=3 edge_races=2 edge_transition_mutations=7"
+echo "cli_pin_mutations=3 secret_metadata_mutations=6 stat_probe=poisoned-format-files tls_root_ca_mutations=7 pooler_mutations=6 pgpass_escaping=raw oci_identity_mutations=4 source_snapshot_mutations=3 timeout_overrun=blocked local_bundle_identity=create+update/8_mutations backup_boundary=pass manifest_mutations=5 multi_schema_snapshot=pass recheck_mutations=3 edge_races=2 edge_transition_mutations=7"
