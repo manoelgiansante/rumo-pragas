@@ -163,10 +163,14 @@ run_cli_pipeline_rehearsals() {
   assert_db_sql_equals "CLI clean fixture starts before candidate DDL" "0|0" \
     pragas_cli_clean \
     "SELECT count(*) FILTER (WHERE version IN ('20260715171000','20260715172000')) || '|' || count(*) FILTER (WHERE attrelid = 'public.pragas_notification_queue'::regclass AND attname = 'owner_user_id' AND NOT attisdropped) FROM supabase_migrations.schema_migrations CROSS JOIN pg_attribute"
-  run_cli_migration_up pragas_cli_clean >/dev/null 2>&1
+  if ! cli_clean_output="$(run_cli_migration_up pragas_cli_clean 2>&1)"; then
+    echo "Supabase CLI clean apply failed:" >&2
+    printf '%s\n' "$cli_clean_output" | tail -20 >&2
+    return 1
+  fi
   assert_db_sql_equals "CLI clean DDL contract" "t|t|t" \
     pragas_cli_clean \
-    "SELECT concat_ws('|', EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'public.pragas_notification_queue'::regclass AND attname = 'owner_user_id' AND attnotnull AND NOT attisdropped), position('pragas_link_account_prod_compat_v1' IN pg_get_functiondef('public.pragas_link_account()'::regprocedure)) > 0, position('pragas_prod_compat_export_v1' IN pg_get_functiondef('public.export_pragas_notification_queue_snapshot(uuid,timestamp with time zone,integer)'::regprocedure)) > 0)"
+    "SELECT concat_ws('|', EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'public.pragas_notification_queue'::regclass AND attname = 'owner_user_id' AND attnotnull AND NOT attisdropped), position('pragas_link_account_global_deletion_precedence_v1' IN pg_get_functiondef('public.pragas_link_account()'::regprocedure)) > 0, position('pragas_prod_compat_export_v1' IN pg_get_functiondef('public.export_pragas_notification_queue_snapshot(uuid,timestamp with time zone,integer)'::regprocedure)) > 0)"
   assert_db_sql_equals "CLI clean schema_migrations tracking" "2|2" \
     pragas_cli_clean \
     "SELECT count(*) || '|' || count(*) FILTER (WHERE coalesce(cardinality(statements), 0) > 0 AND name IN ('pragas_prod_compat_runtime','pragas_prod_compat_export')) FROM supabase_migrations.schema_migrations WHERE version IN ('20260715171000','20260715172000')"
@@ -202,7 +206,7 @@ SQL
     "SELECT count(*) || '|' || count(*) FILTER (WHERE coalesce(cardinality(statements), 0) > 0 AND name IN ('pragas_prod_compat_runtime','pragas_prod_compat_export')) FROM supabase_migrations.schema_migrations WHERE version IN ('20260715171000','20260715172000')"
   assert_db_sql_equals "CLI recovery replay completes DDL" "t|t" \
     pragas_cli_recovery \
-    "SELECT concat_ws('|', position('pragas_link_account_prod_compat_v1' IN pg_get_functiondef('public.pragas_link_account()'::regprocedure)) > 0, position('pragas_prod_compat_export_v1' IN pg_get_functiondef('public.export_pragas_notification_queue_snapshot(uuid,timestamp with time zone,integer)'::regprocedure)) > 0)"
+    "SELECT concat_ws('|', position('pragas_link_account_global_deletion_precedence_v1' IN pg_get_functiondef('public.pragas_link_account()'::regprocedure)) > 0, position('pragas_prod_compat_export_v1' IN pg_get_functiondef('public.export_pragas_notification_queue_snapshot(uuid,timestamp with time zone,integer)'::regprocedure)) > 0)"
   run_cli_migration_up pragas_cli_recovery >/dev/null 2>&1
   assert_db_sql_equals "CLI recovery no-op keeps one history row" "1|1" \
     pragas_cli_recovery \
@@ -1047,6 +1051,54 @@ BEGIN
   ) = 0 THEN
     RAISE EXCEPTION '171000 late failure replaced the committed hotfix';
   END IF;
+END
+$$;
+SQL
+
+# PostgreSQL's stock image does not ship Supabase Vault, but candidate
+# 20260715173000 fail-closes without it. Model the vault API in the base
+# fixture (same test-only plaintext stub as the global-deletion integration
+# test) so the template copies below can rehearse the full candidate chain;
+# the production preflight still requires the real encrypted extension.
+docker exec -i "$container" psql -q -v ON_ERROR_STOP=1 -U postgres <<'SQL'
+CREATE SCHEMA IF NOT EXISTS extensions;
+DO $bootstrap_pgcrypto$
+BEGIN
+  IF to_regprocedure('extensions.gen_random_bytes(integer)') IS NOT NULL THEN
+    RETURN;
+  END IF;
+  IF to_regprocedure('public.gen_random_bytes(integer)') IS NOT NULL THEN
+    -- pgcrypto already lives in public on this fixture; expose the
+    -- Supabase-style extensions-schema name the candidate expects.
+    EXECUTE 'CREATE FUNCTION extensions.gen_random_bytes(integer) '
+      || 'RETURNS bytea LANGUAGE sql VOLATILE '
+      || 'AS ''SELECT public.gen_random_bytes($1)''';
+  ELSE
+    CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+  END IF;
+END
+$bootstrap_pgcrypto$;
+CREATE SCHEMA IF NOT EXISTS vault;
+CREATE TABLE IF NOT EXISTS vault.secrets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  secret text NOT NULL,
+  name text,
+  description text
+);
+CREATE OR REPLACE VIEW vault.decrypted_secrets AS
+SELECT id, secret AS decrypted_secret FROM vault.secrets;
+CREATE OR REPLACE FUNCTION vault.create_secret(
+  new_secret text,
+  new_name text DEFAULT NULL,
+  new_description text DEFAULT '',
+  new_key_id uuid DEFAULT NULL
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_id uuid;
+BEGIN
+  INSERT INTO vault.secrets (secret, name, description)
+  VALUES (new_secret, new_name, new_description)
+  RETURNING id INTO v_id;
+  RETURN v_id;
 END
 $$;
 SQL
