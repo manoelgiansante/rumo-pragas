@@ -2371,7 +2371,7 @@ printf '%s\n' \
   "physical_backup_pitr=$physical_backup_pitr" \
   "sensitive_workspace=encrypted-private-leaf" \
   "restored_manifest_sha256=$restored_manifest_hash" \
-  "extensions=10" \
+  "extensions=11" \
   "edge_restore_version=$EXISTING_EDGE_VERSION" \
   "edge_restore_verify_jwt=$EXISTING_EDGE_VERIFY_JWT" \
   "edge_restore_ezbr=$EXISTING_EDGE_EZBR" \
