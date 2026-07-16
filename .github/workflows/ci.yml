@@ -3,8 +3,6 @@ name: CI
 on:
   push:
     branches: [main, develop]
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -60,9 +58,6 @@ jobs:
       - name: Data Safety contract tests
         run: npm run test:data-safety
 
-      - name: Data Safety app and canonical web declaration
-        run: node scripts/validate-data-safety.mjs --landing-policy-url https://pragas.agrorumo.com/privacidade
-
       - name: Store screenshot QA harness
         run: npm run test:store-screenshot-qa-server
 
@@ -86,9 +81,6 @@ jobs:
 
       - name: Expo prebuild config sanity
         run: npx expo config --type prebuild --json > /dev/null
-
-      - name: Store submission assets (fail closed)
-        run: npm run validate:store-assets
 
       - name: Lint
         run: npm run lint
@@ -118,6 +110,14 @@ jobs:
           path: expo-app/dist/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Store submission assets (fail closed)
+        id: store_assets
+        run: npm run validate:store-assets
+
+      - name: Data Safety app and canonical web declaration
+        if: ${{ success() || steps.store_assets.outcome == 'failure' }}
+        run: node scripts/validate-data-safety.mjs --landing-policy-url https://pragas.agrorumo.com/privacidade
 
   supabase-quality:
     name: Supabase Edge quality gate

@@ -476,6 +476,68 @@ test('store release regression suite is wired into package scripts and both CI p
   }
 });
 
+test('CI preserves local evidence before fail-closed external readiness gates', () => {
+  const localStepNames = [
+    'Store screenshot QA harness',
+    'Release bundle environment gate',
+    'Lint',
+    'Typecheck',
+    'Unit and integration tests',
+    'Export web production bundle',
+    'Upload web export',
+  ];
+
+  for (const workflow of ['ci.yml', 'pr-check.yml']) {
+    const source = readFileSync(
+      join(sourceRepositoryRoot, '.github', 'workflows', workflow),
+      'utf8',
+    );
+    const storeAssetsIndex = source.indexOf('- name: Store submission assets (fail closed)');
+    const publicPolicyIndex = source.indexOf(
+      '- name: Data Safety app and canonical web declaration',
+    );
+
+    assert.notEqual(storeAssetsIndex, -1);
+    assert.notEqual(publicPolicyIndex, -1);
+    assert.ok(storeAssetsIndex < publicPolicyIndex);
+    assert.equal(source.match(/- name: Store submission assets \(fail closed\)/gu)?.length, 1);
+    assert.equal(
+      source.match(/- name: Data Safety app and canonical web declaration/gu)?.length,
+      1,
+    );
+    assert.match(source.slice(storeAssetsIndex, publicPolicyIndex), /id: store_assets/u);
+    assert.match(
+      source.slice(publicPolicyIndex),
+      /if: \$\{\{ success\(\) \|\| steps\.store_assets\.outcome == 'failure' \}\}/u,
+    );
+
+    for (const stepName of localStepNames) {
+      const localStepIndex = source.indexOf(`- name: ${stepName}`);
+      assert.notEqual(localStepIndex, -1, `${workflow}: missing ${stepName}`);
+      assert.ok(
+        localStepIndex < storeAssetsIndex,
+        `${workflow}: ${stepName} must precede external readiness gates`,
+      );
+    }
+  }
+});
+
+test('PR checks own pull-request coverage without duplicate CI runs', () => {
+  const ciWorkflow = readFileSync(
+    join(sourceRepositoryRoot, '.github', 'workflows', 'ci.yml'),
+    'utf8',
+  );
+  const prWorkflow = readFileSync(
+    join(sourceRepositoryRoot, '.github', 'workflows', 'pr-check.yml'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(ciWorkflow, /^  pull_request:/mu);
+  assert.match(prWorkflow, /^  pull_request:/mu);
+  assert.match(prWorkflow, /- 'store-assets\/\*\*'/u);
+  assert.match(prWorkflow, /- 'docs\/launch-runbook\.md'/u);
+});
+
 test('valid release-candidate assets and provenance pass for both stores', (t) => {
   const root = createFixture(t);
   populateValidAssets(root);

@@ -16,6 +16,27 @@ do
   }
 done
 
+stat_helper="$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"
+# Dollar-prefixed strings below are intentional literal source contracts.
+# shellcheck disable=SC2016
+for required_stat_contract in \
+  'value="$(stat -f '\''%u'\''' \
+  'value="$(stat -c '\''%u'\'' --' \
+  '[[ "$value" =~ ^[0-9]+$ ]]' \
+  'value="$(stat -f '\''%Lp'\''' \
+  'value="$(stat -c '\''%a'\'' --' \
+  '[[ "$value" =~ ^[0-7]{3,4}$ ]]'
+do
+  if ! rg -Fq "$required_stat_contract" "$stat_helper"; then
+    echo "portable stat validation is missing: $required_stat_contract" >&2
+    exit 1
+  fi
+done
+if rg -q 'stat -f .*\|\|[[:space:]]*stat -c' "$stat_helper"; then
+  echo "stat portability can leak stdout from an incompatible formatter" >&2
+  exit 1
+fi
+
 # The final race-window query must be one SQL statement with one CSV row and
 # four stable, named columns. Multiple SELECT statements previously produced a
 # fragile repeated-header stream in some CLI versions.
@@ -341,16 +362,21 @@ do
   fi
 done
 backend_integration_wrapper="$repo_root/supabase/tests/pragas-backend-security-integration.sh"
+stat_linux_integration_line="$(rg -n -m 1 \
+  'pragas-prod-compat-stat-linux-integration[.]sh' \
+  "$backend_integration_wrapper" | cut -d: -f1)"
 backup_tls_integration_line="$(rg -n -m 1 \
   'pragas-prod-compat-backup-tls-integration[.]sh' \
   "$backend_integration_wrapper" | cut -d: -f1)"
 prod_compat_integration_line="$(rg -n -m 1 \
   'pragas-prod-compat-integration[.]sh' \
   "$backend_integration_wrapper" | cut -d: -f1)"
-if [[ -z "$backup_tls_integration_line" \
+if [[ -z "$stat_linux_integration_line" \
+      || -z "$backup_tls_integration_line" \
       || -z "$prod_compat_integration_line" \
+      || "$stat_linux_integration_line" -ge "$backup_tls_integration_line" \
       || "$backup_tls_integration_line" -ge "$prod_compat_integration_line" ]]; then
-  echo "pinned backup TLS integration is absent from the CI wrapper" >&2
+  echo "stat/TLS integrations are absent from the CI wrapper" >&2
   exit 1
 fi
 cli_pin_line="$(rg -n -m 1 'pragas_assert_supabase_cli_version' \
@@ -692,4 +718,4 @@ while IFS= read -r rpc; do
 done <<< "$actual_rpcs"
 
 echo "pragas prod-compat static gate: PASS"
-echo "migrations=3 edge_functions=12 rpc_contracts=28 cli=2.98.2 cli_tracking=recovery edge_bundle=local-ezbr shared_indexes=concurrent clone_rehearsal=exact edge_rollback=manual export_preflight=transactional superseded_143000=inert backup_restore=pinned-verify-full+single-mvcc+fk ci_static=required"
+echo "migrations=3 edge_functions=12 rpc_contracts=28 cli=2.98.2 cli_tracking=recovery edge_bundle=local-ezbr shared_indexes=concurrent clone_rehearsal=exact edge_rollback=manual export_preflight=transactional superseded_143000=inert backup_restore=pinned-verify-full+single-mvcc+fk stat_portability=macos+linux-uid1001 ci_static=required"

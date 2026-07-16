@@ -137,6 +137,16 @@ openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes \
 chmod 600 "$valid_root_ca"
 [[ "$(pragas_validate_db_sslrootcert "$valid_root_ca")" \
     == "$valid_root_ca" ]]
+mkdir "$tmp/stat-probe"
+printf '%s\n' poison >"$tmp/stat-probe/%u"
+printf '%s\n' poison >"$tmp/stat-probe/%Lp"
+if [[ "$(cd "$tmp/stat-probe" && pragas_stat_uid "$valid_root_ca")" \
+      != "$(id -u)" ]] \
+    || [[ "$(cd "$tmp/stat-probe" && pragas_stat_mode "$valid_root_ca")" \
+      != "600" ]]; then
+  echo "stat portability probe leaked incompatible formatter output" >&2
+  exit 1
+fi
 for rejected_root_ca in "" "$tmp/missing-root-ca.pem" "relative-ca.pem"; do
   if pragas_validate_db_sslrootcert "$rejected_root_ca" \
       >/dev/null 2>&1; then
@@ -511,4 +521,4 @@ if pragas_assert_edge_deploy_transition \
 fi
 
 echo "pragas prod-compat gate unit tests: PASS"
-echo "cli_pin_mutations=3 tls_root_ca_mutations=7 pooler_mutations=6 pgpass_escaping=raw oci_identity_mutations=4 source_snapshot_mutations=3 timeout_overrun=blocked local_bundle_identity=create+update/8_mutations backup_boundary=pass manifest_mutations=5 multi_schema_snapshot=pass recheck_mutations=3 edge_races=2 edge_transition_mutations=7"
+echo "cli_pin_mutations=3 stat_probe=poisoned-format-files tls_root_ca_mutations=7 pooler_mutations=6 pgpass_escaping=raw oci_identity_mutations=4 source_snapshot_mutations=3 timeout_overrun=blocked local_bundle_identity=create+update/8_mutations backup_boundary=pass manifest_mutations=5 multi_schema_snapshot=pass recheck_mutations=3 edge_races=2 edge_transition_mutations=7"

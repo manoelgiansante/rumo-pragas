@@ -4,13 +4,39 @@
 # gate. The caller owns shell options and cleanup.
 
 pragas_stat_uid() {
-  local path="$1"
-  stat -f '%u' "$path" 2>/dev/null || stat -c '%u' "$path"
+  local target="${1:-}"
+  local value
+
+  [[ -n "$target" ]] || return 1
+  if value="$(stat -f '%u' "$target" 2>/dev/null)" \
+      && [[ "$value" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+  if value="$(stat -c '%u' -- "$target" 2>/dev/null)" \
+      && [[ "$value" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+  return 1
 }
 
 pragas_stat_mode() {
-  local path="$1"
-  stat -f '%Lp' "$path" 2>/dev/null || stat -c '%a' "$path"
+  local target="${1:-}"
+  local value
+
+  [[ -n "$target" ]] || return 1
+  if value="$(stat -f '%Lp' "$target" 2>/dev/null)" \
+      && [[ "$value" =~ ^[0-7]{3,4}$ ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+  if value="$(stat -c '%a' -- "$target" 2>/dev/null)" \
+      && [[ "$value" =~ ^[0-7]{3,4}$ ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+  return 1
 }
 
 pragas_validate_db_sslrootcert() {
