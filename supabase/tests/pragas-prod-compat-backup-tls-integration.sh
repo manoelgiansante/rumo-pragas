@@ -240,6 +240,12 @@ if ! rg -Fq 'COPY "public"."pragas_backup_tls_probe"' \
   exit 1
 fi
 
+# A Supabase temporary login role currently inherits a two-minute statement
+# timeout, while the single-MVCC multischema data dump can legitimately take
+# longer. Force an unusably short fixture default and prove that the reviewed
+# container applies its own bounded backup timeout.
+docker exec "$server" psql -qAt -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c "ALTER ROLE postgres SET statement_timeout = '1ms'" >/dev/null
 pragas_run_pinned_pg_backup \
   "$backup_image" "$backup_image_digest" pg_dumpall "$root_ca" "$pgpass_file" \
   "$server" 5432 postgres postgres "$network" \
@@ -251,4 +257,4 @@ if ! rg -Fq 'CREATE ROLE postgres;' "$tmp/roles.sql"; then
 fi
 
 echo "pragas pinned backup TLS integration: PASS"
-echo "pg_dump=17.6 pg_dumpall=17.6 ca=correct+wrong pg_stat_ssl=observed password_transport=pgpass"
+echo "pg_dump=17.6 pg_dumpall=17.6 ca=correct+wrong pg_stat_ssl=observed password_transport=pgpass statement_timeout=15min"

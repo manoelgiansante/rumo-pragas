@@ -410,7 +410,8 @@ for required_backup_tls_contract in \
   '--mount "type=bind,source=$pgpass_file,target=/run/pragas/pgpass,readonly"' \
   '--env "PGSSLMODE=verify-full"' \
   '--env "PGSSLROOTCERT=/run/pragas/root-ca.pem"' \
-  '--env "PGPASSFILE=/run/pragas/pgpass"'
+  '--env "PGPASSFILE=/run/pragas/pgpass"' \
+  '--env "PGOPTIONS=-c statement_timeout=15min"'
 do
   if ! rg -Fq -- "$required_backup_tls_contract" \
       "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"; then

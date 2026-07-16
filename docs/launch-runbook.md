@@ -242,6 +242,11 @@ intentionally never called because it revokes all CLI login roles for the shared
 roles owned by another tab or operator. Never run this gate with shell tracing (`bash -x`) or copy
 credentials into command arguments.
 
+The temporary role currently inherits a two-minute PostgreSQL statement timeout. The pinned backup
+container overrides it only for the dump session with a reviewed 15-minute ceiling. This preserves
+one MVCC snapshot across `auth`, `storage` and `public` without allowing an unbounded query; a dump
+that reaches the ceiling fails before any production mutation.
+
 Production backup evidence must be written either to an ordinary directory protected by active
 FileVault or to a dedicated, mounted encrypted volume. With FileVault off, a normal directory on the
 internal APFS Data volume is rejected even though Apple silicon reports hardware encryption. The

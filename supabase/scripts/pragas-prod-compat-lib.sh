@@ -564,6 +564,7 @@ pragas_run_pinned_pg_backup() {
     --env "PGSSLROOTCERT=/run/pragas/root-ca.pem" \
     --env "PGPASSFILE=/run/pragas/pgpass" \
     --env "PGAPPNAME=rumo-pragas-prod-compat-backup" \
+    --env "PGOPTIONS=-c statement_timeout=15min" \
     --entrypoint "$tool" "$image_ref" "$@"
 }
 
