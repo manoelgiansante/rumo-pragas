@@ -124,13 +124,26 @@ Deno.test("export uses snapshot-bounded keyset pagination and never labels delet
   );
 });
 
-Deno.test("notification queue export delegates its whole bounded snapshot to one locked SQL RPC", async () => {
+Deno.test("notification queue export delegates one immutable owner-scoped snapshot to SQL", async () => {
   const source = await Deno.readTextFile(
     new URL("../pragas-export-user-data/index.ts", import.meta.url),
+  );
+  const runtimeSql = await Deno.readTextFile(
+    new URL("../../migrations/20260715171000_pragas_prod_compat_runtime.sql", import.meta.url),
+  );
+  const exportSql = await Deno.readTextFile(
+    new URL("../../migrations/20260715172000_pragas_prod_compat_export.sql", import.meta.url),
   );
   assertStringIncludes(source, 'source: "notification_queue_snapshot_rpc"');
   assertStringIncludes(source, 'admin.rpc("export_pragas_notification_queue_snapshot"');
   assertStringIncludes(source, "p_limit: requested + 1");
   assertFalse(source.includes('.eq("is_active", true)'));
   assertFalse(source.includes('.eq("notifications_enabled", true)'));
+  assertStringIncludes(runtimeSql, "pragas_notification_queue_legacy_owner_ambiguous");
+  assertStringIncludes(runtimeSql, "pragas_notification_queue_owner_guard");
+  assertStringIncludes(runtimeSql, "WHERE owner_user_id = p_user_id");
+  assertStringIncludes(exportSql, "queue_row.owner_user_id = $1");
+  assertStringIncludes(exportSql, "column_info.column_name = 'owner_user_id'");
+  assertFalse(exportSql.includes("current_owner.is_active"));
+  assertFalse(exportSql.includes("v_owned_tokens"));
 });

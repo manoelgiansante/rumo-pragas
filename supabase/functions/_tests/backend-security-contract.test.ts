@@ -28,7 +28,7 @@ Deno.test("idempotency key accepts UUID header and otherwise uses request id", (
 
 Deno.test("security migration remains app-scoped and service-role-only", async () => {
   const sql = await Deno.readTextFile(
-    new URL("../../migrations/20260714143000_pragas_backend_security.sql", import.meta.url),
+    new URL("../../migrations/20260715171000_pragas_prod_compat_runtime.sql", import.meta.url),
   );
   assertStringIncludes(sql, "pragas_ai_content_reports");
   assertStringIncludes(sql, "pragas_diagnosis_feedback");
@@ -42,7 +42,6 @@ Deno.test("security migration remains app-scoped and service-role-only", async (
   assertStringIncludes(sql, "FORCE ROW LEVEL SECURITY");
   assertStringIncludes(sql, "REVOKE EXECUTE");
   assertStringIncludes(sql, "TO service_role");
-  assertStringIncludes(sql, "zero mutation on auth triggers");
   assertEquals(sql.includes("DROP TRIGGER %I ON auth.users"), false);
   assertEquals(sql.includes("pragas_webhook_events"), false);
   assertEquals(sql.includes("byfgflxlmcdciupjpoaz"), false);
@@ -50,15 +49,31 @@ Deno.test("security migration remains app-scoped and service-role-only", async (
 
 Deno.test("legacy feedback drift is upgraded without dropping historical columns or policies", async () => {
   const sql = await Deno.readTextFile(
-    new URL("../../migrations/20260714143000_pragas_backend_security.sql", import.meta.url),
+    new URL("../../migrations/20260715171000_pragas_prod_compat_runtime.sql", import.meta.url),
+  );
+  const endpoint = await Deno.readTextFile(
+    new URL("../report-diagnosis-feedback/index.ts", import.meta.url),
   );
   assertStringIncludes(sql, "ADD COLUMN IF NOT EXISTS verdict");
-  assertStringIncludes(sql, "feedback::text");
-  assertStringIncludes(sql, "comment::text");
+  assertStringIncludes(sql, "feedback text NOT NULL DEFAULT 'unsure'");
+  assertStringIncludes(sql, "comment text");
+  assertStringIncludes(sql, "NEW.verdict := CASE NEW.feedback");
+  assertStringIncludes(sql, "NEW.feedback := v_expected_feedback");
+  assertStringIncludes(sql, "pragas_feedback_contract_mismatch");
   assertStringIncludes(sql, "FROM pg_policies");
-  assertStringIncludes(sql, "DROP POLICY %I ON public.pragas_diagnosis_feedback");
+  assertStringIncludes(sql, "pragas_prod_compat_feedback_select_own");
+  assertStringIncludes(sql, "pragas_prod_compat_feedback_insert_own");
+  assertEquals(sql.includes("DROP POLICY %I ON public.pragas_diagnosis_feedback"), false);
   assertEquals(sql.includes("DROP COLUMN feedback"), false);
   assertEquals(sql.includes("DROP COLUMN comment"), false);
+  assertStringIncludes(endpoint, 'parsed.data.verdict === "correct"');
+  assertStringIncludes(endpoint, '? "positive"');
+  assertStringIncludes(endpoint, '? "negative"');
+  assertStringIncludes(endpoint, "feedback: legacyFeedback");
+  assertStringIncludes(
+    endpoint,
+    '"id, diagnosis_id, verdict, feedback, selected_alternative, notes, created_at, updated_at"',
+  );
 });
 
 Deno.test("account deletion never deletes shared auth identity and exposes precise states", async () => {

@@ -10,6 +10,7 @@ import { type ExpoTicket, parseExpoTickets } from "../_shared/expo-push-ticket.t
 import { fetchWithTimeout } from "../_shared/fetch-timeout.ts";
 import { authenticateServiceBearer } from "../_shared/service-auth.ts";
 import { captureException, withSentry } from "../_shared/pragas-sentry.ts";
+import { resolveEligibleTargetUserIds } from "./eligibility.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -179,7 +180,7 @@ async function resolveEligibleUsers(
       .select("user_id")
       .in("user_id", targetUserIds)
       .eq("active", true),
-    admin.from("pragas_profiles").select("id,user_id").in("user_id", targetUserIds),
+    admin.from("pragas_profiles").select("user_id").in("user_id", targetUserIds),
     admin
       .from("subscriptions")
       .select("user_id")
@@ -192,23 +193,12 @@ async function resolveEligibleUsers(
       .in("user_id", targetUserIds),
   ]);
   if (links.error || profiles.error || subscriptions.error || deletions.error) return null;
-  const linkIds = new Set((links.data ?? []).map((row) => String(row.user_id)));
-  const profileIds = new Set(
-    (profiles.data ?? [])
-      .filter((row) => String(row.id) === String(row.user_id))
-      .map((row) => String(row.user_id)),
-  );
-  const subscriptionIds = new Set((subscriptions.data ?? []).map((row) => String(row.user_id)));
-  const blockedIds = new Set(
-    (deletions.data ?? [])
-      .filter((row) => row.status !== "reactivated")
-      .map((row) => String(row.user_id)),
-  );
-  return new Set(
-    targetUserIds.filter((id) =>
-      linkIds.has(id) && profileIds.has(id) && subscriptionIds.has(id) && !blockedIds.has(id)
-    ),
-  );
+  return resolveEligibleTargetUserIds(targetUserIds, {
+    links: links.data ?? [],
+    profiles: profiles.data ?? [],
+    subscriptions: subscriptions.data ?? [],
+    deletions: deletions.data ?? [],
+  });
 }
 
 async function sendExpoBatch(

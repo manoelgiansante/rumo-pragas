@@ -113,16 +113,24 @@ Deno.serve(withSentry("report-diagnosis-feedback", async (req, { requestId }) =>
     return jsonResponse({ error: "diagnosis_not_found" }, { status: 404, headers, requestId });
   }
 
+  const legacyFeedback = parsed.data.verdict === "correct"
+    ? "positive"
+    : parsed.data.verdict === "incorrect"
+    ? "negative"
+    : "unsure";
   const { data, error } = await admin
     .from("pragas_diagnosis_feedback")
     .upsert({
       user_id: user.id,
       diagnosis_id: parsed.data.diagnosisId,
       verdict: parsed.data.verdict,
+      feedback: legacyFeedback,
       selected_alternative: parsed.data.selectedAlternative || null,
       notes: parsed.data.notes || null,
     }, { onConflict: "user_id,diagnosis_id" })
-    .select("id, diagnosis_id, verdict, selected_alternative, notes, created_at, updated_at")
+    .select(
+      "id, diagnosis_id, verdict, feedback, selected_alternative, notes, created_at, updated_at",
+    )
     .single();
   if (error) {
     await captureException(new Error("pragas_feedback_upsert_failed"), {
