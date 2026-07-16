@@ -132,6 +132,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install ripgrep for fail-closed source gates
+        working-directory: .
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends ripgrep
+          fi
+          rg --version
+
       - name: Node 22.22.3
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -153,6 +162,20 @@ jobs:
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.7.12
+
+      - name: Reject merge-conflict markers
+        working-directory: .
+        run: |
+          if rg --line-number '^(<<<<<<<|=======|>>>>>>>)' supabase; then
+            echo 'Merge conflict markers found in Supabase sources.' >&2
+            exit 1
+          else
+            rg_status=$?
+            if [[ "$rg_status" -ne 1 ]]; then
+              echo "Supabase conflict-marker scan failed with status $rg_status." >&2
+              exit 1
+            fi
+          fi
 
       - name: Format, lint, typecheck and test Edge Functions
         run: deno task gate

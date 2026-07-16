@@ -4,6 +4,11 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 deploy_gate="$repo_root/supabase/scripts/deploy-pragas-prod-compat.sh"
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "ripgrep (rg) is required for the production compatibility source gate" >&2
+  exit 1
+fi
+
 bash "$repo_root/supabase/tests/pragas-prod-compat-gate-unit.sh"
 
 for gate_dependency in \
@@ -330,11 +335,29 @@ do
         <<<"$workflow_job" \
       || ! rg -Fq 'node-version: 22.22.3' <<<"$workflow_job" \
       || ! rg -Fq 'version: 2.98.2' <<<"$workflow_job" \
+      || ! rg -Fq \
+        'sudo apt-get install --yes --no-install-recommends ripgrep' \
+        <<<"$workflow_job" \
+      || ! rg -Fq 'rg --version' <<<"$workflow_job" \
+      || ! rg -Fq \
+        "if rg --line-number '^(<<<<<<<|=======|>>>>>>>)' supabase; then" \
+        <<<"$workflow_job" \
+      || ! rg -Fq 'rg_status=$?' <<<"$workflow_job" \
+      || ! rg -Fq 'if [[ "$rg_status" -ne 1 ]]; then' <<<"$workflow_job" \
+      || ! rg -Fq \
+        'Supabase conflict-marker scan failed with status $rg_status.' \
+        <<<"$workflow_job" \
       || ! rg -Fq 'if [[ "$(supabase --version)" != "2.98.2" ]]; then' \
         <<<"$workflow_job"; then
-    echo "CI does not install and verify the reviewed Supabase CLI: $workflow" >&2
+    echo "CI does not install and verify its reviewed source-gate tools: $workflow" >&2
     exit 1
   fi
+  ripgrep_setup_line="$(rg -n -m 1 \
+    'sudo apt-get install --yes --no-install-recommends ripgrep' \
+    <<<"$workflow_job" | cut -d: -f1)"
+  conflict_scan_line="$(rg -n -m 1 \
+    'if rg --line-number.*supabase; then' \
+    <<<"$workflow_job" | cut -d: -f1)"
   node_setup_line="$(rg -n -m 1 \
     'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38' \
     <<<"$workflow_job" | cut -d: -f1)"
@@ -350,9 +373,13 @@ do
   integration_line="$(rg -n -m 1 \
     'bash supabase/tests/pragas-backend-security-integration[.]sh' \
     <<<"$workflow_job" | cut -d: -f1)"
-  if [[ -z "$node_setup_line" || -z "$cli_setup_line" \
+  if [[ -z "$ripgrep_setup_line" || -z "$conflict_scan_line" \
+        || -z "$node_setup_line" \
+        || -z "$cli_setup_line" \
         || -z "$cli_assert_line" || -z "$prod_compat_static_line" \
         || -z "$integration_line" \
+        || "$ripgrep_setup_line" -ge "$conflict_scan_line" \
+        || "$conflict_scan_line" -ge "$prod_compat_static_line" \
         || "$node_setup_line" -ge "$cli_setup_line" \
         || "$cli_setup_line" -ge "$cli_assert_line" \
         || "$cli_assert_line" -ge "$prod_compat_static_line" \
