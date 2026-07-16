@@ -15,6 +15,14 @@ const notificationsSource = fs.readFileSync(
   'utf8',
 );
 const dynamicConfigSource = fs.readFileSync(path.join(appRoot, 'app.config.js'), 'utf8');
+const nativePolicySource = fs.readFileSync(
+  path.join(appRoot, 'scripts/native-signing-policy.mjs'),
+  'utf8',
+);
+const nativeRunnerSource = fs.readFileSync(
+  path.join(appRoot, 'scripts/native-local-production-build.mjs'),
+  'utf8',
+);
 const sentryXcodePluginSource = fs.readFileSync(
   path.join(appRoot, 'plugins/withQuotedSentryXcodeScripts.js'),
   'utf8',
@@ -46,27 +54,34 @@ const readPngHeader = (relativePath) => {
 requireCondition(app.version === pkg.version, 'app.json e package.json devem ter a mesma versão');
 requireCondition(/^\d+\.\d+\.\d+$/.test(app.version), 'expo.version deve ser SemVer estável');
 requireCondition(eas.cli?.version === '>= 20.0.0', 'EAS CLI mínimo deve ser >= 20.0.0');
-requireCondition(eas.cli?.appVersionSource === 'remote', 'appVersionSource deve permanecer remote');
-requireCondition(eas.build?.production?.autoIncrement === true, 'produção deve usar autoIncrement');
+requireCondition(eas.cli?.appVersionSource === 'local', 'appVersionSource deve permanecer local');
+requireCondition(
+  eas.build?.production?.autoIncrement === undefined,
+  'produção nativa não pode usar autoIncrement remoto',
+);
 requireCondition(
   eas.build?.production?.node === '22.22.3' && pkg.engines?.node === '22.22.3',
   'produção e package.json devem fixar Node 22.22.3',
 );
 requireCondition(
-  eas.build?.production?.ios?.image === 'macos-sequoia-15.6-xcode-26.2',
-  'produção iOS deve fixar a imagem SDK 55 com macOS 15.6 e Xcode 26.2',
+  eas.build?.production?.ios?.image === undefined &&
+    eas.build?.production?.android?.image === undefined,
+  'produção local não pode declarar imagens EAS cloud',
 );
 requireCondition(
-  eas.build?.production?.android?.image === 'ubuntu-24.04-jdk-17-ndk-r27b-sdk-55',
-  'produção Android deve fixar a imagem SDK 55 com Ubuntu 24.04, JDK 17 e NDK r27b',
+  nativePolicySource.includes("version: '21.0.11'") &&
+    nativePolicySource.includes("version: '26.2'") &&
+    nativePolicySource.includes("version: '1.18.3'") &&
+    nativeRunnerSource.includes('verifyToolchain'),
+  'runner local deve fixar e validar JDK 21.0.11, Xcode 26.2 e Bundletool 1.18.3',
 );
 requireCondition(
   app.ios?.buildNumber === undefined,
-  'buildNumber local conflita com versionamento remoto',
+  'buildNumber estático conflita com o valor derivado do commit',
 );
 requireCondition(
   app.android?.versionCode === undefined,
-  'versionCode local conflita com versionamento remoto',
+  'versionCode estático conflita com o valor derivado do commit',
 );
 requireCondition(
   app.ios?.bundleIdentifier === 'com.agrorumo.rumopragas' &&
@@ -263,7 +278,7 @@ requireCondition(
 requireCondition(
   dynamicConfigSource.includes('process.env.GOOGLE_SERVICES_JSON') &&
     dynamicConfigSource.includes('androidConfigured: Boolean(googleServicesFile)'),
-  'app.config.js deve injetar o file secret FCM e publicar apenas a capability booleana',
+  'app.config.js deve injetar o snapshot local FCM e publicar apenas a capability booleana',
 );
 requireCondition(
   notificationsSource.includes('isRemotePushBuildConfigured()') &&

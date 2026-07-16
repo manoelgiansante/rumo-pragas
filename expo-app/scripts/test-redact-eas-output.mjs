@@ -146,8 +146,12 @@ test('redacts named secrets, authorization values, JWTs, and credentialed URLs',
   assert.match(redacted, /\[REDACTED:URL_CREDENTIAL\]/);
 });
 
-test('keeps every mobile build on a pinned output-suppressed local-only path', () => {
+test('keeps production mobile builds on the native local output-suppressed path', () => {
   const wrapper = readFileSync(new URL('./eas-local-production-build.sh', import.meta.url), 'utf8');
+  const nativeBuilder = readFileSync(
+    new URL('./native-local-production-build.mjs', import.meta.url),
+    'utf8',
+  );
   const launch = readFileSync(new URL('./launch.sh', import.meta.url), 'utf8');
   const submit = readFileSync(new URL('./submit.sh', import.meta.url), 'utf8');
   const uploadOta = readFileSync(new URL('./upload-sentry-ota.sh', import.meta.url), 'utf8');
@@ -158,28 +162,50 @@ test('keeps every mobile build on a pinned output-suppressed local-only path', (
   const envExample = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
 
   assert.match(wrapper, /set -Eeuo pipefail/);
-  assert.match(wrapper, /EAS_EXECUTOR="\$APP_ROOT\/scripts\/eas-pinned\.sh"/);
-  assert.match(easExecutor, /NODE_VERSION="22\.22\.3"/);
+  assert.match(wrapper, /\/usr\/bin\/env -i/);
+  assert.match(wrapper, /git archive --format=tar "\$CANDIDATE_COMMIT"/);
+  assert.match(wrapper, /CURRENT_WRAPPER_BLOB/);
+  assert.match(wrapper, /FNM_BIN="\/opt\/homebrew\/Cellar\/fnm\/1\.39\.0\/bin\/fnm"/);
+  assert.match(easExecutor, /NODE_BIN=.*v22\.22\.3/);
   assert.match(easExecutor, /EAS_CLI_PACKAGE="eas-cli@21\.0\.0"/);
-  assert.match(easExecutor, /build em nuvem é proibido; use --local/);
-  assert.match(easExecutor, /workflow\|workflow:\*/);
-  assert.match(easExecutor, /--auto-submit\*/);
-  assert.match(wrapper, /CI=1 DISABLE_EAS_ANALYTICS=1 NO_COLOR=1 FORCE_COLOR=0/);
+  assert.match(easExecutor, /build\|build:\*\|workflow\|workflow:\*\|cloud\|cloud:\*/);
+  assert.match(easExecutor, /comando EAS não pertence à allowlist segura/);
+  assert.match(wrapper, /CI=1 \\\n/);
+  assert.match(wrapper, /DISABLE_EAS_ANALYTICS=1 \\\n/);
   assert.match(wrapper, /<\/dev\/null >\/dev\/null 2>&1/);
   assert.doesNotMatch(wrapper, /node "\$REDACTOR"|PIPESTATUS/);
   assert.match(wrapper, /ARTIFACTS_DIR="\$APP_ROOT\/\.artifacts"/);
-  assert.match(wrapper, /RUMO_EAS_CLI_MODE=pinned \.\/scripts\/validate-prod-env\.sh production/);
+  assert.match(wrapper, /GLOBAL_LOCK_DIR=.*native-production-build\.lock/);
+  assert.match(wrapper, /recovered-native-lock/);
+  assert.match(wrapper, /credentials\.json é proibido/);
+  assert.match(wrapper, /trap 'handle_signal HUP 129' HUP/);
+  assert.match(wrapper, /trap 'handle_signal INT 130' INT/);
+  assert.match(wrapper, /trap 'handle_signal TERM 143' TERM/);
+  assert.match(wrapper, /"\$PINNED_NODE" "\$BOOTSTRAP_RUNNER"/);
+  assert.doesNotMatch(
+    wrapper,
+    /materialize-ios-credentials|security find-generic-password|eas-pinned\.sh build/,
+  );
+  assert.match(nativeBuilder, /createEasEnvPullArguments/);
+  assert.doesNotMatch(nativeBuilder, /env:exec/);
+  assert.match(nativeBuilder, /detached: true/);
+  assert.match(nativeBuilder, /process\.kill\(-pid, signal\)/);
+  assert.match(nativeBuilder, /PINNED_TOOLS\.xcodebuild/);
+  assert.match(nativeBuilder, /'--no-daemon'/);
+  assert.match(nativeBuilder, /'--no-configuration-cache'/);
+  assert.doesNotMatch(nativeBuilder, /distributionCertificate|p12Password|credentials\.json/);
+  assert.match(nativeBuilder, /npm ci isolado pelo lockfile/);
+  assert.match(nativeBuilder, /bundletool\.jarPath/);
+  assert.doesNotMatch(nativeBuilder, /apkanalyzer/);
   assert.doesNotMatch(wrapper, /--auto-submit|eas submit/);
   assert.match(launch, /exec \.\/scripts\/eas-local-production-build\.sh --platform/);
-  assert.match(
-    launch,
-    /BUILD_COMMAND=\([\s\S]*\.\/scripts\/eas-pinned\.sh build[\s\S]*--local[\s\S]*\)/,
-  );
+  assert.match(launch, /ainda não possui executor nativo local atestado/);
+  assert.doesNotMatch(launch, /eas-pinned\.sh build/);
   assert.doesNotMatch(launch, /PLATFORM="all"|LOCAL_BUILD=false|Build concluído ou enfileirado/);
   assert.match(launch, /ios\|android\) ;;/);
   assert.match(submit, /\.\/scripts\/eas-pinned\.sh submit/);
   assert.match(uploadOta, /\.\/scripts\/eas-pinned\.sh env:exec/);
-  for (const releaseScript of [launch, submit, uploadOta]) {
+  for (const releaseScript of [submit, uploadOta]) {
     assert.match(releaseScript, /<\/dev\/null >\/dev\/null 2>&1/);
   }
   assert.match(envValidator, /fnm exec --using=22\.22\.3 -- node -p 'process\.execPath'/);
@@ -198,8 +224,8 @@ test('keeps every mobile build on a pinned output-suppressed local-only path', (
   assert.match(envProbeCore, /stdio: \['ignore', 'pipe', 'pipe'\]/);
   assert.match(envProbeCore, /process\.kill\(-processGroupId, signal\)/);
   assert.match(envProbeCore, /setTimeout\(\(\) => terminateGroup\('SIGKILL'\)/);
-  assert.match(envExample, /\.\/scripts\/eas-pinned\.sh env:create/);
-  assert.doesNotMatch(envExample, /env:create[^\n]*--value/);
+  assert.match(envExample, /snapshot local aprovado/);
+  assert.doesNotMatch(envExample, /eas-pinned\.sh env:create/);
 });
 
 test('pinned executor blocks cloud-capable invocations before fake fnm or npx can run', () => {
@@ -264,6 +290,17 @@ exec "$@"
       ['build', '--platform', 'ios', '--', '--local'],
       ['build', '--local', '--platform', 'ios', '--auto-submit'],
       ['build', '--local', '--platform', 'android', '--auto-submit-with-profile=production'],
+      ['build', '--local', '--platform', 'ios', '--profile', 'preview'],
+      ['build', '--local', '--platform', 'android', '--profile', 'production'],
+      [
+        'build',
+        '--local',
+        '--freeze-credentials',
+        '--platform',
+        'android',
+        '--profile',
+        'production',
+      ],
       ['workflow:run', './eas/workflows/release.yml'],
       ['--non-interactive', 'workflow:run', './eas/workflows/release.yml'],
       ['workflow:list'],
@@ -271,23 +308,15 @@ exec "$@"
       assertBlockedBeforeNpx(arguments_);
     }
 
-    const ios = runExecutor(['build', '--platform', 'ios', '--profile', 'preview', '--local']);
-    assert.equal(ios.status, 0, `${ios.stdout}${ios.stderr}`);
-    assert.deepEqual(readFileSync(tracePath, 'utf8').trim().split('\n'), [
-      '--yes',
-      'eas-cli@21.0.0',
-      'build',
-      '--platform',
-      'ios',
-      '--profile',
-      'preview',
-      '--local',
-    ]);
-
-    rmSync(tracePath, { force: true });
-    const environmentRead = runExecutor(['env:get', 'EXAMPLE_NAME', '--environment', 'preview']);
-    assert.equal(environmentRead.status, 0, `${environmentRead.stdout}${environmentRead.stderr}`);
-    assert.equal(existsSync(tracePath), true, 'non-build commands still use the pinned executor');
+    for (const arguments_ of [
+      ['build:dev', '--platform', 'android'],
+      ['build:internal', '--platform', 'ios'],
+      ['cloud:build', '--platform', 'android'],
+      ['env:create', 'production', '--name', 'X'],
+      ['env:pull', 'production', '--path', '/tmp/secret.env', '--non-interactive'],
+    ]) {
+      assertBlockedBeforeNpx(arguments_);
+    }
   } finally {
     rmSync(fixtureDirectory, { recursive: true, force: true });
   }
@@ -393,29 +422,15 @@ test('launch CLI cannot enqueue a cloud build or combine platforms', () => {
     const tracedArguments = () => readFileSync(tracePath, 'utf8').trim().split('\n');
 
     const preview = runLaunch(['--platform', 'android', '--profile', 'preview']);
-    assert.equal(preview.status, 0);
-    assert.deepEqual(tracedArguments(), [
-      'build',
-      '--platform',
-      'android',
-      '--profile',
-      'preview',
-      '--local',
-      '--non-interactive',
-    ]);
+    assert.equal(preview.status, 3);
+    assert.match(preview.stderr, /ainda não possui executor nativo local/);
+    assert.equal(existsSync(tracePath), false);
 
     rmSync(tracePath, { force: true });
     const storeQa = runLaunch(['--platform', 'ios', '--profile', 'storeQa', '--local']);
-    assert.equal(storeQa.status, 0);
-    assert.deepEqual(tracedArguments(), [
-      'build',
-      '--platform',
-      'ios',
-      '--profile',
-      'storeQa',
-      '--local',
-      '--non-interactive',
-    ]);
+    assert.equal(storeQa.status, 3);
+    assert.match(storeQa.stderr, /ainda não possui executor nativo local/);
+    assert.equal(existsSync(tracePath), false);
 
     rmSync(tracePath, { force: true });
     const production = runLaunch(['--platform', 'ios', '--profile', 'production']);
@@ -485,7 +500,7 @@ esac
     assert.equal(combinedOutput.includes('https://example.invalid'), false);
     assert.match(combinedOutput, /OK: variável remota presente: EXPO_PUBLIC_SUPABASE_URL/);
     assert.match(combinedOutput, /EAS Environment:EXPO_PUBLIC_SENTRY_DSN/);
-    assert.match(combinedOutput, /EAS Environment:GOOGLE_SERVICES_JSON/);
+    assert.doesNotMatch(combinedOutput, /GOOGLE_SERVICES_JSON/);
   } finally {
     rmSync(fixtureDirectory, { recursive: true, force: true });
   }
@@ -777,11 +792,11 @@ setInterval(() => {}, 1_000);
       validator.stderr.resume();
 
       const waitDeadline = Date.now() + 3000;
-      while (Date.now() < waitDeadline && tracedPids().length < 8) {
+      while (Date.now() < waitDeadline && tracedPids().length < 7) {
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
 
-      assert.equal(tracedPids().length, 8);
+      assert.equal(tracedPids().length, 7);
       const startedAt = Date.now();
       assert.equal(validator.kill(parentSignal), true);
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -796,7 +811,7 @@ setInterval(() => {}, 1_000);
 
       assert.equal(code, expectedExitCode);
       assert.equal(signal, null);
-      assert.equal((finalTrace.match(/^term:/gmu) ?? []).length, 8);
+      assert.equal((finalTrace.match(/^term:/gmu) ?? []).length, 7);
       assert.deepEqual(
         tracedPids().filter(isAlive),
         [],

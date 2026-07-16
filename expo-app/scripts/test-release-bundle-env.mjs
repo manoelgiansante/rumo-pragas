@@ -4,17 +4,19 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   closeSync,
-  copyFileSync,
+  existsSync,
   ftruncateSync,
   mkdirSync,
   mkdtempSync,
   openSync,
   readFileSync,
   readdirSync,
+  realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -29,6 +31,7 @@ import {
   validateReleaseEnvironment,
   verifyReleaseBundleEnvironment,
 } from './verify-release-bundle-env.mjs';
+import { NATIVE_SIGNING_POLICY } from './native-signing-policy.mjs';
 
 const productionUrl = 'https://jxcnfyeemdltdfqtgbcl.supabase.co';
 const makeSyntheticAnonKey = (claims = {}, signature = 'Ab9_'.repeat(11).slice(0, 43)) => {
@@ -110,11 +113,17 @@ const writeZip = (file, entries) => {
 
 const withFixture = (run) => {
   const directory = mkdtempSync(join(tmpdir(), 'rumo-release-bundle-'));
+  const cleanup = () => rmSync(directory, { recursive: true, force: true });
+  let result;
   try {
-    return run(directory);
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
+    result = run(directory);
+  } catch (error) {
+    cleanup();
+    throw error;
   }
+  if (result && typeof result.then === 'function') return result.finally(cleanup);
+  cleanup();
+  return result;
 };
 
 const compileHermesFixture = (directory, strings, outputName = 'index.android.bundle') => {
@@ -137,21 +146,72 @@ const compileHermesFixture = (directory, strings, outputName = 'index.android.bu
   return outputPath;
 };
 
-const withBuildWrapperFixture = (run) =>
+const runFixtureGit = (repositoryRoot, arguments_) => {
+  const result = spawnSync('/usr/bin/git', ['-C', repositoryRoot, ...arguments_], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_EMAIL: 'native-wrapper-fixture@example.invalid',
+      GIT_AUTHOR_NAME: 'Native Wrapper Fixture',
+      GIT_COMMITTER_EMAIL: 'native-wrapper-fixture@example.invalid',
+      GIT_COMMITTER_NAME: 'Native Wrapper Fixture',
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
+    },
+  });
+  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+};
+
+const withBuildWrapperFixture = (nativeRunnerSource, run) =>
   withFixture((directory) => {
-    const appRoot = join(directory, 'expo-app');
+    const repositoryRoot = realpathSync(directory);
+    const appRoot = join(repositoryRoot, 'expo-app');
     const scripts = join(appRoot, 'scripts');
+    const lockParent = join(repositoryRoot, 'native-locks');
     mkdirSync(scripts, { recursive: true });
     const wrapper = join(scripts, 'eas-local-production-build.sh');
-    copyFileSync(new URL('./eas-local-production-build.sh', import.meta.url), wrapper);
+    const productionWrapper = readFileSync(
+      new URL('./eas-local-production-build.sh', import.meta.url),
+      'utf8',
+    );
+    const fixtureWrapper = productionWrapper
+      .replace(
+        'EXPECTED_APP_ROOT="/Users/manoelnascimento/AgroRumo Projetos/Apps/rumo-pragas/expo-app"',
+        `EXPECTED_APP_ROOT=${JSON.stringify(appRoot)}`,
+      )
+      .replace(
+        'GLOBAL_LOCK_PARENT="/Users/manoelnascimento/.agrorumo"',
+        `GLOBAL_LOCK_PARENT=${JSON.stringify(lockParent)}`,
+      );
+    assert.notEqual(fixtureWrapper, productionWrapper);
+    assert.equal(fixtureWrapper.includes(`EXPECTED_APP_ROOT=${JSON.stringify(appRoot)}`), true);
+    assert.equal(fixtureWrapper.includes(`GLOBAL_LOCK_PARENT=${JSON.stringify(lockParent)}`), true);
+    writeFileSync(wrapper, fixtureWrapper, { mode: 0o755 });
     chmodSync(wrapper, 0o755);
-    writeFileSync(join(scripts, 'validate-prod-env.sh'), '#!/usr/bin/env bash\nexit 0\n', {
+    writeFileSync(join(scripts, 'eas-pinned.sh'), '#!/usr/bin/env bash\nexit 99\n', {
       mode: 0o755,
     });
-    writeFileSync(join(scripts, 'verify-release-bundle-env.mjs'), 'process.exit(0);\n', {
-      mode: 0o755,
-    });
-    return run({ appRoot, scripts, wrapper });
+    const context = { appRoot, lockParent, repositoryRoot, scripts, wrapper };
+    writeFileSync(
+      join(scripts, 'native-local-production-build.mjs'),
+      typeof nativeRunnerSource === 'function' ? nativeRunnerSource(context) : nativeRunnerSource,
+      { mode: 0o755 },
+    );
+    writeFileSync(join(scripts, 'native-signing-policy.mjs'), 'export const fixture = true;\n');
+    writeFileSync(join(scripts, 'verify-release-bundle-env.mjs'), 'export const fixture = true;\n');
+    writeFileSync(join(appRoot, '.gitignore'), '.artifacts/\nnative-runner-*\n');
+
+    runFixtureGit(repositoryRoot, ['init', '--quiet']);
+    runFixtureGit(repositoryRoot, ['add', '--all']);
+    runFixtureGit(repositoryRoot, ['commit', '--quiet', '--no-gpg-sign', '-m', 'native fixture']);
+    assert.equal(
+      spawnSync('/usr/bin/git', ['-C', repositoryRoot, 'status', '--porcelain=v1'], {
+        encoding: 'utf8',
+        env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+      }).stdout,
+      '',
+    );
+    return run(context);
   });
 
 test('rejects a release environment without the approved production project', () => {
@@ -369,6 +429,44 @@ test('extracts and verifies the Android bundle from an AAB', () =>
     });
 
     assert.equal(result.platform, 'android');
+  }));
+
+test('Android archive verification stays bound to the supplied descriptor after a pathname swap', () =>
+  withFixture((directory) => {
+    const aabPath = join(directory, 'candidate.aab');
+    const openedInodePath = join(directory, 'opened-inode.aab');
+    const canonicalEntry = 'base/assets/index.android.bundle';
+    writeZip(aabPath, [[canonicalEntry, `${productionUrl}\0${syntheticAnonKey}`]]);
+
+    const descriptor = openSync(aabPath, 'r');
+    try {
+      renameSync(aabPath, openedInodePath);
+      writeZip(aabPath, [[canonicalEntry, 'different archive at the original pathname']]);
+
+      assert.throws(
+        () =>
+          verifyReleaseBundleEnvironment({
+            platform: 'android',
+            artifactPath: aabPath,
+            environment: validEnvironment,
+            policy: syntheticPolicy,
+          }),
+        /configured production Supabase URL/,
+      );
+
+      const result = verifyReleaseBundleEnvironment({
+        platform: 'android',
+        artifactPath: aabPath,
+        artifactDescriptor: descriptor,
+        environment: validEnvironment,
+        policy: syntheticPolicy,
+      });
+
+      assert.equal(result.platform, 'android');
+      assert.ok(result.bundleBytes > 0);
+    } finally {
+      closeSync(descriptor);
+    }
   }));
 
 for (const [platform, entryPath, extension] of [
@@ -968,15 +1066,46 @@ test('CLI failure never prints configured values', () =>
     assert.match(output, /approved production key fingerprint/);
   }));
 
-test('production EAS wrapper verifies the finished artifact and quarantines failures', () => {
-  const wrapper = readFileSync(new URL('./eas-local-production-build.sh', import.meta.url), 'utf8');
+test('CLI does not expose the internal artifact descriptor channel', () => {
+  const scriptPath = fileURLToPath(new URL('./verify-release-bundle-env.mjs', import.meta.url));
+  const result = spawnSync(
+    process.execPath,
+    [
+      scriptPath,
+      '--platform',
+      'android',
+      '--artifact',
+      '/tmp/candidate.aab',
+      '--artifact-descriptor',
+      '3',
+    ],
+    { encoding: 'utf8' },
+  );
 
-  assert.match(wrapper, /verify-release-bundle-env\.mjs/);
-  assert.match(wrapper, /env:exec production "\$VERIFY_COMMAND" --non-interactive/);
+  assert.equal(result.status, 1);
+  assert.match(`${result.stdout}${result.stderr}`, /Unknown or incomplete command-line option/);
+});
+
+test('production native wrapper delegates attestation and quarantines failures', () => {
+  const wrapper = readFileSync(new URL('./eas-local-production-build.sh', import.meta.url), 'utf8');
+  const nativeBuilder = readFileSync(
+    new URL('./native-local-production-build.mjs', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(wrapper, /native-local-production-build\.mjs/);
   assert.match(wrapper, /<\/dev\/null >\/dev\/null 2>&1/);
-  assert.match(wrapper, /REJECTED_PATH="\$\{ARTIFACT_PATH\}\.rejected"/);
-  assert.match(wrapper, /mv "\$ARTIFACT_PATH" "\$REJECTED_PATH"/);
+  assert.match(wrapper, /quarantine_output_family\(\)/);
+  assert.match(wrapper, /for path in "\$ARTIFACT_PATH" "\$MANIFEST_PATH" "\$SYMBOLS_PATH"; do/);
+  assert.match(wrapper, /rejected="\$\{path\}\.rejected"/);
+  assert.match(wrapper, /\/bin\/mv "\$path" "\$rejected"/);
+  assert.match(wrapper, /quarantine_output_family\n/);
   assert.doesNotMatch(wrapper, /echo.*EXPO_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.equal((nativeBuilder.match(/verifyReleaseBundleEnvironment\(\{/g) ?? []).length, 2);
+  assert.match(nativeBuilder, /platform: 'ios'/);
+  assert.match(nativeBuilder, /platform: 'android'/);
+  assert.match(nativeBuilder, /validateIosArtifactMetadata/);
+  assert.match(nativeBuilder, /validateAndroidArtifactMetadata/);
 });
 
 test('all external artifact inspection subprocesses have a fail-closed timeout', () => {
@@ -1003,99 +1132,134 @@ test('release environment suite is wired into package scripts and both CI workfl
   }
 });
 
-test('production EAS profile pins the SDK 55 toolchain and never defines an empty public Sentry DSN', () => {
+test('production profile requires the pinned local toolchain and contains no cloud image', () => {
   const easConfig = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8'));
   const production = easConfig.build?.production ?? {};
   const productionEnvironment = easConfig.build?.production?.env ?? {};
   assert.equal(production.node, '22.22.3');
-  assert.equal(production.ios?.image, 'macos-sequoia-15.6-xcode-26.2');
-  assert.equal(production.android?.image, 'ubuntu-24.04-jdk-17-ndk-r27b-sdk-55');
-  assert.notEqual(production.ios?.image, 'latest');
-  assert.notEqual(production.android?.image, 'latest');
+  assert.equal(easConfig.cli?.appVersionSource, 'local');
+  assert.equal(Object.hasOwn(production, 'autoIncrement'), false);
+  assert.equal(Object.hasOwn(production.ios ?? {}, 'image'), false);
+  assert.equal(Object.hasOwn(production.android ?? {}, 'image'), false);
+  assert.equal(NATIVE_SIGNING_POLICY.toolchain.node.version, '22.22.3');
+  assert.equal(NATIVE_SIGNING_POLICY.toolchain.xcode.version, '26.2');
+  assert.equal(NATIVE_SIGNING_POLICY.toolchain.xcode.sdkVersion, '26.2');
+  assert.equal(NATIVE_SIGNING_POLICY.toolchain.java.version, '21.0.11');
+  assert.equal(NATIVE_SIGNING_POLICY.toolchain.android.compileSdkVersion, 36);
+  assert.equal(NATIVE_SIGNING_POLICY.toolchain.android.buildToolsVersion, '36.0.0');
   assert.equal(Object.hasOwn(productionEnvironment, 'EXPO_PUBLIC_SENTRY_DSN'), false);
   assert.equal(productionEnvironment.NODE_ENV, 'production');
 });
 
-test('production EAS wrapper quarantines a partial artifact when the build executor fails', () =>
-  withBuildWrapperFixture(({ appRoot, scripts, wrapper }) => {
-    writeFileSync(
-      join(scripts, 'eas-pinned.sh'),
-      `#!/usr/bin/env bash
-set -euo pipefail
-[[ "$1" == build ]]
-shift
-output=""
-while (($# > 0)); do
-  if [[ "$1" == --output && $# -ge 2 ]]; then
-    output="$2"
-    shift 2
-  else
-    shift
-  fi
-done
-[[ -n "$output" ]]
-printf 'partial-build-output' > "$output"
-exit 17
+test('production native wrapper quarantines the complete Android output family on failure', () =>
+  withBuildWrapperFixture(
+    `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+const outputIndex = process.argv.indexOf('--output');
+if (outputIndex < 0 || !process.argv[outputIndex + 1]) process.exit(91);
+const output = process.argv[outputIndex + 1];
+writeFileSync(output, 'partial-build-output');
+writeFileSync(output + '.manifest.json', 'partial-manifest-output');
+process.exit(17);
 `,
-      { mode: 0o755 },
-    );
+    ({ appRoot, wrapper }) => {
+      const result = spawnSync('bash', [wrapper, '--platform', 'android'], {
+        cwd: appRoot,
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 17, `${result.stdout}${result.stderr}`);
+      const artifacts = readdirSync(join(appRoot, '.artifacts'));
+      assert.equal(artifacts.filter((name) => name.endsWith('.aab')).length, 0);
+      assert.equal(artifacts.filter((name) => name.endsWith('.manifest.json')).length, 0);
+      const rejectedArtifact = artifacts.filter((name) => name.endsWith('.aab.rejected'));
+      const rejectedManifest = artifacts.filter((name) => name.endsWith('.manifest.json.rejected'));
+      assert.equal(rejectedArtifact.length, 1);
+      assert.equal(rejectedManifest.length, 1);
+      assert.equal(
+        readFileSync(join(appRoot, '.artifacts', rejectedArtifact[0]), 'utf8'),
+        'partial-build-output',
+      );
+      assert.equal(
+        readFileSync(join(appRoot, '.artifacts', rejectedManifest[0]), 'utf8'),
+        'partial-manifest-output',
+      );
+    },
+  ));
 
-    const result = spawnSync('bash', [wrapper, '--platform', 'android'], {
-      cwd: appRoot,
-      encoding: 'utf8',
-    });
-    assert.equal(result.status, 17, `${result.stdout}${result.stderr}`);
-    const artifacts = readdirSync(join(appRoot, '.artifacts'));
-    assert.equal(artifacts.filter((name) => name.endsWith('.aab')).length, 0);
-    const rejected = artifacts.filter((name) => name.endsWith('.aab.rejected'));
-    assert.equal(rejected.length, 1);
-    assert.equal(
-      readFileSync(join(appRoot, '.artifacts', rejected[0]), 'utf8'),
-      'partial-build-output',
-    );
-  }));
-
-test('production EAS wrapper quarantines the artifact when bundle verification fails', () =>
-  withBuildWrapperFixture(({ appRoot, scripts, wrapper }) => {
-    writeFileSync(
-      join(scripts, 'eas-pinned.sh'),
-      `#!/usr/bin/env bash
-set -euo pipefail
-case "$1" in
-  build)
-    shift
-    output=""
-    while (($# > 0)); do
-      if [[ "$1" == --output && $# -ge 2 ]]; then
-        output="$2"
-        shift 2
-      else
-        shift
-      fi
-    done
-    [[ -n "$output" ]]
-    printf 'finished-but-invalid-build' > "$output"
-    ;;
-  env:exec)
-    exit 23
-    ;;
-  *)
-    exit 99
-    ;;
-esac
+test('production native wrapper quarantines artifact, manifest and symbols on iOS failure', () =>
+  withBuildWrapperFixture(
+    `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+const outputIndex = process.argv.indexOf('--output');
+if (outputIndex < 0 || !process.argv[outputIndex + 1]) process.exit(91);
+const output = process.argv[outputIndex + 1];
+writeFileSync(output, 'finished-but-invalid-build');
+writeFileSync(output + '.manifest.json', 'invalid-manifest');
+writeFileSync(output + '.symbols.tar.gz', 'invalid-symbols');
+process.exit(23);
 `,
-      { mode: 0o755 },
-    );
+    ({ appRoot, wrapper }) => {
+      const result = spawnSync('bash', [wrapper, '--platform', 'ios'], {
+        cwd: appRoot,
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 23, `${result.stdout}${result.stderr}`);
+      const artifacts = readdirSync(join(appRoot, '.artifacts'));
+      assert.equal(artifacts.filter((name) => name.endsWith('.ipa')).length, 0);
+      assert.equal(artifacts.filter((name) => name.endsWith('.manifest.json')).length, 0);
+      assert.equal(artifacts.filter((name) => name.endsWith('.symbols.tar.gz')).length, 0);
+      assert.equal(artifacts.filter((name) => name.endsWith('.ipa.rejected')).length, 1);
+      assert.equal(artifacts.filter((name) => name.endsWith('.manifest.json.rejected')).length, 1);
+      assert.equal(artifacts.filter((name) => name.endsWith('.symbols.tar.gz.rejected')).length, 1);
+    },
+  ));
 
-    const result = spawnSync('bash', [wrapper, '--platform', 'android'], {
-      cwd: appRoot,
-      encoding: 'utf8',
-    });
-    assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
-    const artifacts = readdirSync(join(appRoot, '.artifacts'));
-    assert.equal(artifacts.filter((name) => name.endsWith('.aab')).length, 0);
-    assert.equal(artifacts.filter((name) => name.endsWith('.aab.rejected')).length, 1);
-  }));
+test('production native wrapper forwards TERM and clears its build lock', async () =>
+  withBuildWrapperFixture(
+    ({ appRoot }) => {
+      const ready = join(appRoot, 'native-runner-ready');
+      const terminated = join(appRoot, 'native-runner-terminated');
+      return `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(ready)}, 'ready');
+process.on('SIGTERM', () => {
+  writeFileSync(${JSON.stringify(terminated)}, 'terminated');
+  process.exit(0);
+});
+setInterval(() => {}, 1_000);
+`;
+    },
+    async ({ appRoot, lockParent, wrapper }) => {
+      const ready = join(appRoot, 'native-runner-ready');
+      const terminated = join(appRoot, 'native-runner-terminated');
+      const child = spawn('bash', [wrapper, '--platform', 'android'], {
+        cwd: appRoot,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      child.stdout.resume();
+      child.stderr.resume();
+      try {
+        const deadline = Date.now() + 3_000;
+        while (!existsSync(ready) && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        assert.equal(existsSync(ready), true, 'native runner fixture must start');
+        assert.equal(child.kill('SIGTERM'), true);
+        const result = await new Promise((resolve) => {
+          child.once('close', (code, signal) => resolve({ code, signal }));
+        });
+        assert.deepEqual(result, { code: 143, signal: null });
+        assert.equal(existsSync(terminated), true);
+        assert.equal(existsSync(join(lockParent, 'native-production-build.lock')), false);
+        assert.equal(
+          readdirSync(join(appRoot, '.artifacts')).some((name) => name.endsWith('.aab')),
+          false,
+        );
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      }
+    },
+  ));
 
 test('release simulator build can isolate Metro from the machine-wide Watchman daemon', () => {
   const script = `

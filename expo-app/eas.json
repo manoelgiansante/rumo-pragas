@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 20.0.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -46,14 +46,11 @@
     "production": {
       "environment": "production",
       "node": "22.22.3",
-      "autoIncrement": true,
       "channel": "production",
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-26.2",
         "credentialsSource": "local"
       },
       "android": {
-        "image": "ubuntu-24.04-jdk-17-ndk-r27b-sdk-55",
         "buildType": "app-bundle"
       },
       "env": {

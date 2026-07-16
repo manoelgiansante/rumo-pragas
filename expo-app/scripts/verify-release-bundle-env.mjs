@@ -193,12 +193,34 @@ const readBoundedRegularFile = (filePath, invalidMessage) => {
   }
 };
 
-const readArchiveEntry = (archivePath, entryPath) => {
-  const result = spawnSync('/usr/bin/unzip', ['-p', archivePath, entryPath], {
+const archiveInspectionSource = (archivePath, artifactDescriptor) => {
+  if (artifactDescriptor === undefined) {
+    return { archiveOperand: archivePath, stdio: ['ignore', 'pipe', 'ignore'] };
+  }
+  if (!Number.isSafeInteger(artifactDescriptor) || artifactDescriptor < 0) {
+    fail('The release artifact descriptor is invalid.');
+  }
+  try {
+    if (!fstatSync(artifactDescriptor).isFile()) {
+      fail('The release artifact descriptor is invalid.');
+    }
+  } catch (error) {
+    if (error?.name === 'ReleaseBundleVerificationError') throw error;
+    fail('The release artifact descriptor is invalid.');
+  }
+  return {
+    archiveOperand: '/dev/fd/3',
+    stdio: ['ignore', 'pipe', 'ignore', artifactDescriptor],
+  };
+};
+
+const readArchiveEntry = (archivePath, entryPath, artifactDescriptor) => {
+  const { archiveOperand, stdio } = archiveInspectionSource(archivePath, artifactDescriptor);
+  const result = spawnSync('/usr/bin/unzip', ['-p', archiveOperand, entryPath], {
     encoding: null,
     maxBuffer: MAX_BUNDLE_BYTES,
     timeout: ARTIFACT_INSPECTION_TIMEOUT_MS,
-    stdio: ['ignore', 'pipe', 'ignore'],
+    stdio,
   });
 
   if (result.status !== 0 || !Buffer.isBuffer(result.stdout) || result.stdout.length === 0) {
@@ -208,21 +230,24 @@ const readArchiveEntry = (archivePath, entryPath) => {
   return result.stdout;
 };
 
-const listArchiveEntries = (archivePath) => {
-  const result = spawnSync('/usr/bin/unzip', ['-Z1', archivePath], {
+const listArchiveEntries = (archivePath, artifactDescriptor) => {
+  const { archiveOperand, stdio } = archiveInspectionSource(archivePath, artifactDescriptor);
+  const result = spawnSync('/usr/bin/unzip', ['-Z1', archiveOperand], {
     encoding: 'utf8',
     maxBuffer: 4 * 1024 * 1024,
     timeout: ARTIFACT_INSPECTION_TIMEOUT_MS,
-    stdio: ['ignore', 'pipe', 'ignore'],
+    stdio,
   });
   if (result.status !== 0) fail('The release archive could not be inspected.');
   return result.stdout.split(/\r?\n/).filter(Boolean);
 };
 
-const readUniqueArchiveEntry = (archivePath, entryPath, invalidMessage) => {
-  const candidates = listArchiveEntries(archivePath).filter((entry) => entry === entryPath);
+const readUniqueArchiveEntry = (archivePath, entryPath, invalidMessage, artifactDescriptor) => {
+  const candidates = listArchiveEntries(archivePath, artifactDescriptor).filter(
+    (entry) => entry === entryPath,
+  );
   if (candidates.length !== 1) fail(invalidMessage);
-  return readArchiveEntry(archivePath, entryPath);
+  return readArchiveEntry(archivePath, entryPath, artifactDescriptor);
 };
 
 const resolveArtifact = (artifactPath) => {
@@ -232,9 +257,16 @@ const resolveArtifact = (artifactPath) => {
   return realpathSync(absolutePath);
 };
 
-export const readReleaseBundle = ({ platform, artifactPath }) => {
+export const readReleaseBundle = ({ platform, artifactPath, artifactDescriptor }) => {
   const resolvedArtifact = resolveArtifact(artifactPath);
   const extension = extname(resolvedArtifact).toLowerCase();
+
+  if (
+    artifactDescriptor !== undefined &&
+    (platform !== 'android' || !['.aab', '.apk'].includes(extension))
+  ) {
+    fail('Artifact descriptors are accepted only for Android AAB or APK archives.');
+  }
 
   if (platform === 'ios') {
     if (extension === '.app') {
@@ -270,6 +302,7 @@ export const readReleaseBundle = ({ platform, artifactPath }) => {
         resolvedArtifact,
         'base/assets/index.android.bundle',
         'The AAB does not contain exactly one canonical app JavaScript bundle.',
+        artifactDescriptor,
       );
     }
     if (extension === '.apk') {
@@ -278,6 +311,7 @@ export const readReleaseBundle = ({ platform, artifactPath }) => {
         resolvedArtifact,
         'assets/index.android.bundle',
         'The APK does not contain exactly one canonical app JavaScript bundle.',
+        artifactDescriptor,
       );
     }
     if (basename(resolvedArtifact) === 'index.android.bundle') {
@@ -539,11 +573,12 @@ const validateSupabaseLiterals = ({ strings, urlSafetyStrings }, configuredUrl, 
 export const verifyReleaseBundleEnvironment = ({
   platform,
   artifactPath,
+  artifactDescriptor,
   environment = process.env,
   policy = PRODUCTION_RELEASE_POLICY,
 }) => {
   const { supabaseUrl, supabaseAnonKey } = validateReleaseEnvironment(environment, policy);
-  const bundle = readReleaseBundle({ platform, artifactPath });
+  const bundle = readReleaseBundle({ platform, artifactPath, artifactDescriptor });
 
   validateSupabaseLiterals(extractSemanticStrings(bundle), supabaseUrl, supabaseAnonKey);
 

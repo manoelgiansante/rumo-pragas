@@ -24,7 +24,7 @@
     "validate:web-config": "node scripts/validate-web-config.mjs",
     "validate:mcp-sdk": "tsx scripts/test-mcp-sdk.ts",
     "validate:store-screenshot-qa-profile": "node scripts/store-screenshot-qa-server.mjs --check-profile",
-    "test:eas-redactor": "node --test scripts/test-redact-eas-output.mjs",
+    "test:eas-redactor": "node --test scripts/test-redact-eas-output.mjs scripts/test-native-local-production-build.mjs",
     "validate:data-safety": "node scripts/validate-data-safety.mjs",
     "validate:data-safety:all": "node scripts/validate-data-safety.mjs --landing-policy ../../rumo-pragas-landing/src/pages/privacidade.astro",
     "validate:data-safety:public": "node scripts/validate-data-safety.mjs --landing-policy-url https://pragas.agrorumo.com/privacidade",
