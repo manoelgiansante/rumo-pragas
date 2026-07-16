@@ -330,7 +330,8 @@ Deno.test("dedicated route/model and deletion-worker contracts cannot drift to s
   assertStringIncludes(exportSource, "truncated: false");
   assertFalse(push.includes("device_fingerprint"));
   assertFalse(push.includes("device_model"));
-  assertStringIncludes(push, 'channelId: "climate-risk"');
+  assertStringIncludes(push, "resolveExpoPushChannel(input.category)");
+  assertFalse(push.includes('channelId: "climate-risk"'));
   assertFalse(push.includes('channelId: "pest-alerts"'));
   assertStringIncludes(push, '"mark_pragas_push_provider_started"');
   assertStringIncludes(push, '"mark_pragas_push_unknown_outcome"');

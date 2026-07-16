@@ -3,6 +3,37 @@ export interface ExpoTicket {
   details?: { error?: string };
 }
 
+export type ExpoPushCategory = "transactional" | "climate_risk_educational";
+
+export type ExpoPushHttpDisposition =
+  | "tickets"
+  | "configuration_error"
+  | "request_error"
+  | "unknown_outcome";
+
+export type ExpoPushTerminalDisposition =
+  | "delivered"
+  | "new_notification_id_required"
+  | "invalid";
+
+export function classifyExpoPushHttpStatus(status: number): ExpoPushHttpDisposition {
+  if (!Number.isInteger(status) || status < 100 || status > 599) return "unknown_outcome";
+  if (status >= 200 && status < 300) return "tickets";
+  if (status === 401 || status === 403) return "configuration_error";
+  if (status >= 500) return "unknown_outcome";
+  return "request_error";
+}
+
+export function classifyExpoPushTerminalStatus(status: unknown): ExpoPushTerminalDisposition {
+  if (status === "sent" || status === "partial") return "delivered";
+  if (status === "failed") return "new_notification_id_required";
+  return "invalid";
+}
+
+export function resolveExpoPushChannel(category: ExpoPushCategory): "general" | "climate-risk" {
+  return category === "climate_risk_educational" ? "climate-risk" : "general";
+}
+
 /**
  * Parse only the documented one-ticket-per-message Expo response. Returning
  * null is intentionally conservative: a malformed 2xx can still mean that the

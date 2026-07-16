@@ -6,7 +6,14 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sha256Hex } from "../_shared/ai-idempotency.ts";
-import { type ExpoTicket, parseExpoTickets } from "../_shared/expo-push-ticket.ts";
+import {
+  classifyExpoPushHttpStatus,
+  classifyExpoPushTerminalStatus,
+  type ExpoPushCategory,
+  type ExpoTicket,
+  parseExpoTickets,
+  resolveExpoPushChannel,
+} from "../_shared/expo-push-ticket.ts";
 import { fetchWithTimeout } from "../_shared/fetch-timeout.ts";
 import { authenticateServiceBearer } from "../_shared/service-auth.ts";
 import { captureException, withSentry } from "../_shared/pragas-sentry.ts";
@@ -14,7 +21,7 @@ import { resolveEligibleTargetUserIds } from "./eligibility.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const EXPO_ACCESS_TOKEN = Deno.env.get("EXPO_ACCESS_TOKEN") ?? "";
+const EXPO_ACCESS_TOKEN = (Deno.env.get("EXPO_ACCESS_TOKEN") ?? "").trim();
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 const EXPO_BATCH_SIZE = 100;
 const MAX_TARGET_USERS = 500;
@@ -35,7 +42,7 @@ const ALLOWED_DATA_KEYS = new Set(["screen", "diagnosisId", "riskType"]);
 
 interface ValidRequest {
   notificationId: string;
-  category: "transactional" | "climate_risk_educational";
+  category: ExpoPushCategory;
   title: string;
   body: string;
   data: Record<string, string>;
@@ -50,6 +57,7 @@ interface PushToken {
 
 type ExpoBatchResult =
   | { state: "tickets"; tickets: ExpoTicket[] }
+  | { state: "configuration_error" }
   | { state: "unknown_outcome" };
 
 class PushInputError extends Error {
@@ -214,7 +222,8 @@ async function sendExpoBatch(
       },
       body: JSON.stringify(messages),
     }, 15_000);
-    if (response.ok) {
+    const disposition = classifyExpoPushHttpStatus(response.status);
+    if (disposition === "tickets") {
       const text = await response.text();
       if (new TextEncoder().encode(text).byteLength <= 256 * 1024) {
         try {
@@ -227,9 +236,12 @@ async function sendExpoBatch(
       await captureStableFailure("expo_unknown_response");
       return { state: "unknown_outcome" };
     }
-    const status = response.status;
     await response.body?.cancel().catch(() => undefined);
-    if (status >= 500) {
+    if (disposition === "configuration_error") {
+      await captureStableFailure("expo_authentication");
+      return { state: "configuration_error" };
+    }
+    if (disposition === "unknown_outcome") {
       await captureStableFailure("expo_unknown_server_failure");
       return { state: "unknown_outcome" };
     }
@@ -287,7 +299,22 @@ async function handler(req: Request, { requestId }: { requestId: string }): Prom
   }
   const claim = claimRaw as Record<string, unknown>;
   if (claim.state === "completed") {
+    const terminalDisposition = classifyExpoPushTerminalStatus(claim.status);
+    if (terminalDisposition === "invalid") {
+      await captureStableFailure("audit_completed_contract");
+      return jsonResponse({ ok: false, error: "push_unavailable", requestId }, { status: 503 });
+    }
     const { state: _state, ...completed } = claim;
+    if (terminalDisposition === "new_notification_id_required") {
+      return jsonResponse({
+        ok: false,
+        ...completed,
+        error: "push_delivery_failed_new_notification_id_required",
+        new_notification_id_required: true,
+        deduped: true,
+        requestId,
+      }, { status: 409 });
+    }
     return jsonResponse({ ok: true, ...completed, deduped: true, requestId });
   }
   if (claim.state === "conflict") {
@@ -381,8 +408,46 @@ async function handler(req: Request, { requestId }: { requestId: string }): Prom
       body: input.body,
       data: input.data,
       sound: "default",
-      ...(token.platform === "android" ? { channelId: "climate-risk" } : {}),
+      ...(token.platform === "android"
+        ? { channelId: resolveExpoPushChannel(input.category) }
+        : {}),
     })));
+    if (delivery.state === "configuration_error") {
+      failures = tokens.length - accepted;
+      // Authentication rejection fails the operation as a whole even when a
+      // prior batch was accepted. This keeps the first response and replay on
+      // the same fail-closed/new-notification-id contract; the exact counters
+      // still disclose that some recipients may already have received it.
+      const status = "failed";
+      const audit = await admin.rpc("complete_pragas_push_notification", {
+        p_notification_id: input.notificationId,
+        p_request_hash: requestHash,
+        p_lease_token: leaseToken,
+        p_status: status,
+        p_recipient_count: tokens.length,
+        p_accepted_count: accepted,
+        p_error_count: failures,
+      });
+      if (audit.error || audit.data !== true) {
+        await captureStableFailure("audit_configuration_failure");
+        return jsonResponse({ ok: false, error: "push_audit_unavailable", requestId }, {
+          status: 503,
+        });
+      }
+      return jsonResponse({
+        ok: false,
+        error: "expo_credentials_rejected_new_notification_id_required",
+        new_notification_id_required: true,
+        notification_id: input.notificationId,
+        recipient_count: tokens.length,
+        accepted_count: accepted,
+        error_count: failures,
+        status,
+        requestId,
+      }, {
+        status: 503,
+      });
+    }
     if (delivery.state === "unknown_outcome") {
       const unknown = await admin.rpc("mark_pragas_push_unknown_outcome", {
         p_notification_id: input.notificationId,
@@ -444,6 +509,19 @@ async function handler(req: Request, { requestId }: { requestId: string }): Prom
     return jsonResponse({ ok: false, error: "push_audit_unavailable", requestId }, {
       status: 503,
     });
+  }
+  if (classifyExpoPushTerminalStatus(status) === "new_notification_id_required") {
+    return jsonResponse({
+      ok: false,
+      error: "push_delivery_failed_new_notification_id_required",
+      new_notification_id_required: true,
+      notification_id: input.notificationId,
+      recipient_count: tokens.length,
+      accepted_count: accepted,
+      error_count: failures,
+      status,
+      requestId,
+    }, { status: 409 });
   }
   return jsonResponse({
     ok: true,
