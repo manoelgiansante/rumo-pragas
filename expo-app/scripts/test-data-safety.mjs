@@ -37,7 +37,7 @@ const completePolicyFixture = `
   Tratamos identificadores técnicos do dispositivo.
   Os provedores são Google Gemini e Anthropic Claude.
   Não vendemos nem alugamos dados pessoais.
-  A identidade global AgroRumo é compartilhada e não é apagada por essa ação específica.
+  A solicitação abrange a conta AgroRumo inteira, exige autenticar novamente, revoga o push e segue processamento coordenado em até 15 dias com protocolo opaco.
 </main>
 `;
 
@@ -284,13 +284,26 @@ test('valores booleanos com caixa ou grafia desconhecida são rejeitados', () =>
   assert.match(errorsFor({ csvText }), /valor inesperado|deve ser/u);
 });
 
-test('URL de exclusão de conta não pode contornar o bloqueio AgroRumo', () => {
-  const csvText = mutate(
+test('URL de conta fica vazia no pré-deploy e torna-se obrigatória após remover o blocker', () => {
+  const prematureUrl = mutate(
     canonical.csvText,
     'PSL_ACCOUNT_DELETION_URL,,,MAYBE_REQUIRED',
     'PSL_ACCOUNT_DELETION_URL,,https://pragas.agrorumo.com/delete-account,MAYBE_REQUIRED',
   );
-  assert.match(errorsFor({ csvText }), /PSL_ACCOUNT_DELETION_URL/u);
+  assert.match(errorsFor({ csvText: prematureUrl }), /PSL_ACCOUNT_DELETION_URL/u);
+
+  const readyWithoutUrl = validateDataSafetySources({
+    ...canonical,
+    blockerText: undefined,
+  }).errors.join('\n');
+  assert.match(readyWithoutUrl, /PSL_ACCOUNT_DELETION_URL/u);
+
+  const readyWithUrl = validateDataSafetySources({
+    ...canonical,
+    blockerText: undefined,
+    csvText: prematureUrl,
+  });
+  assert.deepEqual(readyWithUrl.errors, []);
 });
 
 test('drift de telefone no Privacy Manifest é rejeitado', () => {
@@ -372,15 +385,15 @@ for (const [token, label] of [
   });
 }
 
-test('política sem transparência de provedor, venda ou identidade compartilhada é rejeitada', () => {
+test('política sem transparência de provedor, venda ou escopo global é rejeitada', () => {
   const appPolicyText = canonical.appPolicyText
     .replace('Google Gemini', 'provedor A')
     .replace('Não vendemos', 'Tratamos')
-    .replace('não é apagada por essa ação específica', 'é tratada separadamente');
+    .replace('conta AgroRumo inteira', 'dados deste aplicativo');
   const errors = errorsFor({ appPolicyText });
   assert.match(errors, /Google Gemini/u);
   assert.match(errors, /venda ou aluguel/u);
-  assert.match(errors, /limite da exclusão/u);
+  assert.match(errors, /escopo de exclusão/u);
 });
 
 test('comentários não satisfazem divulgações legais obrigatórias', () => {
@@ -424,13 +437,13 @@ test('afirmações positivas de venda ou publicidade contraditória são rejeita
   assert.match(errors, /Política web canônica:.*publicidade/u);
 });
 
-test('promessa contraditória de exclusão integral da conta global é rejeitada', () => {
+test('promessa falsa de conclusão imediata da exclusão global é rejeitada', () => {
   const errors = errorsFor({
-    appPolicyText: `${canonical.appPolicyText}\n<Text>A conta global AgroRumo é apagada integralmente.</Text>`,
-    landingPolicyText: `${completePolicyFixture}\n<p>A identidade global AgroRumo será excluída integralmente.</p>`,
+    appPolicyText: `${canonical.appPolicyText}\n<Text>A conta global AgroRumo já foi apagada integralmente no momento do pedido.</Text>`,
+    landingPolicyText: `${completePolicyFixture}\n<p>A identidade global AgroRumo já está excluída imediatamente.</p>`,
   });
-  assert.match(errors, /Política in-app:.*conta global/u);
-  assert.match(errors, /Política web canônica:.*conta global/u);
+  assert.match(errors, /Política in-app:.*conclusão imediata/u);
+  assert.match(errors, /Política web canônica:.*conclusão imediata/u);
 });
 
 test('remoção do bloqueador documental de exclusão falha fechada', () => {

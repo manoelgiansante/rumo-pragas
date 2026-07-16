@@ -187,6 +187,18 @@ function createArtifact(file, platform, version = '1.0.11', marker = 'reviewed-c
   else createAabArtifact(file, version, marker);
 }
 
+function setAccountDeletionReadiness(root, ready) {
+  const csvPath = join(root, 'store-assets', 'android', 'pragas-datasafety-filled.csv');
+  const csv = readFileSync(csvPath, 'utf8');
+  const blank = 'PSL_ACCOUNT_DELETION_URL,,,MAYBE_REQUIRED';
+  const published =
+    'PSL_ACCOUNT_DELETION_URL,,https://pragas.agrorumo.com/delete-account,MAYBE_REQUIRED';
+  const from = ready ? blank : published;
+  const to = ready ? published : blank;
+  assert.ok(csv.includes(from), `fixture Data Safety does not contain ${from}`);
+  writeFileSync(csvPath, csv.replace(from, to));
+}
+
 function createFixture(
   t,
   scripts = ['validate-store-assets.mjs'],
@@ -225,6 +237,7 @@ function createFixture(
     }
   }
   if (includesSubmissionStatus) {
+    setAccountDeletionReadiness(root, true);
     writeFileSync(
       join(root, 'store-assets', 'ACCOUNT_DELETION_RESOLUTION.json'),
       `${JSON.stringify(
@@ -1135,7 +1148,11 @@ test('global submission status blocks account deletion even when every asset is 
   const resolutionPath = join(root, 'store-assets/ACCOUNT_DELETION_RESOLUTION.json');
   const resolution = readFileSync(resolutionPath, 'utf8');
   rmSync(resolutionPath);
-  writeFileSync(join(root, 'store-assets/ACCOUNT_DELETION_BLOCKER.md'), '# blocker\n');
+  copyFileSync(
+    join(sourceAppRoot, 'store-assets', 'ACCOUNT_DELETION_BLOCKER.md'),
+    join(root, 'store-assets', 'ACCOUNT_DELETION_BLOCKER.md'),
+  );
+  setAccountDeletionReadiness(root, false);
 
   let result = runNode(root, 'store-submission-status.mjs');
   assert.equal(result.status, 3, outputOf(result));
@@ -1144,6 +1161,7 @@ test('global submission status blocks account deletion even when every asset is 
   assert.doesNotMatch(result.stdout, /ASSETS_READY/);
 
   rmSync(join(root, 'store-assets/ACCOUNT_DELETION_BLOCKER.md'));
+  setAccountDeletionReadiness(root, true);
   result = runNode(root, 'store-submission-status.mjs');
   assert.equal(result.status, 3, outputOf(result));
   assert.match(result.stderr, /atestação positiva, versionada e testada/u);
@@ -1435,7 +1453,11 @@ test('submit blocks on global account deletion before env validation or EAS', (t
   ]);
   populateValidAssets(root);
   rmSync(join(root, 'store-assets/ACCOUNT_DELETION_RESOLUTION.json'));
-  writeFileSync(join(root, 'store-assets/ACCOUNT_DELETION_BLOCKER.md'), '# blocker\n');
+  copyFileSync(
+    join(sourceAppRoot, 'store-assets', 'ACCOUNT_DELETION_BLOCKER.md'),
+    join(root, 'store-assets', 'ACCOUNT_DELETION_BLOCKER.md'),
+  );
+  setAccountDeletionReadiness(root, false);
   const easMarker = join(root, 'eas-was-executed');
   const envMarker = join(root, 'env-was-validated');
   const secretSentinel = 'synthetic-eas-secret-must-not-leak';

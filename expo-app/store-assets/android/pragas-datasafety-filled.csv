@@ -8,7 +8,7 @@ PSL_SUPPORTED_ACCOUNT_CREATION_METHODS,PSL_ACM_OAUTH,true,MULTIPLE_CHOICE,Quais 
 PSL_SUPPORTED_ACCOUNT_CREATION_METHODS,PSL_ACM_OTHER,,MULTIPLE_CHOICE,Quais dos seguintes métodos de criação de contas são oferecidos pelo app? Selecione todas as opções relevantes / Outro
 PSL_SUPPORTED_ACCOUNT_CREATION_METHODS,PSL_ACM_NONE,,MULTIPLE_CHOICE,Quais dos seguintes métodos de criação de contas são oferecidos pelo app? Selecione todas as opções relevantes / Meu app não permite que os usuários criem uma conta
 PSL_ACM_SPECIFY,,,MAYBE_REQUIRED,Descreva o método de criação de contas oferecido pelo app
-PSL_ACCOUNT_DELETION_URL,,,MAYBE_REQUIRED,"Adicione um link que os usuários possam usar para solicitar a exclusão da conta e dos dados — BLOQUEADO: o fluxo atual exclui dados do Rumo Pragas, mas retém a conta AgroRumo compartilhada"
+PSL_ACCOUNT_DELETION_URL,,,MAYBE_REQUIRED,Adicione um link que os usuários possam usar para solicitar a exclusão da conta e dos dados
 PSL_SUPPORT_DATA_DELETION_BY_USER,DATA_DELETION_YES,true,SINGLE_CHOICE,Você oferece um meio para que os usuários solicitem que os dados deles sejam excluídos? / Sim
 PSL_SUPPORT_DATA_DELETION_BY_USER,DATA_DELETION_NO,,SINGLE_CHOICE,Você oferece um meio para que os usuários solicitem que os dados deles sejam excluídos? / Não
 PSL_SUPPORT_DATA_DELETION_BY_USER,DATA_DELETION_NO_AUTO_DELETED,,SINGLE_CHOICE,"Você oferece um meio para que os usuários solicitem que os dados deles sejam excluídos? / Não, mas os dados dos usuários são excluídos automaticamente em 90 dias"

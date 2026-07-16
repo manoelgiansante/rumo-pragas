@@ -102,11 +102,13 @@ are never eligible.
 
 ## Store version registry and Sentry evidence
 
-A read-only EAS version-registry query on 2026-07-14 observed iOS build 63 and Android version code
-54 as the latest values. This lookup does not create a build. These numbers must not be pinned as
-the candidate: query the registry again on local build day and record the values actually reserved
-by the production profile's `remote` `autoIncrement` registry in each immutable local artifact. A
-local `app.json` build number is not authoritative.
+Authenticated store inventories confirmed on 2026-07-16 that iOS build 63 and Android version code
+54 are the current maxima. The protected native runner derives one reproducible build value from the
+exact candidate commit timestamp, fails before prebuild unless it is greater than 63 for iOS and 54
+for Android, injects it into Xcode/Gradle, and independently attests version 1.0.11 plus that build
+value inside the signed IPA/AAB. EAS `autoIncrement` is not used and every EAS production build is
+blocked; EAS is contacted only to load the named production environment. A local `app.json` build
+number remains non-authoritative.
 
 The protected local build disables automatic Sentry upload so the build subprocess cannot expose
 the token. Before release, use only a separately authorized source-map procedure, record its

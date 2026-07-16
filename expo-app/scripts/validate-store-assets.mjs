@@ -1444,9 +1444,12 @@ if (platform === 'android') {
       'Data Safety: informe exatamente um estado de exclusão — blocker vigente ou resolução positiva versionada.',
     );
   }
-  // The dedicated Data Safety CI gate validates the blocker contents. Submission status validates
-  // the schema and Git binding of a future positive resolution before any store command can run.
-  const dataSafety = validateDataSafetyFiles({ blockerPath: null });
+  // The Data Safety declaration is state-bound: while the blocker exists the account URL must be
+  // blank; after a positive resolution it becomes mandatory. Reading the blocker here also keeps
+  // a malformed replacement from silently changing that state during a store command.
+  const dataSafety = validateDataSafetyFiles({
+    blockerPath: existsSync(accountDeletionBlocker) ? accountDeletionBlocker : null,
+  });
   for (const error of dataSafety.errors) errors.push(`Data Safety: ${error}`);
   validateRootDirectories(root, new Set(['phone', 'tablet-10', '_src']));
 

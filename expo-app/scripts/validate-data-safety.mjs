@@ -296,10 +296,11 @@ const ALLOWED_REQUIREMENTS = new Set([
 ]);
 
 // SHA-256 of the ordered Question ID, Response ID, Answer requirement and human label columns
-// from the audited Google Play export, including the deliberate account-deletion blocker annotation.
+// from the audited Google Play export. The account-deletion row keeps the official human label;
+// the canonical global-deletion URL is validated as its response value below.
 // Response values are excluded so DATA_CONTRACT can validate answers while metadata stays immutable.
 const EXPECTED_TEMPLATE_SEMANTICS_SHA256 =
-  'f2ff41f566433567e00134ea09219236a71d07aeb29f4d10bdd0412fe2414461';
+  'd1f09672af0d589308b91d93e4644b359d905fff45dbd7924297dbbb8ec48f70';
 
 function rowKey(questionId, responseId) {
   return `${questionId}\u0000${responseId}`;
@@ -586,10 +587,14 @@ export function parseCsv(input, source = 'CSV') {
   }));
 }
 
-function expectedCsvRows() {
+function expectedCsvRows({ accountDeletionReady = false } = {}) {
   const expected = new Map();
   for (const [questionId, responseId, value] of GLOBAL_ROWS) {
-    expected.set(rowKey(questionId, responseId), { value, context: questionId });
+    const expectedValue =
+      questionId === 'PSL_ACCOUNT_DELETION_URL' && accountDeletionReady
+        ? 'https://pragas.agrorumo.com/delete-account'
+        : value;
+    expected.set(rowKey(questionId, responseId), { value: expectedValue, context: questionId });
   }
   for (const [questionId, responseId] of DATA_TYPE_ROWS) {
     expected.set(rowKey(questionId, responseId), {
@@ -646,7 +651,7 @@ function expectedCsvRows() {
   return expected;
 }
 
-function validateCsv(csvText) {
+function validateCsv(csvText, { accountDeletionReady = false } = {}) {
   const errors = [];
   let rows;
   try {
@@ -702,7 +707,7 @@ function validateCsv(csvText) {
     );
   }
 
-  const expected = expectedCsvRows();
+  const expected = expectedCsvRows({ accountDeletionReady });
   for (const [key, row] of actual) {
     if (!expected.has(key)) {
       errors.push(
@@ -718,14 +723,6 @@ function validateCsv(csvText) {
       errors.push(
         `CSV linha ${row.line}: ${definition.context} deve ser ${JSON.stringify(definition.value)}, recebido ${JSON.stringify(row.value)}.`,
       );
-    }
-  }
-
-  const deletionRow = actual.get(rowKey('PSL_ACCOUNT_DELETION_URL', ''));
-  const deletionLabel = normalizeText(deletionRow?.label ?? '');
-  for (const token of ['bloqueado', 'conta agrorumo compartilhada']) {
-    if (!deletionLabel.includes(token)) {
-      errors.push(`CSV: o bloqueio explícito de exclusão da ${token} desapareceu.`);
     }
   }
 
@@ -856,8 +853,12 @@ function validatePolicy(policyText, label) {
     ['google gemini', 'Google Gemini'],
     ['anthropic claude', 'Anthropic Claude'],
     ['nao vendemos nem alugamos dados pessoais', 'ausência de venda ou aluguel de dados'],
-    ['identidade global agrorumo', 'identidade global AgroRumo compartilhada'],
-    ['nao e apagada por essa acao especifica', 'limite da exclusão específica do Rumo Pragas'],
+    ['conta agrorumo inteira', 'escopo de exclusão da conta AgroRumo inteira'],
+    ['autenticar', 'reautenticação antes do pedido global'],
+    ['revogad', 'revogação imediata do push do Rumo Pragas'],
+    ['coordenad', 'processamento coordenado entre produtos'],
+    ['15 dias', 'prazo do processamento coordenado'],
+    ['opaco', 'recibo ou protocolo opaco sem PII'],
   ];
   for (const [token, description] of required) {
     if (!requiredSource.includes(token))
@@ -876,16 +877,12 @@ function validatePolicy(policyText, label) {
     errors.push(`${label}: foi encontrada venda ou finalidade positiva de publicidade/marketing.`);
   }
 
-  const deletionClaims = normalized.replaceAll('nao e apagada por essa acao especifica', ' ');
   if (
-    /\b(?:conta|identidade) global agrorumo\b[^.!?]{0,120}\b(?:e|sera|fica|foi)\s+(?:integralmente\s+)?(?:apagada|excluida|eliminada)(?:\s+integralmente)?\b/u.test(
-      deletionClaims,
-    ) ||
-    /\bexclusao integral\b[^.!?]{0,120}\b(?:conta|identidade) global agrorumo\b/u.test(
-      deletionClaims,
+    /\b(?:conta|identidade)(?:\s+global)?\s+agrorumo\b[^.!?]{0,160}\b(?:ja\s+(?:foi|esta)|imediatamente|no momento)\b[^.!?]{0,80}\b(?:apagada|excluida|eliminada|removida)\b/u.test(
+      normalized,
     )
   ) {
-    errors.push(`${label}: foi encontrada promessa contraditória de exclusão da conta global.`);
+    errors.push(`${label}: foi encontrada promessa de conclusão imediata da exclusão global.`);
   }
   return errors;
 }
@@ -894,9 +891,13 @@ function validateBlocker(blockerText) {
   const normalized = normalizeText(blockerText);
   const errors = [];
   for (const token of [
-    'nao exclui a identidade de autenticacao agrorumo',
-    'nao preencher o campo de exclusao de',
+    'candidato global ainda nao esta publicado',
+    'campo de exclusao de conta deve permanecer vazio',
     'conta global',
+    'apple_sign_in_key_id',
+    'asc_api_',
+    'nao sao validas',
+    'conta qa descartavel',
   ]) {
     if (!normalized.includes(token)) {
       errors.push(`ACCOUNT_DELETION_BLOCKER.md: garantia ausente (${token}).`);
@@ -912,7 +913,12 @@ export function validateDataSafetySources({
   blockerText,
   landingPolicyText,
 }) {
-  const csv = validateCsv(csvText);
+  // Presence of the blocker is the source-of-truth pre-deploy gate. While it
+  // exists, advertising the public URL as whole-account deletion would be a
+  // false store declaration. Removing it flips the contract fail-closed: the
+  // same CSV must then publish the canonical URL.
+  const accountDeletionReady = blockerText === undefined;
+  const csv = validateCsv(csvText, { accountDeletionReady });
   const errors = [
     ...csv.errors,
     ...validateAppJson(appJsonText),

@@ -8,10 +8,11 @@ NPM baseline: 10.9.8
 iOS bundle ID: com.agrorumo.rumopragas
 Android package: com.agrorumo.rumopragas
 
-The read-only EAS inventory on 2026-07-14 observed iOS build 63 and Android version code 54 as
-the latest remote values. They are evidence, not candidate numbers: query EAS again immediately
-before building and let the production profile's remote `autoIncrement` reserve the next values.
-The legacy local `app.json` build number is not release authority.
+The authenticated store inventories confirmed on 2026-07-16 that iOS build 63 and Android version
+code 54 are the latest store values. The native local runner derives one reproducible candidate
+number from the exact commit timestamp, rejects iOS values below 64 and Android values below 55,
+injects that number into the native projects and attests it again inside the finished IPA/AAB. The
+legacy local `app.json` build number is not release authority.
 
 ## Reproducible local validation
 
@@ -28,8 +29,8 @@ Every command is blocking. Do not weaken warnings, skip suites or convert failur
 
 ## Native configuration audit
 
-- Confirm app version and record the actual remotely reserved iOS build number and Android version
-  code from the immutable EAS artifacts.
+- Confirm app version and record the commit-derived iOS build number and Android version code from
+  the immutable locally generated artifacts.
 - Confirm Android target and compile SDK 36 and minimum SDK 24.
 - Confirm iOS deployment target and the current App Store Xcode/SDK requirement on build day.
 - Confirm camera, approximate location and notification purpose strings.
@@ -53,7 +54,8 @@ Release operations may still require:
 
 - Apple distribution and App Store Connect authorization.
 - Android upload keystore and Play service-account authorization.
-- Expo/EAS authorization used by the pinned local runner for environment names, versioning and credentials, without a cloud build.
+- Expo/EAS authorization used only to load the named production environment into the native local
+  runner, never for build execution, version reservation or signing credentials.
 - Sentry authorization for release symbol upload.
 - Runtime Supabase and provider configuration for the release environment.
 
@@ -68,13 +70,15 @@ Only a missing or expired value proven by the build attempt is a precise externa
 3. Run the reproducible validation suite.
 4. Generate one local release artifact at a time with
    `./scripts/launch.sh --profile production --platform ios --local`, followed by
-   `./scripts/launch.sh --profile production --platform android --local`.
-   These commands are build-only and contain no submit path.
+   `./scripts/launch.sh --profile production --platform android --local` when the first platform has
+   completed. These commands use Xcode/Gradle directly; any EAS production build invocation is
+   blocked before the CLI can start. They are build-only and contain no submit path.
 5. Inspect the signed IPA and AAB for identifiers, permissions, SDKs and versions.
 6. Install through TestFlight/Internal testing, not by direct production promotion.
 7. Execute smoke tests: fresh install, login, social login, permissions denied, capture, picker, online result, queued retry, history, PDF sharing, assistant, settings and deletion.
-8. Read the actual values from the remote version registry without creating a build, then verify
-   Sentry release mapping, native symbolication and absence of personal data in logs.
+8. Re-query the authenticated store inventories before submission and stop if either maximum has
+   advanced beyond the recorded baseline; then verify Sentry release mapping, native symbolication
+   and absence of personal data in logs.
 9. Retain artifact checksums and any later store-submission URLs in the private release record.
 
 ## Rollback

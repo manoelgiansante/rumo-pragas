@@ -2,15 +2,14 @@
 
 import { startEasEnvProbe } from './eas-env-probe.mjs';
 
-const REQUIRED_REMOTE_NAMES = [
+const BASE_REQUIRED_REMOTE_NAMES = [
   'EXPO_PUBLIC_SUPABASE_URL',
   'EXPO_PUBLIC_SUPABASE_ANON_KEY',
   'EXPO_PUBLIC_SENTRY_DSN',
-  'GOOGLE_SERVICES_JSON',
   'SENTRY_AUTH_TOKEN',
 ];
 
-const OPTIONAL_GOOGLE_NAMES = [
+const GOOGLE_PLATFORM_NAMES = [
   'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
   'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
   'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID',
@@ -21,7 +20,12 @@ if (!['production', 'preview', 'development'].includes(environment) || easComman
   process.exit(2);
 }
 
-const allRemoteNames = [...REQUIRED_REMOTE_NAMES, ...OPTIONAL_GOOGLE_NAMES];
+const requiredRemoteNames =
+  environment === 'production'
+    ? [...BASE_REQUIRED_REMOTE_NAMES, ...GOOGLE_PLATFORM_NAMES]
+    : BASE_REQUIRED_REMOTE_NAMES;
+const optionalGoogleNames = environment === 'production' ? [] : GOOGLE_PLATFORM_NAMES;
+const allRemoteNames = [...requiredRemoteNames, ...optionalGoogleNames];
 const probes = [];
 const completions = [];
 let signalExitCode = 0;
@@ -74,7 +78,7 @@ if (signalExitCode) process.exit(signalExitCode);
 for (const signal of ['SIGHUP', 'SIGINT', 'SIGTERM']) process.removeAllListeners(signal);
 
 const missing = [];
-for (let index = 0; index < REQUIRED_REMOTE_NAMES.length; index += 1) {
+for (let index = 0; index < requiredRemoteNames.length; index += 1) {
   const name = allRemoteNames[index];
   const status = statuses[index];
   if (status === 0) {
@@ -90,7 +94,7 @@ for (let index = 0; index < REQUIRED_REMOTE_NAMES.length; index += 1) {
   }
 }
 
-for (let index = REQUIRED_REMOTE_NAMES.length; index < allRemoteNames.length; index += 1) {
+for (let index = requiredRemoteNames.length; index < allRemoteNames.length; index += 1) {
   const name = allRemoteNames[index];
   const status = statuses[index];
   if (status === 0) {
