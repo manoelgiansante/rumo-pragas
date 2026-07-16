@@ -11,7 +11,7 @@ case "$EAS_ENVIRONMENT" in
   *) echo "ERRO: ambiente EAS inválido: $EAS_ENVIRONMENT" >&2; exit 2 ;;
 esac
 
-case "${RUMO_EAS_CLI_MODE:-system}" in
+case "${RUMO_EAS_CLI_MODE:-pinned}" in
   pinned)
     command -v fnm >/dev/null 2>&1 || {
       echo "ERRO: fnm não encontrado para executar o EAS CLI fixado." >&2
@@ -34,6 +34,10 @@ case "${RUMO_EAS_CLI_MODE:-system}" in
     NODE_COMMAND=("$PINNED_NODE")
     ;;
   system)
+    [[ "${RUMO_EAS_TEST_FIXTURE:-}" == "1" ]] || {
+      echo "ERRO: o modo system existe somente para fixtures de teste explícitas." >&2
+      exit 2
+    }
     command -v node >/dev/null 2>&1 || {
       echo "ERRO: Node.js não encontrado." >&2
       exit 1

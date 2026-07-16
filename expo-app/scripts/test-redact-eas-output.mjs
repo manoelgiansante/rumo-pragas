@@ -2,7 +2,15 @@
 
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
@@ -138,7 +146,7 @@ test('redacts named secrets, authorization values, JWTs, and credentialed URLs',
   assert.match(redacted, /\[REDACTED:URL_CREDENTIAL\]/);
 });
 
-test('keeps the production wrapper on a pinned output-suppressed local-only path', () => {
+test('keeps every mobile build on a pinned output-suppressed local-only path', () => {
   const wrapper = readFileSync(new URL('./eas-local-production-build.sh', import.meta.url), 'utf8');
   const launch = readFileSync(new URL('./launch.sh', import.meta.url), 'utf8');
   const submit = readFileSync(new URL('./submit.sh', import.meta.url), 'utf8');
@@ -153,6 +161,9 @@ test('keeps the production wrapper on a pinned output-suppressed local-only path
   assert.match(wrapper, /EAS_EXECUTOR="\$APP_ROOT\/scripts\/eas-pinned\.sh"/);
   assert.match(easExecutor, /NODE_VERSION="22\.22\.3"/);
   assert.match(easExecutor, /EAS_CLI_PACKAGE="eas-cli@21\.0\.0"/);
+  assert.match(easExecutor, /build em nuvem é proibido; use --local/);
+  assert.match(easExecutor, /workflow\|workflow:\*/);
+  assert.match(easExecutor, /--auto-submit\*/);
   assert.match(wrapper, /CI=1 DISABLE_EAS_ANALYTICS=1 NO_COLOR=1 FORCE_COLOR=0/);
   assert.match(wrapper, /<\/dev\/null >\/dev\/null 2>&1/);
   assert.doesNotMatch(wrapper, /node "\$REDACTOR"|PIPESTATUS/);
@@ -160,13 +171,20 @@ test('keeps the production wrapper on a pinned output-suppressed local-only path
   assert.match(wrapper, /RUMO_EAS_CLI_MODE=pinned \.\/scripts\/validate-prod-env\.sh production/);
   assert.doesNotMatch(wrapper, /--auto-submit|eas submit/);
   assert.match(launch, /exec \.\/scripts\/eas-local-production-build\.sh --platform/);
-  assert.match(launch, /\.\/scripts\/eas-pinned\.sh build/);
+  assert.match(
+    launch,
+    /BUILD_COMMAND=\([\s\S]*\.\/scripts\/eas-pinned\.sh build[\s\S]*--local[\s\S]*\)/,
+  );
+  assert.doesNotMatch(launch, /PLATFORM="all"|LOCAL_BUILD=false|Build concluído ou enfileirado/);
+  assert.match(launch, /ios\|android\) ;;/);
   assert.match(submit, /\.\/scripts\/eas-pinned\.sh submit/);
   assert.match(uploadOta, /\.\/scripts\/eas-pinned\.sh env:exec/);
   for (const releaseScript of [launch, submit, uploadOta]) {
     assert.match(releaseScript, /<\/dev\/null >\/dev\/null 2>&1/);
   }
   assert.match(envValidator, /fnm exec --using=22\.22\.3 -- node -p 'process\.execPath'/);
+  assert.match(envValidator, /RUMO_EAS_CLI_MODE:-pinned/);
+  assert.match(envValidator, /RUMO_EAS_TEST_FIXTURE:-/);
   assert.match(envValidator, /EAS_COMMAND=\(\.\/scripts\/eas-pinned\.sh\)/);
   assert.doesNotMatch(envValidator, /npx --yes eas-cli/);
   assert.match(envValidator, /validate-prod-env\.mjs/);
@@ -182,6 +200,239 @@ test('keeps the production wrapper on a pinned output-suppressed local-only path
   assert.match(envProbeCore, /setTimeout\(\(\) => terminateGroup\('SIGKILL'\)/);
   assert.match(envExample, /\.\/scripts\/eas-pinned\.sh env:create/);
   assert.doesNotMatch(envExample, /env:create[^\n]*--value/);
+});
+
+test('pinned executor blocks cloud-capable invocations before fake fnm or npx can run', () => {
+  const fixtureDirectory = mkdtempSync(join(tmpdir(), 'rumo-eas-pinned-guard-'));
+  const binDirectory = join(fixtureDirectory, 'bin');
+  const executorPath = join(fixtureDirectory, 'eas-pinned.sh');
+  const tracePath = join(fixtureDirectory, 'npx-arguments.txt');
+
+  try {
+    mkdirSync(binDirectory);
+    writeFileSync(executorPath, readFileSync(new URL('./eas-pinned.sh', import.meta.url)), {
+      mode: 0o700,
+    });
+    writeFileSync(
+      join(binDirectory, 'fnm'),
+      `#!/usr/bin/env bash
+set -euo pipefail
+[[ "$1" == exec ]]
+shift
+[[ "$1" == --using=22.22.3 ]]
+shift
+[[ "$1" == -- ]]
+shift
+if [[ "$1" == node && "\${2:-}" == --version ]]; then
+  printf 'v22.22.3\\n'
+  exit 0
+fi
+exec "$@"
+`,
+      { mode: 0o700 },
+    );
+    writeFileSync(
+      join(binDirectory, 'npx'),
+      '#!/usr/bin/env bash\nprintf \'%s\\n\' "$@" >"${TRACE_PATH:?}"\n',
+      { mode: 0o700 },
+    );
+
+    const runExecutor = (arguments_) =>
+      spawnSync('bash', [executorPath, ...arguments_], {
+        cwd: fixtureDirectory,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${binDirectory}:${process.env.PATH ?? ''}`,
+          TRACE_PATH: tracePath,
+        },
+      });
+    const assertBlockedBeforeNpx = (arguments_) => {
+      rmSync(tracePath, { force: true });
+      const result = runExecutor(arguments_);
+      assert.equal(result.status, 2, `${arguments_.join(' ')}\n${result.stdout}${result.stderr}`);
+      assert.equal(existsSync(tracePath), false, 'guard must reject before npx is reached');
+    };
+
+    for (const arguments_ of [
+      ['build', '--platform', 'ios'],
+      ['build', '--local'],
+      ['build', '--local', '--platform', 'all'],
+      ['build', '--local', '--platform=web'],
+      ['build', '--local', '--no-local', '--platform', 'ios'],
+      ['build', '--local=false', '--platform', 'android'],
+      ['build', '--platform', 'ios', '--', '--local'],
+      ['build', '--local', '--platform', 'ios', '--auto-submit'],
+      ['build', '--local', '--platform', 'android', '--auto-submit-with-profile=production'],
+      ['workflow:run', './eas/workflows/release.yml'],
+      ['--non-interactive', 'workflow:run', './eas/workflows/release.yml'],
+      ['workflow:list'],
+    ]) {
+      assertBlockedBeforeNpx(arguments_);
+    }
+
+    const ios = runExecutor(['build', '--platform', 'ios', '--profile', 'preview', '--local']);
+    assert.equal(ios.status, 0, `${ios.stdout}${ios.stderr}`);
+    assert.deepEqual(readFileSync(tracePath, 'utf8').trim().split('\n'), [
+      '--yes',
+      'eas-cli@21.0.0',
+      'build',
+      '--platform',
+      'ios',
+      '--profile',
+      'preview',
+      '--local',
+    ]);
+
+    rmSync(tracePath, { force: true });
+    const environmentRead = runExecutor(['env:get', 'EXAMPLE_NAME', '--environment', 'preview']);
+    assert.equal(environmentRead.status, 0, `${environmentRead.stdout}${environmentRead.stderr}`);
+    assert.equal(existsSync(tracePath), true, 'non-build commands still use the pinned executor');
+  } finally {
+    rmSync(fixtureDirectory, { recursive: true, force: true });
+  }
+});
+
+test('production environment validator defaults to pinned and rejects unmarked system mode', () => {
+  const fixtureDirectory = mkdtempSync(join(tmpdir(), 'rumo-eas-validator-mode-'));
+  const binDirectory = join(fixtureDirectory, 'bin');
+  const fakeNode = join(binDirectory, 'node-22');
+  const tracePath = join(fixtureDirectory, 'validator-arguments.txt');
+  const easMarker = join(fixtureDirectory, 'system-eas-ran');
+  const validatorPath = fileURLToPath(new URL('./validate-prod-env.sh', import.meta.url));
+
+  try {
+    mkdirSync(binDirectory);
+    writeFileSync(
+      fakeNode,
+      `#!/usr/bin/env bash
+if [[ "\${1:-}" == --version ]]; then printf 'v22.22.3\\n'; exit 0; fi
+printf '%s\\n' "$@" >"\${TRACE_PATH:?}"
+`,
+      { mode: 0o700 },
+    );
+    writeFileSync(
+      join(binDirectory, 'fnm'),
+      `#!/usr/bin/env bash
+[[ "$*" == "exec --using=22.22.3 -- node -p process.execPath" ]] || exit 91
+printf '%s\\n' "\${FAKE_PINNED_NODE:?}"
+`,
+      { mode: 0o700 },
+    );
+    writeFileSync(
+      join(binDirectory, 'eas'),
+      `#!/usr/bin/env bash
+printf 'called' >"\${SYSTEM_EAS_MARKER:?}"
+`,
+      { mode: 0o700 },
+    );
+
+    const baseEnvironment = {
+      ...process.env,
+      PATH: `${binDirectory}:${process.env.PATH ?? ''}`,
+      FAKE_PINNED_NODE: fakeNode,
+      TRACE_PATH: tracePath,
+      SYSTEM_EAS_MARKER: easMarker,
+    };
+    const pinned = spawnSync('bash', [validatorPath, 'production'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      encoding: 'utf8',
+      env: baseEnvironment,
+    });
+    assert.equal(pinned.status, 0, `${pinned.stdout}${pinned.stderr}`);
+    assert.deepEqual(readFileSync(tracePath, 'utf8').trim().split('\n'), [
+      './scripts/validate-prod-env.mjs',
+      'production',
+      './scripts/eas-pinned.sh',
+    ]);
+    assert.equal(existsSync(easMarker), false);
+
+    const unmarkedSystem = spawnSync('bash', [validatorPath, 'production'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      encoding: 'utf8',
+      env: { ...baseEnvironment, RUMO_EAS_CLI_MODE: 'system' },
+    });
+    assert.equal(unmarkedSystem.status, 2);
+    assert.match(unmarkedSystem.stderr, /somente para fixtures de teste explícitas/);
+    assert.equal(existsSync(easMarker), false);
+  } finally {
+    rmSync(fixtureDirectory, { recursive: true, force: true });
+  }
+});
+
+test('launch CLI cannot enqueue a cloud build or combine platforms', () => {
+  const fixtureDirectory = mkdtempSync(join(tmpdir(), 'rumo-launch-local-only-'));
+  const scriptsDirectory = join(fixtureDirectory, 'scripts');
+  const launchPath = join(scriptsDirectory, 'launch.sh');
+  const tracePath = join(fixtureDirectory, 'build-arguments.txt');
+
+  try {
+    mkdirSync(scriptsDirectory);
+    mkdirSync(join(fixtureDirectory, 'store-assets', 'ios'), { recursive: true });
+    mkdirSync(join(fixtureDirectory, 'store-assets', 'android'), { recursive: true });
+    writeFileSync(launchPath, readFileSync(new URL('./launch.sh', import.meta.url)), {
+      mode: 0o700,
+    });
+    writeFileSync(
+      join(scriptsDirectory, 'eas-pinned.sh'),
+      '#!/usr/bin/env bash\nprintf \'%s\\n\' "$@" >"${TRACE_PATH:?}"\n',
+      { mode: 0o700 },
+    );
+    writeFileSync(
+      join(scriptsDirectory, 'eas-local-production-build.sh'),
+      '#!/usr/bin/env bash\n{ printf \'production-wrapper\\n\'; printf \'%s\\n\' "$@"; } >"${TRACE_PATH:?}"\n',
+      { mode: 0o700 },
+    );
+
+    const runLaunch = (arguments_) =>
+      spawnSync('bash', [launchPath, ...arguments_], {
+        cwd: fixtureDirectory,
+        encoding: 'utf8',
+        env: { ...process.env, TRACE_PATH: tracePath },
+      });
+    const tracedArguments = () => readFileSync(tracePath, 'utf8').trim().split('\n');
+
+    const preview = runLaunch(['--platform', 'android', '--profile', 'preview']);
+    assert.equal(preview.status, 0);
+    assert.deepEqual(tracedArguments(), [
+      'build',
+      '--platform',
+      'android',
+      '--profile',
+      'preview',
+      '--local',
+      '--non-interactive',
+    ]);
+
+    rmSync(tracePath, { force: true });
+    const storeQa = runLaunch(['--platform', 'ios', '--profile', 'storeQa', '--local']);
+    assert.equal(storeQa.status, 0);
+    assert.deepEqual(tracedArguments(), [
+      'build',
+      '--platform',
+      'ios',
+      '--profile',
+      'storeQa',
+      '--local',
+      '--non-interactive',
+    ]);
+
+    rmSync(tracePath, { force: true });
+    const production = runLaunch(['--platform', 'ios', '--profile', 'production']);
+    assert.equal(production.status, 0);
+    assert.deepEqual(tracedArguments(), ['production-wrapper', '--platform', 'ios']);
+
+    rmSync(tracePath, { force: true });
+    const missingPlatform = runLaunch([]);
+    assert.equal(missingPlatform.status, 2);
+    assert.equal(existsSync(tracePath), false);
+
+    const allPlatforms = runLaunch(['--platform', 'all']);
+    assert.equal(allPlatforms.status, 2);
+    assert.equal(existsSync(tracePath), false);
+  } finally {
+    rmSync(fixtureDirectory, { recursive: true, force: true });
+  }
 });
 
 test('production environment validation emits only allowlisted names, never remote values', () => {
@@ -224,6 +475,7 @@ esac
         ...process.env,
         PATH: `${fixtureDirectory}:${process.env.PATH ?? ''}`,
         RUMO_EAS_CLI_MODE: 'system',
+        RUMO_EAS_TEST_FIXTURE: '1',
       },
     });
     const combinedOutput = `${result.stdout}${result.stderr}`;
@@ -516,6 +768,7 @@ setInterval(() => {}, 1_000);
           ...process.env,
           PATH: `${fixtureDirectory}:${process.env.PATH ?? ''}`,
           RUMO_EAS_CLI_MODE: 'system',
+          RUMO_EAS_TEST_FIXTURE: '1',
           TRACE_PATH: tracePath,
         },
         stdio: ['ignore', 'pipe', 'pipe'],

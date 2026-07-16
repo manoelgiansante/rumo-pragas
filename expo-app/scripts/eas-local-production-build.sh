@@ -7,6 +7,30 @@ umask 077
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACTS_DIR="$APP_ROOT/.artifacts"
 EAS_EXECUTOR="$APP_ROOT/scripts/eas-pinned.sh"
+BUNDLE_VERIFIER="$APP_ROOT/scripts/verify-release-bundle-env.mjs"
+ARTIFACT_PATH=""
+REJECTED_PATH=""
+
+quarantine_partial_artifact() {
+  local exit_status=$?
+  trap - EXIT
+  if [[ "$exit_status" -ne 0 && -n "$ARTIFACT_PATH" ]] && \
+    [[ -e "$ARTIFACT_PATH" || -L "$ARTIFACT_PATH" ]]; then
+    REJECTED_PATH="${ARTIFACT_PATH}.rejected"
+    set +e
+    mv "$ARTIFACT_PATH" "$REJECTED_PATH" 2>/dev/null
+    local move_status=$?
+    if [[ "$move_status" -eq 0 ]]; then
+      if [[ -f "$REJECTED_PATH" && ! -L "$REJECTED_PATH" ]]; then
+        chmod 600 "$REJECTED_PATH" 2>/dev/null || true
+      fi
+    else
+      rm -f "$ARTIFACT_PATH" 2>/dev/null || rmdir "$ARTIFACT_PATH" 2>/dev/null || true
+    fi
+    set -e
+  fi
+  exit "$exit_status"
+}
 
 usage() {
   cat <<'EOF'
@@ -56,18 +80,25 @@ esac
   exit 1
 }
 
+[[ -f "$BUNDLE_VERIFIER" ]] || {
+  echo "ERRO: verificador fail-closed do bundle não encontrado." >&2
+  exit 1
+}
+
 cd "$APP_ROOT"
 RUMO_EAS_CLI_MODE=pinned ./scripts/validate-prod-env.sh production
 
 install -d -m 700 "$ARTIFACTS_DIR"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 ARTIFACT_PATH="$ARTIFACTS_DIR/RumoPragasIA-production-${PLATFORM}-${TIMESTAMP}.${EXTENSION}"
+REJECTED_PATH="${ARTIFACT_PATH}.rejected"
 LOG_PATH="$ARTIFACTS_DIR/eas-${PLATFORM}-production-local-${TIMESTAMP}.log"
 
-if [[ -e "$ARTIFACT_PATH" || -e "$LOG_PATH" ]]; then
+if [[ -e "$ARTIFACT_PATH" || -e "$REJECTED_PATH" || -e "$LOG_PATH" ]]; then
   echo "ERRO: destino de artefato ou log já existe; execute novamente." >&2
   exit 1
 fi
+trap quarantine_partial_artifact EXIT
 
 echo "Rumo Pragas — build EAS local de produção protegido"
 echo "Plataforma: $PLATFORM"
@@ -111,4 +142,21 @@ if [[ ! -s "$ARTIFACT_PATH" ]]; then
 fi
 
 chmod 600 "$ARTIFACT_PATH" "$LOG_PATH"
+ARTIFACT_FILENAME="$(basename "$ARTIFACT_PATH")"
+VERIFY_COMMAND="node ./scripts/verify-release-bundle-env.mjs --platform $PLATFORM --artifact ./.artifacts/$ARTIFACT_FILENAME"
+
+set +e
+CI=1 DISABLE_EAS_ANALYTICS=1 NO_COLOR=1 FORCE_COLOR=0 \
+  "$EAS_EXECUTOR" env:exec production "$VERIFY_COMMAND" --non-interactive \
+    </dev/null >/dev/null 2>&1
+VERIFY_STATUS=$?
+set -e
+
+if [[ "$VERIFY_STATUS" -ne 0 ]]; then
+  echo "ERRO: bundle não comprovou o ambiente de produção; artefato marcado como rejeitado." \
+    | tee -a "$LOG_PATH" >&2
+  exit 1
+fi
+
+echo "Bundle validado sem exibir valores de ambiente." | tee -a "$LOG_PATH"
 echo "Build concluído. Artefato e log seguro de status estão em .artifacts/."

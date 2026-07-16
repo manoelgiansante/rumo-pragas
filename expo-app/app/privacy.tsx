@@ -49,7 +49,7 @@ export default function PrivacyScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 14 de julho de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 15 de julho de 2026</Text>
 
         <Text style={styles.intro}>
           Esta Política explica como a MM CAMPO FORTE LTDA., CNPJ 57.169.838/0001-20, responsável
@@ -75,9 +75,13 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Conta:</Text> nome, e-mail, identificador de autenticação e
-              dados de sessão para criar a conta, autenticar, recuperar acesso e prestar suporte. A
-              identidade de acesso AgroRumo pode ser compartilhada com outros produtos.
+              <Text style={styles.bold}>Conta e perfil:</Text> nome, e-mail, telefone opcional,
+              cidade e estado opcionais, culturas de interesse, foto de perfil opcional,
+              identificador de autenticação e dados de sessão para criar e administrar a conta e o
+              perfil, autenticar, recuperar acesso, manter seu histórico e prestar suporte. O
+              identificador da conta também pode vincular eventos de uso para continuidade do
+              produto e análise de funcionamento. A identidade de acesso AgroRumo pode ser
+              compartilhada com outros produtos.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -90,9 +94,11 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Imagem enviada:</Text> a foto selecionada é processada para
+              <Text style={styles.bold}>Fotos:</Text> a foto de perfil opcional é guardada em área
+              privada do Supabase e usada para personalizar e administrar o perfil; ela não é
+              enviada ao provedor de diagnóstico. A foto selecionada para análise é processada para
               gerar a hipótese solicitada. O histórico atual salva o resultado estruturado, como
-              hipótese, confiança e alternativas, sem gravar uma URL da foto nesse registro.
+              hipótese, confiança e alternativas, sem gravar uma URL dessa foto no registro.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -113,6 +119,23 @@ export default function PrivacyScreen() {
           </View>
           <View style={styles.listItem}>
             <Ionicons
+              name="shield-checkmark-outline"
+              size={16}
+              color={Colors.accent}
+              style={styles.listIcon}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text style={styles.listText}>
+              <Text style={styles.bold}>Feedback e denúncias:</Text> o feedback do diagnóstico pode
+              incluir veredito, alternativa e notas opcionais para medir e melhorar a qualidade. A
+              denúncia de conteúdo de IA inclui a mensagem denunciada, motivo e detalhes opcionais
+              para revisão humana, segurança, prevenção de abuso e suporte. Esses registros são
+              ligados à conta para evitar duplicidade e permitir acompanhamento.
+            </Text>
+          </View>
+          <View style={styles.listItem}>
+            <Ionicons
               name="camera-outline"
               size={16}
               color={Colors.accent}
@@ -121,8 +144,10 @@ export default function PrivacyScreen() {
               importantForAccessibility="no"
             />
             <Text style={styles.listText}>
-              <Text style={styles.bold}>Histórico e conteúdo:</Text> resultados salvos, mensagens
-              enviadas ao assistente e preferências necessárias para os recursos solicitados.
+              <Text style={styles.bold}>Mensagens do assistente (opcional):</Text> mensagens e
+              contexto do chat são enviados, após o consentimento para IA, ao provedor ativo para
+              gerar a resposta solicitada. O histórico e as preferências necessários ao recurso
+              também podem ser mantidos para dar continuidade à conversa.
             </Text>
           </View>
           <View style={styles.listItem}>
@@ -136,8 +161,9 @@ export default function PrivacyScreen() {
             />
             <Text style={styles.listText}>
               <Text style={styles.bold}>Dados técnicos:</Text> token de notificação quando
-              autorizado, versão do aplicativo, sistema, eventos de uso, desempenho e falhas
-              necessários para entregar notificações, prevenir abuso e manter o serviço.
+              autorizado, identificadores técnicos do dispositivo, versão do aplicativo, sistema,
+              eventos de uso, desempenho e falhas necessários para entregar notificações, analisar o
+              funcionamento, prevenir abuso e manter o serviço.
             </Text>
           </View>
         </View>
@@ -152,18 +178,30 @@ export default function PrivacyScreen() {
           falhas; e cumprir obrigações legais ou exercer direitos. Não vendemos nem alugamos dados
           pessoais.
         </Text>
+        <Text style={styles.paragraph}>
+          A execução do serviço solicitado fundamenta conta, autenticação, perfil, diagnóstico,
+          histórico, feedback e suporte. O envio de fotos e mensagens aos provedores de IA depende
+          do consentimento específico para IA; esse consentimento pode ser revogado nos Ajustes, o
+          que bloqueia novos envios até uma nova autorização, sem invalidar tratamentos anteriores.
+          Localização e notificações também dependem de escolha opcional. Segurança, prevenção de
+          abuso, diagnóstico técnico e melhoria do produto podem se apoiar no legítimo interesse,
+          após avaliação de necessidade e dos direitos do titular. Obrigações legais e o exercício
+          regular de direitos fundamentam os tratamentos estritamente necessários a essas
+          finalidades.
+        </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           3. Armazenamento e conservação
         </Text>
         <Text style={styles.paragraph}>
-          Conta, histórico e dados necessários ao serviço usam a infraestrutura Supabase, com
-          conexão protegida e controles de acesso por usuário. Sessão e preferências necessárias
-          também podem ser mantidas no dispositivo. A foto é encaminhada pelo backend ao provedor
-          ativo para processar a solicitação; o resultado estruturado atual não grava uma URL da
-          foto. O tratamento realizado pelo provedor segue o contrato e a política aplicáveis.
-          Conservamos cada categoria somente enquanto necessária à finalidade informada, a uma
-          obrigação legal, à proteção de dados ou ao exercício regular de direitos.
+          Conta, perfil, foto de perfil, histórico, feedback, denúncias e dados necessários ao
+          serviço usam a infraestrutura Supabase, com conexão protegida e controles de acesso por
+          usuário. Sessão e preferências necessárias também podem ser mantidas no dispositivo. A
+          foto de diagnóstico é encaminhada pelo backend ao provedor ativo para processar a
+          solicitação; o resultado estruturado atual não grava uma URL dessa foto. O tratamento
+          realizado pelo provedor segue o contrato e a política aplicáveis. Conservamos cada
+          categoria somente enquanto necessária à finalidade informada, a uma obrigação legal, à
+          proteção de dados ou ao exercício regular de direitos.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>

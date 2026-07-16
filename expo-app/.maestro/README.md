@@ -10,14 +10,14 @@ End-to-end flows for the Rumo Pragas mobile app.
 ## Running
 
 ```bash
-# Authenticated flows require credentials supplied at runtime (never committed)
-TEST_EMAIL='qa@example.com' TEST_PASSWORD='...' maestro test .maestro/
+# Legacy authenticated flows receive parameters through Maestro's CLI (never committed)
+maestro test -e TEST_EMAIL="$LOCAL_QA_EMAIL" -e TEST_PASSWORD="$LOCAL_QA_PASSWORD" .maestro/
 
 # Single flow
 maestro test .maestro/smoke-test.yaml
 
 # With specific device
-maestro --device iPhone_15 test .maestro/smoke-test.yaml
+maestro test --device iPhone_15 .maestro/smoke-test.yaml
 
 # Validate yaml syntax without running
 maestro test --include-tags=smoke .maestro/
@@ -28,7 +28,7 @@ maestro test --include-tags=smoke .maestro/
 | File                         | Purpose                                                                     | Requires auth     |
 | ---------------------------- | --------------------------------------------------------------------------- | ----------------- |
 | `smoke-test.yaml`            | Launch app, verify ANY landing screen renders                               | No                |
-| `onboarding-flow.yaml`       | Walks through all 4 onboarding pages + cold-start gate (Apple 2.1.0)        | No                |
+| `onboarding-flow.yaml`       | Walks through all 3 onboarding pages + cold-start gate (Apple 2.1.0)        | No                |
 | `auth-flow.yaml`             | Login with test credentials (via testIDs). Used as sub-flow by others.      | No (it does auth) |
 | `signup-flow.yaml`           | Switches to signup tab, fills form, checks UI doesn't lock up               | No                |
 | `apple-signin-flow.yaml`     | Sign in with Apple button reachable (iOS only)                              | No                |
@@ -46,11 +46,14 @@ maestro test --include-tags=smoke .maestro/
 | `delete-account-flow.yaml`   | Apple Guideline 5.1.1(v): delete reachable + confirmation (does NOT delete) | Yes               |
 | `edit-profile-flow.yaml`     | Settings → Edit Profile → fill → Save                                       | Yes               |
 | `settings-flow.yaml`         | Settings tab: assert all rows render + toggle push switch                   | Yes               |
-| `aso-screenshots.yaml`       | Capture ASO screenshots for App Store + Play Store                          | No                |
+| `aso-screenshots.yaml`       | Eight QA/DRAFT UI captures; synthetic result is never store proof           | Yes               |
 
 ## Credentials
 
-Provide `TEST_EMAIL` and `TEST_PASSWORD` through the shell or CI secret store. No test credential is versioned.
+Legacy authenticated flows expect `TEST_EMAIL` and `TEST_PASSWORD` through Maestro `-e` parameters
+or the CI secret integration. The draft screenshot harness instead expects shell variables
+`MAESTRO_TEST_EMAIL` and `MAESTRO_TEST_PASSWORD`; Maestro imports the `MAESTRO_` prefix without
+putting credential values in command arguments. No test credential is versioned.
 
 ## Selector strategy
 
@@ -63,6 +66,116 @@ Conventions:
 - Tab bar: `tab-home`, `tab-history`, `tab-library`, `tab-ai-chat`, `tab-settings`
 
 Prefer `id:` selectors in Maestro — they're language-agnostic and survive copy changes.
+
+## Store screenshot QA harness (draft only)
+
+`aso-screenshots.yaml` is an internal regression flow, not a store-submission generator. The
+deterministic diagnosis is deliberately labeled `QA/DRAFT` inside the fixture and every capture name
+starts with `qa-draft-`. Never copy those files into `store-assets/ios/` or
+`store-assets/android/`, and never use them to satisfy `validate:store-assets` or
+`status:store-submission`. A synthetic backend response cannot prove the product's real semantic
+result.
+
+The harness proxies only `auth/v1`, `rest/v1`, and `storage/v1` to a local Supabase stack. It
+intercepts exactly `/functions/v1/diagnose-pragas`; every other Function route, including AI chat,
+fails closed. The intercepted route verifies the Bearer token through local `/auth/v1/user`, then
+upserts one deterministic row through local REST with the same token so RLS remains authoritative.
+It rejects coordinates, unknown fields, stale consent headers, malformed images, and non-local
+upstreams. Request targets are checked before URL normalization, so literal, encoded, and
+double-encoded dot-segments cannot change the routed endpoint. No production URL is accepted.
+Upstream redirects are refused instead of being forwarded to the device, so credentials cannot
+leave the configured loopback origin through a redirect response.
+
+The only permitted binary is the dedicated EAS profile `storeQa`. It is an internal development
+client, has no update channel, and `app.config.js` turns native Expo Updates off for that profile.
+The profile also compiles analytics off, keeps the public Sentry DSN empty, and disables Sentry
+uploads. `preview`, `production`, release builds, and any `NODE_ENV` other than `development` are
+rejected by the preflight. `app.config.js` repeats the same build-time boundary, including the exact
+loopback HTTPS URL/port and matching local anon key, so calling EAS directly cannot bypass it.
+Outside `storeQa`, `app.config.js` leaves the normal app configuration unchanged.
+
+The diagnosis client requires HTTPS. Generate a local development certificate for
+`127.0.0.1`/`localhost` and trust its local CA only on the disposable simulator or emulator. The
+underlying Supabase stack may remain on local HTTP. Before building, run the fail-closed preflight
+with the exact loopback URL and local anon key that will be compiled into the development client:
+
+```bash
+env -u SENTRY_AUTH_TOKEN \
+  EAS_BUILD_PROFILE=storeQa \
+  NODE_ENV=development \
+  EXPO_PUBLIC_ENABLE_ANALYTICS=false \
+  EXPO_PUBLIC_SENTRY_DSN= \
+  SENTRY_DISABLE_AUTO_UPLOAD=true \
+  EXPO_PUBLIC_SUPABASE_URL=https://127.0.0.1:54329 \
+  EXPO_PUBLIC_SUPABASE_ANON_KEY="$LOCAL_SUPABASE_ANON_KEY" \
+  STORE_QA_MODE=draft-screenshots \
+  STORE_QA_UPSTREAM_URL=http://127.0.0.1:54321 \
+  STORE_QA_ANON_KEY="$LOCAL_SUPABASE_ANON_KEY" \
+  STORE_QA_LISTEN_PORT=54329 \
+  STORE_QA_TLS_CERT_PATH="$LOCAL_QA_CERT_PATH" \
+  STORE_QA_TLS_KEY_PATH="$LOCAL_QA_KEY_PATH" \
+  npm run validate:store-screenshot-qa-profile
+```
+
+Build only with `./scripts/launch.sh --local --profile storeQa --platform ios` or the same command
+with `--platform android`, preserving the environment above. The launcher uses the project-pinned
+Node/EAS executor and adds `--local` unconditionally; it has no cloud fallback. `expo-dev-client` is
+versioned with the app so the profile produces a real debug/development runtime where `__DEV__` is
+true. This QA binary is technically ineligible for store submission and is not the release
+candidate.
+
+Start the loopback proxy with the same values. Its startup repeats the preflight before opening a
+listener:
+
+```bash
+env -u SENTRY_AUTH_TOKEN \
+  EAS_BUILD_PROFILE=storeQa \
+  NODE_ENV=development \
+  EXPO_PUBLIC_ENABLE_ANALYTICS=false \
+  EXPO_PUBLIC_SENTRY_DSN= \
+  SENTRY_DISABLE_AUTO_UPLOAD=true \
+  EXPO_PUBLIC_SUPABASE_URL=https://127.0.0.1:54329 \
+  EXPO_PUBLIC_SUPABASE_ANON_KEY="$LOCAL_SUPABASE_ANON_KEY" \
+  STORE_QA_MODE=draft-screenshots \
+  STORE_QA_UPSTREAM_URL=http://127.0.0.1:54321 \
+  STORE_QA_ANON_KEY="$LOCAL_SUPABASE_ANON_KEY" \
+  STORE_QA_LISTEN_PORT=54329 \
+  STORE_QA_TLS_CERT_PATH="$LOCAL_QA_CERT_PATH" \
+  STORE_QA_TLS_KEY_PATH="$LOCAL_QA_KEY_PATH" \
+  npm run qa:store-screenshot-server
+```
+
+Trust must be established in the disposable device, not by weakening the app transport policy. An
+iOS Simulator can receive the local root with `xcrun simctl keychain <UDID> add-root-cert
+<rootCA.pem>`. Current Android release apps do not generally trust user-installed roots; use a
+disposable non-Play emulator where the local CA is installed as a system trust anchor. If that
+cannot be done, treat Android capture as blocked rather than adding a permissive network-security
+configuration to the candidate.
+
+Use a dedicated user created only in the local Auth stack. The flow injects
+`store-assets/qa-source/soybean-leaf-synthetic-qa.png` with Maestro `addMedia`, then selects the first
+item through the official platform-specific Android and iOS picker selectors. On Android, map the
+device loopback to the host before launch with
+`adb reverse tcp:54329 tcp:54329`. Then keep all generated images inside an ignored artifact
+directory:
+
+```bash
+MAESTRO_TEST_EMAIL="$LOCAL_QA_EMAIL" MAESTRO_TEST_PASSWORD="$LOCAL_QA_PASSWORD" \
+maestro test --device "$QA_DEVICE" \
+  --test-output-dir .artifacts/qa-draft-store-screenshots \
+  .maestro/aso-screenshots.yaml
+```
+
+The two `MAESTRO_` credential variables are mandatory and checked before the app launches. The flow
+declines location, clears iOS Keychain state, uses app `testID` selectors, never opens a paywall, and
+captures eight real UI states: Home, capture entry, crop selection, local synthetic result, local
+History, Library, the initial AI Assistant, and Settings. The Assistant capture waits for the empty
+state and does not tap a suggestion, type, or send, so it never calls the AI Edge Function. The
+synthetic record uses a non-catalog title and IDs, cannot resolve to a real MIP entry, and stores
+severity `none` so the History card cannot invent a `Média` severity from a missing value. Every
+capture remains `qa-draft-*`; final App Store and Google Play screenshots still require a separately
+evidenced real release candidate result and the unchanged checklist in
+`store-assets/SCREENSHOT_CHECKLIST.md`.
 
 ## testID inventory (selected high-value)
 
@@ -102,9 +215,9 @@ Prefer `id:` selectors in Maestro — they're language-agnostic and survive copy
 - `settings-edit-profile`
 - `settings-row-dark-mode`, `settings-row-language`, `settings-row-notifications`
 - `settings-switch-push`
-- `settings-row-privacy`, `settings-row-terms`, `settings-row-check-updates`
-- `settings-row-version`, `settings-row-contact-support`
-- `settings-signout`, `settings-delete-account`
+- `settings-row-privacy-policy`, `settings-row-terms`
+- `settings-row-share-app`, `settings-row-tutorials`
+- `settings-sign-out`, `settings-delete-account`
 - `settings-sub-retry`
 
 ### Edit Profile
@@ -116,7 +229,7 @@ Prefer `id:` selectors in Maestro — they're language-agnostic and survive copy
 
 ### Library / History / AI Chat / Consent
 
-- `library-chip-all`, `library-chip-<id>`, `library-search-input`, `library-clear-filter`
-- `history-search-input`, `history-retry`, `history-empty-cta-start`, `history-item-<id>`
+- `library-chip-all`, `library-chip-<id>`, `library-search`, `library-clear-filter`
+- `history-search`, `history-retry`, `history-empty-cta-start`, `history-item-<id>`
 - `aichat-input`, `aichat-send`, `aichat-clear`, `aichat-suggestion-<i>`
 - `consent-location-accept`, `consent-location-decline`

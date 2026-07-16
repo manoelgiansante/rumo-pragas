@@ -22,6 +22,14 @@ seguintes resoluções com evidência:
 2. obter orientação formal das lojas e jurídica confirmando que o fluxo app-scoped atual é aceito
    para esta identidade compartilhada, e alinhar os formulários e a comunicação pública.
 
+Remover este arquivo, isoladamente, nunca representa resolução. O mesmo commit candidato deve
+incluir `store-assets/ACCOUNT_DELETION_RESOLUTION.json`, como arquivo regular rastreado no Git, com
+o escopo exato `full-shared-agrorumo-account-deletion`, revisor, referência da decisão legal, data,
+URL pública canônica e SHA-256 da evidência de integração. O pipeline rejeita ausência, adulteração,
+campos extras e arquivo não rastreado. A matriz, as políticas, os testes e o fluxo real de exclusão
+também precisam ser atualizados no mesmo candidato; enquanto isso não ocorrer, este blocker deve
+permanecer versionado.
+
 Não preencher o campo de exclusão de **conta** do Play com a URL de mera exclusão dos dados do
 Rumo Pragas. A URL pode continuar documentando o controle app-scoped, mas não prova exclusão da
 conta global.

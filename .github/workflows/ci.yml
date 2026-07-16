@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Node 22.22.3
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -52,6 +53,21 @@ jobs:
 
       - name: EAS local build log redaction
         run: npm run test:eas-redactor
+
+      - name: Store release gates
+        run: npm run test:store-release-gates
+
+      - name: Data Safety contract tests
+        run: npm run test:data-safety
+
+      - name: Data Safety app and canonical web declaration
+        run: node scripts/validate-data-safety.mjs --landing-policy-url https://pragas.agrorumo.com/privacidade
+
+      - name: Store screenshot QA harness
+        run: npm run test:store-screenshot-qa-server
+
+      - name: Release bundle environment gate
+        run: npm run test:release-bundle-env
 
       - name: Web security and routing configuration
         run: npm run validate:web-config
@@ -116,6 +132,23 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Node 22.22.3
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22.22.3
+
+      - name: Supabase CLI 2.98.2
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.98.2
+
+      - name: Verify Supabase CLI pin
+        run: |
+          if [[ "$(supabase --version)" != "2.98.2" ]]; then
+            echo "Supabase CLI 2.98.2 is required." >&2
+            exit 1
+          fi
+
       - name: Deno 2.7.12
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
@@ -123,6 +156,10 @@ jobs:
 
       - name: Format, lint, typecheck and test Edge Functions
         run: deno task gate
+
+      - name: Production compatibility static and unit gate
+        working-directory: .
+        run: bash supabase/tests/pragas-prod-compat-gate-static.sh
 
       - name: PostgreSQL 17 migration, replay and rollback integration
         working-directory: .
