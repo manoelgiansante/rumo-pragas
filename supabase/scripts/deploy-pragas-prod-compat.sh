@@ -61,7 +61,7 @@ readonly EDGE_DEPLOY_ORDER=(
   "admin-ai-content-reports"
 )
 readonly EXISTING_EDGE_SLUG="pragas-send-push"
-readonly EXISTING_EDGE_VERSION="18"
+readonly EXISTING_EDGE_VERSION="19"
 readonly EXISTING_EDGE_EZBR="2138ada8ec877822216eff72cdf957754257d9373579d6e437124ac16e3f284a"
 readonly EXISTING_EDGE_VERIFY_JWT="true"
 
@@ -1014,7 +1014,7 @@ if [[ "$mode" == "--dry-run" ]]; then
   echo "prod-compat DB + 12 Edge gate: DRY RUN PASS"
   echo "target=$TARGET_REF profiles=$profile_count generated_ids=$generated_profile_count"
   echo "allowlist=${TARGET_VERSIONS[*]}"
-  echo "edge_new_absent=11 edge_restore_baseline=pragas-send-push@18"
+  echo "edge_new_absent=11 edge_restore_baseline=pragas-send-push@19"
   echo "apply remains blocked until authenticated backups and restore tests succeed"
   exit 0
 fi
