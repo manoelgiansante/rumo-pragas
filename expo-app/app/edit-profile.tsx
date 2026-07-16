@@ -41,6 +41,7 @@ import {
   parseOwnedLegacyAvatarUrl,
   replacePragasAvatar,
 } from '../services/avatar';
+import { savePragasProfileFields } from '../services/pragasProfile';
 import { Avatar } from '../components/Avatar';
 import { KeyboardDoneAccessory, DONE_ACCESSORY_ID } from '../components/KeyboardDoneAccessory';
 
@@ -282,26 +283,15 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     try {
-      // upsert (not update) so the first-ever profile save self-heals when the
-      // pragas_profiles row was never created (e.g. signup before the row trigger
-      // existed / a social-login path that skipped row creation). A plain
-      // `.update().eq('id', ...)` against a missing row affects 0 rows and
-      // returns NO error — the user sees "profile saved" but nothing persists
-      // (silent CRUD-edit failure). Upsert is idempotent: identical result when
-      // the row already exists, creates it when absent.
-      const { error } = await supabase.from('pragas_profiles').upsert(
-        {
-          user_id: user.id,
-          full_name: profile.full_name.trim(),
-          city: profile.city.trim() || null,
-          state: profile.state || null,
-          phone: profile.phone.trim() || null,
-          crops: profile.crops.length > 0 ? profile.crops : null,
-        },
-        { onConflict: 'user_id' },
-      );
-
-      if (error) throw error;
+      // UPDATE never includes immutable id/user_id. Missing legacy rows are
+      // created separately, with a retry when another client wins that race.
+      await savePragasProfileFields(user.id, {
+        full_name: profile.full_name.trim(),
+        city: profile.city.trim() || null,
+        state: profile.state || null,
+        phone: profile.phone.trim() || null,
+        crops: profile.crops.length > 0 ? profile.crops : null,
+      });
 
       await supabase.auth.updateUser({
         data: { full_name: profile.full_name.trim() },

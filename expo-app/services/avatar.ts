@@ -1,5 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { Config } from '../constants/config';
+import { savePragasProfileFields } from './pragasProfile';
+import { captureMessage } from './sentry-shim';
 import { supabase, timeoutHeader } from './supabase';
 
 export const PRAGAS_AVATAR_BUCKET = 'pragas-avatars';
@@ -66,12 +68,39 @@ export async function getPragasAvatarSignedUrl(
   return validateSignedUrl(data?.signedUrl);
 }
 
-async function removeExactObject(bucket: string, path: string): Promise<void> {
+async function removeExactObject(bucket: string, path: string): Promise<boolean> {
   try {
-    await supabase.storage.from(bucket).remove([path]);
+    const { error } = await supabase.storage.from(bucket).remove([path]);
+    if (!error) return true;
   } catch {
-    // Orphan cleanup is retryable by the server-side account cleanup job.
+    // Report below without exposing the user-owned object path.
   }
+  captureMessage('avatar object cleanup deferred', {
+    level: 'warning',
+    tags: { feature: 'avatar.cleanup', bucket },
+  });
+  return false;
+}
+
+async function readAvatarPathPersistence(
+  userId: string,
+  path: string,
+): Promise<'persisted' | 'not-persisted' | 'unknown'> {
+  try {
+    const { data, error } = await supabase
+      .from('pragas_profiles')
+      .select('avatar_path')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!error) return data?.avatar_path === path ? 'persisted' : 'not-persisted';
+  } catch {
+    // A lost response can hide a committed write, so cleanup must stay conservative.
+  }
+  captureMessage('avatar profile persistence verification failed', {
+    level: 'warning',
+    tags: { feature: 'avatar.persistenceVerification' },
+  });
+  return 'unknown';
 }
 
 export interface ReplacePragasAvatarInput {
@@ -111,17 +140,20 @@ export async function replacePragasAvatar(
     });
   if (uploadError) throw new Error('AVATAR_UPLOAD_FAILED');
 
-  const { error: profileError } = await supabase.from('pragas_profiles').upsert(
-    {
-      user_id: userId,
+  try {
+    await savePragasProfileFields(userId, {
       avatar_path: path,
       avatar_url: null,
-    },
-    { onConflict: 'user_id' },
-  );
-  if (profileError) {
-    await removeExactObject(PRAGAS_AVATAR_BUCKET, path);
-    throw new Error('AVATAR_PROFILE_SAVE_FAILED');
+    });
+  } catch {
+    const persistence = await readAvatarPathPersistence(userId, path);
+    if (persistence !== 'persisted') {
+      if (persistence === 'unknown') throw new Error('AVATAR_PROFILE_SAVE_UNCERTAIN');
+      const rolledBack = await removeExactObject(PRAGAS_AVATAR_BUCKET, path);
+      throw new Error(
+        rolledBack ? 'AVATAR_PROFILE_SAVE_FAILED' : 'AVATAR_PROFILE_SAVE_FAILED_ROLLBACK_PENDING',
+      );
+    }
   }
 
   if (previousPath !== path && isOwnedPragasAvatarPath(userId, previousPath)) {

@@ -1,7 +1,9 @@
 const mockUpload = jest.fn();
 const mockRemove = jest.fn();
 const mockCreateSignedUrl = jest.fn();
-const mockProfileUpsert = jest.fn();
+const mockSaveProfile = jest.fn();
+const mockProfileMaybeSingle = jest.fn();
+const mockCaptureMessage = jest.fn();
 
 jest.mock('expo-crypto', () => ({
   randomUUID: jest.fn(() => '11111111-2222-4333-8444-555555555555'),
@@ -9,6 +11,14 @@ jest.mock('expo-crypto', () => ({
 
 jest.mock('../../constants/config', () => ({
   Config: { SUPABASE_URL: 'https://project.supabase.co' },
+}));
+
+jest.mock('../../services/pragasProfile', () => ({
+  savePragasProfileFields: (...args: unknown[]) => mockSaveProfile(...args),
+}));
+
+jest.mock('../../services/sentry-shim', () => ({
+  captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
 }));
 
 jest.mock('../../services/supabase', () => ({
@@ -23,7 +33,11 @@ jest.mock('../../services/supabase', () => ({
           mockCreateSignedUrl(bucket, path, expiresIn),
       }),
     },
-    from: () => ({ upsert: (...args: unknown[]) => mockProfileUpsert(...args) }),
+    from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: () => mockProfileMaybeSingle() }),
+      }),
+    }),
   },
 }));
 
@@ -42,7 +56,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockUpload.mockResolvedValue({ error: null });
   mockRemove.mockResolvedValue({ error: null });
-  mockProfileUpsert.mockResolvedValue({ error: null });
+  mockSaveProfile.mockResolvedValue(undefined);
+  mockProfileMaybeSingle.mockResolvedValue({ data: { avatar_path: null }, error: null });
   mockCreateSignedUrl.mockResolvedValue({
     data: {
       signedUrl: `https://project.supabase.co/storage/v1/object/sign/pragas-avatars/${newPath}?token=signed`,
@@ -83,19 +98,19 @@ describe('private Pragas avatars', () => {
       expect.any(ArrayBuffer),
       expect.objectContaining({ contentType: 'image/jpeg', upsert: false }),
     );
-    expect(mockProfileUpsert).toHaveBeenCalledWith(
-      { user_id: userId, avatar_path: newPath, avatar_url: null },
-      { onConflict: 'user_id' },
-    );
+    expect(mockSaveProfile).toHaveBeenCalledWith(userId, {
+      avatar_path: newPath,
+      avatar_url: null,
+    });
     expect(mockRemove).toHaveBeenCalledWith('pragas-avatars', [oldPath]);
     expect(mockRemove).toHaveBeenCalledWith('avatars', [oldPath]);
-    expect(mockProfileUpsert.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockSaveProfile.mock.invocationCallOrder[0]).toBeLessThan(
       mockRemove.mock.invocationCallOrder[0]!,
     );
   });
 
   it('rolls back only the newly uploaded object when profile persistence fails', async () => {
-    mockProfileUpsert.mockResolvedValueOnce({ error: { message: 'private database detail' } });
+    mockSaveProfile.mockRejectedValueOnce(new Error('private database detail'));
     await expect(
       replacePragasAvatar({
         userId,
@@ -109,6 +124,71 @@ describe('private Pragas avatars', () => {
     expect(mockRemove).toHaveBeenCalledTimes(1);
     expect(mockRemove).toHaveBeenCalledWith('pragas-avatars', [newPath]);
     expect(mockRemove).not.toHaveBeenCalledWith('pragas-avatars', [oldPath]);
+  });
+
+  it('keeps the new object when a lost response makes commit status uncertain', async () => {
+    mockSaveProfile.mockRejectedValueOnce(new Error('network response lost'));
+    mockProfileMaybeSingle.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'network unavailable' },
+    });
+
+    await expect(
+      replacePragasAvatar({
+        userId,
+        bytes: new ArrayBuffer(128),
+        mimeType: 'image/jpeg',
+        previousPath: oldPath,
+        previousLegacyUrl: null,
+      }),
+    ).rejects.toThrow('AVATAR_PROFILE_SAVE_UNCERTAIN');
+
+    expect(mockRemove).not.toHaveBeenCalled();
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      'avatar profile persistence verification failed',
+      expect.any(Object),
+    );
+  });
+
+  it('continues when read-back proves that a failed response actually committed', async () => {
+    mockSaveProfile.mockRejectedValueOnce(new Error('network response lost'));
+    mockProfileMaybeSingle.mockResolvedValueOnce({
+      data: { avatar_path: newPath },
+      error: null,
+    });
+
+    const result = await replacePragasAvatar({
+      userId,
+      bytes: new ArrayBuffer(128),
+      mimeType: 'image/jpeg',
+      previousPath: null,
+      previousLegacyUrl: null,
+    });
+
+    expect(result.path).toBe(newPath);
+    expect(mockRemove).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a deferred rollback when Storage returns an error result', async () => {
+    mockSaveProfile.mockRejectedValueOnce(new Error('database rejected write'));
+    mockRemove.mockResolvedValueOnce({ error: { message: 'storage unavailable' } });
+
+    await expect(
+      replacePragasAvatar({
+        userId,
+        bytes: new ArrayBuffer(128),
+        mimeType: 'image/jpeg',
+        previousPath: oldPath,
+        previousLegacyUrl: null,
+      }),
+    ).rejects.toThrow('AVATAR_PROFILE_SAVE_FAILED_ROLLBACK_PENDING');
+
+    expect(mockRemove).toHaveBeenCalledWith('pragas-avatars', [newPath]);
+    expect(mockRemove).not.toHaveBeenCalledWith('pragas-avatars', [oldPath]);
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      'avatar object cleanup deferred',
+      expect.any(Object),
+    );
   });
 
   it('never deletes a foreign, malformed or differently hosted legacy URL', () => {
