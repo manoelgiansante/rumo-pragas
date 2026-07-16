@@ -51,13 +51,11 @@ describe('location-consent withdrawal ordering', () => {
   });
 
   it('durably queues opt-out before advancing the navigation gate or retrying the server', async () => {
-    let releaseQueue: ((value: boolean) => void) | undefined;
-    mockEnqueuePendingLocationConsent.mockImplementationOnce(
-      () =>
-        new Promise<boolean>((resolve) => {
-          releaseQueue = resolve;
-        }),
-    );
+    let releaseQueue!: (value: boolean) => void;
+    const queueWrite = new Promise<boolean>((resolve) => {
+      releaseQueue = resolve;
+    });
+    mockEnqueuePendingLocationConsent.mockReturnValueOnce(queueWrite);
     // The pre-fix path tried this server write first and advanced immediately.
     mockSetLocationConsent.mockImplementation(() => new Promise(() => undefined));
     const { getByTestId } = render(<ConsentLocationScreen />);
@@ -77,8 +75,9 @@ describe('location-consent withdrawal ordering', () => {
     expect(mockRequestPermission).not.toHaveBeenCalled();
     expect(mockGetCurrentLocationWithConsent).not.toHaveBeenCalled();
 
-    releaseQueue?.(true);
-    await waitFor(() => expect(mockMarkLocationConsentSeen).toHaveBeenCalledTimes(1));
+    releaseQueue(true);
+    await queueWrite;
+    expect(mockMarkLocationConsentSeen).toHaveBeenCalledTimes(1);
     expect(mockFlushPendingLocationConsent).toHaveBeenCalledWith(USER_ID);
     expect(mockRequestPermission).not.toHaveBeenCalled();
     expect(mockGetCurrentLocationWithConsent).not.toHaveBeenCalled();
