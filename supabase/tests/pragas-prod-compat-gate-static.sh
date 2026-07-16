@@ -153,12 +153,28 @@ for required_temporary_role_contract in \
   'pragas_assert_temp_login_role_fresh' \
   '[[ "$method" != "POST" ]]' \
   'clear_temp_login_role_local' \
+  'refresh_temp_login_role_credentials' \
+  'temp_login_roles_issued_count' \
   'trap cleanup EXIT' \
   'server role will expire by its validated TTL'
 do
   if ! rg -Fq "$required_temporary_role_contract" "$deploy_gate" \
       "$repo_root/supabase/scripts/pragas-prod-compat-lib.sh"; then
     echo "temporary Supabase login-role contract is missing: $required_temporary_role_contract" >&2
+    exit 1
+  fi
+done
+capture_backup_block="$(sed -n \
+  '/^capture_verified_backup_raw()/,/^}/p' "$deploy_gate")"
+for required_per_dump_role_contract in \
+  'refresh_temp_login_role_credentials' \
+  'pragas_assert_temp_login_role_fresh' \
+  'pragas_run_pinned_pg_backup' \
+  'clear_temp_login_role_local'
+do
+  if ! rg -Fq "$required_per_dump_role_contract" \
+      <<<"$capture_backup_block"; then
+    echo "temporary login role is not isolated per dump: $required_per_dump_role_contract" >&2
     exit 1
   fi
 done

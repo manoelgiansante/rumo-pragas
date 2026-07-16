@@ -1111,7 +1111,7 @@ if [[ "$snapshot_verify_setting" != "$EXISTING_EDGE_VERIFY_JWT" ]]; then
   exit 1
 fi
 
-edge_archive="$backup_dir/pragas-send-push-v18-restore.tgz"
+edge_archive="$backup_dir/pragas-send-push-v${EXISTING_EDGE_VERSION}-restore.tgz"
 tar -C "$backup_dir" -czf "$edge_archive" "edge-restore-work"
 edge_archive_hash="$(shasum -a 256 "$edge_archive" | awk '{print $1}')"
 edge_extract="$tmp/edge-archive-restore-probe"
@@ -1142,10 +1142,25 @@ data_backup="$backup_dir/auth-storage-public-data.sql"
 backup_pgpass="$tmp/prod-backup.pgpass"
 backup_db_username="$pooler_username"
 backup_db_password="${SUPABASE_DB_PASSWORD:-}"
+use_temp_login_role="false"
+temp_login_roles_issued_count=0
 if [[ -z "$backup_db_password" ]]; then
+  use_temp_login_role="true"
+else
+  if ! pragas_write_private_pgpass \
+      "$backup_pgpass" "$pooler_host" "$pooler_port" "$pooler_database" \
+      "$backup_db_username" "$backup_db_password" >/dev/null 2>&1; then
+    echo "private production backup credential preflight failed" >&2
+    exit 1
+  fi
+  backup_db_password=""
+fi
+
+refresh_temp_login_role_credentials() {
+  clear_temp_login_role_local
   if ! pragas_load_supabase_access_token temp_login_access_token; then
     echo "temporary Supabase login-role authentication is unavailable" >&2
-    exit 1
+    return 1
   fi
   temp_login_cleanup_required="true"
   temp_login_response="$tmp/temp-login-role-response.json"
@@ -1153,7 +1168,7 @@ if [[ -z "$backup_db_password" ]]; then
       POST "$TARGET_REF" "$temp_login_access_token" \
       "$temp_login_response" "$REVIEWED_SYSTEM_CURL"; then
     echo "temporary Supabase login-role acquisition failed" >&2
-    exit 1
+    return 1
   fi
   temp_login_role_issued="true"
   if ! pragas_parse_supabase_temp_login_role \
@@ -1162,27 +1177,31 @@ if [[ -z "$backup_db_password" ]]; then
       "$TEMP_LOGIN_ROLE_MAX_TTL_SECONDS" \
       temp_login_role temp_login_password temp_login_ttl; then
     echo "temporary Supabase login-role validation failed" >&2
-    exit 1
+    return 1
   fi
   rm -f "$temp_login_response"
+  temp_login_response=""
   if ! backup_db_username="$(pragas_build_temp_pooler_username \
       "$temp_login_role" "$TARGET_REF")"; then
     echo "temporary Supabase pooler identity validation failed" >&2
-    exit 1
+    return 1
   fi
   temp_login_expires_at="$(($(date +%s) + temp_login_ttl))"
   backup_db_password="$temp_login_password"
   temp_login_access_token=""
-  echo "using a reviewed, short-lived Supabase CLI login role for the backup"
-fi
-if ! pragas_write_private_pgpass \
-    "$backup_pgpass" "$pooler_host" "$pooler_port" "$pooler_database" \
-    "$backup_db_username" "$backup_db_password" >/dev/null 2>&1; then
-  echo "private production backup credential preflight failed" >&2
-  exit 1
-fi
-backup_db_password=""
-temp_login_password=""
+  if ! pragas_write_private_pgpass \
+      "$backup_pgpass" "$pooler_host" "$pooler_port" "$pooler_database" \
+      "$backup_db_username" "$backup_db_password" >/dev/null 2>&1; then
+    backup_db_password=""
+    temp_login_password=""
+    echo "private temporary-role pgpass creation failed" >&2
+    return 1
+  fi
+  backup_db_password=""
+  temp_login_password=""
+  temp_login_roles_issued_count=$((temp_login_roles_issued_count + 1))
+}
+
 backup_raw_dir="$tmp/verified-backup-raw"
 mkdir -m 700 "$backup_raw_dir"
 
@@ -1200,10 +1219,18 @@ capture_verified_backup_raw() {
   if ! assert_backup_storage_still_valid; then
     return 1
   fi
-  if [[ "$temp_login_cleanup_required" == "true" ]] \
+  # Supabase may issue the minimum five-minute TTL while a full schema dump can
+  # take more than a minute. Bind one fresh credential to exactly one dump so
+  # no later dump can inherit a role close to expiry.
+  if [[ "$use_temp_login_role" == "true" ]] \
+      && ! refresh_temp_login_role_credentials; then
+    return 1
+  fi
+  if [[ "$use_temp_login_role" == "true" ]] \
       && ! pragas_assert_temp_login_role_fresh \
         "$temp_login_expires_at" \
         "$TEMP_LOGIN_ROLE_MIN_REMAINING_SECONDS"; then
+    clear_temp_login_role_local
     return 1
   fi
   if ! pragas_run_pinned_pg_backup \
@@ -1211,8 +1238,14 @@ capture_verified_backup_raw() {
       "$tool" "$db_sslrootcert" "$backup_pgpass" \
       "$pooler_host" "$pooler_port" "$backup_db_username" \
       "$pooler_database" bridge "$@" >"$raw_output" 2>/dev/null; then
+    if [[ "$use_temp_login_role" == "true" ]]; then
+      clear_temp_login_role_local
+    fi
     rm -f "$raw_output"
     return 1
+  fi
+  if [[ "$use_temp_login_role" == "true" ]]; then
+    clear_temp_login_role_local
   fi
   chmod 400 "$raw_output"
   [[ -s "$raw_output" ]]
@@ -1346,8 +1379,8 @@ if ! write_verified_data_backup 2>/dev/null; then
   exit 1
 fi
 rm -f "$backup_pgpass"
-if [[ "$temp_login_cleanup_required" == "true" ]]; then
-  echo "temporary-role credentials cleared; server role is bounded by the validated TTL"
+if [[ "$use_temp_login_role" == "true" ]]; then
+  echo "temporary-role credentials cleared after $temp_login_roles_issued_count isolated dumps; server roles are bounded by their validated TTL"
   clear_temp_login_role_local
 fi
 # PRAGAS_VERIFIED_BACKUP_END

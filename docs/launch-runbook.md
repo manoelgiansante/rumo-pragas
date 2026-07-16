@@ -233,12 +233,14 @@ accepted only when it matches the same fingerprint.
 password. When it is absent, `--prepare`/`--apply` load the existing Supabase PAT from the
 `Supabase CLI` macOS Keychain entry, request the official short-lived `cli_login_*` role through the
 Management API, and place its password only in the private temporary pgpass file consumed by the
-pinned `pg_dump` container. The role TTL is bounded and rechecked before every dump. The gate
-removes the local response, password and pgpass immediately after the final verified dump (and from
-its exit/signal trap). The server role then expires naturally within its validated 300–3600 second
-TTL. The Management API delete endpoint is intentionally never called because it revokes all CLI
-login roles for the shared project, including roles owned by another tab or operator. Never run this
-gate with shell tracing (`bash -x`) or copy credentials into command arguments.
+pinned `pg_dump` container. The role TTL is bounded and rechecked before every dump. Because the
+Management API can issue the minimum five-minute TTL while a large schema dump takes more than a
+minute, the gate requests a fresh role for each isolated dump and removes its local response,
+password and pgpass immediately afterward (and from its exit/signal trap). Each server role then
+expires naturally within its validated 300–3600 second TTL. The Management API delete endpoint is
+intentionally never called because it revokes all CLI login roles for the shared project, including
+roles owned by another tab or operator. Never run this gate with shell tracing (`bash -x`) or copy
+credentials into command arguments.
 
 Production backup evidence must be written either to an ordinary directory protected by active
 FileVault or to a dedicated, mounted encrypted volume. With FileVault off, a normal directory on the
