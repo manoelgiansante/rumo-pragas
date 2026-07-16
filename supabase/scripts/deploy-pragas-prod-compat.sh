@@ -104,7 +104,7 @@ expected_edge_verify_jwt() {
 
 expected_edge_hash() {
   case "$1" in
-    _shared) echo "6552f8ee3a9f5b2a8127288517abb9a2aca2636f18fd36bc1ddbf953a6454b82" ;;
+    _shared) echo "bd89c14255044a0688cc4e2ff2b1991982dcd3d0c98f61ab06d94026f1657507" ;;
     diagnose-pragas) echo "4e8293678b98cb6e2b3061fef6a8483aa4d1450efa3c8a9991e1a33b5bd2447b" ;;
     ai-chat-pragas) echo "b07ef59e6857ac131b5df00691d14f0fe94581d9396ee8e5a3fdc52b3f867b5f" ;;
     pragas-delete-user-account) echo "5a8601bf3d8caa6200f983d65cd4cd66e0801deb4cccbbadd6d54d9b117b0513" ;;
@@ -116,7 +116,7 @@ expected_edge_hash() {
     admin-ai-content-reports) echo "d9ecd60ed0e6d31748263e3762fe33afa7b33e93fb724f278a0fa4868f77ccb9" ;;
     pragas-process-deletions) echo "9dcfd5b9cb2e14bc4a075c71acd9315d17bf3fa6254f8f24166d29a3e1b66a38" ;;
     pragas-process-ai-idempotency) echo "fc896e878917c441c3f622c5b568599cf0ceaab84aaed246185417db2654c185" ;;
-    pragas-send-push) echo "6cd9934c259987a8dd068dd50c5d4b785eabcb5662f3f6ffe486b39d83767cdd" ;;
+    pragas-send-push) echo "897078f6ffd884e8eb272ce024a095adaa4c96f286428875b2cfa583f0a9e880" ;;
     *) return 1 ;;
   esac
 }
