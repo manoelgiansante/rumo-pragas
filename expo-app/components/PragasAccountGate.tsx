@@ -22,21 +22,26 @@ export function PragasAccountGate({
   const busy = status === 'linking';
   const isDeleted = status === 'deleted_reactivation_required';
   const isPending = status === 'deletion_pending';
+  const isGlobalDeletion = status === 'global_deletion_pending';
 
   const title = busy
     ? t('accountGate.linkingTitle')
     : isDeleted
       ? t('accountGate.reactivateTitle')
-      : isPending
-        ? t('accountGate.pendingTitle')
-        : t('accountGate.errorTitle');
+      : isGlobalDeletion
+        ? t('accountGate.globalDeletionTitle')
+        : isPending
+          ? t('accountGate.pendingTitle')
+          : t('accountGate.errorTitle');
   const description = busy
     ? t('accountGate.linkingDescription')
     : isDeleted
       ? t('accountGate.reactivateDescription')
-      : isPending
-        ? t('accountGate.pendingDescription')
-        : t('accountGate.errorDescription');
+      : isGlobalDeletion
+        ? t('accountGate.globalDeletionDescription')
+        : isPending
+          ? t('accountGate.pendingDescription')
+          : t('accountGate.errorDescription');
 
   return (
     <View style={styles.screen} accessibilityViewIsModal testID="pragas-account-gate">

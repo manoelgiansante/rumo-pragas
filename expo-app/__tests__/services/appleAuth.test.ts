@@ -29,12 +29,19 @@ jest.mock('../../services/sentry-shim', () => ({
 }));
 
 const mockSignInWithIdToken = jest.fn();
+const mockEphemeralSignInWithIdToken = jest.fn();
 const mockUpdateUser = jest.fn();
 
 // 32 zero bytes → 64 zero hex chars; matches getRandomBytes mock above.
 const EXPECTED_RAW_NONCE = '0'.repeat(64);
 
 jest.mock('../../services/supabase', () => ({
+  createEphemeralSupabaseClient: () => ({
+    auth: {
+      signInWithIdToken: (...args: unknown[]) => mockEphemeralSignInWithIdToken(...args),
+      updateUser: (...args: unknown[]) => mockUpdateUser(...args),
+    },
+  }),
   supabase: {
     auth: {
       signInWithIdToken: (...args: unknown[]) => mockSignInWithIdToken(...args),
@@ -48,7 +55,11 @@ jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
 }));
 
-import { isAppleSignInAvailable, signInWithApple } from '../../services/appleAuth';
+import {
+  isAppleSignInAvailable,
+  reauthenticateWithAppleForAccountDeletion,
+  signInWithApple,
+} from '../../services/appleAuth';
 import {
   __internal as metadataGate,
   waitForPendingAuthMetadata,
@@ -109,6 +120,7 @@ describe('signInWithApple', () => {
   it('returns session and user on successful sign in', async () => {
     mockSignInAsync.mockResolvedValueOnce({
       identityToken: 'apple-id-token',
+      authorizationCode: 'must-not-leak-through-normal-login',
       fullName: null,
     });
 
@@ -252,5 +264,42 @@ describe('signInWithApple', () => {
     mockSignInAsync.mockRejectedValueOnce(new Error('Unknown Apple error'));
 
     await expect(signInWithApple()).rejects.toThrow('Erro ao entrar com Apple. Tente novamente.');
+  });
+});
+
+describe('reauthenticateWithAppleForAccountDeletion', () => {
+  it('returns the single-use authorization code only to the deletion flow', async () => {
+    mockSignInAsync.mockResolvedValueOnce({
+      identityToken: 'apple-id-token',
+      authorizationCode: 'ephemeral.apple.authorization.code',
+      fullName: null,
+    });
+    const mockUser = { id: 'u1', email: 'private@privaterelay.appleid.com' };
+    const mockSession = { access_token: 'fresh-token' };
+    mockEphemeralSignInWithIdToken.mockResolvedValueOnce({
+      data: { user: mockUser, session: mockSession },
+      error: null,
+    });
+
+    await expect(reauthenticateWithAppleForAccountDeletion()).resolves.toEqual({
+      session: mockSession,
+      user: mockUser,
+      authorizationCode: 'ephemeral.apple.authorization.code',
+    });
+    expect(mockSignInWithIdToken).not.toHaveBeenCalled();
+    expect(mockEphemeralSignInWithIdToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when Apple omits the authorization code', async () => {
+    mockSignInAsync.mockResolvedValueOnce({
+      identityToken: 'apple-id-token',
+      authorizationCode: null,
+      fullName: null,
+    });
+
+    await expect(reauthenticateWithAppleForAccountDeletion()).rejects.toThrow(
+      'Erro ao entrar com Apple. Tente novamente.',
+    );
+    expect(mockSignInWithIdToken).not.toHaveBeenCalled();
   });
 });

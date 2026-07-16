@@ -18,7 +18,7 @@ const TOKEN_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Remote push is a build capability, not a runtime guess. iOS uses APNs/EAS
- * credentials; Android requires the GOOGLE_SERVICES_JSON file secret to have
+ * credentials; Android requires the locally approved GOOGLE_SERVICES_JSON snapshot to have
  * been injected by app.config.js. Local climate notifications remain usable
  * when this returns false.
  */

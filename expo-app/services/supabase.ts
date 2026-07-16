@@ -642,6 +642,27 @@ export const supabase = createClient(
   },
 );
 
+/**
+ * Isolated in-memory auth client for destructive-action reauthentication.
+ * It never writes the app's persisted session and its SIGNED_IN events have no
+ * subscribers in AuthContext, so a password/OAuth proof cannot relink the
+ * account or unmount the deletion screen before its receipt is saved.
+ */
+export function createEphemeralSupabaseClient() {
+  return createClient(
+    Config.SUPABASE_URL || 'https://invalid.supabase.co',
+    Config.SUPABASE_ANON_KEY || 'invalid-anon-key',
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+      global: { fetch: fetchWithTimeout },
+    },
+  );
+}
+
 let autoRefreshConsumers = 0;
 let appStateSubscription: { remove(): void } | null = null;
 

@@ -328,30 +328,33 @@ export default function PrivacyScreen() {
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
-          8. Exclusão dos dados do Rumo Pragas
+          8. Exclusão da conta AgroRumo
         </Text>
         <Text style={styles.paragraph}>
-          Ao concluir a exclusão dentro do aplicativo, os dados específicos do Rumo Pragas são
-          eliminados e os tokens push são revogados. A identidade global AgroRumo é compartilhada
-          com outros produtos e não é apagada por essa ação específica. Registros históricos
-          compartilhados sem um discriminador seguro de aplicativo também são mantidos para evitar a
-          exclusão de dados pertencentes a outros produtos.
+          O mesmo login pode dar acesso a mais de um produto AgroRumo. Em Ajustes, você pode
+          solicitar a exclusão da conta AgroRumo inteira após receber um aviso sobre esse impacto,
+          confirmar expressamente a decisão e autenticar-se novamente. O acesso ao Rumo Pragas é
+          suspenso e seus tokens de notificação são revogados no momento em que o servidor aceita o
+          pedido.
         </Text>
         <Text style={styles.paragraph}>
-          Mantemos um marcador técnico mínimo de desvinculação: identificador global em formato
-          UUID, estado operacional, número de tentativas, códigos técnicos limitados e datas do
-          processamento. Ele não contém nome, e-mail, foto, mensagem, conteúdo ou token. Serve para
-          repetir uma limpeza interrompida, comprovar a eliminação específica e impedir recriação
-          silenciosa dos dados enquanto a identidade compartilhada continua ativa. Conforme o caso,
-          esse tratamento se apoia no cumprimento da solicitação, em obrigações de proteção de dados
-          e no exercício regular de direitos.
+          Para contas vinculadas ao Iniciar Sessão com Apple, o pedido é registrado antes da
+          revogação externa. Se a Apple estiver temporariamente indisponível, o recibo continua
+          válido, a revogação permanece pendente em estado auditável e a solicitação de exclusão não
+          é cancelada.
         </Text>
         <Text style={styles.paragraph}>
-          O marcador permanece até a reativação explícita do Rumo Pragas ou a exclusão da identidade
-          global AgroRumo. Reativar não recupera dados antigos. O aplicativo informa se a operação
-          foi concluída, continua em processamento ou precisa ser tentada novamente. Cópias
-          residuais tecnicamente necessárias, dados anonimizados e registros sujeitos às hipóteses
-          do art. 16 da LGPD podem ser conservados somente para a finalidade cabível.
+          Como os dados são distribuídos entre produtos, a exclusão global é processada de forma
+          coordenada em até 15 dias. Os dados pessoais são excluídos ou anonimizados por cada
+          domínio e a identidade de autenticação é removida por último. Você recebe um recibo opaco
+          para acompanhar o estado. Nenhum usuário real é apagado automaticamente por uma rotina
+          genérica.
+        </Text>
+        <Text style={styles.paragraph}>
+          A fila de acompanhamento não armazena nome, e-mail, telefone ou UUID bruto do usuário; usa
+          referência HMAC, estados técnicos, datas e o recibo aleatório. Dados anonimizados e
+          registros sujeitos às hipóteses do art. 16 da LGPD podem ser conservados somente para a
+          finalidade e o prazo legal aplicáveis. A conclusão é comunicada ao titular.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>

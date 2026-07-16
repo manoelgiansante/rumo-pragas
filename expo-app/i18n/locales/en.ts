@@ -116,6 +116,9 @@ export default {
       'This account was previously deleted. Reactivation recreates access to Rumo Pragas only; deleted data will not be restored.',
     reactivate: 'Reactivate Rumo Pragas',
     reactivateHint: 'Confirms creation of new app access without restoring deleted data',
+    globalDeletionTitle: 'AgroRumo account deletion in progress',
+    globalDeletionDescription:
+      'The global request is permanent. Rumo Pragas remains blocked and cannot be reactivated while the account is processed.',
     pendingTitle: 'Deletion in progress',
     pendingDescription:
       'Rumo Pragas data deletion is still being processed. For your safety, access remains blocked until it finishes.',
@@ -428,14 +431,14 @@ export default {
     supportSubject: 'Rumo Pragas IA Support',
     checking: 'Checking...',
     signOut: 'Sign Out',
-    deleteAccount: 'Delete Rumo Pragas data',
-    deleteConfirmTitle: 'Delete Rumo Pragas data',
+    deleteAccount: 'Delete AgroRumo account',
+    deleteConfirmTitle: 'Delete AgroRumo account',
     deleteConfirmMessage:
-      'This permanently removes data provably linked to Rumo Pragas IA and revokes notification tokens. Your AgroRumo identity and shared history without a reliable app identifier (analytics and audit records) will be retained to protect data from other apps.',
+      'This request affects the entire AgroRumo account and other linked apps. Rumo Pragas access will be suspended immediately.',
     deleteContinue: 'Continue',
     deleteFinalTitle: 'Confirm permanent deletion',
     deleteFinalMessage:
-      'Removal of Rumo Pragas-specific data is permanent and cannot be recovered. Your AgroRumo login and shared analytics and audit history will continue to exist. Continue?',
+      'Global deletion is permanent and will be processed in a coordinated workflow within 15 days after fresh authentication. Continue?',
     deleteFinalConfirm: 'Delete permanently',
     cancel: 'Cancel',
     delete: 'Delete',
@@ -450,15 +453,15 @@ export default {
     profileSaved: 'Profile updated successfully!',
     profileSaveError: 'Could not save profile. Please try again.',
     languageTitle: 'Language',
-    deletionReceived: 'Rumo Pragas data removed',
+    deletionReceived: 'Deletion request recorded',
     deletionReceivedMessage:
-      'Data provably linked to Rumo Pragas and notification tokens were removed. Your AgroRumo identity and shared history without an app identifier (analytics and audit records) were retained. You will now be signed out of this app.',
+      'Rumo Pragas access is suspended. Keep the receipt to track coordinated processing of the AgroRumo account.',
     deletionPendingTitle: 'Deletion in progress',
     deletionPendingMessage:
-      'Your Rumo Pragas data deletion is still being processed. Wait a moment and try again.',
+      'The global request is still being processed. Use the opaque receipt to check its status.',
     deletionIncompleteTitle: 'Deletion incomplete',
     deletionError:
-      'Removal of Rumo Pragas-specific data could not be confirmed. Try again or contact suporte@agrorumo.com.',
+      'The global request could not be recorded. Try again or contact suporte@agrorumo.com.',
     deletionLocalPurgeError:
       'Server data was processed, but secure cleanup on this device did not finish. Try again before signing out.',
     pushNotifA11y: 'Enable or disable notifications',
@@ -502,9 +505,9 @@ export default {
     signOutA11y: 'Sign out',
     signOutConfirmTitle: 'Sign out?',
     signOutConfirmMessage: 'You can come back anytime by signing in again.',
-    deleteAccountA11y: 'Permanently delete Rumo Pragas data',
+    deleteAccountA11y: 'Request permanent deletion of the entire AgroRumo account',
     deleteAccountHint:
-      'Requests permanent removal of Rumo Pragas-specific data; shared identity and history are retained',
+      'Opens confirmation and reauthentication for the shared account and associated data',
     // Polished UI — 2026-05-21
     headerTitle: 'Settings',
     sectionAccount: 'Account',
@@ -513,6 +516,48 @@ export default {
     sectionPrivacy: 'Privacy',
     sectionAbout: 'About',
     privacyFooter: 'GDPR / LGPD compliant. You can revoke permissions at any time.',
+  },
+  accountDeletion: {
+    back: 'Back',
+    title: 'Delete AgroRumo account',
+    wholeAccountTitle: 'This request affects your entire AgroRumo account',
+    wholeAccountMessage:
+      'The same login may provide access to other AgroRumo products. For safety, full deletion is processed in a coordinated workflow after your individual confirmation.',
+    impactPragas: 'Rumo Pragas access and notification delivery will stop immediately.',
+    impactOtherApps:
+      'After processing, you will lose access to other apps that use this same AgroRumo account.',
+    impactRetention:
+      'Personal data will be deleted or anonymized; legally required records may be retained only for the applicable period.',
+    impactTimeline:
+      'The team will complete coordinated processing within 15 days and record the status against your receipt.',
+    acknowledgement:
+      'I understand that I am requesting deletion of my entire AgroRumo account, not only Rumo Pragas data.',
+    acknowledgementA11y: 'Acknowledge the impact on the entire AgroRumo account',
+    reauthenticateTitle: 'Confirm your identity again',
+    reauthenticateMessage:
+      'To prevent unauthorized requests, sign in again using the same method as this account.',
+    passwordPlaceholder: 'Current password',
+    confirmWithPassword: 'Reauthenticate and request deletion',
+    confirmWithApple: 'Confirm with Apple',
+    confirmWithGoogle: 'Confirm with Google',
+    providerUnavailable:
+      'No compatible method was found. If this account uses Apple, finish on an iPhone or iPad with Confirm with Apple. Contact suporte@agrorumo.com if needed.',
+    reauthenticationError:
+      'Your identity was not confirmed or the request could not be saved. Please try again.',
+    receivedTitle: 'Request recorded',
+    receivedMessage:
+      'Rumo Pragas access is suspended. Coordinated account deletion will be processed by {{dueDate}}. Keep the receipt to track your request.',
+    receiptLabel: 'Receipt without personal data',
+    receiptShare: 'AgroRumo deletion request\nReceipt: {{receipt}}\nDue: {{dueDate}}',
+    appleRevocationPending:
+      'Your request was received. Apple access revocation is pending and will continue through the audited queue without cancelling deletion.',
+    retryAppleRevocation: 'Retry Apple revocation',
+    appleRevocationRetryError:
+      'Your request remains valid, but Apple revocation is still pending. Please try again.',
+    shareReceipt: 'Share receipt',
+    localPurgeWarning:
+      'The server recorded the request, but local cleanup on this device did not finish. Remove the app from this device after saving the receipt.',
+    finish: 'Finish and sign out',
   },
   common: {
     offlineBanner: 'You are currently offline',

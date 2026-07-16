@@ -48,8 +48,6 @@ import {
   LOCATION_CONSENT_PURPOSE,
 } from '../../services/userPreferences';
 import { useLocation } from '../../hooks/useLocation';
-import { isPragasDeletionComplete } from '../../services/accountDeletion';
-import { purgePragasLocalUserData } from '../../services/localDataPurge';
 import {
   deliverPragasUserDataExport,
   requestPragasUserDataExport,
@@ -193,7 +191,6 @@ export default function SettingsScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { isChecking, checkForUpdate } = useOTAUpdate();
   const { requestPermission } = useLocation();
-  const deletionIdempotencyKeyRef = useRef(Crypto.randomUUID());
   const exportIdempotencyKeyRef = useRef(Crypto.randomUUID());
   const userName = user?.user_metadata?.full_name || t('home.defaultUser');
   const userEmail = user?.email || '';
@@ -469,109 +466,9 @@ export default function SettingsScreen() {
     ]);
   };
 
-  // Performs the actual irreversible deletion. Called ONLY after the two-step
-  // informed confirmation in handleDeleteAccount below.
-  const runAccountDeletion = async () => {
-    try {
-      // The request erases only data provably scoped to Rumo Pragas; the shared
-      // AgroRumo authentication identity is intentionally retained.
-      // Prefer the already-resolved context token; getSession is a safe fallback
-      // on native and on web (whose auth storage now persists across reloads).
-      let accessToken = session?.access_token ?? '';
-      if (!accessToken) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        accessToken = sessionData?.session?.access_token ?? '';
-      }
-
-      if (!accessToken) {
-        showAlert(t('common.error'), t('settings.deletionError'));
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('pragas-delete-user-account', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Idempotency-Key': deletionIdempotencyKeyRef.current,
-        },
-      });
-
-      if (data?.code === 'APP_DATA_DELETION_IN_PROGRESS') {
-        showAlert(t('settings.deletionPendingTitle'), t('settings.deletionPendingMessage'));
-        return;
-      }
-
-      const deletionComplete = !error && isPragasDeletionComplete(data);
-
-      if (!deletionComplete) {
-        if (__DEV__) console.warn('[settings] app-data deletion incomplete');
-        captureMessage('pragas-delete-user-account failed', {
-          level: 'error',
-          tags: { feature: 'settings.deleteAccount' },
-        });
-        showAlert(t('settings.deletionIncompleteTitle'), t('settings.deletionError'));
-        return;
-      }
-
-      if (!user?.id) {
-        showAlert(t('settings.deletionIncompleteTitle'), t('settings.deletionError'));
-        return;
-      }
-      try {
-        await purgePragasLocalUserData(user.id);
-      } catch {
-        captureMessage('local app-data purge failed', {
-          level: 'warning',
-          tags: { feature: 'settings.deleteAccount', step: 'local_purge' },
-        });
-        // Backend erasure is idempotent; keep the session so the user can retry
-        // local cleanup. Never claim completion or sign out on partial purge.
-        showAlert(t('settings.deletionIncompleteTitle'), t('settings.deletionLocalPurgeError'));
-        return;
-      }
-
-      await signOut();
-      showAlert(t('settings.deletionReceived'), t('settings.deletionReceivedMessage'));
-    } catch {
-      if (__DEV__) console.warn('[settings] app-data deletion failed');
-      captureMessage('app-data deletion failed', {
-        level: 'warning',
-        tags: { feature: 'settings.deleteAccount' },
-      });
-      showAlert(t('common.error'), t('settings.deletionError'));
-    }
-  };
-
   const handleDeleteAccount = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-    // The edge function deletes provably Rumo Pragas-scoped data but
-    // intentionally retains the shared AgroRumo auth identity and historical
-    // analytics/audit rows that have no reliable app discriminator.
-    // Make that boundary explicit and require a deliberate two-step confirmation.
-    // This tab is not rendered
-    // inside a full-screen Modal, so the native Alert shows in front (the RN
-    // new-arch "Alert behind Modal" no-op does not apply here — verified).
-    // Step 1: spell out app-data deletion + retained shared identity.
-    showAlert(t('settings.deleteConfirmTitle'), t('settings.deleteConfirmMessage'), [
-      { text: t('settings.cancel'), style: 'cancel' },
-      {
-        text: t('settings.deleteContinue'),
-        style: 'destructive',
-        onPress: () => {
-          // Step 2: final, deliberate confirmation — permanent + immediate,
-          // no recovery window.
-          showAlert(t('settings.deleteFinalTitle'), t('settings.deleteFinalMessage'), [
-            { text: t('settings.cancel'), style: 'cancel' },
-            {
-              text: t('settings.deleteFinalConfirm'),
-              style: 'destructive',
-              onPress: () => {
-                void runAccountDeletion();
-              },
-            },
-          ]);
-        },
-      },
-    ]);
+    router.push('/account-deletion');
   };
 
   const openMail = () => {

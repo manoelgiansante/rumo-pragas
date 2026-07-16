@@ -23,6 +23,7 @@ export type PragasAccountStatus =
   | 'linked'
   | 'deleted_reactivation_required'
   | 'deletion_pending'
+  | 'global_deletion_pending'
   | 'error';
 
 interface AuthState {

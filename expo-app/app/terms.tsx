@@ -49,7 +49,7 @@ export default function TermsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Última atualização: 14 de julho de 2026</Text>
+        <Text style={styles.lastUpdated}>Última atualização: 16 de julho de 2026</Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
           1. Aceitação dos Termos
@@ -129,8 +129,7 @@ export default function TermsScreen() {
         </Text>
         <Text style={styles.paragraph}>
           A coleta e o tratamento de dados pessoais são regidos pela Política de Privacidade, que
-          informa as finalidades, provedores, conservação, exclusão por aplicativo e direitos do
-          titular.
+          informa as finalidades, provedores, conservação, exclusão da conta e direitos do titular.
         </Text>
 
         <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>
@@ -146,21 +145,27 @@ export default function TermsScreen() {
           10. Exclusão de dados e encerramento do uso
         </Text>
         <Text style={styles.paragraph}>
-          Pela opção de exclusão em Ajustes, você solicita a eliminação dos dados específicos do
-          Rumo Pragas. Quando o aplicativo confirma a conclusão, esses dados foram eliminados e os
-          tokens push foram revogados. A identidade global AgroRumo, usada por outros produtos, não
-          é apagada por essa operação específica. Registros históricos compartilhados sem
-          identificação segura do aplicativo também são mantidos para não excluir dados de outros
-          produtos.
+          Pela opção de exclusão em Ajustes, você solicita a exclusão da conta AgroRumo inteira, que
+          pode ser compartilhada com outros produtos. Antes de registrar o pedido, o aplicativo
+          informa esse alcance, exige confirmação expressa e solicita nova autenticação pelo mesmo
+          titular. Contas vinculadas ao Iniciar Sessão com Apple exigem confirmação com a Apple para
+          que a autorização correspondente seja revogada com segurança. O pedido e o recibo são
+          registrados antes dessa chamada externa; indisponibilidade temporária da Apple mantém a
+          revogação pendente na fila auditada e não cancela a exclusão.
         </Text>
         <Text style={styles.paragraph}>
-          Um marcador técnico mínimo de desvinculação — UUID global, estado, tentativas, códigos
-          técnicos limitados e datas — é mantido para repetir uma limpeza interrompida, comprovar a
-          eliminação específica e impedir recriação silenciosa. Ele não contém nome, e-mail, foto,
-          mensagem, conteúdo ou token e permanece até a reativação explícita do Rumo Pragas ou a
-          exclusão da identidade global. Reativar não recupera dados antigos. O aplicativo informa
-          se a solicitação foi concluída, continua em processamento ou precisa ser tentada
-          novamente. Também há orientação em pragas.agrorumo.com/excluir-conta.
+          Quando o servidor aceita o pedido, o acesso ao Rumo Pragas é suspenso, os tokens push são
+          revogados e o vínculo não pode ser reativado. A exclusão ou anonimização coordenada dos
+          dados dos produtos e da identidade de autenticação é concluída em até 15 dias, salvo
+          retenção específica permitida por lei. O recibo opaco permite acompanhar o estado sem
+          expor nome, e-mail, telefone ou UUID bruto. A conclusão é comunicada ao titular.
+        </Text>
+        <Text style={styles.paragraph}>
+          A fila técnica e o registro de auditoria mantêm somente referências HMAC, estados, datas e
+          códigos limitados necessários para executar e comprovar o pedido. Dados anonimizados e
+          registros sujeitos às hipóteses legais de conservação podem permanecer apenas pela
+          finalidade e pelo prazo aplicáveis. Também há orientação em
+          pragas.agrorumo.com/excluir-conta.
         </Text>
         <Text style={styles.paragraph}>
           Podemos restringir uso abusivo, ilegal ou que comprometa a segurança, respeitada a

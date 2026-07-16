@@ -9,7 +9,7 @@ export type PragasAccountLinkResult =
   | {
       linked: false;
       app: 'rumo-pragas';
-      code: 'deleted_reactivation_required' | 'deletion_pending';
+      code: 'deleted_reactivation_required' | 'deletion_pending' | 'global_deletion_pending';
     };
 
 export class PragasAccountError extends Error {
@@ -48,7 +48,9 @@ function validateLinkResult(value: unknown): PragasAccountLinkResult {
   }
   if (
     result.linked === false &&
-    (result.code === 'deleted_reactivation_required' || result.code === 'deletion_pending')
+    (result.code === 'deleted_reactivation_required' ||
+      result.code === 'deletion_pending' ||
+      result.code === 'global_deletion_pending')
   ) {
     return result as PragasAccountLinkResult;
   }
@@ -77,7 +79,14 @@ export async function linkPragasAccount(
     LINK_TIMEOUT_MS,
   );
   if (response.status === 401) throw new PragasAccountError('unauthorized');
-  if (!response.ok) throw new PragasAccountError('link_unavailable');
+  if (!response.ok) {
+    const failure = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    const stableMessage = typeof failure?.message === 'string' ? failure.message : '';
+    if (stableMessage.includes('global_account_deletion_requested')) {
+      return { linked: false, app: 'rumo-pragas', code: 'global_deletion_pending' };
+    }
+    throw new PragasAccountError('link_unavailable');
+  }
   return validateLinkResult(await response.json());
 }
 

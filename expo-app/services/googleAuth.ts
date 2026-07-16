@@ -46,6 +46,7 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { Config } from '../constants/config';
 import i18n from '../i18n';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Required for the browser to redirect back into the app on iOS/Android.
 WebBrowser.maybeCompleteAuthSession();
@@ -81,7 +82,7 @@ function isValidGoogleClientId(value: string): boolean {
  * browser response listener live inside `useAuthRequest`). We wrap it so the
  * login screen stays free of expo-auth-session details.
  */
-export function useGoogleSignIn(): UseGoogleSignIn {
+export function useGoogleSignIn(authClient: SupabaseClient = supabase): UseGoogleSignIn {
   const platformClientId =
     Platform.OS === 'ios'
       ? Config.GOOGLE_IOS_CLIENT_ID
@@ -188,7 +189,7 @@ export function useGoogleSignIn(): UseGoogleSignIn {
         };
       }
 
-      const { data, error } = await supabase.auth.signInWithIdToken({
+      const { data, error } = await authClient.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
         nonce: rawNonce,

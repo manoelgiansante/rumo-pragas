@@ -31,15 +31,27 @@
 
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
-import { supabase } from './supabase';
+import { createEphemeralSupabaseClient, supabase } from './supabase';
 import { Platform } from 'react-native';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import i18n from '../i18n';
 import { addBreadcrumb } from './sentry-shim';
 import { beginAuthMetadataUpdate } from './authMetadataGate';
 
 /** Result of a sign-in attempt. `null` == user cancelled (not an error). */
 export type AppleSignInResult = { session: Session | null; user: User | null } | null;
+export type AppleAccountDeletionReauthenticationResult = {
+  session: Session;
+  user: User;
+  /** Single-use, in-memory only; must be sent directly to the deletion Edge Function. */
+  authorizationCode: string;
+} | null;
+
+type InternalAppleSignInResult = {
+  session: Session | null;
+  user: User | null;
+  authorizationCode: string | null;
+} | null;
 
 /**
  * Check if Apple Sign In is available on this device.
@@ -89,7 +101,11 @@ function generateRawNonce(): string {
  * Returns the Supabase session on success, or `null` if the user cancelled.
  * Throws (for the caller to surface) only on genuine, non-benign failures.
  */
-export async function signInWithApple(): Promise<AppleSignInResult> {
+async function performAppleSignIn(
+  requireEphemeralAuthorizationCode: boolean,
+  authClient: SupabaseClient = supabase,
+  persistProfileMetadata = true,
+): Promise<InternalAppleSignInResult> {
   // 1. Generate raw nonce + its SHA-256 BEFORE the Apple prompt so the hash is
   //    baked into the signed identityToken.
   const rawNonce = generateRawNonce();
@@ -122,6 +138,14 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       });
       throw new Error(i18n.t('auth.appleSignInError'));
     }
+    if (requireEphemeralAuthorizationCode && !credential.authorizationCode) {
+      addBreadcrumb({
+        category: 'auth',
+        message: 'apple.signin.no_authorization_code',
+        level: 'warning',
+      });
+      throw new Error(i18n.t('auth.appleSignInError'));
+    }
 
     // Apple returns this name only on first authorization. Arm the link gate
     // before SIGNED_IN is emitted so pragas_link_account cannot create a
@@ -131,12 +155,13 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       .map((part) => part.trim())
       .join(' ')
       .slice(0, 200);
-    const releaseMetadataGate = fullName ? beginAuthMetadataUpdate() : null;
+    const releaseMetadataGate =
+      fullName && persistProfileMetadata ? beginAuthMetadataUpdate() : null;
 
     try {
       // 3. Hand the token + RAW nonce to Supabase. Supabase re-hashes rawNonce
       // and compares it to the token's `nonce` claim.
-      const { data, error } = await supabase.auth.signInWithIdToken({
+      const { data, error } = await authClient.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
         nonce: rawNonce,
@@ -155,8 +180,8 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       // 4. Persist before releasing the link gate. The RPC derives the initial
       // profile name from auth.users.raw_user_meta_data; a direct profile UPDATE
       // is racy and affects zero rows when linking has not created it yet.
-      if (fullName && data.user) {
-        const { error: metadataError } = await supabase.auth.updateUser({
+      if (fullName && data.user && persistProfileMetadata) {
+        const { error: metadataError } = await authClient.auth.updateUser({
           data: { full_name: fullName },
         });
         if (metadataError) {
@@ -169,7 +194,11 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
         }
       }
 
-      return { session: data.session, user: data.user };
+      return {
+        session: data.session,
+        user: data.user,
+        authorizationCode: requireEphemeralAuthorizationCode ? credential.authorizationCode : null,
+      };
     } finally {
       releaseMetadataGate?.();
     }
@@ -192,4 +221,29 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     // Genuine provider failures are normalized before reaching UI/telemetry.
     throw new Error(i18n.t('auth.appleSignInError'), { cause: error });
   }
+}
+
+export async function signInWithApple(): Promise<AppleSignInResult> {
+  const result = await performAppleSignIn(false);
+  return result ? { session: result.session, user: result.user } : null;
+}
+
+/**
+ * Obtains a fresh Apple authorization code solely for immediate server-side
+ * exchange/revocation. The code is never persisted, logged or returned by the
+ * normal login API.
+ */
+export async function reauthenticateWithAppleForAccountDeletion(
+  authClient: SupabaseClient = createEphemeralSupabaseClient(),
+): Promise<AppleAccountDeletionReauthenticationResult> {
+  const result = await performAppleSignIn(true, authClient, false);
+  if (!result) return null;
+  if (!result.session || !result.user || !result.authorizationCode) {
+    throw new Error(i18n.t('auth.appleSignInError'));
+  }
+  return {
+    session: result.session,
+    user: result.user,
+    authorizationCode: result.authorizationCode,
+  };
 }

@@ -11,4 +11,10 @@ description = "SHA-256 pin digests versionados do deploy gate (não são credenc
 regexTarget = "line"
 regexes = [
   '''REVIEWED_APPLE_SIGN_IN_PRIVATE_KEY_SHA256="[0-9a-f]{64}"''',
+  '''keystoreSha256: '[0-9a-f]{64}'''',
+  '''keytoolSha256: '[0-9a-f]{64}'''',
+  '''PERSISTED_RECEIPT_KEY_PREFIX = 'rumopragas\.global-deletion-receipt\.v1\.'''',
+]
+paths = [
+  '''expo-app/scripts/native-pins/Podfile\.lock''',
 ]

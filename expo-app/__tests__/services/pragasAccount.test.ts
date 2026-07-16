@@ -40,6 +40,20 @@ describe('Pragas account link/reactivation contracts', () => {
     });
   });
 
+  it('maps the locked global-deletion race to a terminal gate state', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ message: 'global_account_deletion_requested' }),
+    });
+
+    await expect(linkPragasAccount('jwt')).resolves.toEqual({
+      linked: false,
+      app: 'rumo-pragas',
+      code: 'global_deletion_pending',
+    });
+  });
+
   it('reactivates only with explicit confirmation and a stable key', async () => {
     mockFetch.mockResolvedValue({
       ok: true,

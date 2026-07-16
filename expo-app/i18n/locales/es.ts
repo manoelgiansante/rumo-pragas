@@ -118,6 +118,9 @@ export default {
       'Esta cuenta fue eliminada anteriormente. La reactivación recrea únicamente el acceso a Rumo Pragas; los datos eliminados no se restaurarán.',
     reactivate: 'Reactivar Rumo Pragas',
     reactivateHint: 'Confirma la creación de un nuevo acceso sin restaurar datos eliminados',
+    globalDeletionTitle: 'Eliminación de la cuenta AgroRumo en curso',
+    globalDeletionDescription:
+      'La solicitud global es permanente. Rumo Pragas seguirá bloqueado y no podrá reactivarse mientras se procesa la cuenta.',
     pendingTitle: 'Eliminación en curso',
     pendingDescription:
       'La eliminación de datos de Rumo Pragas todavía está en proceso. Por seguridad, el acceso seguirá bloqueado hasta que termine.',
@@ -433,14 +436,14 @@ export default {
     supportSubject: 'Soporte Rumo Pragas IA',
     checking: 'Verificando...',
     signOut: 'Cerrar Sesion',
-    deleteAccount: 'Eliminar datos de Rumo Pragas',
-    deleteConfirmTitle: 'Eliminar datos de Rumo Pragas',
+    deleteAccount: 'Eliminar cuenta AgroRumo',
+    deleteConfirmTitle: 'Eliminar cuenta AgroRumo',
     deleteConfirmMessage:
-      'Esta acción elimina permanentemente los datos vinculados de forma comprobable a Rumo Pragas IA y revoca los tokens de notificación. Su identidad AgroRumo y el historial compartido sin un identificador fiable de aplicación (analytics y auditoría) se conservarán para proteger los datos de otras apps.',
+      'Esta solicitud afecta toda la cuenta AgroRumo y las demás aplicaciones vinculadas. El acceso a Rumo Pragas se suspenderá inmediatamente.',
     deleteContinue: 'Continuar',
     deleteFinalTitle: 'Confirmar eliminacion definitiva',
     deleteFinalMessage:
-      'La eliminación de los datos específicos de Rumo Pragas es permanente y no se puede recuperar. Su acceso AgroRumo y el historial compartido de analytics y auditoría seguirán existiendo. ¿Continuar?',
+      'La eliminación global es permanente y se procesará de forma coordinada en un máximo de 15 días tras una nueva autenticación. ¿Continuar?',
     deleteFinalConfirm: 'Eliminar definitivamente',
     cancel: 'Cancelar',
     delete: 'Eliminar',
@@ -455,15 +458,15 @@ export default {
     profileSaved: '¡Perfil actualizado con éxito!',
     profileSaveError: 'No se pudo guardar el perfil. Inténtelo de nuevo.',
     languageTitle: 'Idioma / Language',
-    deletionReceived: 'Datos de Rumo Pragas eliminados',
+    deletionReceived: 'Solicitud de eliminación registrada',
     deletionReceivedMessage:
-      'Los datos vinculados de forma comprobable a Rumo Pragas y los tokens de notificación fueron eliminados. Su identidad AgroRumo y el historial compartido sin identificador de aplicación (analytics y auditoría) se conservaron. Ahora se cerrará la sesión de esta app.',
+      'El acceso a Rumo Pragas está suspendido. Guarde el recibo para consultar el procesamiento coordinado de la cuenta AgroRumo.',
     deletionPendingTitle: 'Eliminación en curso',
     deletionPendingMessage:
-      'La eliminación de sus datos de Rumo Pragas aún se está procesando. Espere un momento e inténtelo de nuevo.',
+      'La solicitud global aún está en proceso. Consulte el estado con el recibo opaco.',
     deletionIncompleteTitle: 'Eliminación incompleta',
     deletionError:
-      'No fue posible confirmar la eliminación de los datos específicos de Rumo Pragas. Inténtelo de nuevo o contacte suporte@agrorumo.com.',
+      'No fue posible registrar la solicitud global. Inténtelo de nuevo o contacte suporte@agrorumo.com.',
     deletionLocalPurgeError:
       'Los datos del servidor fueron procesados, pero la limpieza segura de este dispositivo no terminó. Inténtalo de nuevo antes de cerrar sesión.',
     pushNotifA11y: 'Activar o desactivar notificaciones',
@@ -508,9 +511,9 @@ export default {
     signOutA11y: 'Cerrar sesión',
     signOutConfirmTitle: '¿Cerrar sesión?',
     signOutConfirmMessage: 'Puedes volver en cualquier momento iniciando sesión otra vez.',
-    deleteAccountA11y: 'Eliminar permanentemente los datos de Rumo Pragas',
+    deleteAccountA11y: 'Solicitar la eliminación permanente de toda la cuenta AgroRumo',
     deleteAccountHint:
-      'Solicita eliminar permanentemente los datos específicos de Rumo Pragas; la identidad y el historial compartidos se conservan',
+      'Abre la confirmación y reautenticación para la cuenta compartida y los datos asociados',
     // Polished UI — 2026-05-21
     headerTitle: 'Ajustes',
     sectionAccount: 'Cuenta',
@@ -519,6 +522,49 @@ export default {
     sectionPrivacy: 'Privacidad',
     sectionAbout: 'Acerca de',
     privacyFooter: 'Conforme a la LGPD / GDPR. Puedes revocar permisos en cualquier momento.',
+  },
+  accountDeletion: {
+    back: 'Volver',
+    title: 'Eliminar cuenta AgroRumo',
+    wholeAccountTitle: 'Esta solicitud afecta toda su cuenta AgroRumo',
+    wholeAccountMessage:
+      'El mismo acceso puede utilizarse en otros productos AgroRumo. Por seguridad, la eliminación integral se procesa de forma coordinada tras su confirmación individual.',
+    impactPragas:
+      'El acceso a Rumo Pragas y el envío de notificaciones se suspenderán inmediatamente.',
+    impactOtherApps:
+      'Después del procesamiento, perderá el acceso a las demás aplicaciones que usan esta misma cuenta AgroRumo.',
+    impactRetention:
+      'Los datos personales se eliminarán o anonimizarán; los registros exigidos por ley podrán conservarse solo durante el plazo aplicable.',
+    impactTimeline:
+      'El equipo completará el procesamiento coordinado en un máximo de 15 días y registrará el estado en el recibo.',
+    acknowledgement:
+      'Entiendo que solicito eliminar toda mi cuenta AgroRumo, no solo los datos de Rumo Pragas.',
+    acknowledgementA11y: 'Confirmar el impacto en toda la cuenta AgroRumo',
+    reauthenticateTitle: 'Confirme de nuevo su identidad',
+    reauthenticateMessage:
+      'Para evitar solicitudes no autorizadas, inicie sesión de nuevo con el mismo método de esta cuenta.',
+    passwordPlaceholder: 'Contraseña actual',
+    confirmWithPassword: 'Reautenticar y solicitar eliminación',
+    confirmWithApple: 'Confirmar con Apple',
+    confirmWithGoogle: 'Confirmar con Google',
+    providerUnavailable:
+      'No se encontró un método compatible. Si esta cuenta usa Apple, finalice en un iPhone o iPad con Confirmar con Apple. Si necesita ayuda, contacte suporte@agrorumo.com.',
+    reauthenticationError:
+      'No se confirmó su identidad o no se pudo registrar la solicitud. Inténtelo de nuevo.',
+    receivedTitle: 'Solicitud registrada',
+    receivedMessage:
+      'El acceso a Rumo Pragas está suspendido. La eliminación coordinada se procesará antes del {{dueDate}}. Guarde el recibo para consultar el estado.',
+    receiptLabel: 'Recibo sin datos personales',
+    receiptShare: 'Solicitud de eliminación AgroRumo\nRecibo: {{receipt}}\nPlazo: {{dueDate}}',
+    appleRevocationPending:
+      'Tu solicitud fue recibida. La revocación del acceso de Apple está pendiente y seguirá en la cola auditada sin cancelar la eliminación.',
+    retryAppleRevocation: 'Reintentar la revocación de Apple',
+    appleRevocationRetryError:
+      'La solicitud sigue siendo válida, pero la revocación de Apple aún está pendiente. Inténtalo de nuevo.',
+    shareReceipt: 'Compartir recibo',
+    localPurgeWarning:
+      'El servidor registró la solicitud, pero la limpieza local de este dispositivo no terminó. Elimine la app del dispositivo después de guardar el recibo.',
+    finish: 'Finalizar y cerrar sesión',
   },
   common: {
     offlineBanner: 'Estás sin conexión a internet',
