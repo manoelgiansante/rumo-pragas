@@ -919,7 +919,11 @@ while IFS= read -r version; do
     echo "invalid remote migration version received" >&2
     exit 1
   fi
-  : > "$tmp/supabase/migrations/${version}_remote_history.sql"
+  # An already-applied candidate is represented by its real file below; a
+  # second local file for the same version would confuse the CLI plan.
+  if [[ " ${TARGET_VERSIONS[*]} " != *" $version "* ]]; then
+    : > "$tmp/supabase/migrations/${version}_remote_history.sql"
+  fi
   printf '%s\n' "$version" >> "$remote_versions"
   history_count=$((history_count + 1))
 done < "$history_csv"
@@ -1045,7 +1049,8 @@ fi
 
 expected_snapshot_migration_names="$tmp/expected-snapshot-migration-names.txt"
 {
-  sed 's/$/_remote_history.sql/' "$remote_versions"
+  grep -vxF -f <(printf '%s\n' "${TARGET_VERSIONS[@]}") "$remote_versions" \
+    | sed 's/$/_remote_history.sql/'
   for version in "${TARGET_VERSIONS[@]}"; do
     migration_name "$version"
   done
