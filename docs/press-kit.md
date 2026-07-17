@@ -1,124 +1,49 @@
-# Press Kit — Rumo Pragas
+# Press kit — Rumo Pragas
 
-> **Uso:** jornalistas, parceiros, revendas, influenciadores do agro.
-> **Versão deste kit:** 1.0 (abril / 2026)
-> **Contato de imprensa:** contato@agrorumo.com · WhatsApp +55 17 99658-1120
+Updated: 2026-07-14
+Press contact: contato@agrorumo.com
 
----
+## One-line description
 
-## One-liner
+Rumo Pragas is a free mobile tool that uses artificial intelligence to support visual identification of agricultural pests and crop symptoms from a photo.
 
-> **Rumo Pragas é o app brasileiro que identifica pragas e doenças agrícolas a partir de uma foto, em segundos, mesmo sem internet boa no campo.**
+## Short description
 
-## Boilerplate curto (até 300 caracteres)
+The user photographs or selects a crop image and receives a probabilistic identification hypothesis, a confidence value and, when available, alternatives. The app also offers an educational library, structured history, optional local weather, an AI assistant and PDF sharing.
 
-> O Rumo Pragas usa inteligência artificial treinada com imagens reais de lavouras brasileiras para ajudar o produtor a identificar pragas e doenças a partir de uma foto no celular. Funciona offline e gera laudo em PDF. É um produto da AgroRumo Tecnologia Agrícola.
+Image analysis requires internet. If connectivity fails during submission, the request can remain in a local queue and retry after the network returns; the model does not run offline.
 
-## Boilerplate longo (para releases)
+## Product facts
 
-> O Rumo Pragas é um aplicativo de diagnóstico de pragas e doenças para o agronegócio brasileiro. Com inteligência artificial treinada especificamente em lavouras nacionais, o app permite que o produtor rural tire uma foto da folha, caule ou fruto com sintoma e receba, em segundos, a identificação da praga mais provável, o nível de severidade estimado e a recomendação técnica. Suporta mais de 30 culturas e 500 pragas, gera laudo em PDF para compartilhar com o agrônomo e funciona com queue offline, pensado para a realidade da internet rural. O Rumo Pragas é uma ferramenta auxiliar que não substitui o receituário agronômico. Faz parte do portfólio da AgroRumo Tecnologia Agrícola LTDA, empresa brasileira que desenvolve tecnologia para o campo.
+- Available for iOS and Android.
+- Portuguese, English and Spanish interface.
+- Free, without active subscription or purchase flow.
+- Agrio handles visual analysis by default; Anthropic Claude can be selected by secure server configuration.
+- Gemini handles educational chat by default; Anthropic Claude can be selected by secure server configuration.
+- Optional approximate location supports weather and contextual data.
+- Users can delete Rumo Pragas app data in the app; the shared AgroRumo identity is handled separately.
 
-## Highlights numéricos
+## Responsible-use statement
 
-- **+500** pragas e doenças catalogadas
-- **+30** culturas suportadas (soja, milho, algodão, café, cana, feijão, arroz, trigo e mais)
-- **~10 segundos** do disparo da foto até o laudo
-- **7 dias** de teste grátis, sem cartão
-- **R$ 49,90/mês** (Pro mensal) ou **R$ 499/ano** (Pro anual, equivalente a 2 meses grátis)
-- **100%** LGPD — opt-in explícito para localização, criptografia AES-256 em repouso
+AI output is probabilistic and may be wrong. Rumo Pragas does not replace field inspection, a technical diagnosis, agricultural prescription or a legally qualified professional. Acquisition and application of agricultural products must follow Lei nº 14.785/2023, Resolução Confea nº 1.149/2025 and products registered in AGROFIT.
 
-## Problema que resolvemos
+Do not describe the app as an agronomist, a prescriber, an offline identification engine, a measured-severity tool or a community outbreak map. Do not publish unverified claims about speed, accuracy, catalog size, users or economic outcome.
 
-A identificação correta de uma praga ou doença no começo do ciclo define o sucesso de uma safra. Hoje o produtor depende de mandar foto em grupos de WhatsApp, esperar a visita do agrônomo ou confiar na memória. Isso custa tempo, tempo custa produtividade, e produtividade custa dinheiro. O Rumo Pragas encurta esse ciclo para segundos, entregando uma triagem inicial confiável, em português do campo, direto no celular que o produtor já tem no bolso.
+## Media assets
 
-## Diferenciais
+Only captures approved through expo-app/store-assets/SCREENSHOT_CHECKLIST.md are official. Existing repository images are historical assets until compared with the exact release build.
 
-1. **IA treinada com lavouras brasileiras.** Não reaproveitamos datasets europeus ou indianos.
-2. **Offline-first.** Tira a foto sem sinal, processa quando a internet voltar.
-3. **Laudo profissional em PDF.** Agrônomo aceita, fornecedor entende.
-4. **Em português do campo.** Interface direta, sem jargão corporate.
-5. **Alertas anônimos regionais.** Descubra o que outros produtores a 50 km diagnosticaram hoje, sem expor dados de ninguém (opt-in, LGPD-compliant).
+Logo use:
 
-## Disclaimer legal (usar sempre que a mídia citar precisão/ROI)
+- Preserve proportions and clear space.
+- Use a high-contrast approved variant.
+- Do not recolor or place over busy imagery without a contrast treatment.
 
-> O Rumo Pragas é uma ferramenta auxiliar de diagnóstico e não substitui o receituário agronômico, obrigatório por lei (Lei 7.802/89) para compra e aplicação de defensivos agrícolas. Resultados individuais podem variar.
+## Official links
 
-## Screenshots oficiais (arquivos referenciados)
-
-Todos os arquivos estão em `/Users/manoelnascimento/AgroRumo Projetos/Apps/rumo-pragas/` e podem ser re-exportados a qualquer momento:
-
-- `home-screen.png` — Tela inicial com acesso à câmera
-- `camera-screen.png` — Captura de foto para diagnóstico
-- `ai-chat-screen.png` — Chat com IA especialista
-- `history-screen.png` — Histórico de diagnósticos
-- `library-screen.png` — Biblioteca de pragas
-- `paywall-screen.png` — Tela de assinatura (trial + Pro)
-- `login-screen.png` — Login / cadastro
-- `onboarding-loaded.png` — Onboarding inicial
-- `home-tabs.png` — Navegação principal
-- `after-login.png` — Pós-login
-- `home-final.png` — Home consolidada
-- `privacy-page.png` — Política de privacidade in-app
-
-**Dimensões originais:** variam por dispositivo (iPhone 15 Pro, Pixel 8). Para versões de imprensa em alta resolução, solicitar via contato@agrorumo.com.
-
-## Logo e identidade visual
-
-### Variantes disponíveis
-- **Logotipo horizontal colorido** (uso preferencial em fundos claros)
-- **Logotipo vertical colorido** (uso em avatares, perfis, ícones quadrados)
-- **Monocromático verde escuro** (`#166534`) — para fundos claros corporativos
-- **Monocromático branco** — para fundos escuros / vídeos
-- **Símbolo (ícone da folha)** — para favicons, avatares, watermarks
-
-### Cores oficiais
-- **Verde Rumo (primário):** `#166534`
-- **Verde accent:** `#22c55e`
-- **Terra (secundário):** `#78350f`
-- **Off-black (texto):** `#0b1f0f`
-
-### Tipografia
-- **Títulos:** Bricolage Grotesque (Google Fonts)
-- **Mono/código:** JetBrains Mono
-- **Texto corrido (fallback):** System UI
-
-### Regras de uso
-- Nunca alterar proporção do logo
-- Nunca aplicar o logo verde sobre fundo verde ou sobre foto sem contraste
-- Manter margem de respiro mínima equivalente à altura da letra "R" do wordmark
-- Não substituir a tipografia oficial por imitações
-
-Para solicitar os arquivos vetoriais (SVG + PNG + favicon), enviar e-mail para **contato@agrorumo.com** com assunto **"Press kit — Rumo Pragas"**.
-
----
-
-## Fundadores e porta-vozes
-
-- **Manoel Nascimento** — Founder & CEO, AgroRumo Tecnologia Agrícola
-  - LinkedIn: /in/manoelnascimento (confirmar handle)
-  - Contato: contato@agrorumo.com
-
-## Links úteis
-
-- Site oficial: https://pragas.agrorumo.com
-- Site institucional AgroRumo: https://agrorumo.com
-- App Store (iOS): https://apps.apple.com/app/rumo-pragas
-- Google Play (Android): https://play.google.com/store/apps/details?id=com.agrorumo.rumopragas
-- Instagram: https://instagram.com/agrorumo
-- YouTube: https://youtube.com/@agrorumo
-- LinkedIn: https://linkedin.com/company/agrorumo
-
-## Pauta sugerida para jornalistas
-
-1. **"IA para o pequeno produtor"** — como LLMs e visão computacional estão democratizando o acesso a diagnóstico técnico no interior do Brasil.
-2. **"Offline-first é o novo must-have para software rural"** — por que produtos de agro precisam assumir conectividade intermitente como regra, não exceção.
-3. **"LGPD no campo"** — como apps agro tratam dados de geolocalização e propriedades rurais sob a LGPD.
-4. **"O que muda para o agrônomo"** — a IA é concorrente ou ferramenta? Visão de quem trabalha no campo todo dia.
-
-## Histórico rápido da AgroRumo
-
-A AgroRumo nasceu como estúdio independente de tecnologia agrícola com foco em apps para produtor rural brasileiro. Hoje o portfolio inclui Rumo Máquinas (controle de frota agrícola, em produção com clientes pagantes), Campo Vivo (monitoramento por satélite), Rumo Finance (gestão financeira), Rumo Operacional e Rumo Confinamento. O Rumo Pragas é o lançamento mais recente do grupo.
-
----
-
-**Dúvidas, entrevistas, trechos para matéria, recortes customizados: contato@agrorumo.com · +55 17 99658-1120 (WhatsApp)**
+- Product: https://pragas.agrorumo.com
+- Privacy: https://pragas.agrorumo.com/privacidade
+- Terms: https://pragas.agrorumo.com/termos
+- Support: https://pragas.agrorumo.com/suporte
+- App Store: https://apps.apple.com/br/app/rumo-pragas-ia/id6762232682
+- Google Play: https://play.google.com/store/apps/details?id=com.agrorumo.rumopragas

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useColorScheme, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors, FontFamily } from '../../constants/theme';

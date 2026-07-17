@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react-native';
 const mockRequestForegroundPermissionsAsync = jest.fn();
 const mockGetCurrentPositionAsync = jest.fn();
 const mockReverseGeocodeAsync = jest.fn();
+const mockHasLocationConsent = jest.fn();
 
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: (...args: unknown[]) =>
@@ -12,10 +13,15 @@ jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
 }));
 
+jest.mock('../../services/userPreferences', () => ({
+  hasLocationConsent: (...args: unknown[]) => mockHasLocationConsent(...args),
+}));
+
 import { useLocation } from '../../hooks/useLocation';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockHasLocationConsent.mockResolvedValue(true);
 });
 
 describe('useLocation', () => {
@@ -121,5 +127,44 @@ describe('useLocation', () => {
 
     expect(granted).toBe(false);
     expect(result.current.error).toBeTruthy();
+  });
+
+  it('never touches native location APIs when app-level consent was declined', async () => {
+    mockHasLocationConsent.mockResolvedValueOnce(false);
+    const { result } = renderHook(() => useLocation());
+
+    let coords: unknown;
+    await act(async () => {
+      coords = await result.current.getCurrentLocationWithConsent('user-a');
+    });
+
+    expect(coords).toBeNull();
+    expect(mockHasLocationConsent).toHaveBeenCalledWith('user-a');
+    expect(mockRequestForegroundPermissionsAsync).not.toHaveBeenCalled();
+    expect(mockGetCurrentPositionAsync).not.toHaveBeenCalled();
+    expect(mockReverseGeocodeAsync).not.toHaveBeenCalled();
+  });
+
+  it('uses only rounded coordinates after app and OS consent are granted', async () => {
+    mockHasLocationConsent.mockResolvedValueOnce(true);
+    mockRequestForegroundPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });
+    mockGetCurrentPositionAsync.mockResolvedValueOnce({
+      coords: { latitude: -23.55052, longitude: -46.633308 },
+    });
+    mockReverseGeocodeAsync.mockResolvedValueOnce([]);
+    const { result } = renderHook(() => useLocation());
+
+    let coords: unknown;
+    await act(async () => {
+      coords = await result.current.getCurrentLocationWithConsent('user-a');
+    });
+
+    expect(coords).toEqual({ latitude: -23.55, longitude: -46.63 });
+    expect(mockRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(mockGetCurrentPositionAsync).toHaveBeenCalledTimes(1);
+    expect(mockReverseGeocodeAsync).toHaveBeenCalledWith({
+      latitude: -23.55,
+      longitude: -46.63,
+    });
   });
 });

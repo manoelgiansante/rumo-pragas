@@ -1,28 +1,13 @@
-/**
- * Pest Registry — single source of truth for the pest-detail page (`/diagnosis/pest/[id]`).
- *
- * Strategy:
- * - Last successful diagnosis is cached in AsyncStorage keyed by `pest_id`.
- * - When the detail page mounts with an id, we read from the cache first
- *   (instant render, works fully offline) and then optionally enrich from
- *   a future remote endpoint without blocking UI.
- * - This keeps the detail page self-contained and reusable from history,
- *   notifications, deep links, etc.
- *
- * IMPORTANT: This module never throws — all failures degrade to `null` and the
- * caller renders an empty state. No silent telemetry-less swallow: errors are
- * reported via the Sentry shim with breadcrumb context.
- */
-
+/** User-scoped, privacy-minimized cache for the pest fact sheet. */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addBreadcrumb } from './sentry-shim';
-import type { AgrioEnrichment, AgrioPrediction } from '../types/diagnosis';
+import type { AgrioEnrichment, SeverityLevel } from '../types/diagnosis';
 
-const CACHE_PREFIX = '@rumopragas/pest-cache/';
-// Bump when the cache shape changes — invalidates older entries automatically.
-const CACHE_VERSION = 1;
-// Cap individual entries so a degenerate enrichment can't blow AsyncStorage.
-const MAX_ENTRY_BYTES = 200 * 1024;
+const CACHE_PREFIX = '@rumopragas/pest-cache/v2/';
+const CACHE_VERSION = 2;
+const MAX_ENTRY_BYTES = 64 * 1024;
+const SAFE_KEY_PART_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+const SEVERITIES = new Set<SeverityLevel>(['critical', 'high', 'medium', 'low', 'none']);
 
 export interface PestCacheEntry {
   v: number;
@@ -30,66 +15,164 @@ export interface PestCacheEntry {
   scientific_name?: string | undefined;
   pest_name?: string | undefined;
   crop?: string | undefined;
-  image_uri?: string | undefined;
-  confidence?: number | undefined;
   enrichment: AgrioEnrichment;
-  alternatives?: AgrioPrediction[] | undefined;
   updated_at: number;
 }
 
-function cacheKey(id: string): string {
-  // Hard-validate id — never let arbitrary input shape the storage key.
-  const safe = String(id)
-    .slice(0, 128)
-    .replace(/[^A-Za-z0-9_\-:.]/g, '_');
-  return `${CACHE_PREFIX}${safe}`;
+function cacheKey(userId: string, id: string): string | null {
+  if (!SAFE_KEY_PART_RE.test(userId) || !SAFE_KEY_PART_RE.test(id)) return null;
+  return `${CACHE_PREFIX}${userId}/${id}`;
+}
+
+function cleanString(value: unknown, maxLength = 500): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const clean = [...value]
+    .map((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint <= 0x1f || codePoint === 0x7f ? ' ' : character;
+    })
+    .join('')
+    .trim();
+  return clean ? clean.slice(0, maxLength) : undefined;
+}
+
+function cleanStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const clean = value
+    .slice(0, 20)
+    .map((item) => cleanString(item))
+    .filter((item): item is string => !!item);
+  return clean.length > 0 ? clean : undefined;
+}
+
+/** Only educational, non-prescriptive fields are eligible for local persistence. */
+function sanitizeEnrichment(value: unknown): AgrioEnrichment {
+  if (typeof value !== 'object' || value === null) return {};
+  const input = value as Record<string, unknown>;
+  const output: AgrioEnrichment = {};
+  const strings = [
+    'name_pt',
+    'name_es',
+    'scientific_name',
+    'description',
+    'description_es',
+    'lifecycle',
+    'economic_impact',
+    'resistance_info',
+    'action_threshold',
+    'mip_strategy',
+  ] as const;
+  const arrays = [
+    'causes',
+    'causes_es',
+    'symptoms',
+    'symptoms_es',
+    'biological_treatment',
+    'biological_treatment_es',
+    'cultural_treatment',
+    'cultural_treatment_es',
+    'prevention',
+    'prevention_es',
+    'monitoring',
+    'favorable_conditions',
+    'related_pests',
+  ] as const;
+
+  const writable = output as Record<string, unknown>;
+  for (const key of strings) {
+    const clean = cleanString(input[key], key.startsWith('description') ? 2_000 : 500);
+    if (clean) writable[key] = clean;
+  }
+  for (const key of arrays) {
+    const clean = cleanStringArray(input[key]);
+    if (clean) writable[key] = clean;
+  }
+  if (typeof input.severity === 'string' && SEVERITIES.has(input.severity as SeverityLevel)) {
+    output.severity = input.severity as SeverityLevel;
+  }
+  return output;
+}
+
+function normalizeEntry(value: unknown, expectedId: string): PestCacheEntry | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const input = value as Record<string, unknown>;
+  if (
+    input.v !== CACHE_VERSION ||
+    input.id !== expectedId ||
+    typeof input.updated_at !== 'number' ||
+    !Number.isFinite(input.updated_at) ||
+    input.updated_at <= 0
+  ) {
+    return null;
+  }
+  const pestName = cleanString(input.pest_name, 160);
+  const scientificName = cleanString(input.scientific_name, 160);
+  const crop = cleanString(input.crop, 80);
+  return {
+    v: CACHE_VERSION,
+    id: expectedId,
+    ...(pestName ? { pest_name: pestName } : {}),
+    ...(scientificName ? { scientific_name: scientificName } : {}),
+    ...(crop ? { crop } : {}),
+    enrichment: sanitizeEnrichment(input.enrichment),
+    updated_at: input.updated_at,
+  };
 }
 
 export async function savePestToCache(
+  userId: string,
   entry: Omit<PestCacheEntry, 'v' | 'updated_at'>,
 ): Promise<void> {
   try {
-    if (!entry.id) return;
-    const payload: PestCacheEntry = {
-      ...entry,
-      v: CACHE_VERSION,
-      updated_at: Date.now(),
-    };
+    const key = cacheKey(userId, entry.id);
+    if (!key) return;
+    const payload = normalizeEntry(
+      {
+        v: CACHE_VERSION,
+        id: entry.id,
+        pest_name: entry.pest_name,
+        scientific_name: entry.scientific_name,
+        crop: entry.crop,
+        enrichment: entry.enrichment,
+        updated_at: Date.now(),
+      },
+      entry.id,
+    );
+    if (!payload) return;
     const json = JSON.stringify(payload);
     if (json.length > MAX_ENTRY_BYTES) {
       addBreadcrumb({
         category: 'pest-cache',
-        message: 'pest entry exceeds MAX_ENTRY_BYTES — skipping save',
+        message: 'pest cache entry rejected by size limit',
         level: 'warning',
-        data: { id: entry.id, bytes: json.length },
       });
       return;
     }
-    await AsyncStorage.setItem(cacheKey(entry.id), json);
-  } catch (e) {
+    await AsyncStorage.setItem(key, json);
+  } catch {
     addBreadcrumb({
       category: 'pest-cache',
-      message: 'savePestToCache failed',
-      level: 'error',
-      data: { error: e instanceof Error ? e.message : String(e) },
+      message: 'pest cache save unavailable',
+      level: 'warning',
     });
   }
 }
 
-export async function loadPestFromCache(id: string): Promise<PestCacheEntry | null> {
+export async function loadPestFromCache(
+  userId: string,
+  id: string,
+): Promise<PestCacheEntry | null> {
   try {
-    if (!id) return null;
-    const raw = await AsyncStorage.getItem(cacheKey(id));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PestCacheEntry;
-    if (parsed.v !== CACHE_VERSION) return null;
-    return parsed;
-  } catch (e) {
+    const key = cacheKey(userId, id);
+    if (!key) return null;
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw || raw.length > MAX_ENTRY_BYTES) return null;
+    return normalizeEntry(JSON.parse(raw) as unknown, id);
+  } catch {
     addBreadcrumb({
       category: 'pest-cache',
-      message: 'loadPestFromCache failed',
-      level: 'error',
-      data: { error: e instanceof Error ? e.message : String(e) },
+      message: 'pest cache load unavailable',
+      level: 'warning',
     });
     return null;
   }

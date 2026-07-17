@@ -24,6 +24,7 @@ export interface WeatherData {
 }
 
 import i18n from '../i18n';
+import { minimizeCoordinates } from './locationPrivacy';
 
 function getDayAbbrevs(): string[] {
   return i18n.t('weather.days', { returnObjects: true }) as unknown as string[];
@@ -71,17 +72,119 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WEATHER_CACHE_KEY = '@rumo_pragas_weather_cache';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const WEATHER_TIMEOUT_MS = 10_000;
+const WEATHER_RESPONSE_MAX_BYTES = 128 * 1024;
 
 interface WeatherCache {
   data: WeatherData;
   timestamp: number;
+  latitude: number;
+  longitude: number;
 }
 
-async function getCachedWeather(): Promise<WeatherData | null> {
+interface OpenMeteoPayload {
+  current: {
+    temperature_2m: number;
+    apparent_temperature: number;
+    relative_humidity_2m: number;
+    precipitation: number;
+    rain: number;
+    weather_code: number;
+    wind_speed_10m: number;
+  };
+  daily: {
+    time: string[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_sum: number[];
+    weather_code: number[];
+  };
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isFiniteNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every(isFiniteNumber);
+}
+
+function parseOpenMeteoPayload(value: unknown): OpenMeteoPayload | null {
+  if (!value || typeof value !== 'object') return null;
+  const root = value as Record<string, unknown>;
+  if (!root.current || typeof root.current !== 'object') return null;
+  if (!root.daily || typeof root.daily !== 'object') return null;
+  const current = root.current as Record<string, unknown>;
+  const daily = root.daily as Record<string, unknown>;
+  const currentValues = [
+    current.temperature_2m,
+    current.apparent_temperature,
+    current.relative_humidity_2m,
+    current.precipitation,
+    current.rain,
+    current.weather_code,
+    current.wind_speed_10m,
+  ];
+  if (!currentValues.every(isFiniteNumber)) return null;
+  const dailyTime = daily.time;
+  if (!Array.isArray(dailyTime) || dailyTime.length < 1 || dailyTime.length > 7) return null;
+  if (!dailyTime.every((date) => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date))) {
+    return null;
+  }
+  const arrays = [
+    daily.temperature_2m_max,
+    daily.temperature_2m_min,
+    daily.precipitation_sum,
+    daily.weather_code,
+  ];
+  if (!arrays.every(isFiniteNumberArray)) return null;
+  if (!arrays.every((array) => (array as number[]).length === dailyTime.length)) return null;
+  return value as OpenMeteoPayload;
+}
+
+function isWeatherData(value: unknown): value is WeatherData {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as Record<string, unknown>;
+  return (
+    [
+      data.temperature,
+      data.apparentTemperature,
+      data.humidity,
+      data.precipitation,
+      data.rain,
+      data.weatherCode,
+      data.windSpeed,
+      data.dailyPrecipitationSum,
+    ].every(isFiniteNumber) &&
+    typeof data.description === 'string' &&
+    typeof data.icon === 'string'
+  );
+}
+
+function parseWeatherCache(raw: string): WeatherCache | null {
+  try {
+    const value = JSON.parse(raw) as Partial<WeatherCache>;
+    if (
+      !isWeatherData(value.data) ||
+      !isFiniteNumber(value.timestamp) ||
+      !isFiniteNumber(value.latitude) ||
+      !isFiniteNumber(value.longitude)
+    ) {
+      return null;
+    }
+    return value as WeatherCache;
+  } catch {
+    return null;
+  }
+}
+
+async function getCachedWeather(latitude: number, longitude: number): Promise<WeatherData | null> {
   try {
     const raw = await AsyncStorage.getItem(WEATHER_CACHE_KEY);
     if (!raw) return null;
-    const cache: WeatherCache = JSON.parse(raw);
+    const cache = parseWeatherCache(raw);
+    if (!cache) return null;
+    if (cache.latitude !== latitude || cache.longitude !== longitude) return null;
     const age = Date.now() - cache.timestamp;
     if (age > CACHE_TTL_MS) return null;
     return cache.data;
@@ -90,9 +193,13 @@ async function getCachedWeather(): Promise<WeatherData | null> {
   }
 }
 
-async function setCachedWeather(data: WeatherData): Promise<void> {
+async function setCachedWeather(
+  data: WeatherData,
+  latitude: number,
+  longitude: number,
+): Promise<void> {
   try {
-    const cache: WeatherCache = { data, timestamp: Date.now() };
+    const cache: WeatherCache = { data, timestamp: Date.now(), latitude, longitude };
     await AsyncStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(cache));
   } catch {
     // Silently fail — caching is best-effort
@@ -103,11 +210,13 @@ async function setCachedWeather(data: WeatherData): Promise<void> {
  * Returns cached weather data regardless of TTL.
  * Used as fallback when the network request fails.
  */
-async function getStaleCache(): Promise<WeatherData | null> {
+async function getStaleCache(latitude: number, longitude: number): Promise<WeatherData | null> {
   try {
     const raw = await AsyncStorage.getItem(WEATHER_CACHE_KEY);
     if (!raw) return null;
-    const cache: WeatherCache = JSON.parse(raw);
+    const cache = parseWeatherCache(raw);
+    if (!cache) return null;
+    if (cache.latitude !== latitude || cache.longitude !== longitude) return null;
     return cache.data;
   } catch {
     return null;
@@ -118,8 +227,12 @@ export async function fetchWeather(
   latitude: number,
   longitude: number,
 ): Promise<WeatherData | null> {
+  const approximate = minimizeCoordinates(latitude, longitude);
+  if (!approximate) return null;
+  latitude = approximate.latitude;
+  longitude = approximate.longitude;
   // Return fresh cache if available (within TTL)
-  const cached = await getCachedWeather();
+  const cached = await getCachedWeather(latitude, longitude);
   if (cached) return cached;
 
   try {
@@ -129,12 +242,28 @@ export async function fetchWeather(
       `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code` +
       `&timezone=auto&forecast_days=7`;
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Weather API error: ${response.status}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), WEATHER_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
     }
+    if (!response.ok) throw new Error('WEATHER_UPSTREAM_ERROR');
 
-    const json = await response.json();
+    const responseText = await response.text();
+    if (new TextEncoder().encode(responseText).byteLength > WEATHER_RESPONSE_MAX_BYTES) {
+      throw new Error('WEATHER_RESPONSE_TOO_LARGE');
+    }
+    let rawPayload: unknown;
+    try {
+      rawPayload = JSON.parse(responseText);
+    } catch {
+      throw new Error('WEATHER_INVALID_RESPONSE');
+    }
+    const json = parseOpenMeteoPayload(rawPayload);
+    if (!json) throw new Error('WEATHER_INVALID_RESPONSE');
     const current = json.current;
     const daily = json.daily;
     const code = current.weather_code as number;
@@ -152,9 +281,11 @@ export async function fetchWeather(
         // unchanged).
         dayAbbrev: i === 0 ? i18n.t('weather.today') : dayAbbrevs[date.getDay()]!,
         weatherCode: dayCode,
-        temperatureMax: daily.temperature_2m_max[i],
-        temperatureMin: daily.temperature_2m_min[i],
-        precipitationSum: daily.precipitation_sum[i],
+        // parseOpenMeteoPayload verifies all daily arrays have exactly the
+        // same length as `time`, so these indexed values are present.
+        temperatureMax: daily.temperature_2m_max[i]!,
+        temperatureMin: daily.temperature_2m_min[i]!,
+        precipitationSum: daily.precipitation_sum[i]!,
         description: dayMapped.description,
         icon: dayMapped.icon,
       };
@@ -175,18 +306,14 @@ export async function fetchWeather(
     };
 
     // Cache the successful response
-    await setCachedWeather(weatherData);
+    await setCachedWeather(weatherData, latitude, longitude);
 
     return weatherData;
   } catch (error) {
-    if (__DEV__)
-      console.error(
-        '[Weather] Failed to fetch weather data:',
-        error instanceof Error ? error.message : error,
-      );
+    if (__DEV__) console.warn('[Weather] Request unavailable');
 
     // Network failed -- return stale cache if available so the UI still shows something
-    const stale = await getStaleCache();
+    const stale = await getStaleCache(latitude, longitude);
     if (stale) {
       if (__DEV__) console.warn('[Weather] Using stale cache as fallback');
       return stale;

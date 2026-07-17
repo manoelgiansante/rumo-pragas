@@ -21,17 +21,17 @@ export const listDiagnoses: ToolHandler = {
   },
   async handler(input, ctx) {
     const parsed = InputSchema.safeParse(input ?? {});
-    if (!parsed.success) return err(`Invalid input: ${parsed.error.message}`);
+    if (!parsed.success) return err('Invalid input');
     const { limit } = parsed.data;
 
     const { data, error } = await ctx.supabase
       .from('pragas_diagnoses')
-      .select('id, user_id, crop, pest_id, pest_name, confidence, created_at, image_url')
+      .select('id,crop,pest_id,pest_name,confidence,created_at')
       .eq('user_id', ctx.userId) // defense-in-depth: RLS already filters
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (error) return err(`DB error: ${error.message}`);
+    if (error) return err('Diagnoses temporarily unavailable');
     return ok({ count: data?.length ?? 0, diagnoses: data ?? [] });
   },
 };

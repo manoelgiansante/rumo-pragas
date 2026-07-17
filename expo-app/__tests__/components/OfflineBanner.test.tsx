@@ -64,8 +64,10 @@ describe('OfflineBanner', () => {
     mockNetworkStatus.isConnected = false;
     mockNetworkStatus.isInternetReachable = false;
 
-    const { getByText } = render(<OfflineBanner />);
+    const { getByText, getByTestId } = render(<OfflineBanner />);
     expect(getByText(offlineText)).toBeTruthy();
+    expect(getByTestId('offline-banner').props.pointerEvents).toBe('none');
+    expect(getByTestId('offline-banner-spacer')).toBeTruthy();
   });
 
   it('renders when internet is not reachable but isConnected is true', () => {

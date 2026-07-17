@@ -1,5 +1,9 @@
 # 03 — Auditoria de Design & UX · Rumo Pragas IA
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESTADO ATUAL OU CHECKLIST DE LANÇAMENTO.**
+> Snapshot anterior à revisão de 14/07/2026; use `docs/audit/launch-coverage-2026-07-14.md`.
+
 > Fase 1 (AUDIT-ONLY, read-only) · branch `perfect/pragas-launch-2026-07-02` · 2026-07-02
 > Escopo: consistência de espaçamento/tipografia/cor, tokens vs hardcoded, dark mode, contraste WCAG AA (uso no SOL/campo), touch targets ≥44pt (mão suja/luva), responsividade web, ícones.
 > **Nada foi alterado.** Toda proposta de aplicação visual é Onda 2, mediante aprovação do CEO.

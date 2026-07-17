@@ -1,14 +1,6 @@
-Bem-vindo ao Rumo Pragas 1.0
+Atualização 1.0.11
 
-Esta e a primeira versao publica do aplicativo. O que voce ja encontra aqui:
-
-- Diagnostico de pragas por IA, 100% gratis
-- 5 segundos pra identificar ferrugem, lagarta, percevejo, mancha-alvo e mais
-- Biblioteca de pragas por cultura (soja, milho, cafe, algodao)
-- Chat com Agronoma IA pra tirar duvidas de dosagem e manejo
-- Historico com GPS e data
-- Funciona offline (processa quando a rede voltar)
-- Exportacao em PDF pra compartilhar com seu agronomo
-- 3 idiomas: Portugues, Ingles e Espanhol
-
-Obrigado por confiar na Rumo Pragas. Boa safra!
+• Correções de estabilidade e desempenho.
+• Textos mais claros sobre a hipótese gerada por IA e o nível de confiança.
+• Orientação explícita sobre a fila de envio: a análise requer internet e é retomada quando a conexão volta.
+• Revisão das informações de privacidade e dos avisos legais.

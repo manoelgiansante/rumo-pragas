@@ -52,4 +52,13 @@ describe('i18n finalize — canonical pt-BR + en-US + es-ES', () => {
     const esLong = i18n.t('tabs.home');
     expect(esShort).toBe(esLong);
   });
+
+  it('never presents the educational AI assistant as a professional agronomist', async () => {
+    for (const language of ['pt-BR', 'en-US', 'es-ES']) {
+      await i18n.changeLanguage(language);
+      expect(i18n.t('home.describeSymptomsA11y')).not.toMatch(
+        /\b(?:IA\s+Agr[oóô]nom[oa]|AI\s+Agronomist)\b/i,
+      );
+    }
+  });
 });

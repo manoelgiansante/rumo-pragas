@@ -30,6 +30,13 @@ function makeOpenMeteoResponse() {
   };
 }
 
+function okWeatherResponse(payload: unknown = makeOpenMeteoResponse()) {
+  return {
+    ok: true,
+    text: async () => JSON.stringify(payload),
+  };
+}
+
 describe('fetchWeather', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -38,10 +45,7 @@ describe('fetchWeather', () => {
   });
 
   it('returns correct data structure from API', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => makeOpenMeteoResponse(),
-    });
+    mockFetch.mockResolvedValueOnce(okWeatherResponse());
 
     const result = await fetchWeather(-23.55, -46.63);
 
@@ -68,7 +72,12 @@ describe('fetchWeather', () => {
     };
 
     mockAsyncStorage.getItem.mockResolvedValueOnce(
-      JSON.stringify({ data: cachedData, timestamp: Date.now() }),
+      JSON.stringify({
+        data: cachedData,
+        timestamp: Date.now(),
+        latitude: -23.55,
+        longitude: -46.63,
+      }),
     );
 
     const result = await fetchWeather(-23.55, -46.63);
@@ -81,13 +90,26 @@ describe('fetchWeather', () => {
     const staleTimestamp = Date.now() - 15 * 60 * 1000;
 
     mockAsyncStorage.getItem.mockResolvedValueOnce(
-      JSON.stringify({ data: { temperature: 20 }, timestamp: staleTimestamp }),
+      JSON.stringify({
+        data: {
+          temperature: 20,
+          apparentTemperature: 20,
+          humidity: 60,
+          precipitation: 0,
+          rain: 0,
+          weatherCode: 0,
+          windSpeed: 2,
+          dailyPrecipitationSum: 0,
+          description: 'Céu limpo',
+          icon: 'sunny',
+        },
+        timestamp: staleTimestamp,
+        latitude: -23.55,
+        longitude: -46.63,
+      }),
     );
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => makeOpenMeteoResponse(),
-    });
+    mockFetch.mockResolvedValueOnce(okWeatherResponse());
 
     const result = await fetchWeather(-23.55, -46.63);
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -95,10 +117,7 @@ describe('fetchWeather', () => {
   });
 
   it('caches successful API responses', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => makeOpenMeteoResponse(),
-    });
+    mockFetch.mockResolvedValueOnce(okWeatherResponse());
 
     await fetchWeather(-23.55, -46.63);
 
@@ -122,11 +141,14 @@ describe('fetchWeather', () => {
       icon: 'sunny',
     };
 
-    mockAsyncStorage.getItem
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(
-        JSON.stringify({ data: staleData, timestamp: Date.now() - 60 * 60 * 1000 }),
-      );
+    mockAsyncStorage.getItem.mockResolvedValueOnce(null).mockResolvedValueOnce(
+      JSON.stringify({
+        data: staleData,
+        timestamp: Date.now() - 60 * 60 * 1000,
+        latitude: -23.55,
+        longitude: -46.63,
+      }),
+    );
 
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
@@ -146,5 +168,17 @@ describe('fetchWeather', () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
 
     await expect(fetchWeather(-23.55, -46.63)).rejects.toThrow(WeatherError);
+  });
+
+  it('rejects malformed upstream data and never caches it', async () => {
+    mockFetch.mockResolvedValueOnce(okWeatherResponse({ current: {}, daily: {} }));
+    await expect(fetchWeather(-23.55, -46.63)).rejects.toThrow(WeatherError);
+    expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('sends only coordinates minimized to two decimals', async () => {
+    mockFetch.mockResolvedValueOnce(okWeatherResponse());
+    await fetchWeather(-23.551234, -46.638765);
+    expect(mockFetch.mock.calls[0][0]).toContain('latitude=-23.55&longitude=-46.64');
   });
 });

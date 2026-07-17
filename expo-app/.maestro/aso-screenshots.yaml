@@ -1,82 +1,211 @@
-# ASO Screenshots capture — 5 screenshots for App Store + Play Store
-# Runs on booted simulator, logs in, navigates and captures key screens.
+# Internal QA/DRAFT screenshot flow for the exact app UI.
+#
+# HARD BOUNDARY: the deterministic diagnosis comes from the loopback-only QA
+# harness. Its screenshots prove visual regression only; they are NOT semantic
+# evidence and must never be copied into store-assets/{ios,android}/ submission
+# directories or used to clear validate:store-assets.
 appId: com.agrorumo.rumopragas
 tags:
-  - aso
-env:
-  TEST_EMAIL: test_diag_full@mailinator.com
-  TEST_PASSWORD: Validator-2026-Rumo!
+  - qa-draft
+  - screenshots
 ---
+- assertTrue:
+    condition: ${typeof MAESTRO_TEST_EMAIL !== 'undefined' && MAESTRO_TEST_EMAIL.trim().length > 0}
+    label: MAESTRO_TEST_EMAIL must be provided for the dedicated local QA account
+
+- assertTrue:
+    condition: ${typeof MAESTRO_TEST_PASSWORD !== 'undefined' && MAESTRO_TEST_PASSWORD.trim().length > 0}
+    label: MAESTRO_TEST_PASSWORD must be provided for the dedicated local QA account
+
+- addMedia:
+    - '../store-assets/qa-source/soybean-leaf-synthetic-qa.png'
+
 - launchApp:
     clearState: true
+    clearKeychain: true
     stopApp: true
+
+# Onboarding is a real product flow, but it is not mislabeled as the login
+# screenshot. Skip it before authenticating; no auth screen is captured.
+- extendedWaitUntil:
+    visible:
+      id: 'onboarding-skip'
+    timeout: 20000
+- tapOn:
+    id: 'onboarding-skip'
 
 - extendedWaitUntil:
     visible:
-      text: ".*"
-    timeout: 20000
+      id: 'login-segment-login'
+    timeout: 10000
+- tapOn:
+    id: 'login-segment-login'
+- tapOn:
+    id: 'login-input-email'
+- inputText: ${MAESTRO_TEST_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: 'login-input-password'
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'login-submit'
 
-# Skip onboarding if present
-- runFlow:
-    when:
-      visible: "Pular"
-    commands:
-      - tapOn:
-          text: "Pular"
-          optional: true
-
-# Screenshot: onboarding captured if still visible OR fall through
-- takeScreenshot: aso-01-onboarding
-
-# Login
-- runFlow:
-    when:
-      visible: "Entrar"
-    commands:
-      - tapOn:
-          text: "E-mail"
-      - inputText: ${TEST_EMAIL}
-      - tapOn:
-          text: "Senha"
-      - inputText: ${TEST_PASSWORD}
-      - hideKeyboard
-      - tapOn:
-          text: "Entrar"
-          index: 0
-
-# Wait for home
+# A fresh local QA user must make an explicit location choice. The screenshot
+# harness always declines so no coordinates are requested or persisted.
 - extendedWaitUntil:
-    visible: "Diagnosticar"
-    timeout: 20000
-
-- takeScreenshot: aso-02-home
-
-# Navigate to history tab if visible
+    visible:
+      id: '(consent-location-decline|home-cta-diagnose)'
+    timeout: 30000
 - runFlow:
     when:
-      visible: "Histórico"
+      visible:
+        id: 'consent-location-decline'
     commands:
       - tapOn:
-          text: "Histórico"
-      - waitForAnimationToEnd
-      - takeScreenshot: aso-03-history
+          id: 'consent-location-decline'
 
-# Try biblioteca / library
+- extendedWaitUntil:
+    visible:
+      id: 'home-cta-diagnose'
+    timeout: 30000
+- takeScreenshot: qa-draft-01-home
+
+# Capture entry: this is the camera/system-picker entry, not a diagnosis result.
+- tapOn:
+    id: 'home-cta-diagnose'
+- extendedWaitUntil:
+    visible:
+      id: 'diagnosis-camera-gallery'
+    timeout: 10000
+- assertVisible:
+    id: 'diagnosis-camera-capture'
+- takeScreenshot: qa-draft-02-capture-entry
+
+# The synthetic, licensed QA image is injected above. Native picker tiles belong
+# to the operating system, so use Maestro's version-specific official selectors.
+- tapOn:
+    id: 'diagnosis-camera-gallery'
+- waitForAnimationToEnd
+- tapOn:
+    text: '(Allow Full Access|Allow Access to All Photos|Permitir Acesso Total|Permitir acesso a todas as fotos|Permitir acceso a todas las fotos)'
+    optional: true
 - runFlow:
     when:
-      visible: "Biblioteca"
+      platform: Android
     commands:
       - tapOn:
-          text: "Biblioteca"
-      - waitForAnimationToEnd
-      - takeScreenshot: aso-04-library
-
-# Paywall via settings or "Mais"
+          id: 'com.google.android.providers.media.module:id/icon_thumbnail'
+          optional: true
+      - tapOn:
+          id: 'com.google.android.documentsui:id/thumbnail'
+          optional: true
 - runFlow:
     when:
-      visible: "Ajustes"
+      platform: iOS
     commands:
       - tapOn:
-          text: "Ajustes"
-      - waitForAnimationToEnd
-      - takeScreenshot: aso-05-settings
+          id: 'PXGGridLayout-Info'
+          index: 0
+          optional: true
+      - tapOn:
+          text: 'Photo, .*'
+          index: 0
+          optional: true
+- tapOn:
+    text: '(Add|Choose|Done|Open|Select|Adicionar|Escolher|Concluído|Abrir|Selecionar|Añadir|Elegir|Listo|Seleccionar)'
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      id: 'cropselect-start-diagnosis'
+    timeout: 30000
+- tapOn:
+    id: 'cropselect-crop-soja'
+- assertVisible:
+    id: 'cropselect-photo-guidance'
+- takeScreenshot: qa-draft-03-crop-selection
+- tapOn:
+    id: 'cropselect-start-diagnosis'
+
+# Versioned AI disclosure remains part of the real app flow. Its grant RPC is
+# proxied to the local Supabase stack; no production consent ledger is touched.
+- extendedWaitUntil:
+    visible:
+      id: '(ai-consent-diagnosis|diagnosis-loading-cancel|result-close-button)'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: 'ai-consent-diagnosis'
+    commands:
+      - assertVisible:
+          id: 'ai-consent-privacy'
+      - assertVisible:
+          id: 'ai-consent-terms'
+      - tapOn:
+          id: 'ai-consent-accept'
+
+- extendedWaitUntil:
+    visible:
+      id: 'result-close-button'
+    timeout: 60000
+- assertVisible:
+    id: 'result-low-confidence-banner'
+- assertVisible: 'QA-DRAFT-NÃO-É-DIAGNÓSTICO-X9K2'
+- tapOn:
+    id: 'result-alternatives-toggle'
+- assertVisible:
+    id: 'result-alternative-qa_draft_alternative_a_x9k2'
+- assertVisible:
+    id: 'result-alternative-qa_draft_alternative_b_x9k2'
+- takeScreenshot: qa-draft-04-synthetic-result-not-for-store
+
+- tapOn:
+    id: 'result-close-button'
+- extendedWaitUntil:
+    visible:
+      id: 'tab-history'
+    timeout: 15000
+- tapOn:
+    id: 'tab-history'
+- extendedWaitUntil:
+    visible:
+      id: 'history-search'
+    timeout: 15000
+- takeScreenshot: qa-draft-05-local-history
+
+- tapOn:
+    id: 'tab-library'
+- extendedWaitUntil:
+    visible:
+      id: 'library-search'
+    timeout: 15000
+- takeScreenshot: qa-draft-06-library
+
+# Capture only the real empty Assistant UI. Waiting for a suggestion proves
+# local chat history finished loading; no suggestion, input, or send control is
+# touched, so this step cannot call the AI Edge Function.
+- tapOn:
+    id: 'tab-ai-chat'
+- extendedWaitUntil:
+    visible:
+      id: 'aichat-suggestion-0'
+    timeout: 15000
+- assertVisible:
+    id: 'aichat-input'
+- assertVisible:
+    id: 'aichat-send'
+- takeScreenshot: qa-draft-07-ai-assistant-initial
+
+- tapOn:
+    id: 'tab-settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-edit-profile'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-row-edit-profile'
+- assertVisible:
+    id: 'settings-row-language'
+- takeScreenshot: qa-draft-08-settings

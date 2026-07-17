@@ -4,9 +4,6 @@
 appId: com.agrorumo.rumopragas
 tags:
   - auth
-env:
-  TEST_EMAIL: test_diag_full@mailinator.com
-  TEST_PASSWORD: Validator-2026-Rumo!
 ---
 - launchApp:
     clearState: true

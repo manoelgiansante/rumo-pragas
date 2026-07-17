@@ -1,1 +1,0 @@
-[     286ms] [WARNING] "shadow*" style props are deprecated. Use "boxShadow". @ http://localhost:19006/index.ts.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable:40514

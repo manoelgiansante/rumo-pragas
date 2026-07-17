@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { captureException } from '../services/sentry-shim';
 import { useNetworkStatus } from './useNetworkStatus';
@@ -11,17 +10,12 @@ import {
   incrementRetry,
   getQueueCount,
   readQueuedImageBase64,
-  PendingDiagnosis,
+  moveToFailedQueue,
+  subscribeDiagnosisQueue,
 } from '../services/diagnosisQueue';
+import { isAIConsentRequiredError } from '../services/aiConsent';
 
 const MAX_RETRIES = 3;
-const DLQ_KEY = '@rumo_pragas_diagnosis_dlq';
-const DLQ_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-interface DLQEntry extends PendingDiagnosis {
-  movedToDLQAt: string;
-  lastError?: string | undefined;
-}
 
 /**
  * Exponential backoff with jitter.
@@ -34,75 +28,50 @@ export function calculateBackoff(retryCount: number): number {
 }
 
 /**
- * Move an item to the Dead Letter Queue (DLQ) after MAX_RETRIES exhaustion.
- * Never silently drops work — always captured for later inspection + Sentry.
- */
-async function moveToDLQ(item: PendingDiagnosis, lastError?: string): Promise<void> {
-  try {
-    const now = Date.now();
-    const raw = await AsyncStorage.getItem(DLQ_KEY);
-    const existing: DLQEntry[] = raw ? (JSON.parse(raw) as DLQEntry[]) : [];
-
-    // Prune entries older than TTL
-    const pruned = existing.filter((e) => {
-      const ts = Date.parse(e.movedToDLQAt);
-      return Number.isFinite(ts) && now - ts < DLQ_TTL_MS;
-    });
-
-    const entry: DLQEntry = {
-      ...item,
-      movedToDLQAt: new Date().toISOString(),
-      lastError,
-    };
-    pruned.push(entry);
-
-    await AsyncStorage.setItem(DLQ_KEY, JSON.stringify(pruned));
-  } catch (err) {
-    if (__DEV__) console.warn('[DiagnosisSync] DLQ write failed:', err);
-    // Still report to Sentry even if DLQ persistence failed
-    try {
-      captureException(err, {
-        extra: { context: 'DLQ_write_failed', itemId: item.id },
-      });
-    } catch {
-      // swallow — never throw from DLQ path
-    }
-  }
-}
-
-/**
  * Global hook that watches for network reconnection and automatically
  * syncs any pending (offline-queued) diagnoses to the server.
  *
  * Offline resilience (v1.15.0+):
  *  - Exponential backoff with jitter between per-item retries
- *  - Dead Letter Queue (DLQ) when MAX_RETRIES exceeded (never silent drop)
+ *  - Recoverable failed queue when MAX_RETRIES is exceeded (never silent drop)
  *  - Sentry capture on DLQ move for post-mortem analysis
  */
 export function useDiagnosisSync() {
   const { isConnected } = useNetworkStatus();
-  const { session } = useAuthContext();
+  const { session, user } = useAuthContext();
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [queueRevision, setQueueRevision] = useState(0);
   const isSyncingRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
-    const count = await getQueueCount();
+    const count = user?.id ? await getQueueCount(user.id) : 0;
     setPendingCount(count);
-  }, []);
+  }, [user?.id]);
 
   // Refresh count on mount and when connectivity changes
   useEffect(() => {
     refreshCount();
   }, [isConnected, refreshCount]);
 
+  // A retry from the recovery card must trigger sync immediately; waiting for
+  // the next connectivity transition could leave the item stuck indefinitely.
+  useEffect(
+    () =>
+      subscribeDiagnosisQueue(() => {
+        setQueueRevision((revision) => revision + 1);
+        refreshCount();
+      }),
+    [refreshCount],
+  );
+
   // Sync when device comes online
   useEffect(() => {
-    if (!isConnected || !session?.access_token) return;
+    if (!isConnected || !session?.access_token || !user?.id) return;
     if (isSyncingRef.current) return;
 
     const syncQueue = async () => {
-      const queue = await getQueue();
+      const queue = await getQueue(user.id);
       if (queue.length === 0) return;
 
       isSyncingRef.current = true;
@@ -124,38 +93,40 @@ export function useDiagnosisSync() {
             item.latitude,
             item.longitude,
             session.access_token,
+            user.id,
+            item.idempotencyKey || item.id,
           );
-          await removeFromQueue(item.id);
-          if (__DEV__) console.warn(`[DiagnosisSync] Synced pending diagnosis ${item.id}`);
+          await removeFromQueue(item.id, {}, user.id);
+          if (__DEV__) console.warn('[DiagnosisSync] Synced pending diagnosis');
         } catch (error) {
-          if (__DEV__)
-            console.warn(
-              `[DiagnosisSync] Failed to sync ${item.id} (retry ${item.retryCount + 1}/${MAX_RETRIES}):`,
-              error,
-            );
+          if (__DEV__) console.warn('[DiagnosisSync] Pending diagnosis sync failed');
+          // Consent revocation is not a transport failure. Keep the original
+          // queued item untouched until the user explicitly grants consent.
+          if (isAIConsentRequiredError(error)) {
+            continue;
+          }
           if (item.retryCount + 1 >= MAX_RETRIES) {
-            if (__DEV__)
-              console.warn(
-                `[DiagnosisSync] Moving ${item.id} to DLQ after ${MAX_RETRIES} failed attempts`,
-              );
-            const errMessage = error instanceof Error ? error.message : String(error);
-            await moveToDLQ(item, errMessage);
+            if (__DEV__) console.warn('[DiagnosisSync] Moving diagnosis to recoverable queue');
+            const errMessage = 'SYNC_UNAVAILABLE';
             try {
-              captureException(new Error('Diagnosis sync DLQ'), {
+              // Durable ordering: persist failed metadata first, then remove
+              // only the active metadata while retaining the image file.
+              await moveToFailedQueue(item, errMessage);
+              await removeFromQueue(item.id, { deleteImage: false }, user.id);
+              captureException(new Error('Diagnosis sync failed queue'), {
                 extra: {
-                  itemId: item.id,
-                  cropType: item.cropType,
+                  context: 'diagnosis_sync_failed_queue',
                   retryCount: item.retryCount + 1,
-                  lastError: errMessage,
-                  createdAt: item.createdAt,
                 },
               });
             } catch {
-              // swallow — Sentry must never break sync loop
+              // Persistence failed: leave the active item and photo intact.
+              captureException(new Error('Diagnosis failed queue write'), {
+                extra: { context: 'failed_queue_write' },
+              });
             }
-            await removeFromQueue(item.id);
           } else {
-            await incrementRetry(item.id);
+            await incrementRetry(item.id, user.id);
           }
         }
       }
@@ -165,18 +136,20 @@ export function useDiagnosisSync() {
       await refreshCount();
     };
 
-    syncQueue().catch((err) => {
+    syncQueue().catch(() => {
       // Never let an AsyncStorage read/write rejection deadlock the sync loop
       // (isSyncingRef stuck true) or surface as an unhandled rejection (ZERO-O).
       isSyncingRef.current = false;
       setIsSyncing(false);
       try {
-        captureException(err, { extra: { context: 'diagnosisSync_unhandled' } });
+        captureException(new Error('Diagnosis sync unavailable'), {
+          extra: { context: 'diagnosisSync_unhandled' },
+        });
       } catch {
         // swallow — the sync path must never throw
       }
     });
-  }, [isConnected, session?.access_token, refreshCount]);
+  }, [isConnected, session?.access_token, user?.id, queueRevision, refreshCount]);
 
   return { pendingCount, isSyncing, refreshCount };
 }

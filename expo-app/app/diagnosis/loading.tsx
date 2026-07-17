@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 // sheet (0 extra) AND on Android edge-to-edge (clears the status bar).
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -17,11 +17,16 @@ import { sendDiagnosis } from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { addToQueue } from '../../services/diagnosisQueue';
+import {
+  addToQueue,
+  isDiagnosisQueueCapacityError,
+  MAX_DIAGNOSIS_QUEUE_ITEMS,
+} from '../../services/diagnosisQueue';
 import { useTranslation } from 'react-i18next';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { DiagnosisSkeleton } from '../../components/DiagnosisSkeleton';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
+import * as Crypto from 'expo-crypto';
 
 const LOCATION_TIMEOUT_MS = 3000;
 
@@ -36,13 +41,15 @@ export default function LoadingScreen() {
   const { cropApiName } = useLocalSearchParams<{ cropApiName: string }>();
   const { imageBase64 } = useDiagnosis();
   const { session, user } = useAuthContext();
-  const { location, getCurrentLocation } = useLocation();
+  const { location, getCurrentLocationWithConsent } = useLocation();
   const { isConnected } = useNetworkStatus();
   const [step, setStep] = useState(0);
   const progress = useSharedValue(0);
   const stepOpacity = useSharedValue(1);
   const stepTranslateY = useSharedValue(0);
   const hasStartedAnalysis = useRef(false);
+  // Stable for the entire logical diagnosis, including an offline replay.
+  const idempotencyKeyRef = useRef(Crypto.randomUUID());
   const isMountedRef = useRef(true);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -73,10 +80,6 @@ export default function LoadingScreen() {
   };
 
   useEffect(() => {
-    getCurrentLocation();
-  }, [getCurrentLocation]);
-
-  useEffect(() => {
     // Guard against StrictMode double-invoke — prevents duplicate Claude API calls
     if (hasStartedAnalysis.current) return;
     hasStartedAnalysis.current = true;
@@ -95,27 +98,23 @@ export default function LoadingScreen() {
     }, 1500);
     intervalRef.current = interval;
 
-    // Wait for location to resolve (or timeout) BEFORE sending diagnosis.
-    // Previous version used deps [] + closure on `location` which was always
-    // null on first render — producing null coords even when location was ready.
-    const waitForLocation = async (): Promise<{
+    // Resolve app consent BEFORE any native permission/location call. A user
+    // who declined returns immediately with null coordinates; a granted native
+    // lookup is bounded so diagnosis never stalls on device services.
+    const getDiagnosisLocation = async (): Promise<{
       latitude: number | null;
       longitude: number | null;
     }> => {
-      const start = Date.now();
-      while (Date.now() - start < LOCATION_TIMEOUT_MS) {
-        if (!isMountedRef.current) return { latitude: null, longitude: null };
-        if (locationRef.current) {
-          return {
-            latitude: locationRef.current.latitude,
-            longitude: locationRef.current.longitude,
-          };
-        }
-        await new Promise<void>((resolve) => {
-          safeSetTimeout(() => resolve(), 100);
-        });
-      }
-      return { latitude: null, longitude: null };
+      if (!user?.id) return { latitude: null, longitude: null };
+      const resolved = await Promise.race([
+        getCurrentLocationWithConsent(user.id),
+        new Promise<null>((resolve) => {
+          safeSetTimeout(() => resolve(null), LOCATION_TIMEOUT_MS);
+        }),
+      ]);
+      if (!resolved) return { latitude: null, longitude: null };
+      locationRef.current = resolved;
+      return resolved;
     };
 
     const analyze = async () => {
@@ -139,7 +138,7 @@ export default function LoadingScreen() {
           level: 'info',
         });
 
-        const coords = await waitForLocation();
+        const coords = await getDiagnosisLocation();
         if (!isMountedRef.current) return;
 
         addBreadcrumb({
@@ -156,6 +155,7 @@ export default function LoadingScreen() {
           coords.longitude,
           session?.access_token || '',
           user?.id,
+          idempotencyKeyRef.current,
         );
 
         if (!isMountedRef.current) return;
@@ -180,7 +180,7 @@ export default function LoadingScreen() {
             params: { data: JSON.stringify(result) },
           });
         }, 600);
-      } catch (error: unknown) {
+      } catch {
         clearInterval(interval);
         intervalRef.current = null;
         if (!isMountedRef.current) return;
@@ -195,6 +195,8 @@ export default function LoadingScreen() {
           try {
             const coords = locationRef.current;
             await addToQueue({
+              userId: user?.id ?? '',
+              idempotencyKey: idempotencyKeyRef.current,
               imageBase64: imageBase64 || '',
               cropType: cropApiName || 'Soybean',
               latitude: coords?.latitude ?? null,
@@ -203,26 +205,31 @@ export default function LoadingScreen() {
             if (!isMountedRef.current) return;
             router.replace({ pathname: '/diagnosis/result', params: { queued: 'true' } });
           } catch (queueErr) {
-            captureException(queueErr, { tags: { stage: 'offline_queue' } });
+            captureException(new Error('Offline diagnosis queue failed'), {
+              tags: { stage: 'offline_queue' },
+            });
             if (!isMountedRef.current) return;
             router.replace({
               pathname: '/diagnosis/result',
-              params: { error: t('diagnosis.offlineQueueError') },
+              params: {
+                error: isDiagnosisQueueCapacityError(queueErr)
+                  ? t('diagnosis.offlineQueueFull', { limit: MAX_DIAGNOSIS_QUEUE_ITEMS })
+                  : t('diagnosis.offlineQueueError'),
+              },
             });
           }
           return;
         }
 
-        // Online but failed → capture; the user sees the message on the
-        // result screen but Sentry needs the full error for triage.
-        captureException(error, {
+        // Keep provider/network details out of telemetry and route params.
+        captureException(new Error('Diagnosis request failed'), {
           tags: { stage: 'api_call' },
           extra: { durationMs: Date.now() - analysisStart },
         });
 
         router.replace({
           pathname: '/diagnosis/result',
-          params: { error: error instanceof Error ? error.message : t('diagnosis.genericError') },
+          params: { error: t('diagnosis.genericError') },
         });
       }
     };

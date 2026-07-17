@@ -1,5 +1,0 @@
-[     192ms] [WARNING] "shadow*" style props are deprecated. Use "boxShadow". @ http://localhost:19006/index.ts.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable:40514
-[   92874ms] [WARNING] props.pointerEvents is deprecated. Use style.pointerEvents @ http://localhost:19006/index.ts.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable:40514
-[  158100ms] [ERROR] CoreLocationProvider: CoreLocation framework reported a kCLErrorLocationUnknown failure. @ http://localhost:19006/:0
-[  159653ms] [WARNING] The Geocoding API has been removed in SDK 49, use Place Autocomplete service instead(https://developers.google.com/maps/documentation/places/web-service/autocomplete) @ http://localhost:19006/index.ts.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable:264649
-[  374897ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://api.anthropic.com/v1/messages:0

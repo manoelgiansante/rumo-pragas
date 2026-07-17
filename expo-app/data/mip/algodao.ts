@@ -95,15 +95,12 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 % botões atacados OU < 1 adulto/armadilha/semana',
-        acao: 'Monitoramento intensivo + iscas tóxicas em bordadura',
       },
       medio: {
         criterio: '5-10 % botões OU 1-3 adultos/armadilha',
-        acao: 'Aplicação química em bordadura + área toda se subindo',
       },
       alto: {
         criterio: '> 10 % botões OU > 3 adultos/armadilha',
-        acao: 'Aplicação imediata área total + reaplicação 5-7 dias',
       },
     },
     mip: {
@@ -117,75 +114,12 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
         'Beauveria bassiana (eficácia parcial)',
         'Catolaccus grandis (parasitoide — programas pontuais)',
       ],
-      mecanico: [
-        'Armadilhas de feromônio (grandlure) 1/10-20 ha em bordas',
-        'Catação manual em pequenas áreas',
-      ],
-      quimico: {
-        classes: ['organofosforados', 'piretroides', 'neonicotinoides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Malation',
-            graudeIRACouFRAC: 'IRAC 1B',
-            produtosComerciais: [
-              {
-                nome: 'Malation 1000 EC',
-                formulacao: 'EC',
-                dosagem: '1,5-2,0 L p.c./ha',
-                intervaloAplicacoes: '5-7 dias',
-                intervaloSegurancaDias: 2,
-                carencia: 7,
-              },
-            ],
-          },
-          {
-            nome: 'Etiprole',
-            graudeIRACouFRAC: 'IRAC 2B',
-            produtosComerciais: [
-              {
-                nome: 'Etiprole 200 SC',
-                formulacao: 'SC',
-                dosagem: '500-750 mL p.c./ha',
-                intervaloAplicacoes: '7 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 21,
-              },
-            ],
-          },
-          {
-            nome: 'Beta-ciflutrina',
-            graudeIRACouFRAC: 'IRAC 3A',
-            produtosComerciais: [
-              {
-                nome: 'Beta-ciflutrina 100 EC',
-                formulacao: 'EC',
-                dosagem: '100-150 mL p.c./ha',
-                intervaloAplicacoes: '5-7 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'Bicudo exige aplicações frequentes (5-7 dias) — alto risco resistência',
-          'Rotação rigorosa IRAC obrigatória',
-          'Aplicações iniciais em bordadura economizam químico',
-        ],
-      },
     },
-    rotacaoResistencia:
-      'Rotacionar IRAC 1B → 2B → 3A → 4A. NÃO repetir mesmo grupo 2x consecutivas. ' +
-      'Destruição de soqueiras é fundamental para reduzir pressão.',
     monitoramento: {
       metodo: 'Armadilhas grandlure + amostragem 100 botões/talhão. Borda da lavoura prioritária.',
       frequencia: '2x/semana a partir B1',
       nivelControle: '5 % botões atacados OU 1 bicudo/armadilha/semana',
     },
-    observacoesAgronomicas:
-      'PRAGA #1 do algodão brasileiro. Apenas vazio sanitário regional efetivo controla a ' +
-      'longo prazo. Áreas individuais não conseguem manejo isolado. Programa NACIONAL de ' +
-      'controle do bicudo é coordenado pela ABRAPA.',
     referencias: [REF_EMBRAPA_ALG, REF_ABRAPA, REF_IRAC, REF_MAPA],
   },
 
@@ -221,15 +155,12 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 % maçãs/botões atacados',
-        acao: 'Monitoramento + armadilhas feromônio',
       },
       medio: {
         criterio: '5-10 %',
-        acao: 'Aplicação química seletiva',
       },
       alto: {
         criterio: '> 10 %',
-        acao: 'Aplicação química',
       },
     },
     mip: {
@@ -240,35 +171,12 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
         'Refúgio Bt obrigatório',
       ],
       biologico: ['Trichogramma'],
-      mecanico: ['Armadilhas feromônio (pectinolure)'],
-      quimico: {
-        classes: ['diamidas', 'espinosinas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Clorantraniliprole',
-            graudeIRACouFRAC: 'IRAC 28',
-            produtosComerciais: [
-              {
-                nome: 'Diamida',
-                formulacao: 'SC',
-                dosagem: '40-60 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 21,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Algodão Bt resolve > 90 % dos casos — Bt é defesa #1'],
-      },
     },
-    rotacaoResistencia: 'Refúgio Bt + rotação IRAC quando aplicar químico.',
     monitoramento: {
       metodo: 'Armadilhas feromônio + amostragem maçãs',
       frequencia: 'Semanal',
       nivelControle: '5 % maçãs atacadas em algodão convencional',
     },
-    observacoesAgronomicas: 'Algodão Bt reduziu drasticamente a importância — manter refúgio.',
     referencias: [REF_EMBRAPA_ALG, REF_ABRAPA, REF_IRAC, REF_MAPA],
   },
 
@@ -304,64 +212,23 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 adultos/folha',
-        acao: 'Conservar inimigos naturais',
       },
       medio: {
         criterio: '5-10 adultos/folha',
-        acao: 'IGR ou Beauveria',
       },
       alto: {
         criterio: '> 10 adultos/folha',
-        acao: 'Aplicação química com rotação IRAC',
       },
     },
     mip: {
       cultural: ['Janela livre de hospedeiros', 'Cultivares menos suscetíveis'],
       biologico: ['Beauveria bassiana', 'Encarsia formosa', 'Eretmocerus mundus'],
-      mecanico: ['Armadilhas amarelas'],
-      quimico: {
-        classes: ['IGR', 'cetoenois', 'neonicotinoides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Pyriproxyfen (IGR)',
-            graudeIRACouFRAC: 'IRAC 7C',
-            produtosComerciais: [
-              {
-                nome: 'IGR juvenil',
-                formulacao: 'EC',
-                dosagem: '500 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 21,
-              },
-            ],
-          },
-          {
-            nome: 'Spirotetramate',
-            graudeIRACouFRAC: 'IRAC 23',
-            produtosComerciais: [
-              {
-                nome: 'Cetoenol',
-                formulacao: 'OD',
-                dosagem: '300-400 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Atingir face inferior é crítico (bicos cônicos, volume alto)'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 7C → 23 → 4A → 9B. Resistência altíssima.',
     monitoramento: {
       metodo: 'Inspeção folhas + armadilhas amarelas',
       frequencia: 'Semanal',
       nivelControle: '5-10 adultos/folha',
     },
-    observacoesAgronomicas:
-      'Praga crescente. Pluma melada perde valor — manejar antes da abertura de capulhos.',
     referencias: [REF_EMBRAPA_ALG, REF_IRAC, REF_MAPA],
   },
 
@@ -396,49 +263,23 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 50 % plantas colonizadas',
-        acao: 'Inimigos naturais (joaninhas, crisopídeos)',
       },
       medio: {
         criterio: '50-70 %',
-        acao: 'Aplicação seletiva',
       },
       alto: {
         criterio: '> 70 %',
-        acao: 'Aplicação química',
       },
     },
     mip: {
       cultural: ['Adubação equilibrada'],
       biologico: ['Joaninhas', 'Crisopídeos', 'Aphidius', 'Beauveria'],
-      mecanico: ['Inspeção'],
-      quimico: {
-        classes: ['neonicotinoides', 'IGR'],
-        ingredientesAtivos: [
-          {
-            nome: 'Imidacloprido',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Imidacloprido 700 WG',
-                formulacao: 'WG',
-                dosagem: '100-150 g p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 21,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Pulgão tem ALTA resistência a neonicotinoides — rotação rigorosa'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 4A → 9 → 23.',
     monitoramento: {
       metodo: 'Inspeção visual',
       frequencia: 'Semanal V3+',
       nivelControle: '50 % plantas colonizadas',
     },
-    observacoesAgronomicas: 'Costuma ser controlado por inimigos naturais — preservá-los.',
     referencias: [REF_EMBRAPA_ALG, REF_IRAC, REF_MAPA],
   },
 
@@ -474,49 +315,23 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Sintomas isolados',
-        acao: 'Monitoramento + Neoseiulus',
       },
       medio: {
         criterio: 'Manchões com deformação',
-        acao: 'Acaricida seletivo',
       },
       alto: {
         criterio: 'Generalizado',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
       cultural: ['Adubação equilibrada'],
       biologico: ['Neoseiulus californicus'],
-      mecanico: ['Inspeção visual sintomas (ácaro não visível)'],
-      quimico: {
-        classes: ['acaricidas específicos'],
-        ingredientesAtivos: [
-          {
-            nome: 'Abamectina',
-            graudeIRACouFRAC: 'IRAC 6',
-            produtosComerciais: [
-              {
-                nome: 'Abamectina 18 EC',
-                formulacao: 'EC',
-                dosagem: '300-500 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Aplicar quando sintomas iniciais (encarquilhamento)'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 6 → 25 → 21A.',
     monitoramento: {
       metodo: 'Inspeção visual sintomas (não dos ácaros)',
       frequencia: 'Semanal',
       nivelControle: 'Sintomas em brotos',
     },
-    observacoesAgronomicas: 'Diagnose visual pelo sintoma (ácaro é microscópico).',
     referencias: [REF_EMBRAPA_ALG, REF_IRAC, REF_MAPA],
   },
 
@@ -555,69 +370,23 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Primeiros sintomas baixeiros',
-        acao: 'Aplicação preventiva',
       },
       medio: {
         criterio: 'Severidade 10-25 %',
-        acao: 'Aplicação tripla mistura + multissítio',
       },
       alto: {
         criterio: '> 25 % com desfolha',
-        acao: 'Aplicação imediata + revisão cultivar',
       },
     },
     mip: {
       cultural: ['Cultivares resistentes', 'Rotação', 'Dessecação tardia em soqueiras'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'carboxamidas', 'multissitios'],
-        ingredientesAtivos: [
-          {
-            nome: 'Fluxapiroxade + Piraclostrobina',
-            graudeIRACouFRAC: 'FRAC 7 + 11',
-            produtosComerciais: [
-              {
-                nome: 'Mistura SDHI + estrobilurina',
-                formulacao: 'SC',
-                dosagem: '0,5-0,8 L p.c./ha',
-                intervaloAplicacoes: '14-21 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-          {
-            nome: 'Mancozebe (multissítio)',
-            graudeIRACouFRAC: 'FRAC M3',
-            produtosComerciais: [
-              {
-                nome: 'Mancozebe WG',
-                formulacao: 'WG',
-                dosagem: '1,5-2,0 kg p.c./ha',
-                intervaloAplicacoes: '10-14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'Resistência DOCUMENTADA a QoI (FRAC 11) e DMI (FRAC 3) em MT',
-          'Multissítio em TODAS as aplicações',
-          'Programa começa no aparecimento dos primeiros sintomas',
-        ],
-      },
     },
-    rotacaoResistencia:
-      'Rotacionar FRAC 7 → 11 → 3 + multissítio sempre. Não exceder 2x mesmo grupo.',
     monitoramento: {
       metodo: 'Inspeção folhas baixeiras',
       frequencia: 'Semanal B1+',
       nivelControle: 'Primeiros sintomas',
     },
-    observacoesAgronomicas:
-      'Doença #1 do algodão BR. Perdas potenciais > 30 %. Manejo agressivo de resistência é crítico.',
     referencias: [REF_EMBRAPA_ALG, REF_ABRAPA, REF_FRAC, REF_MAPA],
   },
 
@@ -653,50 +422,23 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Sintomas isolados',
-        acao: 'Cultivar resistente cobre',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Aplicação cúprica',
       },
       alto: {
         criterio: 'Generalizada com nervo preto',
-        acao: 'Cúprico + cultivar resistente próximo ciclo',
       },
     },
     mip: {
-      cultural: ['CULTIVARES RESISTENTES (defesa primária)', 'Tratamento de sementes', 'Rotação'],
+      cultural: ['Cultivares resistentes', 'Sementes sadias e certificadas', 'Rotação'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Sementes certificadas (semente-transmitido)'],
-      quimico: {
-        classes: ['cúpricos'],
-        ingredientesAtivos: [
-          {
-            nome: 'Oxicloreto de Cobre',
-            graudeIRACouFRAC: 'FRAC M1',
-            produtosComerciais: [
-              {
-                nome: 'Cobre WP',
-                formulacao: 'WP',
-                dosagem: '2,5-4,0 kg p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Antibióticos não são alternativa econômica em campo'],
-      },
     },
-    rotacaoResistencia: 'Foco em cultivar resistente.',
     monitoramento: {
       metodo: 'Inspeção visual',
       frequencia: 'Semanal pós-chuvas',
       nivelControle: 'Sintomas iniciais',
     },
-    observacoesAgronomicas:
-      'Bactéria semente-transmitida — sementes certificadas resolvem boa parte.',
     referencias: [REF_EMBRAPA_ALG, REF_MAPA],
   },
 
@@ -730,49 +472,23 @@ export const ALGODAO_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Plantas isoladas',
-        acao: 'Cultivar resistente cobre',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Aplicação fungicida + revisão cultivar',
       },
       alto: {
         criterio: 'Generalizado',
-        acao: 'Revisão completa do programa',
       },
     },
     mip: {
-      cultural: ['Cultivares resistentes', 'Tratamento sementes', 'Rotação'],
-      biologico: ['Trichoderma TS'],
-      mecanico: ['Sementes certificadas'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Carbendazim (TS)',
-            graudeIRACouFRAC: 'FRAC 1',
-            produtosComerciais: [
-              {
-                nome: 'TS padrão',
-                formulacao: 'SC',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: 'Único',
-                intervaloSegurancaDias: 0,
-                carencia: 0,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Sementes sadias resolvem 80 % dos casos'],
-      },
+      cultural: ['Cultivares resistentes', 'Sementes sadias e certificadas', 'Rotação'],
+      biologico: ['Agentes biológicos somente após validação profissional e no AGROFIT'],
     },
-    rotacaoResistencia: 'Rotação FRAC.',
     monitoramento: {
       metodo: 'Inspeção brotos',
       frequencia: 'Semanal V3+',
       nivelControle: 'Sintomas isolados',
     },
-    observacoesAgronomicas: 'Semente-transmitida — controle via TS + cultivar.',
     referencias: [REF_EMBRAPA_ALG, REF_FRAC, REF_MAPA],
   },
 ];

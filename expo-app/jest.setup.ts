@@ -12,6 +12,8 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn().mockResolvedValue(undefined),
   removeItem: jest.fn().mockResolvedValue(undefined),
   multiRemove: jest.fn().mockResolvedValue(undefined),
+  multiSet: jest.fn().mockResolvedValue(undefined),
+  getAllKeys: jest.fn().mockResolvedValue([]),
   clear: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -20,7 +22,15 @@ jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageTag: 'pt-BR', languageCode: 'pt' }],
 }));
 
-// 3. Mock @sentry/react-native globally with a no-op stub.
+// 3. Production imports Ionicons directly so Metro does not pull every icon
+//    family and font into the web export. Keep that optimized entry point inert
+//    in unit tests; individual suites can still override it when necessary.
+jest.mock('@expo/vector-icons/Ionicons', () => ({
+  __esModule: true,
+  default: 'Ionicons',
+}));
+
+// 4. Mock @sentry/react-native globally with a no-op stub.
 //    The real module arms a module-scope setInterval (AsyncExpiringMap cleanup
 //    ticker in timeToDisplayFallback) the instant it is require()'d. That timer
 //    is never .unref()'d, so it keeps the Jest worker alive after the suite

@@ -19,7 +19,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 const AsyncStorage = require('@react-native-async-storage/async-storage');
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <NavigationGateProvider>{children}</NavigationGateProvider>
+  <NavigationGateProvider userId="user-1">{children}</NavigationGateProvider>
 );
 
 describe('NavigationGateContext', () => {
@@ -46,7 +46,7 @@ describe('NavigationGateContext', () => {
 
   it('hydrates flags to true when storage already has them', async () => {
     await AsyncStorage.setItem('@rumo_pragas_onboarding_seen', 'true');
-    await AsyncStorage.setItem('@rumo_pragas_location_consent_shown', 'true');
+    await AsyncStorage.setItem('@rumo_pragas_location_consent_shown:user-1', 'true');
     const { result } = renderHook(() => useNavigationGate(), { wrapper });
     await waitFor(() => {
       expect(result.current.hasSeenOnboarding).toBe(true);
@@ -68,7 +68,7 @@ describe('NavigationGateContext', () => {
 
     // ...and it is also persisted so the next cold start reads it back.
     await waitFor(async () => {
-      expect(await AsyncStorage.getItem('@rumo_pragas_location_consent_shown')).toBe('true');
+      expect(await AsyncStorage.getItem('@rumo_pragas_location_consent_shown:user-1')).toBe('true');
     });
   });
 

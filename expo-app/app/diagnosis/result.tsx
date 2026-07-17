@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Platform,
   Image,
   Share,
+  TextInput,
+  ActivityIndicator,
   useColorScheme,
 } from 'react-native';
 // Cross-platform safe area: RN's SafeAreaView is iOS-only — on Android
@@ -16,12 +18,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
+import * as Crypto from 'expo-crypto';
 import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue,
@@ -47,9 +50,15 @@ import { trackSuccessfulDiagnosis } from '../../services/storeReview';
 import { trackShareDiagnosis, trackPestDetailViewed, trackEvent } from '../../services/analytics';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { savePestToCache } from '../../services/pestRegistry';
-import { useMipKnowledge, type SubscriptionTier } from '../../hooks/useMipKnowledge';
+import { useMipKnowledge } from '../../hooks/useMipKnowledge';
 import { addBreadcrumb } from '../../services/sentry-shim';
 import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
+import { useAuthContext } from '../../contexts/AuthContext';
+import {
+  isDiagnosisFeedbackEligible,
+  reportDiagnosisFeedback,
+} from '../../services/diagnosisFeedback';
+import type { DiagnosisFeedbackVerdict } from '../../services/diagnosisFeedback';
 
 // --- Alternatives cap ------------------------------------------------------
 // The app ships 100% FREE (Apple Guideline 3.1.1): every result surface — the
@@ -63,6 +72,8 @@ export default function ResultScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { imageUri } = useDiagnosis();
+  const { session } = useAuthContext();
+  const feedbackOperationRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const { data, error, queued } = useLocalSearchParams<{
     data?: string;
     error?: string;
@@ -84,6 +95,7 @@ export default function ResultScreen() {
     result.pest_name?.toLowerCase().includes('healthy') ||
     result.pest_id === 'Healthy';
   const confidence = result.confidence ?? 0;
+  const feedbackDiagnosisId = isDiagnosisFeedbackEligible(result.id) ? result.id : null;
 
   // P0-1: invalid_image — edge function returned when confidence < 0.5 or not a plant
   const isInvalidImage = result.pest_id === 'invalid_image';
@@ -96,7 +108,13 @@ export default function ResultScreen() {
       if (result.parsedNotes) notes = result.parsedNotes;
       else if (typeof result.notes === 'string') notes = JSON.parse(result.notes);
       else notes = result.notes || {};
-      return (notes.enrichment || {}) as AgrioEnrichment;
+      const safe = { ...((notes.enrichment || {}) as Record<string, unknown>) };
+      // AI output is educational. Never display, cache, share or export
+      // prescriptive pesticide fields; direct users to AGROFIT + agronomist.
+      delete safe.chemical_treatment;
+      delete safe.chemical_treatment_es;
+      delete safe.recommended_products;
+      return safe as AgrioEnrichment;
     } catch {
       return {} as AgrioEnrichment;
     }
@@ -144,6 +162,11 @@ export default function ResultScreen() {
   const confidenceProgress = useSharedValue(0);
   const [displayConfidence, setDisplayConfidence] = useState(0);
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const [feedbackVerdict, setFeedbackVerdict] = useState<DiagnosisFeedbackVerdict | null>(null);
+  const [feedbackAlternative, setFeedbackAlternative] = useState('');
+  const [feedbackNotes, setFeedbackNotes] = useState('');
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   useEffect(() => {
     if (!error && !queued && result.pest_id) {
@@ -168,30 +191,25 @@ export default function ResultScreen() {
     width: `${confidenceProgress.value * 100}%`,
   }));
 
-  // Track successful diagnosis for store review prompt + persist to local cache
-  // so the pest detail page can render fully offline. Hooks are unconditional
-  // (React rules of hooks) but logic is guarded.
+  // Track a successful diagnosis and persist a minimized educational fact sheet.
   useEffect(() => {
     if (!error && !queued && result.pest_name) {
       trackSuccessfulDiagnosis();
       if (result.pest_id && !isHealthy && !isInvalidImage) {
-        void savePestToCache({
-          id: result.pest_id,
-          pest_name: result.pest_name,
-          scientific_name: enrichment.scientific_name,
-          crop: result.crop,
-          image_uri: imageUri ?? undefined,
-          confidence,
-          enrichment,
-          alternatives,
-        });
+        if (session?.user?.id)
+          void savePestToCache(session.user.id, {
+            id: result.pest_id,
+            pest_name: result.pest_name,
+            scientific_name: enrichment.scientific_name,
+            crop: result.crop,
+            enrichment,
+          });
       }
       addBreadcrumb({
         category: 'diagnosis.result',
         message: 'result_rendered',
         level: 'info',
         data: {
-          pestId: result.pest_id ?? 'unknown',
           confidence: result.confidence ?? 0,
           severity: enrichment?.severity ?? 'undefined',
           alternativeCount: alternatives.length,
@@ -200,12 +218,6 @@ export default function ResultScreen() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // FREE BUILD (Apple Guideline 3.1.1): the app is 100% free. The full
-  // MIP/EMBRAPA treatment-protocol library is available to everyone, so the
-  // MipCard tier is fixed to the top (enterprise) — every level is open and the
-  // card renders no locked chips.
-  const [tier] = useState<SubscriptionTier>('enterprise');
-
   // Resolve MIP catalog entry from pest/symptoms. Disabled when no useful
   // diagnosis is on screen (healthy plant / no pest_name).
   const mipEnabled = !error && !queued && !isHealthy && !isInvalidImage && !!result.pest_name;
@@ -213,7 +225,6 @@ export default function ResultScreen() {
     pestName: result.pest_name,
     enrichment,
     crop: result.crop,
-    tier,
     enabled: mipEnabled,
   });
 
@@ -232,34 +243,28 @@ export default function ResultScreen() {
     );
   }, [isHealthy, mipKnowledge.entry, enrichment.name_pt, result.pest_name, t]);
 
-  // Fire one analytics event per resolved entry (covers both unlocked and
-  // empty states — empty is itself a signal we should grow the catalog).
+  // Fire one analytics event per resolved entry; empty results identify gaps.
   useEffect(() => {
-    if (!mipEnabled || mipKnowledge.loading) return;
+    if (!mipEnabled) return;
     if (mipKnowledge.entry) {
       trackEvent('mip_card_shown', {
         entry_id: mipKnowledge.entry.id,
         match_score: mipKnowledge.matchScore,
-        tier,
         crop: result.crop,
         pest_id: result.pest_id,
       });
     } else {
       trackEvent('mip_card_empty', {
-        tier,
         crop: result.crop,
         pest_name: result.pest_name,
         pest_id: result.pest_id,
       });
     }
-    // We only want to fire once per resolved entry — keying on entry.id is
-    // intentional; the dep on `tier` also re-fires when tier resolves.
+    // We only want to fire once per resolved entry.
   }, [
     mipEnabled,
-    mipKnowledge.loading,
     mipKnowledge.entry,
     mipKnowledge.matchScore,
-    tier,
     result.crop,
     result.pest_id,
     result.pest_name,
@@ -280,10 +285,6 @@ export default function ResultScreen() {
     if (enrichment.cultural_treatment?.length) {
       treatments.push(`*${t('diagnosis.shareCulturalControl')}:*`);
       enrichment.cultural_treatment.forEach((tr: string) => treatments.push(`  - ${tr}`));
-    }
-    if (enrichment.chemical_treatment?.length) {
-      treatments.push(`*${t('diagnosis.shareChemicalControl')}:*`);
-      enrichment.chemical_treatment.forEach((tr: string) => treatments.push(`  - ${tr}`));
     }
     if (enrichment.biological_treatment?.length) {
       treatments.push(`*${t('diagnosis.shareBiologicalControl')}:*`);
@@ -307,13 +308,13 @@ export default function ResultScreen() {
       `\u{1F4CB} *${t('diagnosis.shareSymptoms')}:*`,
       symptoms,
       '',
-      `\u{1F48A} *${t('diagnosis.shareTreatment')}:*`,
+      `\u{1F33E} *${t('diagnosis.shareGuidance')}:*`,
       treatmentText,
       '',
       `\u{1F6E1}\u{FE0F} *${t('diagnosis.sharePrevention')}:*`,
       prevention,
       '',
-      `_${t('diagnosis.shareFooter')}_`,
+      `_${t('diagnosis.shareDisclaimer')}_`,
     ].join('\n');
   }, [result, enrichment, confidence, displayPestName, t, severityLabel]);
 
@@ -423,11 +424,6 @@ export default function ResultScreen() {
     if (enrichment.cultural_treatment?.length) {
       sections.push(
         `<h2>${t('diagnosis.culturalControl')}</h2>${buildList(enrichment.cultural_treatment)}`,
-      );
-    }
-    if (enrichment.chemical_treatment?.length) {
-      sections.push(
-        `<h2>${t('diagnosis.chemicalControl')}</h2><p style="color:#EBB026;font-size:12px;">${t('diagnosis.pdfChemicalWarning')}</p>${buildList(enrichment.chemical_treatment)}`,
       );
     }
     if (enrichment.biological_treatment?.length) {
@@ -552,6 +548,45 @@ export default function ResultScreen() {
   const handleToggleAlternatives = useCallback(() => {
     setShowAlternatives((v) => !v);
   }, []);
+
+  const handleSubmitFeedback = useCallback(async () => {
+    if (!feedbackVerdict || !feedbackDiagnosisId || !session?.access_token || feedbackSubmitting)
+      return;
+    setFeedbackSubmitting(true);
+    try {
+      const payload: Parameters<typeof reportDiagnosisFeedback>[0] = {
+        diagnosisId: feedbackDiagnosisId,
+        verdict: feedbackVerdict,
+      };
+      const selectedAlternative = feedbackAlternative.trim();
+      const notes = feedbackNotes.trim();
+      if (selectedAlternative) payload.selectedAlternative = selectedAlternative;
+      if (notes) payload.notes = notes;
+      const fingerprint = JSON.stringify(payload);
+      if (feedbackOperationRef.current?.fingerprint !== fingerprint) {
+        feedbackOperationRef.current = { fingerprint, key: Crypto.randomUUID() };
+      }
+      await reportDiagnosisFeedback(
+        payload,
+        session.access_token,
+        feedbackOperationRef.current.key,
+      );
+      feedbackOperationRef.current = null;
+      setFeedbackSubmitted(true);
+    } catch {
+      showAlert(t('common.error'), t('diagnosisFeedback.error'));
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  }, [
+    feedbackAlternative,
+    feedbackNotes,
+    feedbackSubmitting,
+    feedbackVerdict,
+    feedbackDiagnosisId,
+    session?.access_token,
+    t,
+  ]);
 
   // Early returns AFTER all hooks have been called
   if (queued === 'true') {
@@ -829,7 +864,104 @@ export default function ResultScreen() {
           </View>
         )}
 
-        {/* Treatment summary card — 3 IPM levels with Pro gate on bio/chem */}
+        {!isHealthy && !isInvalidImage && feedbackDiagnosisId ? (
+          <PremiumCard style={styles.feedbackCard}>
+            {feedbackSubmitted ? (
+              <View style={styles.feedbackSuccess} testID="diagnosis-feedback-success">
+                <Ionicons name="checkmark-circle" size={24} color={Colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.feedbackTitle, isDark && styles.textDark]}>
+                    {t('diagnosisFeedback.successTitle')}
+                  </Text>
+                  <Text style={styles.feedbackDescription}>{t('diagnosisFeedback.success')}</Text>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Text style={[styles.feedbackTitle, isDark && styles.textDark]}>
+                  {t('diagnosisFeedback.title')}
+                </Text>
+                <Text style={styles.feedbackDescription}>{t('diagnosisFeedback.description')}</Text>
+                <View style={styles.feedbackVerdicts} accessibilityRole="radiogroup">
+                  {(['correct', 'incorrect', 'unsure'] as DiagnosisFeedbackVerdict[]).map(
+                    (verdict) => {
+                      const selected = feedbackVerdict === verdict;
+                      return (
+                        <TouchableOpacity
+                          key={verdict}
+                          testID={`diagnosis-feedback-${verdict}`}
+                          style={[
+                            styles.feedbackVerdict,
+                            selected && styles.feedbackVerdictSelected,
+                          ]}
+                          onPress={() => setFeedbackVerdict(verdict)}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected }}
+                          accessibilityLabel={t(`diagnosisFeedback.verdicts.${verdict}`)}
+                        >
+                          <Text
+                            style={[
+                              styles.feedbackVerdictText,
+                              selected && styles.feedbackVerdictTextSelected,
+                            ]}
+                          >
+                            {t(`diagnosisFeedback.verdicts.${verdict}`)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    },
+                  )}
+                </View>
+                {feedbackVerdict === 'incorrect' ? (
+                  <TextInput
+                    testID="diagnosis-feedback-alternative"
+                    style={styles.feedbackInput}
+                    value={feedbackAlternative}
+                    onChangeText={setFeedbackAlternative}
+                    placeholder={t('diagnosisFeedback.alternativePlaceholder')}
+                    placeholderTextColor={Colors.textTertiary}
+                    maxLength={200}
+                    accessibilityLabel={t('diagnosisFeedback.alternativeA11y')}
+                  />
+                ) : null}
+                <TextInput
+                  testID="diagnosis-feedback-notes"
+                  style={[styles.feedbackInput, styles.feedbackNotes]}
+                  value={feedbackNotes}
+                  onChangeText={setFeedbackNotes}
+                  placeholder={t('diagnosisFeedback.notesPlaceholder')}
+                  placeholderTextColor={Colors.textTertiary}
+                  maxLength={1000}
+                  multiline
+                  accessibilityLabel={t('diagnosisFeedback.notesA11y')}
+                />
+                <Text style={styles.feedbackPrivacy}>{t('diagnosisFeedback.privacy')}</Text>
+                <TouchableOpacity
+                  testID="diagnosis-feedback-submit"
+                  style={[
+                    styles.feedbackSubmit,
+                    (!feedbackVerdict || feedbackSubmitting) && styles.feedbackSubmitDisabled,
+                  ]}
+                  onPress={handleSubmitFeedback}
+                  disabled={!feedbackVerdict || feedbackSubmitting}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: !feedbackVerdict || feedbackSubmitting,
+                    busy: feedbackSubmitting,
+                  }}
+                >
+                  {feedbackSubmitting ? (
+                    <ActivityIndicator color={Colors.white} />
+                  ) : (
+                    <Text style={styles.feedbackSubmitText}>{t('diagnosisFeedback.submit')}</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </PremiumCard>
+        ) : null}
+
+        {/* Educational MIP summary. Chemical prescriptions are intentionally omitted. */}
         {!isHealthy && (
           <PremiumCard style={styles.treatmentCard}>
             <View style={styles.treatmentHeader}>
@@ -852,13 +984,6 @@ export default function ResultScreen() {
                 title={t('diagnosis.treatmentLevelBiological')}
                 hint={t('diagnosis.treatmentLevelBiologicalHint')}
                 count={enrichment.biological_treatment?.length ?? 0}
-              />
-              <TreatmentLevelRow
-                icon="flask"
-                color={Colors.warmAmber}
-                title={t('diagnosis.treatmentLevelChemical')}
-                hint={t('diagnosis.treatmentLevelChemicalHint')}
-                count={enrichment.chemical_treatment?.length ?? 0}
               />
             </View>
             <TouchableOpacity
@@ -935,24 +1060,6 @@ export default function ResultScreen() {
               {enrichment.cultural_treatment!.map((s: string, i: number) => (
                 <View key={i} style={styles.bulletRow}>
                   <View style={[styles.bullet, { backgroundColor: Colors.accent }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
-                </View>
-              ))}
-            </CollapsibleSection>
-          )}
-          {(enrichment.chemical_treatment?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.chemicalControl')}
-              icon="flask"
-              iconColor={Colors.techBlue}
-            >
-              <View style={styles.warning}>
-                <Ionicons name="warning" size={14} color={Colors.warmAmber} />
-                <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
-              </View>
-              {enrichment.chemical_treatment!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: Colors.techBlue }]} />
                   <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
                 </View>
               ))}
@@ -1040,12 +1147,7 @@ export default function ResultScreen() {
 
         {/* MIP knowledge base card — EMBRAPA/MAPA protocols, available to all.
             Hidden when the plant is healthy or no pest was identified. */}
-        <MipCard
-          knowledge={mipKnowledge}
-          tier={tier}
-          enabled={mipEnabled}
-          onAnalyticsEvent={trackEvent}
-        />
+        <MipCard knowledge={mipKnowledge} enabled={mipEnabled} onAnalyticsEvent={trackEvent} />
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -1087,7 +1189,6 @@ export default function ResultScreen() {
             [t('diagnosis.selectedCrop'), result.crop],
             [t('diagnosis.confidence'), `${Math.round(confidence * 100)}%`],
             ['ID', result.pest_id],
-            [t('diagnosis.location'), result.location_name],
           ]
             .filter(([, v]) => v)
             .map(([label, value], i) => (
@@ -1098,7 +1199,7 @@ export default function ResultScreen() {
             ))}
         </PremiumCard>
 
-        {/* P0-1: Mandatory CREA legal disclaimer (Lei 7.802/89) on every diagnosis */}
+        {/* Mandatory current regulatory disclaimer on every diagnosis. */}
         <View
           style={styles.legalDisclaimer}
           accessible
@@ -1324,6 +1425,70 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.accent,
   },
+  feedbackCard: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
+  feedbackTitle: {
+    color: Colors.text,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.headline,
+  },
+  feedbackDescription: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  feedbackVerdicts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: Spacing.md },
+  feedbackVerdict: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Colors.systemGray4,
+    borderRadius: 999,
+  },
+  feedbackVerdictSelected: { borderColor: Colors.accent, backgroundColor: `${Colors.accent}12` },
+  feedbackVerdictText: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.caption,
+  },
+  feedbackVerdictTextSelected: { color: Colors.accent },
+  feedbackInput: {
+    minHeight: 44,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.systemGray4,
+    borderRadius: BorderRadius.md,
+    color: Colors.text,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.subheadline,
+  },
+  feedbackNotes: { minHeight: 76, textAlignVertical: 'top' },
+  feedbackPrivacy: {
+    color: Colors.textTertiary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption2,
+    lineHeight: 16,
+    marginTop: Spacing.sm,
+  },
+  feedbackSubmit: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.accent,
+    marginTop: Spacing.md,
+  },
+  feedbackSubmitDisabled: { opacity: 0.5 },
+  feedbackSubmitText: {
+    color: Colors.white,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.subheadline,
+  },
+  feedbackSuccess: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
   // --- Treatment summary card ---
   treatmentCard: {
     marginHorizontal: Spacing.lg,

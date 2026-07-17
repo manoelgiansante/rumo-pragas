@@ -1,6 +1,8 @@
 import { Config } from '../constants/config';
 import { supabase } from './supabase';
 import i18n from '../i18n';
+import { AI_CONSENT_VERSION, assertAIConsent, revokeAIConsent } from './aiConsent';
+import * as Crypto from 'expo-crypto';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -14,7 +16,13 @@ const CHAT_TIMEOUT_MS = 20_000;
 export async function sendChatMessage(
   messages: { role: string; content: string }[],
   token?: string,
+  userId?: string,
+  idempotencyKey: string = Crypto.randomUUID(),
 ): Promise<string> {
+  // The UI gate is not a security boundary: enforce the versioned local
+  // consent here too, before resolving the endpoint or invoking fetch.
+  await assertAIConsent(userId, 'chat');
+
   // Resolve the access token (JWT) to forward to the edge fn.
   //
   // WEB BUG (fixed): the Supabase client's storage adapter is native-only
@@ -43,7 +51,7 @@ export async function sendChatMessage(
     throw new Error(i18n.t('aiChat.loginRequired'));
   }
 
-  const url = `${Config.SUPABASE_URL}/functions/v1/ai-chat`;
+  const url = `${Config.SUPABASE_URL}/functions/v1/ai-chat-pragas`;
 
   // AbortController + hard timeout — on timeout/offline we throw a clear pt-BR
   // message; the chat screen surfaces it and re-enables the input so the user
@@ -57,11 +65,11 @@ export async function sendChatMessage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Identify the calling app so the SHARED `ai-chat` slug (also used by
-        // rumo-vet) can detect/serve the correct persona. See edge fn comments
-        // on the shared-slug hazard. Durable fix = dedicated `ai-chat-pragas` slug.
-        'X-Rumo-App': 'rumo-pragas',
         Authorization: `Bearer ${accessToken}`,
+        'X-Rumo-App': 'rumo-pragas',
+        'Idempotency-Key': idempotencyKey,
+        'X-Pragas-AI-Consent-Version': AI_CONSENT_VERSION,
+        'X-Pragas-AI-Consent-Purpose': 'chat',
       },
       body: JSON.stringify({
         messages: messages.map((m) => ({
@@ -81,6 +89,15 @@ export async function sendChatMessage(
   }
 
   if (!response.ok) {
+    if (response.status === 428 && userId) {
+      // Mirror a server-side withdrawal locally so consent revoked on another
+      // device cannot be silently reused on this device.
+      try {
+        await revokeAIConsent(userId, 'chat');
+      } catch {
+        // The authoritative server gate still fails closed.
+      }
+    }
     // Parse error body for structured error codes
     let errorBody: { error?: string; code?: string; limit?: number } = {};
     try {
@@ -95,8 +112,11 @@ export async function sendChatMessage(
       case response.status === 401:
         errorMessage = i18n.t('aiChat.sessionExpired');
         break;
+      case response.status === 428:
+        errorMessage = i18n.t('aiConsent.requiredError');
+        break;
       case response.status === 403 && errorBody.code === 'CHAT_LIMIT_REACHED':
-        errorMessage = errorBody.error || i18n.t('aiChat.chatLimitReached');
+        errorMessage = i18n.t('aiChat.chatLimitReached');
         break;
       case response.status === 403:
         errorMessage = i18n.t('aiChat.noPermission');
@@ -112,7 +132,8 @@ export async function sendChatMessage(
     }
 
     const error = new Error(errorMessage) as Error & { code?: string };
-    if (errorBody.code) error.code = errorBody.code;
+    if (response.status === 428) error.code = 'AI_CONSENT_REQUIRED';
+    else if (errorBody.code === 'CHAT_LIMIT_REACHED') error.code = 'CHAT_LIMIT_REACHED';
     throw error;
   }
 

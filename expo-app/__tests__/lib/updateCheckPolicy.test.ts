@@ -326,4 +326,20 @@ describe('useAppUpdateCheck wiring (source-level)', () => {
     expect(src).toContain("'@pragas/update_check_v2'");
     expect(src).toContain("'@pragas/update_dismissed_v2'");
   });
+
+  it('bounds the request and response instead of waiting or parsing indefinitely', () => {
+    expect(src).toContain('const FETCH_TIMEOUT_MS = 8_000');
+    expect(src).toContain('const MAX_RESPONSE_CHARS = 64 * 1024');
+    expect(src).toContain('new AbortController()');
+    expect(src).toContain('signal: controller.signal');
+    expect(src).toContain('controller.abort()');
+    expect(src).toContain("res.headers.get('content-length')");
+    expect(src).toContain('raw.length > MAX_RESPONSE_CHARS');
+    expect(src).toContain('clearTimeout(timeout)');
+  });
+
+  it('routes live and cached payloads through the strict response parser', () => {
+    expect(src.match(/parseVersionCheckResponse\(/g)).toHaveLength(2);
+    expect(src).not.toContain('await res.json()');
+  });
 });

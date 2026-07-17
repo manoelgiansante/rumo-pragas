@@ -9,7 +9,8 @@
  * NEVER taken from a request parameter. Tools query through a JWT-bound client
  * so Row-Level Security policies enforce per-user isolation server-side.
  *
- * Rate limit: 30 req/min keyed by userId (post-auth).
+ * Rate limiting is durable and enforced by the authenticated database RPC in
+ * server.ts; no process-local state is trusted in a serverless runtime.
  */
 import { VercelRequest } from '@vercel/node';
 import { getAuthClient } from './_supabase';
@@ -48,8 +49,8 @@ export async function authenticate(req: VercelRequest): Promise<AuthResult> {
   let client;
   try {
     client = getAuthClient();
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Auth client init failed' };
+  } catch {
+    return { ok: false, error: 'Authentication unavailable' };
   }
 
   try {
@@ -61,29 +62,4 @@ export async function authenticate(req: VercelRequest): Promise<AuthResult> {
   } catch {
     return { ok: false, error: 'Token validation failed' };
   }
-}
-
-// ---- Rate limit (per authenticated user) ----
-const RATE_WINDOW_MS = 60_000;
-const RATE_LIMIT = 30;
-
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-const buckets = new Map<string, Bucket>();
-
-export function checkRateLimit(key: string) {
-  const now = Date.now();
-  let b = buckets.get(key);
-  if (!b || now >= b.resetAt) {
-    b = { count: 0, resetAt: now + RATE_WINDOW_MS };
-    buckets.set(key, b);
-  }
-  b.count += 1;
-  if (b.count > RATE_LIMIT) return { blocked: true, retryAfterMs: b.resetAt - now };
-  if (buckets.size > 500) {
-    for (const [k, v] of buckets) if (now >= v.resetAt) buckets.delete(k);
-  }
-  return { blocked: false, retryAfterMs: 0 };
 }

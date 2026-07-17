@@ -4,16 +4,14 @@
  * Full fact sheet for a single pest, hydrated from the local AsyncStorage
  * cache populated by `result.tsx`. Reachable from:
  *  - Result screen "Ver detalhes" CTA
- *  - History (future)
- *  - Deep links (future)
+ *  - History
+ *  - Pest library
  *
  * The app ships 100% FREE (Apple Guideline 3.1.1): this screen is reachable by
  * every user — from the result CTA, history or a deep link. No entitlement gate.
  *
  * Data flow:
- *   mount → loadPestFromCache(id) → render hero, sections, products
- *   No remote fetch in V1 (cache-only, fully offline). When edge endpoint
- *   for pest fact sheets ships, add `fetchPestFromRemote` as fallback.
+ *   mount → loadPestFromCache(user,id) → render educational fact sheet
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -23,7 +21,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   useColorScheme,
   ActivityIndicator,
 } from 'react-native';
@@ -33,11 +30,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '../../../services/dialog';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import {
   Colors,
   Spacing,
@@ -50,42 +46,17 @@ import { PremiumCard } from '../../../components/PremiumCard';
 import { CollapsibleSection } from '../../../components/CollapsibleSection';
 import { loadPestFromCache, type PestCacheEntry } from '../../../services/pestRegistry';
 import { useMipKnowledge } from '../../../hooks/useMipKnowledge';
-import type { AgrioEnrichment, AgrioProduct } from '../../../types/diagnosis';
+import { useAuthContext } from '../../../contexts/AuthContext';
+import type { AgrioEnrichment } from '../../../types/diagnosis';
 import type { MipEntry } from '../../../data/mip';
 
 const HERO_HEIGHT = 320;
-
-/**
- * Minimum `useMipKnowledge` match score to backfill the SENSITIVE fields
- * (commercial products + chemical actives = pesticide dosages) from the MIP
- * catalog. Higher than the entry-resolution threshold (default 2): a fuzzy
- * match that is "good enough" to show symptoms / lifecycle / monitoring is NOT
- * good enough to recommend a specific defensivo for the wrong pest (agronomic
- * + CDC art.14 risk).
- *
- * A score >= 4 requires a STRONG keyword match — e.g. two single-word strong
- * hits, or one full multi-word phrase (see `searchByKeywords` scoring: a token
- * that hits `sintomas.palavrasChave` scores +2, and +4 as a multi-word phrase).
- * It does NOT guarantee the pest NAME matched: the strong-hit bonus is scored
- * against the SYMPTOM keywords only, while the common/scientific name
- * contributes just a weak +1. So two strong SYMPTOM tokens already reach 4 with
- * the name never matching at all — which is exactly why, even above this bar,
- * the backfilled chemical block still renders under the "confirme a
- * identificação" banner (a similar-symptom look-alike could score high). Below
- * this bar the sensitive blocks stay empty; the educational content still
- * renders at the normal threshold.
- */
-const SENSITIVE_MIP_MIN_SCORE = 4;
 
 type EnrichmentLabels = (key: string) => string;
 
 /** Result of merging a diagnosis enrichment with the MIP catalog fallback. */
 interface MipMergeResult {
   enrichment: AgrioEnrichment;
-  /** True when `chemical_treatment` was backfilled from the MIP catalog. */
-  chemicalFromMip: boolean;
-  /** True when `recommended_products` was backfilled from the MIP catalog. */
-  productsFromMip: boolean;
 }
 
 /**
@@ -93,7 +64,7 @@ interface MipMergeResult {
  *
  * The Agrio diagnose path (default since 2026-07-06) emits enrichment with
  * ONLY name_pt / scientific_name / severity — so lifecycle, favorable
- * conditions, monitoring and products come back empty and the fact sheet
+ * conditions and monitoring come back empty and the fact sheet
  * looked blank ("Ciclo de vida não disponível…"). The rich agronomic content
  * lives in the bundled MIP catalog (`data/mip`); this maps it onto the same
  * fields the screen already renders.
@@ -129,31 +100,6 @@ function mipEntryToEnrichment(entry: MipEntry, t: EnrichmentLabels): Partial<Agr
   if (entry.mip.cultural.length > 0) out.cultural_treatment = [...entry.mip.cultural];
   if (entry.mip.biologico.length > 0) out.biological_treatment = [...entry.mip.biologico];
 
-  const chemical: string[] = entry.mip.quimico.ingredientesAtivos.map(
-    (ia) => `${ia.nome} (${ia.graudeIRACouFRAC})`,
-  );
-  for (const obs of entry.mip.quimico.observacoes) {
-    const trimmed = obs?.trim();
-    if (trimmed) chemical.push(trimmed);
-  }
-  if (chemical.length > 0) out.chemical_treatment = chemical;
-
-  const products: AgrioProduct[] = [];
-  const daysUnit = t('diagnosis.mipDaysUnit');
-  for (const ia of entry.mip.quimico.ingredientesAtivos) {
-    for (const pc of ia.produtosComerciais) {
-      const p: AgrioProduct = {
-        name: pc.nome,
-        active_ingredient: `${ia.nome} (${ia.graudeIRACouFRAC})`,
-      };
-      if (pc.dosagem?.trim()) p.dosage = pc.dosagem.trim();
-      if (pc.intervaloAplicacoes?.trim()) p.interval = pc.intervaloAplicacoes.trim();
-      if (Number.isFinite(pc.carencia)) p.safety_period = `${pc.carencia} ${daysUnit}`;
-      products.push(p);
-    }
-  }
-  if (products.length > 0) out.recommended_products = products;
-
   const monitoring: string[] = [];
   const metodo = entry.monitoramento.metodo?.trim();
   const freq = entry.monitoramento.frequencia?.trim();
@@ -164,9 +110,6 @@ function mipEntryToEnrichment(entry: MipEntry, t: EnrichmentLabels): Partial<Agr
   const nivel = entry.monitoramento.nivelControle?.trim();
   if (nivel) out.action_threshold = nivel;
 
-  const obsAgro = entry.observacoesAgronomicas?.trim();
-  if (obsAgro) out.mip_strategy = obsAgro;
-
   return out;
 }
 
@@ -175,24 +118,22 @@ function mipEntryToEnrichment(entry: MipEntry, t: EnrichmentLabels): Partial<Agr
  * The enrichment path is never removed: any field the model already provided
  * wins; the MIP catalog only backfills what came back blank.
  *
- * SAFETY (FIX-9): the sensitive fields — `recommended_products` (commercial
- * defensivos with dosage) and `chemical_treatment` (active ingredients) — are
- * ONLY backfilled from the MIP catalog when the keyword match is strong
- * (`matchScore >= SENSITIVE_MIP_MIN_SCORE`). This prevents a fuzzy/wrong match
- * from recommending the pesticide of the wrong pest. When they DO come from the
- * catalog, the caller marks the block as a reference protocol (see
- * `chemicalFromMip` / `productsFromMip`) so the UI can ask the user to confirm
- * the identification first. The non-sensitive, educational fields (symptoms,
- * lifecycle, favorable conditions, monitoring, IPM) keep the normal threshold.
+ * SAFETY: commercial products, active ingredients and other prescriptive
+ * pesticide fields are never merged, even for an exact catalog match.
  */
 function mergeEnrichmentWithMip(
   base: AgrioEnrichment,
   mip: MipEntry,
   t: EnrichmentLabels,
-  matchScore: number,
 ): MipMergeResult {
   const fromMip = mipEntryToEnrichment(mip, t);
-  const merged: AgrioEnrichment = { ...base };
+  const merged = { ...base } as AgrioEnrichment & Record<string, unknown>;
+  // Never surface prescriptive pesticide fields produced by AI or a fuzzy MIP
+  // match. Registration, crop, dose, interval and withholding period must be
+  // verified in AGROFIT and prescribed by a licensed agronomist.
+  delete merged.chemical_treatment;
+  delete merged.chemical_treatment_es;
+  delete merged.recommended_products;
   const needArr = (v?: unknown[]) => !v || v.length === 0;
   const needStr = (v?: string) => !v || v.trim().length === 0;
 
@@ -210,33 +151,9 @@ function mergeEnrichmentWithMip(
   if (needStr(merged.mip_strategy) && fromMip.mip_strategy)
     merged.mip_strategy = fromMip.mip_strategy;
 
-  // Sensitive backfill (pesticide dosages) — only on a strong match, and
-  // tracked so the UI can label it as a reference protocol.
-  let chemicalFromMip = false;
-  let productsFromMip = false;
-  if (matchScore >= SENSITIVE_MIP_MIN_SCORE) {
-    if (needArr(merged.chemical_treatment) && fromMip.chemical_treatment) {
-      merged.chemical_treatment = fromMip.chemical_treatment;
-      chemicalFromMip = true;
-    }
-    if (needArr(merged.recommended_products) && fromMip.recommended_products) {
-      merged.recommended_products = fromMip.recommended_products;
-      productsFromMip = true;
-    }
-  }
-
-  return { enrichment: merged, chemicalFromMip, productsFromMip };
+  return { enrichment: merged };
 }
 
-// EMBRAPA + MAPA + AGROFIT search portals — opened in external browser.
-// We don't deep link to a specific pest page because URL formats differ per
-// portal; the search query produces a reliable landing.
-function buildEmbrapaSearchUrl(query: string): string {
-  return `https://www.embrapa.br/busca-de-publicacoes?p_p_id=buscapublicacao_WAR_pcebusca6_1portlet&p_p_state=normal&_buscapublicacao_WAR_pcebusca6_1portlet_queryString=${encodeURIComponent(query)}`;
-}
-function buildMapaSearchUrl(query: string): string {
-  return `https://www.gov.br/agricultura/pt-br/busca?SearchableText=${encodeURIComponent(query)}`;
-}
 function buildAgrofitSearchUrl(query: string): string {
   return `https://agrofit.agricultura.gov.br/agrofit_cons/principal_agrofit_cons?titulo=${encodeURIComponent(query)}`;
 }
@@ -245,6 +162,7 @@ export default function PestDetailScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { user } = useAuthContext();
   // The Library passes name/scientific/crop as params (there is no cached
   // diagnosis for a library pest). Diagnoses reach this screen with only `id`.
   const {
@@ -264,7 +182,7 @@ export default function PestDetailScreen() {
   useEffect(() => {
     let mounted = true;
     void (async () => {
-      const data = await loadPestFromCache(id || '');
+      const data = user?.id ? await loadPestFromCache(user.id, id || '') : null;
       if (mounted) {
         setCacheEntry(data);
         setLoading(false);
@@ -273,7 +191,7 @@ export default function PestDetailScreen() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, user?.id]);
 
   // Effective entry: the AsyncStorage cache (populated by a diagnosis) wins.
   // When reached from the Library there is no cached diagnosis, so synthesize a
@@ -321,25 +239,24 @@ export default function PestDetailScreen() {
     pestName: entry?.pest_name,
     enrichment: entry?.enrichment,
     crop: entry?.crop,
-    tier: 'enterprise',
     enabled: !!entry?.pest_name,
   });
 
   // Merge: model enrichment wins field-by-field; the MIP catalog only backfills
-  // the fields that came back empty (lifecycle / conditions / monitoring /
-  // products / IPM treatments). The enrichment path is preserved. Sensitive
-  // fields (pesticide products/chemicals) are only backfilled on a strong match
-  // and flagged as a reference protocol (FIX-9).
+  // non-chemical educational fields. Sanitize even when no catalog entry exists
+  // so cached AI output can never expose prescriptive pesticide fields.
   const merge = useMemo<MipMergeResult>(() => {
-    const base = entry?.enrichment ?? ({} as AgrioEnrichment);
+    const base = {
+      ...(entry?.enrichment ?? ({} as AgrioEnrichment)),
+    } as AgrioEnrichment & Record<string, unknown>;
+    delete base.chemical_treatment;
+    delete base.chemical_treatment_es;
+    delete base.recommended_products;
     return mipKnowledge.entry
-      ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t, mipKnowledge.matchScore)
-      : { enrichment: base, chemicalFromMip: false, productsFromMip: false };
-  }, [entry?.enrichment, mipKnowledge.entry, mipKnowledge.matchScore, t]);
+      ? mergeEnrichmentWithMip(base, mipKnowledge.entry, t)
+      : { enrichment: base };
+  }, [entry?.enrichment, mipKnowledge.entry, t]);
   const displayEnrichment = merge.enrichment;
-  // Common name of the matched MIP entry — used in the reference-protocol
-  // banner so the user knows WHICH pest the borrowed protocol belongs to.
-  const mipMatchedName = mipKnowledge.entry?.nomeComum;
 
   // Only show the spinner while the cache is still loading AND we have no
   // synthetic entry from params yet (library taps render immediately).
@@ -378,7 +295,7 @@ export default function PestDetailScreen() {
     );
   }
 
-  const { pest_name, scientific_name, crop, image_uri } = entry;
+  const { pest_name, scientific_name, crop } = entry;
   // Use the MIP-merged enrichment everywhere the sheet renders agronomic data.
   const enrichment = displayEnrichment;
   const displayName = enrichment.name_pt || pest_name || t('diagnosis.pestDetected');
@@ -400,20 +317,9 @@ export default function PestDetailScreen() {
     // status bar (top inset is applied to the overlay button row instead).
     <SafeAreaView edges={['bottom']} style={[styles.container, isDark && styles.containerDark]}>
       <ScrollView contentInsetAdjustmentBehavior="automatic">
-        {/* HERO — captured image (or gradient fallback) */}
+        {/* HERO — no diagnosis photo is retained in this cache. */}
         <View style={styles.heroWrap}>
-          {image_uri ? (
-            <Image
-              source={{ uri: image_uri }}
-              style={styles.heroImage}
-              resizeMode="cover"
-              accessible
-              accessibilityLabel={t('diagnosis.pestDetailHeroAlt')}
-              accessibilityRole="image"
-            />
-          ) : (
-            <LinearGradient colors={Gradients.hero} style={styles.heroImage} />
-          )}
+          <LinearGradient colors={Gradients.hero} style={styles.heroImage} />
           <LinearGradient
             colors={['transparent', 'rgba(6,40,29,0.55)', 'rgba(6,40,29,0.92)']}
             style={styles.heroGradient}
@@ -543,102 +449,6 @@ export default function PestDetailScreen() {
               ))}
             </CollapsibleSection>
           )}
-          {(enrichment.chemical_treatment?.length ?? 0) > 0 && (
-            <CollapsibleSection
-              title={t('diagnosis.chemicalControl')}
-              icon="flask"
-              iconColor={Colors.techBlue}
-            >
-              {merge.chemicalFromMip ? (
-                <ReferenceProtocolBanner name={mipMatchedName || displayName} t={t} />
-              ) : null}
-              <View style={styles.warning}>
-                <Ionicons name="warning" size={14} color={Colors.warmAmber} />
-                <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
-              </View>
-              {enrichment.chemical_treatment!.map((s: string, i: number) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={[styles.bullet, { backgroundColor: Colors.techBlue }]} />
-                  <Text style={[styles.sectionText, isDark && styles.textDark]}>{s}</Text>
-                </View>
-              ))}
-            </CollapsibleSection>
-          )}
-
-          {/* COMMERCIAL PRODUCTS — table-like cards with dosage/interval/safety */}
-          <CollapsibleSection
-            title={t('diagnosis.pestDetailCommercialProducts')}
-            icon="basket"
-            iconColor={Colors.warmAmber}
-            defaultExpanded={false}
-          >
-            {(enrichment.recommended_products?.length ?? 0) > 0 ? (
-              <View style={{ gap: 10 }}>
-                {merge.productsFromMip ? (
-                  <ReferenceProtocolBanner name={mipMatchedName || displayName} t={t} />
-                ) : null}
-                <View style={styles.warning}>
-                  <Ionicons name="warning" size={14} color={Colors.warmAmber} />
-                  <Text style={styles.warningText}>{t('diagnosis.chemicalWarning')}</Text>
-                </View>
-                {enrichment.recommended_products!.map((p, i) => (
-                  <View key={i} style={styles.productCard} testID={`pest-product-${i}`}>
-                    <Text style={[styles.productName, isDark && styles.textDark]}>{p.name}</Text>
-                    {p.active_ingredient ? (
-                      <Text style={styles.productActive}>{p.active_ingredient}</Text>
-                    ) : null}
-                    <View style={styles.productMetaRow}>
-                      {p.dosage ? (
-                        <View style={styles.productMetaItem}>
-                          <Text style={styles.productMetaLabel}>
-                            {t('diagnosis.pestDetailDosage')}
-                          </Text>
-                          <Text style={[styles.productMetaValue, isDark && styles.textDark]}>
-                            {p.dosage}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {p.interval ? (
-                        <View style={styles.productMetaItem}>
-                          <Text style={styles.productMetaLabel}>
-                            {t('diagnosis.pestDetailInterval')}
-                          </Text>
-                          <Text style={[styles.productMetaValue, isDark && styles.textDark]}>
-                            {p.interval}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {p.safety_period ? (
-                        <View style={styles.productMetaItem}>
-                          <Text style={styles.productMetaLabel}>
-                            {t('diagnosis.pestDetailSafetyPeriod')}
-                          </Text>
-                          <Text style={[styles.productMetaValue, isDark && styles.textDark]}>
-                            {p.safety_period}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {p.toxic_class ? (
-                        <View style={styles.productMetaItem}>
-                          <Text style={styles.productMetaLabel}>
-                            {t('diagnosis.pestDetailToxicClass')}
-                          </Text>
-                          <Text style={[styles.productMetaValue, isDark && styles.textDark]}>
-                            {p.toxic_class}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={[styles.sectionText, { color: Colors.textSecondary }]}>
-                {t('diagnosis.pestDetailProductsEmpty')}
-              </Text>
-            )}
-          </CollapsibleSection>
-
           {/* MONITORING — method + frequency + action threshold */}
           <CollapsibleSection
             title={t('diagnosis.monitoring')}
@@ -704,26 +514,17 @@ export default function PestDetailScreen() {
           ) : null}
         </View>
 
-        {/* REFERENCES — external authoritative sources */}
+        {/* Official registry + professional prescription. No endorsement badge. */}
         <PremiumCard style={styles.refsCard}>
           <View style={styles.refsHeader}>
             <Ionicons name="library" size={18} color={Colors.accent} />
             <Text style={[styles.refsTitle, isDark && styles.textDark]}>
-              {t('diagnosis.pestDetailReferences')}
+              {t('diagnosis.officialConsultationTitle')}
             </Text>
           </View>
-          <ReferenceRow
-            label={t('diagnosis.pestDetailReferenceEmbrapa')}
-            onPress={() => handleOpenLink(buildEmbrapaSearchUrl(refQuery))}
-            t={t}
-            testID="pest-ref-embrapa"
-          />
-          <ReferenceRow
-            label={t('diagnosis.pestDetailReferenceMapa')}
-            onPress={() => handleOpenLink(buildMapaSearchUrl(refQuery))}
-            t={t}
-            testID="pest-ref-mapa"
-          />
+          <Text style={styles.officialConsultationText}>
+            {t('diagnosis.officialConsultationText')}
+          </Text>
           <ReferenceRow
             label={t('diagnosis.pestDetailReferenceAgrofit')}
             onPress={() => handleOpenLink(buildAgrofitSearchUrl(refQuery))}
@@ -749,46 +550,6 @@ export default function PestDetailScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-/**
- * Reference-protocol banner (FIX-9). Rendered above the chemical / commercial
- * product blocks when those came from the MIP catalog fallback (matched by pest
- * name), NOT from the diagnosis enrichment. Makes the borrowed protocol's
- * provenance explicit and asks the user to confirm the identification before
- * applying any defensivo — a matched name is not a confirmed diagnosis.
- */
-function ReferenceProtocolBanner({
-  name,
-  t,
-}: {
-  name: string;
-  // i18next's real TFunction: the local `t` from useTranslation() is a
-  // TFunction, and under exactOptionalPropertyTypes it is NOT assignable to a
-  // hand-rolled `(k, opts?) => string` (the optional-undefined arg breaks the
-  // overloads). Typing the prop as TFunction keeps interpolation calls
-  // (`t(key, { praga })`) valid without `as any` or loosening tsconfig.
-  t: TFunction;
-}) {
-  return (
-    <View
-      style={styles.referenceBanner}
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={t('diagnosis.pestDetailReferenceProtocol', { praga: name })}
-      testID="pest-reference-protocol-banner"
-    >
-      <Ionicons
-        name="alert-circle"
-        size={14}
-        color={Colors.warmAmber}
-        accessibilityElementsHidden
-      />
-      <Text style={styles.referenceBannerText}>
-        {t('diagnosis.pestDetailReferenceProtocol', { praga: name })}
-      </Text>
-    </View>
   );
 }
 
@@ -942,63 +703,6 @@ const styles = StyleSheet.create({
     color: Colors.earthText,
     flex: 1,
   },
-  // --- Reference-protocol banner (FIX-9) ---
-  referenceBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 10,
-    backgroundColor: Colors.coral + '14',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.coral + '33',
-    marginBottom: 10,
-  },
-  referenceBannerText: {
-    fontFamily: FontFamily.semibold,
-    fontWeight: '600',
-    fontSize: FontSize.caption,
-    color: Colors.earthText,
-    flex: 1,
-    lineHeight: 18,
-  },
-  // --- Product cards ---
-  productCard: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.separator,
-    padding: 12,
-  },
-  productName: {
-    fontSize: FontSize.subheadline,
-    fontFamily: FontFamily.bold,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  productActive: {
-    fontFamily: FontFamily.italic,
-    fontSize: FontSize.caption,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  productMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
-  productMetaItem: { minWidth: 80 },
-  productMetaLabel: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    fontFamily: FontFamily.semibold,
-    fontWeight: '600',
-  },
-  productMetaValue: {
-    fontSize: FontSize.subheadline,
-    fontFamily: FontFamily.semibold,
-    fontWeight: '600',
-    color: Colors.text,
-    marginTop: 2,
-  },
   // --- References ---
   refsCard: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: Spacing.md },
   refsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
@@ -1007,6 +711,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontWeight: '700',
     color: Colors.text,
+  },
+  officialConsultationText: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    lineHeight: 18,
+    marginBottom: Spacing.sm,
   },
   refRow: {
     flexDirection: 'row',

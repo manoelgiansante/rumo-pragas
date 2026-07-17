@@ -3,15 +3,30 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from './sentry-shim';
 import i18n from '../i18n';
 import { supabase } from './supabase';
 
 const PUSH_TOKEN_KEY = '@rumo_pragas_push_token';
 const PUSH_TOKEN_LAST_SYNC_KEY = '@rumo_pragas_push_token_last_sync';
+export const PUSH_ENABLED_KEY = '@rumo_pragas_push_enabled';
+type PushPreferenceListener = (enabled: boolean) => void;
+const pushPreferenceListeners = new Set<PushPreferenceListener>();
 // Refresh the server-side audit row at most once every 30 days.
 // We still call on every login (handled in useNotifications) for liveness.
 const TOKEN_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Remote push is a build capability, not a runtime guess. iOS uses APNs/EAS
+ * credentials; Android requires the locally approved GOOGLE_SERVICES_JSON snapshot to have
+ * been injected by app.config.js. Local climate notifications remain usable
+ * when this returns false.
+ */
+export function isRemotePushBuildConfigured(): boolean {
+  if (Platform.OS === 'web') return false;
+  if (Platform.OS === 'ios') return true;
+  return Constants.expoConfig?.extra?.remotePush?.androidConfigured === true;
+}
 
 // -----------------------------------------------------------------------------
 // iOS 26 TurboModule crash fix (preventive — follows Finance rejection 2026-04-20)
@@ -32,6 +47,89 @@ const TOKEN_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
 // -----------------------------------------------------------------------------
 let handlerConfigured = false;
 let androidChannelsConfigured = false;
+
+export async function isPushNotificationsEnabled(): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(PUSH_ENABLED_KEY);
+    if (raw === 'true') return true;
+    if (raw === 'false' || Platform.OS === 'web') return false;
+
+    // No stored preference: never trigger an OS prompt during boot. Preserve a
+    // previously active installation only when a token exists or the user had
+    // already granted the native permission outside this call.
+    const savedToken = await getSavedPushToken();
+    const { status } = await Notifications.getPermissionsAsync();
+    return !!savedToken && status === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+export function subscribePushPreference(listener: PushPreferenceListener): () => void {
+  pushPreferenceListeners.add(listener);
+  return () => pushPreferenceListeners.delete(listener);
+}
+
+async function revokePushDelivery(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const token = await getSavedPushToken();
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {
+    if (__DEV__) console.warn('[notifications] cancel scheduled failed');
+  }
+  try {
+    await Notifications.unregisterForNotificationsAsync();
+  } catch {
+    if (__DEV__) console.warn('[notifications] unregister failed');
+  }
+  if (token) {
+    // Best-effort app-scoped soft revocation. The RPC derives auth.uid() and
+    // never accepts a user id from the client.
+    const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+    const { error } = await supabase.rpc('touch_pragas_push_token', {
+      p_token: token,
+      p_platform: platform,
+      p_notifications_enabled: false,
+    });
+    if (error && __DEV__) console.warn('[notifications] token revoke failed');
+  }
+  await AsyncStorage.multiRemove([PUSH_TOKEN_KEY, PUSH_TOKEN_LAST_SYNC_KEY]);
+}
+
+export async function setPushNotificationsEnabled(enabled: boolean): Promise<boolean> {
+  let actual = enabled;
+  if (enabled) {
+    if (Platform.OS === 'web') {
+      actual = false;
+    } else {
+      configureNotificationHandler();
+      await ensureAndroidChannelsConfigured();
+      const current = await Notifications.getPermissionsAsync();
+      const permission =
+        current.status === 'granted'
+          ? current
+          : await Notifications.requestPermissionsAsync({
+              ios: { allowAlert: true, allowBadge: true, allowSound: true },
+            });
+      actual = permission.status === 'granted';
+    }
+  }
+
+  await AsyncStorage.setItem(PUSH_ENABLED_KEY, String(actual));
+  if (!actual) await revokePushDelivery();
+  pushPreferenceListeners.forEach((listener) => listener(actual));
+  return actual;
+}
+
+/** Best-effort remote/native revocation used before an authenticated logout. */
+export async function revokePushDeliveryForSignOut(): Promise<void> {
+  try {
+    await revokePushDelivery();
+  } catch {
+    if (__DEV__) console.warn('[notifications] logout revocation failed');
+  }
+}
 
 /**
  * TEST-ONLY: reset idempotency flags so unit tests can assert
@@ -66,9 +164,9 @@ export function configureNotificationHandler() {
       }),
     });
     handlerConfigured = true;
-  } catch (error) {
+  } catch {
     // Non-fatal: iOS 26 TurboModule may throw during init; log and continue.
-    if (__DEV__) console.warn('[notifications] setNotificationHandler failed (non-fatal):', error);
+    if (__DEV__) console.warn('[notifications] setNotificationHandler failed');
     handlerConfigured = true; // avoid retry storm on every call
   }
 }
@@ -80,9 +178,9 @@ async function ensureAndroidChannelsConfigured(): Promise<void> {
     return;
   }
   try {
-    await Notifications.setNotificationChannelAsync('pest-alerts', {
-      name: i18n.t('notifications.pestAlertsChannel'),
-      description: i18n.t('notifications.pestAlertsDesc'),
+    await Notifications.setNotificationChannelAsync('climate-risk', {
+      name: i18n.t('notifications.climateRiskChannel'),
+      description: i18n.t('notifications.climateRiskDesc'),
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#1A966B',
@@ -94,8 +192,8 @@ async function ensureAndroidChannelsConfigured(): Promise<void> {
       importance: Notifications.AndroidImportance.DEFAULT,
     });
     androidChannelsConfigured = true;
-  } catch (error) {
-    if (__DEV__) console.warn('[notifications] Android channels failed (non-fatal):', error);
+  } catch {
+    if (__DEV__) console.warn('[notifications] Android channels failed');
     androidChannelsConfigured = true;
   }
 }
@@ -112,6 +210,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   if (Platform.OS === 'web') {
     return null;
   }
+  if (!(await isPushNotificationsEnabled())) return null;
 
   try {
     // Push notifications only work on physical devices
@@ -124,22 +223,10 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     configureNotificationHandler();
     await ensureAndroidChannelsConfigured();
 
-    // Check and request permissions
+    // Registration is automatic after login, so it must never present a native
+    // permission prompt. Only the explicit Settings opt-in requests permission.
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: true,
-          allowSound: true,
-        },
-      });
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
       if (__DEV__) console.warn('Notification permissions not granted');
       return null;
     }
@@ -152,30 +239,27 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    // Android: the Expo push token requires FCM (google-services.json), which
-    // this build does NOT ship yet → getExpoPushTokenAsync throws on EVERY
-    // launch (Sentry noise; pragas_push_tokens stays at 0). Short-circuit the
-    // REMOTE token here. Local pest alerts keep working: the notification
-    // handler, Android channels and POST_NOTIFICATIONS permission were already
-    // configured/requested above, and scheduleLocalPestAlert re-ensures them.
-    // Same pattern as Rumo Operacional. TEMPORARY — remove once FCM is wired.
-    if (Platform.OS === 'android') {
+    // An Android build without the FCM file cannot obtain a remote Expo token.
+    // Fail closed without calling the native token API; local climate alerts
+    // are a separate capability and continue to use the climate-risk channel.
+    if (!isRemotePushBuildConfigured()) {
       return null;
     }
 
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
 
-    // Save token locally (will be synced to Supabase pragas_profiles later)
+    // Save token locally; the canonical server sync uses pragas_push_tokens.
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
 
     return token;
-  } catch (error) {
-    if (__DEV__) console.error('Failed to register push notifications:', error);
+  } catch {
+    if (__DEV__) console.warn('[notifications] registration failed');
     // Non-silent: surface in Sentry so we can detect register regressions.
     // We swallow only the throw, never the visibility (ZERO-O).
     try {
-      Sentry.captureException(error, {
+      captureMessage('push registration failed', {
+        level: 'warning',
         tags: { feature: 'push', step: 'register' },
       });
     } catch {
@@ -189,42 +273,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 // Server-side persistence (pragas_push_tokens audit table)
 // -----------------------------------------------------------------------------
 
-interface DeviceFingerprint {
-  os: 'ios' | 'android' | 'web' | 'unknown';
-  osVersion: string | null;
-  deviceName: string | null;
-  modelName: string | null;
-  brand: string | null;
-  appVersion: string;
-  buildNumber: string | null;
-}
-
-function buildDeviceFingerprint(): DeviceFingerprint {
-  const platform: DeviceFingerprint['os'] =
-    Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web'
-      ? Platform.OS
-      : 'unknown';
-  const expoConfig = Constants.expoConfig;
-  const buildNumber =
-    Platform.OS === 'ios'
-      ? (expoConfig?.ios?.buildNumber ?? null)
-      : Platform.OS === 'android' && expoConfig?.android?.versionCode != null
-        ? String(expoConfig.android.versionCode)
-        : null;
-  return {
-    os: platform,
-    osVersion: typeof Device.osVersion === 'string' ? Device.osVersion : null,
-    deviceName: typeof Device.deviceName === 'string' ? Device.deviceName : null,
-    modelName: typeof Device.modelName === 'string' ? Device.modelName : null,
-    brand: typeof Device.brand === 'string' ? Device.brand : null,
-    appVersion: expoConfig?.version ?? '0.0.0',
-    buildNumber,
-  };
-}
-
 /**
  * Persists the Expo push token to the `pragas_push_tokens` audit table via
- * the SECURITY DEFINER RPC `touch_push_token`. Idempotent server-side.
+ * the app-scoped SECURITY DEFINER RPC `touch_pragas_push_token`.
  *
  * `force=true` bypasses the 30-day cool-down and always hits the server.
  * Use it on explicit login or on app version update. On every cold start
@@ -257,44 +308,44 @@ export async function persistPushTokenToServer(
       }
     }
 
-    const fingerprint = buildDeviceFingerprint();
-    // Use the RPC — it enforces auth.uid() server-side and upserts atomically.
-    const { error } = await supabase.rpc('touch_push_token', {
-      p_expo_token: token,
-      p_platform: fingerprint.os,
-      p_device_info: fingerprint,
+    const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+    // App-scoped RPC derives auth.uid() server-side and upserts atomically.
+    const { error } = await supabase.rpc('touch_pragas_push_token', {
+      p_token: token,
+      p_platform: platform,
+      p_notifications_enabled: true,
     });
 
     if (error) {
       // Don't go silent — emit to Sentry so we can spot RLS / RPC regressions.
       try {
-        Sentry.captureMessage('persistPushTokenToServer rpc error', {
+        captureMessage('persistPushTokenToServer rpc error', {
           level: 'warning',
           tags: {
             feature: 'push',
             step: 'persist',
             code: error.code ?? 'unknown',
           },
-          extra: { message: error.message },
         });
       } catch {
         /* Sentry must never crash caller */
       }
-      if (__DEV__) console.warn('[notifications] persistPushTokenToServer error:', error.message);
+      if (__DEV__) console.warn('[notifications] token persistence failed');
       return false;
     }
 
     await AsyncStorage.setItem(PUSH_TOKEN_LAST_SYNC_KEY, String(Date.now()));
     return true;
-  } catch (err) {
+  } catch {
     try {
-      Sentry.captureException(err, {
+      captureMessage('push token persistence failed', {
+        level: 'warning',
         tags: { feature: 'push', step: 'persist' },
       });
     } catch {
       /* Sentry must never crash caller */
     }
-    if (__DEV__) console.warn('[notifications] persistPushTokenToServer threw:', err);
+    if (__DEV__) console.warn('[notifications] token persistence failed');
     return false;
   }
 }
@@ -318,16 +369,17 @@ export async function getSavedPushToken(): Promise<string | null> {
 }
 
 /**
- * Schedules local notifications for high-severity pest alerts.
+ * Schedules local notifications for high-severity climate risk rules.
  * Limits to a maximum of 2 notifications per batch to avoid spamming the user.
  */
-export async function schedulePestAlertNotifications(
+export async function scheduleClimateRiskNotifications(
   alerts: { id: string; title: string; description: string; severity: string }[],
 ): Promise<void> {
+  if (!(await isPushNotificationsEnabled())) return;
   const highAlerts = alerts.filter((a) => a.severity === 'high');
 
   for (const alert of highAlerts.slice(0, 2)) {
-    await scheduleLocalPestAlert(
+    await scheduleLocalClimateRiskAlert(
       alert.title,
       alert.description,
       { screen: 'home', alertId: alert.id },
@@ -337,35 +389,38 @@ export async function schedulePestAlertNotifications(
 }
 
 /**
- * Schedules a local notification for a pest alert.
- * Useful for sending alerts based on weather conditions without a server.
+ * Schedules a local notification for a climate-derived educational risk.
  * Safe on web (no-op) and wraps native errors so a failure degrades instead
  * of crashing the caller.
  */
-export async function scheduleLocalPestAlert(
+export async function scheduleLocalClimateRiskAlert(
   title: string,
   body: string,
   data?: Record<string, unknown>,
   delaySeconds: number = 1,
 ) {
   if (Platform.OS === 'web') return;
+  if (!(await isPushNotificationsEnabled())) return;
   try {
     configureNotificationHandler();
     await ensureAndroidChannelsConfigured();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title,
-        body,
+        title: title.trim().slice(0, 80),
+        body: body.trim().slice(0, 240),
         data: data ?? {},
         sound: 'default',
-        ...(Platform.OS === 'android' && { channelId: 'pest-alerts' }),
+        ...(Platform.OS === 'android' && { channelId: 'climate-risk' }),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: delaySeconds,
+        seconds:
+          Number.isFinite(delaySeconds) && delaySeconds >= 1
+            ? Math.min(Math.floor(delaySeconds), 86_400)
+            : 1,
       },
     });
-  } catch (error) {
-    if (__DEV__) console.warn('[notifications] scheduleLocalPestAlert failed (non-fatal):', error);
+  } catch {
+    if (__DEV__) console.warn('[notifications] local climate alert scheduling failed');
   }
 }

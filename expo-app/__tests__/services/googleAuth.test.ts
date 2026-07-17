@@ -33,27 +33,28 @@ jest.mock('expo-crypto', () => ({
 // Loosen the generic so .mockResolvedValueOnce accepts the inline Supabase shapes
 // without us having to import @supabase/supabase-js types.
 const mockSignInWithIdToken: jest.Mock<Promise<unknown>, unknown[]> = jest.fn();
-const mockProfileEq = jest.fn().mockResolvedValue({ error: null });
-const mockProfileUpdate = jest.fn(() => ({ eq: mockProfileEq }));
-const mockFrom = jest.fn(() => ({ update: mockProfileUpdate }));
 
 jest.mock('../../services/supabase', () => ({
   supabase: {
     auth: {
       signInWithIdToken: (arg: unknown) => mockSignInWithIdToken(arg),
     },
-    from: (..._args: unknown[]) => mockFrom(),
   },
 }));
 
-// Default: client ID is wired.
+// Default: three distinct platform credentials are wired.
 jest.mock('../../constants/config', () => ({
-  Config: { GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com' },
+  Config: {
+    GOOGLE_WEB_CLIENT_ID: '123456789012-webclientabcdefghij.apps.googleusercontent.com',
+    GOOGLE_IOS_CLIENT_ID: '123456789012-iosclientabcdefghij.apps.googleusercontent.com',
+    GOOGLE_ANDROID_CLIENT_ID: '123456789012-androidclientabcdefg.apps.googleusercontent.com',
+  },
 }));
 
 // Helper to render the hook synchronously via React testing utilities.
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useGoogleSignIn } from '../../services/googleAuth';
+import * as Crypto from 'expo-crypto';
 
 // Default response: a request object and a stubbed promptAsync.
 function armRequest(extra?: Record<string, unknown>) {
@@ -96,20 +97,21 @@ describe('useGoogleSignIn — configured branch', () => {
       outcome = await result.current.signIn();
     });
 
-    expect(outcome).toEqual({
-      kind: 'success',
-      userId: 'user-123',
-      email: 'demo@example.com',
-    });
+    expect(outcome).toEqual({ kind: 'success' });
     expect(mockSignInWithIdToken).toHaveBeenCalledWith({
       provider: 'google',
       token: 'fake.google.id.token',
       // raw nonce is hex from getRandomBytes mock (32x 0x07 = '07' * 32)
       nonce: '0707070707070707070707070707070707070707070707070707070707070707',
     });
-    // Profile backfill is best-effort but should have fired with the
-    // user_metadata.full_name value.
-    expect(mockProfileUpdate).toHaveBeenCalledWith({ full_name: 'Demo User' });
+    const requestConfig = mockUseIdTokenAuthRequest.mock.calls.at(-1)?.[0];
+    expect(requestConfig).toMatchObject({
+      webClientId: '123456789012-webclientabcdefghij.apps.googleusercontent.com',
+      iosClientId: '123456789012-iosclientabcdefghij.apps.googleusercontent.com',
+      androidClientId: '123456789012-androidclientabcdefg.apps.googleusercontent.com',
+    });
+    expect(requestConfig.webClientId).not.toBe(requestConfig.iosClientId);
+    expect(requestConfig.webClientId).not.toBe(requestConfig.androidClientId);
   });
 
   it('returns cancelled when the user dismisses the browser', async () => {
@@ -136,7 +138,7 @@ describe('useGoogleSignIn — configured branch', () => {
     });
     expect(outcome?.kind).toBe('error');
     if (outcome?.kind === 'error') {
-      expect(outcome.error.message).toMatch(/No identity token/);
+      expect(outcome.error.message).toBe('Erro ao entrar com Google. Tente novamente.');
     }
   });
 
@@ -158,8 +160,20 @@ describe('useGoogleSignIn — configured branch', () => {
     });
     expect(outcome?.kind).toBe('error');
     if (outcome?.kind === 'error') {
-      expect(outcome.error.message).toBe('Invalid nonce');
+      expect(outcome.error.message).toBe('Erro ao entrar com Google. Tente novamente.');
+      expect(outcome.error.message).not.toContain('Invalid nonce');
     }
+  });
+
+  it('rotates the nonce after every completed provider attempt', async () => {
+    mockPromptAsync.mockResolvedValueOnce({ type: 'cancel' });
+    const { result } = renderHook(() => useGoogleSignIn());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const before = (Crypto.getRandomBytes as jest.Mock).mock.calls.length;
+    await act(async () => {
+      await result.current.signIn();
+    });
+    expect(Crypto.getRandomBytes).toHaveBeenCalledTimes(before + 1);
   });
 });
 
@@ -167,14 +181,22 @@ describe('useGoogleSignIn — not configured branch', () => {
   // We patch the Config object directly on the mocked module — jest.mock
   // returns a shared object reference so this affects subsequent imports
   // inside googleAuth.ts the next time the hook is rendered.
-  const configMod = require('../../constants/config') as { Config: { GOOGLE_CLIENT_ID: string } };
-  const originalId = configMod.Config.GOOGLE_CLIENT_ID;
+  const configMod = require('../../constants/config') as {
+    Config: {
+      GOOGLE_WEB_CLIENT_ID: string;
+      GOOGLE_IOS_CLIENT_ID: string;
+      GOOGLE_ANDROID_CLIENT_ID: string;
+    };
+  };
+  const originalIds = { ...configMod.Config };
 
   beforeEach(() => {
-    configMod.Config.GOOGLE_CLIENT_ID = '';
+    configMod.Config.GOOGLE_WEB_CLIENT_ID = '';
+    configMod.Config.GOOGLE_IOS_CLIENT_ID = '';
+    configMod.Config.GOOGLE_ANDROID_CLIENT_ID = '';
   });
   afterEach(() => {
-    configMod.Config.GOOGLE_CLIENT_ID = originalId;
+    Object.assign(configMod.Config, originalIds);
   });
 
   it('reports configured=false and signIn returns a clear error', async () => {
@@ -187,7 +209,17 @@ describe('useGoogleSignIn — not configured branch', () => {
     });
     expect(outcome?.kind).toBe('error');
     if (outcome?.kind === 'error') {
-      expect(outcome.error.message).toMatch(/not configured/);
+      expect(outcome.error.message).toBe('Erro ao entrar com Google. Tente novamente.');
     }
+  });
+
+  it('does not arm the CTA for a generic or malformed client ID', () => {
+    configMod.Config.GOOGLE_IOS_CLIENT_ID = 'web-id-reused-on-native.apps.googleusercontent.com';
+    configMod.Config.GOOGLE_ANDROID_CLIENT_ID =
+      'web-id-reused-on-native.apps.googleusercontent.com';
+    configMod.Config.GOOGLE_WEB_CLIENT_ID = 'web-id-reused-on-native.apps.googleusercontent.com';
+    const { result } = renderHook(() => useGoogleSignIn());
+    expect(result.current.configured).toBe(false);
+    expect(Crypto.digestStringAsync).not.toHaveBeenCalled();
   });
 });

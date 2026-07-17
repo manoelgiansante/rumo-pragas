@@ -5,9 +5,10 @@
 export const Config = {
   SUPABASE_URL: (process.env.EXPO_PUBLIC_SUPABASE_URL || '').trim(),
   SUPABASE_ANON_KEY: (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '').trim(),
-  STRIPE_PUBLISHABLE_KEY: (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '').trim(),
-  GOOGLE_CLIENT_ID: (process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '').trim(),
+  GOOGLE_WEB_CLIENT_ID: (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim(),
+  GOOGLE_IOS_CLIENT_ID: (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '').trim(),
+  GOOGLE_ANDROID_CLIENT_ID: (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '').trim(),
   // CLAUDE_API_KEY and RESEND_API_KEY removed - these are server-side only secrets
-  // CLAUDE_API_KEY is now in Supabase Edge Function env (ai-chat)
+  // CLAUDE_API_KEY is now in the dedicated Supabase Edge Function env (ai-chat-pragas)
   // RESEND_API_KEY is server-side only
 };

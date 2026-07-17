@@ -21,7 +21,7 @@ import { CANA_MIP_ENTRIES } from './cana';
 import { MILHO_MIP_ENTRIES } from './milho';
 import { OUTRAS_MIP_ENTRIES } from './outras';
 import { SOJA_MIP_ENTRIES } from './soja';
-import type { InfestationLevel, MipDamageLevel, MipEntry, MipRecommendation } from './types';
+import type { InfestationLevel, MipEntry, MipRecommendation } from './types';
 
 export * from './types';
 export {
@@ -51,11 +51,10 @@ export const MIP_CATALOG: MipEntry[] = [
  * compliance CREA — Conselho Regional de Engenharia e Agronomia).
  */
 export const MIP_CREA_DISCLAIMER =
-  'As recomendações apresentadas têm caráter informativo e são baseadas em fontes ' +
-  'oficiais (EMBRAPA, MAPA, IRAC, FRAC). NÃO substituem receituário agronômico. ' +
-  'A aplicação de defensivos exige Receituário Agronômico emitido por engenheiro ' +
-  'agrônomo licenciado pelo CREA. Consulte sempre um profissional habilitado antes ' +
-  'de qualquer aplicação química.';
+  'Conteúdo educativo: não substitui avaliação de campo nem receituário agronômico. ' +
+  'A indicação e o uso de produtos devem cumprir a Lei 14.785/2023 e a Resolução ' +
+  'Confea 1.149/2025, com responsabilidade técnica de profissional habilitado. ' +
+  'Consulte o registro oficial no AGROFIT antes de qualquer aplicação.';
 
 // ============================================================
 // HELPERS — Lookup e busca
@@ -76,7 +75,7 @@ export function getEntriesByCulture(cultureId: string): MipEntry[] {
   return MIP_CATALOG.filter((e) => e.culturas.includes(cultureId));
 }
 
-/** Retorna todas as entradas de um tipo (praga | doenca | erva-daninha). */
+/** Retorna todas as entradas de um tipo (praga | doença). */
 export function getEntriesByType(type: MipEntry['type']): MipEntry[] {
   return MIP_CATALOG.filter((e) => e.type === type);
 }
@@ -169,12 +168,8 @@ export function searchByKeywords(
 /**
  * Gera recomendação consolidada para um entry + nível de infestação.
  *
- * Combina estratégia MIP com nível observado, sugerindo ação principal
- * e detalhes culturais/biológicos/mecânicos. Inclui sugestão química
- * APENAS quando nível justifica (medio/alto) — em baixo, omite química
- * para evitar uso desnecessário de defensivo.
- *
- * SEMPRE inclui `disclaimerCREA` (compliance obrigatório).
+ * Retorna somente manejo cultural/biológico e monitoramento. Orientação de
+ * produtos permanece exclusivamente no AGROFIT e com profissional habilitado.
  */
 export function getRecommendation(
   entryId: string,
@@ -183,38 +178,14 @@ export function getRecommendation(
   const entry = getEntryById(entryId);
   if (!entry) return undefined;
 
-  const damageLevel: MipDamageLevel = entry.niveisDano[infestationLevel];
-
-  const recommendation: MipRecommendation = {
+  return {
     entryId: entry.id,
     nomeComum: entry.nomeComum,
     infestationLevel,
-    acaoPrincipal: damageLevel.acao,
     acoesCulturais: entry.mip.cultural,
     acoesBiologicas: entry.mip.biologico,
-    acoesMecanicas: entry.mip.mecanico,
-    rotacaoResistencia: entry.rotacaoResistencia,
     monitoramento: entry.monitoramento,
-    disclaimerCREA: MIP_CREA_DISCLAIMER,
-    referencias: entry.referencias,
   };
-
-  // Sugestão química SOMENTE em medio/alto
-  if (infestationLevel === 'medio' || infestationLevel === 'alto') {
-    const ingredientesNomes = entry.mip.quimico.ingredientesAtivos
-      .map((ia) => `${ia.nome} (${ia.graudeIRACouFRAC})`)
-      .slice(0, 5); // primeiras 5 opções
-
-    if (ingredientesNomes.length > 0) {
-      recommendation.acoesQuimicas = {
-        classes: entry.mip.quimico.classes,
-        ingredientesAtivosSugeridos: ingredientesNomes,
-        observacoes: entry.mip.quimico.observacoes,
-      };
-    }
-  }
-
-  return recommendation;
 }
 
 /**
@@ -239,7 +210,6 @@ export function getCatalogStats(): {
   const byType: Record<MipEntry['type'], number> = {
     praga: 0,
     doenca: 0,
-    'erva-daninha': 0,
   };
   const byCategory: Record<MipEntry['category'], number> = {
     inseto: 0,
@@ -248,7 +218,6 @@ export function getCatalogStats(): {
     fungo: 0,
     bacteria: 0,
     virus: 0,
-    erva: 0,
   };
   const byCulture: Record<string, number> = {};
 

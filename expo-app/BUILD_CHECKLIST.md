@@ -1,72 +1,124 @@
-# Build Checklist — Rumo Pragas
+# Release build checklist — Rumo Pragas
 
-Passo a passo pra build de production iOS + Android.
+Candidate version: 1.0.11
 
-## 1. EAS Secrets (executar UMA vez, depois so revalidar)
+Node baseline: 22.22.3
+NPM baseline: 10.9.8
+
+iOS bundle ID: com.agrorumo.rumopragas
+Android package: com.agrorumo.rumopragas
+
+The authenticated store inventories confirmed on 2026-07-16 that iOS build 63 and Android version
+code 54 are the latest store values. The native local runner derives one reproducible candidate
+number from the exact commit timestamp, rejects iOS values below 64 and Android values below 55,
+injects that number into the native projects and attests it again inside the finished IPA/AAB. The
+legacy local `app.json` build number is not release authority.
+
+## Reproducible local validation
+
+Run from expo-app:
+
+1. npm ci
+2. npx --yes expo-doctor@1.20.0
+3. npm run lint
+4. npm run typecheck
+5. npm test -- --coverage --ci
+6. npx expo export --platform web --output-dir dist
+
+Every command is blocking. Do not weaken warnings, skip suites or convert failures into non-blocking status.
+
+## Native configuration audit
+
+- Confirm app version and record the commit-derived iOS build number and Android version code from
+  the immutable locally generated artifacts.
+- Confirm Android target and compile SDK 36 and minimum SDK 24.
+- Confirm iOS deployment target and the current App Store Xcode/SDK requirement on build day.
+- Confirm camera, approximate location and notification purpose strings.
+- Confirm precise location, broad media access and microphone remain blocked for this release.
+- Confirm PrivacyInfo.xcprivacy, entitlements, universal/app links, icons and splash assets are embedded.
+- Confirm release Sentry DSN without exposing credentials. The protected local build sets
+  `SENTRY_DISABLE_AUTO_UPLOAD=true`; any separate native source-map upload requires its own
+  authorization and gate. Then prove symbolication with a controlled non-PII test event. Do not run
+  the retired custom finalization hook or migrate the build to cloud.
+- Confirm the app contains no active purchase SDK path or store product.
+
+## Secrets and signing
+
+The repository must contain only secret names and setup instructions. Values belong in the approved secret manager or store/build service.
+
+Signing material was detected locally for both native projects. Before classifying a credential blocker,
+attempt the iOS archive and Android release bundle without printing aliases, passwords, certificate names
+or profile contents.
+
+Release operations may still require:
+
+- Apple distribution and App Store Connect authorization.
+- Android upload keystore and Play service-account authorization.
+- Expo/EAS authorization used only to load the named production environment into the native local
+  runner, never for build execution, version reservation or signing credentials.
+- Sentry authorization for release symbol upload.
+- Runtime Supabase and provider configuration for the release environment.
+
+Only a missing or expired value proven by the build attempt is a precise external blocker. Never substitute a credential from another AgroRumo app.
+
+## Build sequence
+
+1. Tag the exact candidate commit in the release record.
+2. Run `./scripts/validate-prod-env.sh production`; it defaults fail-closed to the project-pinned
+   executor, checks EAS Environment names only and never prints values. The system-CLI mode is
+   reserved for isolated test fixtures and must never be used for release work.
+3. Run the reproducible validation suite.
+4. Generate one local release artifact at a time with
+   `./scripts/launch.sh --profile production --platform ios --local`, followed by
+   `./scripts/launch.sh --profile production --platform android --local` when the first platform has
+   completed. These commands use Xcode/Gradle directly; any EAS production build invocation is
+   blocked before the CLI can start. They are build-only and contain no submit path.
+5. Inspect the signed IPA and AAB for identifiers, permissions, SDKs and versions.
+6. Install through TestFlight/Internal testing, not by direct production promotion.
+7. Execute smoke tests: fresh install, login, social login, permissions denied, capture, picker, online result, queued retry, history, PDF sharing, assistant, settings and deletion.
+8. Re-query the authenticated store inventories before submission and stop if either maximum has
+   advanced beyond the recorded baseline; then verify Sentry release mapping, native symbolication
+   and absence of personal data in logs.
+9. Retain artifact checksums and any later store-submission URLs in the private release record.
+
+## Rollback
+
+- Web: redeploy the last known-good immutable deployment.
+- Android staged rollout: halt the rollout and prepare a higher-version corrective artifact.
+- iOS: stop phased release where available and submit a higher-build corrective version.
+- Database: use only tested forward or reversible migrations; never change real data as part of a build rollback.
+
+Local signed builds must be attempted with the detected material. Uploading and store publication remain separate authenticated actions.
+
+Supported build-only examples:
 
 ```bash
-# Sentry — source map upload (precisa ser sntrys_XXXX, Internal Integration token)
-eas secret:create --scope project --name SENTRY_AUTH_TOKEN --value sntrys_XXXX
+# Local signed artifacts only, one platform per invocation. Cloud has no supported path.
+./scripts/launch.sh --profile production --platform ios --local
+./scripts/launch.sh --profile production --platform android --local
+
+# Internal preview build, still local; production-secret validation is not applicable.
+./scripts/launch.sh --profile preview --platform android --local
 ```
 
-> App 100% grátis: NÃO criar chaves RevenueCat (`react-native-purchases` removido — reintroduzir IAP causa rejeição 3.1.1).
+Missing real screenshots block submission, not artifact generation. No flag bypasses environment
+validation, `--platform all` is rejected, and unknown options fail before EAS is called. The
+`--local` flag is accepted for command compatibility, but the launcher always adds it and never
+falls back to EAS Build cloud.
 
-Verificar:
+## OTA source maps
+
+EAS Update is a separately authorized production change. After an operator publishes and reviews
+an exact update, upload the already generated `dist/` maps with a separate, explicit command:
 
 ```bash
-./scripts/validate-prod-env.sh
+./scripts/upload-sentry-ota.sh \
+  --environment production \
+  --confirm-sourcemap-upload
 ```
 
-## 2. Play Console Service Account
-
-```bash
-./scripts/setup-play-store-key.sh ~/Downloads/play-store-key-REAL.json
-```
-
-Esse script copia pra `./play-store-key.json` (path configurado em eas.json submit.production.android.serviceAccountKeyPath).
-
-## 3. Apple Reviewer Account (App Review)
-
-- Criar em Supabase (Auth > Users) um usuario demo: `reviewer@agrorumo.com` com senha forte
-- Adicionar em App Store Connect > App Information > Sign-In Required:
-  - Email: reviewer@agrorumo.com
-  - Senha: <senha criada>
-  - Notes: "Conta demo para revisao. Use o login email/senha."
-
-## 4. Pre-build check
-
-```bash
-./scripts/validate-prod-env.sh
-```
-
-Se tudo verde, prosseguir. Se faltar algo, o script lista os comandos exatos pra corrigir.
-
-## 5. Build + Submit (all platforms)
-
-```bash
-eas build --platform all --profile production --auto-submit
-```
-
-O `--auto-submit` usa a config em `eas.json > submit.production`. Requer:
-
-- iOS: AuthKey `/Users/manoelnascimento/.keys/AuthKey_C5FD4GNS79.p8` valido (bate com `eas.json > submit.production.ios.ascApiKeyPath`)
-- Android: `./play-store-key.json` valido + track=internal, releaseStatus=draft (conforme `eas.json`; promover pra production = gate CEO)
-
-## 6. Monitorar pos-submit
-
-- **iOS**: TestFlight processa em 30-60min. Verificar em https://appstoreconnect.apple.com
-- **Android**: Internal Testing / Production track em ~1h. Verificar em https://play.google.com/console
-- **Sentry**: Confirmar que source maps foram uploadados (release + dist batem com versao do binario)
-
-## 7. Rollback (se necessario)
-
-- **iOS**: Nao tem rollback direto. Novo build com hotfix + fast-track review
-- **Android**: Play Console > App releases > Halted (para rollout) ou rollback pra versao anterior
-- **Codigo**: `git revert HEAD && git push` nao afeta builds ja na store
-
-## Troubleshooting
-
-- `eas secret:list` deprecated — use `eas env:list` (funciona igual)
-- EAS submit ERRORED mas binario chegou na ASC: nao re-submeter (gera DUPLICATE), rebuildar com `--auto-submit` pra bumpar buildNumber
-- Sentry source maps nao aparecem: verificar `SENTRY_AUTH_TOKEN` tem scope `project:releases` + `project:write`
-- Build falha com "Missing env var X": ver `validate-prod-env.sh` — provavelmente secret nao criado ou nao listado em eas.json production.env
+The upload command does not publish an OTA update and fails if the environment, confirmation,
+dependencies, `dist/` directory or source maps are missing. Treat a failed upload or failed
+symbolication smoke as an incomplete OTA release. This follows the current official
+[Expo Sentry guide](https://docs.expo.dev/guides/using-sentry/) and
+[EAS environment-variable guidance](https://docs.expo.dev/eas/environment-variables/usage/).

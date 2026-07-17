@@ -1,5 +1,10 @@
 # 00 — MAPA DO APP · Rumo Pragas IA (FASE 1, read-only)
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESTADO ATUAL OU CHECKLIST DE LANÇAMENTO.**
+> Snapshot anterior à revisão de 14/07/2026; contém fatos e contratos superados. Use
+> `docs/audit/launch-coverage-2026-07-14.md` e o código atual.
+
 > Auditor: agente FASE 1 (mapeamento) · 2026-07-02
 > Branch auditada: `perfect/pragas-launch-2026-07-02` (main = `b6e5716`, go-live merge com ~37 fixes do mega-audit 01/jul)
 > Estado de lançamento (NÃO PERTURBAR): iOS 1.0.7 WAITING_FOR_REVIEW (app 6762232682) · Android 1.0.7/vc44 production completed · **APP 100% GRÁTIS (decisão CEO)**

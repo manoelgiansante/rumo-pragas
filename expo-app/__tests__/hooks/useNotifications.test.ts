@@ -21,11 +21,15 @@ jest.mock('expo-router', () => ({
 
 const mockRegisterForPushNotificationsAsync = jest.fn();
 const mockPersistPushTokenToServer = jest.fn();
+const mockIsPushNotificationsEnabled = jest.fn();
+const mockSubscribePushPreference = jest.fn();
 jest.mock('../../services/notifications', () => ({
   configureNotificationHandler: jest.fn(),
   registerForPushNotificationsAsync: (...args: unknown[]) =>
     mockRegisterForPushNotificationsAsync(...args),
   persistPushTokenToServer: (...args: unknown[]) => mockPersistPushTokenToServer(...args),
+  isPushNotificationsEnabled: (...args: unknown[]) => mockIsPushNotificationsEnabled(...args),
+  subscribePushPreference: (...args: unknown[]) => mockSubscribePushPreference(...args),
 }));
 
 const mockSentryCaptureMessage = jest.fn();
@@ -35,19 +39,10 @@ jest.mock('@sentry/react-native', () => ({
   captureException: (...args: unknown[]) => mockSentryCaptureException(...args),
 }));
 
-const mockGetUser = jest.fn();
-const mockUpdateProfile = jest.fn();
+const mockSupabaseFrom = jest.fn();
 jest.mock('../../services/supabase', () => ({
   supabase: {
-    auth: {
-      getUser: (...args: unknown[]) => mockGetUser(...args),
-    },
-    from: jest.fn(() => ({
-      update: (...args: unknown[]) => {
-        mockUpdateProfile(...args);
-        return { eq: jest.fn().mockResolvedValue({ error: null }) };
-      },
-    })),
+    from: (...args: unknown[]) => mockSupabaseFrom(...args),
   },
 }));
 
@@ -55,27 +50,32 @@ import { useNotifications, resolveNotificationRoute } from '../../hooks/useNotif
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
   mockRegisterForPushNotificationsAsync.mockResolvedValue(null);
   mockPersistPushTokenToServer.mockResolvedValue(true);
+  mockIsPushNotificationsEnabled.mockResolvedValue(true);
+  mockSubscribePushPreference.mockReturnValue(jest.fn());
 });
 
 describe('useNotifications', () => {
-  it('returns initial state with null token and notification', () => {
+  it('returns initial state with null token and notification', async () => {
     const { result } = renderHook(() => useNotifications());
     expect(result.current.expoPushToken).toBeNull();
     expect(result.current.notification).toBeNull();
     expect(typeof result.current.registerForNotifications).toBe('function');
+    await waitFor(() => expect(mockAddNotificationReceivedListener).toHaveBeenCalled());
   });
 
-  it('registers notification listeners on mount', () => {
+  it('registers notification listeners on mount when push is enabled', async () => {
     renderHook(() => useNotifications());
-    expect(mockAddNotificationReceivedListener).toHaveBeenCalled();
-    expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockAddNotificationReceivedListener).toHaveBeenCalled();
+      expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled();
+    });
   });
 
-  it('removes listeners on unmount', () => {
+  it('removes listeners on unmount', async () => {
     const { unmount } = renderHook(() => useNotifications());
+    await waitFor(() => expect(mockAddNotificationReceivedListener).toHaveBeenCalled());
     unmount();
     expect(mockRemoveListener.remove).toHaveBeenCalled();
   });
@@ -90,19 +90,29 @@ describe('useNotifications', () => {
     });
   });
 
-  it('does not auto-register when shouldRegister is false', () => {
+  it('does not auto-register when shouldRegister is false', async () => {
     renderHook(() => useNotifications(false));
+    await waitFor(() => expect(mockIsPushNotificationsEnabled).toHaveBeenCalled());
     expect(mockRegisterForPushNotificationsAsync).not.toHaveBeenCalled();
   });
 
-  it('syncs token to Supabase after registration', async () => {
+  it('does not register or install listeners when the preference is disabled', async () => {
+    mockIsPushNotificationsEnabled.mockResolvedValue(false);
+    renderHook(() => useNotifications(true));
+    await waitFor(() => expect(mockIsPushNotificationsEnabled).toHaveBeenCalled());
+    expect(mockRegisterForPushNotificationsAsync).not.toHaveBeenCalled();
+    expect(mockAddNotificationReceivedListener).not.toHaveBeenCalled();
+  });
+
+  it('never writes the token into the legacy shared profile', async () => {
     mockRegisterForPushNotificationsAsync.mockResolvedValue('ExponentPushToken[xxx]');
 
     renderHook(() => useNotifications(true));
 
     await waitFor(() => {
-      expect(mockUpdateProfile).toHaveBeenCalledWith({ push_token: 'ExponentPushToken[xxx]' });
+      expect(mockPersistPushTokenToServer).toHaveBeenCalled();
     });
+    expect(mockSupabaseFrom).not.toHaveBeenCalled();
   });
 
   it('persists token to pragas_push_tokens with force=true on login', async () => {
@@ -159,7 +169,7 @@ describe('resolveNotificationRoute', () => {
   it('accepts a valid UUID v4 for diagnosis', () => {
     const id = 'a1b2c3d4-e5f6-4789-8abc-1234567890ab';
     expect(resolveNotificationRoute({ screen: 'diagnosis', diagnosisId: id })).toBe(
-      `/diagnosis/${id}`,
+      '/(tabs)/history',
     );
   });
 

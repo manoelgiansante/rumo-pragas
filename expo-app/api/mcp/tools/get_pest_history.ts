@@ -17,7 +17,7 @@ export const getPestHistory: ToolHandler = {
   },
   async handler(input, ctx) {
     const parsed = InputSchema.safeParse(input ?? {});
-    if (!parsed.success) return err(`Invalid input: ${parsed.error.message}`);
+    if (!parsed.success) return err('Invalid input');
     const { sinceDays } = parsed.data;
     const since = new Date(Date.now() - sinceDays * 86400_000).toISOString();
 
@@ -30,7 +30,7 @@ export const getPestHistory: ToolHandler = {
       .eq('user_id', ctx.userId) // defense-in-depth: RLS already filters
       .gte('created_at', since)
       .order('created_at', { ascending: false });
-    if (error) return err(`DB error: ${error.message}`);
+    if (error) return err('Pest history temporarily unavailable');
 
     const rows = data ?? [];
     const counts = new Map<string, { count: number; avgConf: number; totalConf: number }>();
@@ -47,6 +47,6 @@ export const getPestHistory: ToolHandler = {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    return ok({ userId: ctx.userId, sinceDays, totalDiagnoses: rows.length, topPests: top });
+    return ok({ sinceDays, totalDiagnoses: rows.length, topPests: top });
   },
 };

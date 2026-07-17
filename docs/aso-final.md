@@ -1,222 +1,55 @@
-# ASO Final — Rumo Pragas
+# ASO release baseline — Rumo Pragas
 
-> ⛔ **DEPRECATED (2026-07-02) — MODELO PAGO OBSOLETO. NÃO USAR ESTE DOC PARA PUBLICAR EM CONSOLE.**
-> O Rumo Pragas é **100% GRÁTIS** (decisão CEO 01/jul, pós-rejeição Apple 2.3.2/2.1b). As 3 subscriptions
-> do ASC foram DELETADAS em 02/jul. **NÃO reintroduzir IAP, paywall, trial ou preço** — as menções antigas
-> a "7 dias grátis" e "R$ 49,90/mês" neste doc foram corrigidas abaixo e NÃO devem voltar.
-> **Fonte canônica do metadata de loja (grátis):** `expo-app/store-assets/metadata/` (iOS + Android, pt-BR).
+Status: prepared for version 1.0.11 on 2026-07-14.
 
-App: **Rumo Pragas** (Rumo Pragas IA)
-Categoria primária: **Utilitários** (iOS) / **Ferramentas** (Android)
-Categoria secundária sugerida: **Produtividade**
-Idioma principal de submissão: **pt-BR**
-Bundle iOS: `com.agrorumo.rumopragas`
-Package Android: `com.agrorumo.rumopragas`
+## Positioning
 
----
+Rumo Pragas supports visual field triage. A user sends a crop image and receives a probabilistic identification hypothesis, a confidence value and possible alternatives. The correct conversion promise is better context for the next field decision, not certainty, prescription or replacement of a qualified professional.
 
-## App Store Connect (iOS) — pt-BR
+## Search intent
 
-### Name (até 30 caracteres)
-```
-Rumo Pragas
-```
-*(11 caracteres — deixa espaço para badges sazonais se necessário)*
+Primary intent:
 
-### Subtitle (até 30 caracteres)
-```
-Diagnóstico de praga por foto
-```
-*(30 caracteres — keyword "diagnóstico" + "praga" + "foto")*
+- Agricultural pest identification.
+- Crop symptom image.
+- Soy, corn, coffee and cotton field monitoring.
+- Integrated pest management education.
 
-### Promotional Text (até 170 caracteres, editável sem review)
-```
-Tire uma foto da praga e receba o diagnóstico em segundos. IA treinada com lavouras brasileiras. 100% grátis, sem assinatura. Funciona até sem internet.
-```
-*(152 caracteres)*
+The iOS keyword field is maintained at expo-app/store-assets/metadata/ios/pt-BR/keywords.txt. It avoids repeated words from the name and subtitle, purchase-intent chemical terms and professional-equivalence language.
 
-### Keywords (até 100 caracteres, separado por vírgula, sem espaços após vírgula, sem palavras já no Name/Subtitle)
-```
-lavoura,agro,IA,agricultura,agrônomo,fazenda,soja,milho,algodão,café,cana,doença,folha,safra,lagarta
-```
-*(99 caracteres)*
+## Store copy
 
-### Description (até 4000 caracteres)
-```
-Rumo Pragas é o aplicativo brasileiro que identifica pragas e doenças agrícolas a partir de uma foto do seu celular. Desenvolvido para a realidade do campo: funciona com queue offline, é rápido e fala a língua do produtor.
+The approved iOS and Android text is stored under expo-app/store-assets/metadata. Those files are canonical; copying legacy text from release notes, screenshots or press material is prohibited.
 
-COMO FUNCIONA
-1. Tire uma foto da folha, caule ou fruto com sintoma
-2. A IA analisa e mostra a praga mais provável
-3. Receba um laudo em PDF com severidade e recomendações técnicas
-4. Compartilhe com seu agrônomo para validar a decisão
+The copy explicitly states:
 
-O QUE O APP OFERECE
-• Identificação de mais de 500 pragas e doenças tropicais
-• Mais de 30 culturas suportadas: soja, milho, algodão, café, cana-de-açúcar, feijão, arroz, trigo, sorgo, amendoim, girassol, citros, hortaliças e mais
-• Laudo profissional em PDF para compartilhar
-• Histórico completo dos diagnósticos da fazenda
-• Alertas anônimos de pragas identificadas na sua região (raio de 50 km)
-• Chat com IA especialista para tirar dúvidas pontuais
-• Funciona offline: tire a foto no talhão sem sinal, processa quando a internet voltar
-• Interface em português do campo, direta e sem firulas
+- Free app, no purchase or subscription.
+- Agrio visual processing by default, with Anthropic Claude configurable on the server.
+- Gemini chat by default, with Anthropic Claude configurable on the server.
+- Network-required analysis with retry queue.
+- Probabilistic output and human validation.
+- Lei nº 14.785/2023, Resolução Confea nº 1.149/2025 and AGROFIT.
 
-PARA QUEM É
-• Produtores rurais de pequeno, médio e grande porte
-• Agrônomos e consultores técnicos que precisam agilizar a triagem de campo
-• Gerentes de fazenda e encarregados de campo
-• Cooperativas e revendas agropecuárias
+## Visual conversion sequence
 
-GRÁTIS PARA USAR
-• O Rumo Pragas está 100% gratuito: diagnósticos por IA, chat com a agrônoma virtual, biblioteca de pragas, histórico geolocalizado e exportação em PDF — sem cobrança e sem assinatura
+Use real release-candidate captures in this order:
 
-PRIVACIDADE E SEGURANÇA
-• 100% aderente à LGPD (Lei Geral de Proteção de Dados)
-• Compartilhamento de localização é opt-in explícito
-• Dados criptografados em trânsito (TLS 1.3) e em repouso (AES-256)
-• Você pode exportar ou excluir todos os seus dados a qualquer momento
-• Não usamos tracking para publicidade de terceiros
+1. Home and primary image action.
+2. Crop selection and capture.
+3. Result with hypothesis, confidence and warning.
+4. History with only persisted fields.
+5. Library.
+6. AI assistant with educational framing.
+7. Privacy and deletion of Rumo Pragas app data, with the shared identity contract visible.
 
-DISCLAIMER IMPORTANTE
-O Rumo Pragas é uma ferramenta auxiliar de diagnóstico. Não substitui o receituário agronômico, que é obrigatório por lei (Lei 7.802/89) para a compra e aplicação de defensivos agrícolas. Resultados individuais podem variar conforme condição da foto, iluminação e estágio da praga.
+The acceptance matrix is expo-app/store-assets/SCREENSHOT_CHECKLIST.md. Existing composites are not approved by existence alone.
 
-SOBRE A AGRORUMO
-Somos a AgroRumo Tecnologia Agrícola, empresa brasileira focada em levar tecnologia de ponta para quem realmente está no campo. Construímos apps para o agro BR, em português do campo, com engenheiros, agrônomos e produtores na mesa desde o dia 1.
+## Release validation
 
-SUPORTE E CONTATO
-WhatsApp: +55 17 99658-1120
-E-mail: contato@agrorumo.com
-Site: https://pragas.agrorumo.com
-```
-
-### What's New (a cada versão, até 4000 caracteres)
-```
-Versão 1.0 — estreia do Rumo Pragas no Brasil.
-• Diagnóstico por foto com IA treinada para o agro brasileiro
-• Mais de 30 culturas e 500 pragas catalogadas
-• Laudo em PDF profissional
-• Histórico da fazenda e alertas anônimos da sua região
-• 100% grátis: sem cobrança e sem assinatura
-Obrigado por confiar no nosso trabalho. Qualquer feedback, fale no WhatsApp do suporte.
-```
-
-### Support URL
-```
-https://pragas.agrorumo.com/support
-```
-
-### Marketing URL
-```
-https://pragas.agrorumo.com
-```
-
-### Privacy Policy URL
-```
-https://pragas.agrorumo.com/privacidade
-```
-
-### App Privacy — resumo dos labels a declarar
-- **Dados vinculados à identidade:** e-mail, nome, ID do dispositivo
-- **Dados não vinculados:** fotos enviadas para diagnóstico, diagnósticos gerados, interações do app (analytics agregado)
-- **Dados não coletados:** contatos, dados financeiros, browsing history, dados de saúde, nenhum tracking para ads
-
-### Age Rating
-**4+** (nenhum conteúdo sensível)
-
----
-
-## Google Play — pt-BR
-
-### Título / App name (até 30 caracteres)
-```
-Rumo Pragas: diagnóstico IA
-```
-*(27 caracteres)*
-
-### Short description (até 80 caracteres)
-```
-Tire uma foto da praga e veja o diagnóstico em segundos. IA feita pro agro BR.
-```
-*(78 caracteres)*
-
-### Full description (até 4000 caracteres)
-```
-O Rumo Pragas é o aplicativo brasileiro que identifica pragas e doenças agrícolas a partir de uma foto do celular. Pensado para a realidade do campo: funciona com queue offline, é rápido e em português do produtor.
-
-Como funciona:
-1. Aponte a câmera para a folha, caule ou fruto com sintoma
-2. A IA analisa e mostra a praga mais provável
-3. Veja o laudo com severidade estimada e recomendação técnica
-4. Compartilhe com seu agrônomo em PDF para validar
-
-Funcionalidades principais:
-• Identificação de mais de 500 pragas e doenças tropicais
-• Mais de 30 culturas suportadas (soja, milho, algodão, café, cana, feijão, arroz, trigo, sorgo, amendoim, girassol, citros, hortaliças e mais)
-• Laudo em PDF profissional para compartilhar com agrônomo
-• Histórico completo dos diagnósticos da sua fazenda
-• Alertas anônimos de pragas identificadas na sua região (raio de 50 km, opt-in)
-• Chat com IA especialista para dúvidas pontuais
-• Funciona offline: tire a foto sem sinal, processa quando a internet voltar
-• Interface em português do campo, direta e sem corporate
-
-Para quem é:
-• Produtores rurais de pequeno, médio e grande porte
-• Agrônomos e consultores técnicos
-• Gerentes e encarregados de fazenda
-• Cooperativas e revendas agropecuárias
-
-Grátis para usar:
-• O Rumo Pragas está 100% gratuito: diagnósticos por IA, chat com a agrônoma virtual, biblioteca de pragas, histórico e exportação em PDF — sem cobrança e sem assinatura
-
-Privacidade e segurança:
-• 100% aderente à LGPD (Lei Geral de Proteção de Dados)
-• Compartilhamento de localização é opt-in explícito do usuário
-• Dados criptografados em trânsito (TLS 1.3) e em repouso (AES-256)
-• Você pode exportar ou excluir todos os seus dados pelo próprio app
-
-Disclaimer:
-O Rumo Pragas é uma ferramenta auxiliar de diagnóstico e não substitui o receituário agronômico exigido pela Lei 7.802/89 para compra e aplicação de defensivos agrícolas. Resultados individuais podem variar.
-
-Sobre a AgroRumo:
-Somos uma empresa brasileira de tecnologia agrícola. Nosso portfolio: Rumo Máquinas (controle de frota), Campo Vivo (monitoramento por satélite), Rumo Finance, Rumo Operacional e Rumo Confinamento.
-
-Suporte:
-WhatsApp: +55 17 99658-1120
-E-mail: contato@agrorumo.com
-Site: https://pragas.agrorumo.com
-```
-
-### Tags / Categoria
-Categoria: **Ferramentas**
-Tags: agro, agricultura, pragas, IA, diagnóstico, lavoura, soja, milho, algodão
-
-### Data Safety (Data Safety Form)
-- **Localização aproximada:** opcional, opt-in, usada para alertas regionais
-- **Fotos e vídeos:** coletadas para gerar o diagnóstico (obrigatório); não compartilhadas com terceiros
-- **Identificadores pessoais:** e-mail, nome (conta)
-- **Ações do app:** analytics agregado para melhoria do produto
-- **Criptografia em trânsito:** sim
-- **Usuário pode solicitar exclusão de dados:** sim, diretamente no app
-- **Dados compartilhados com terceiros:** nenhum
-
-### Content rating
-**Classificação livre** (PEGI 3 / ESRB Everyone) — sem conteúdo sensível.
-
----
-
-## Checklist de envio
-
-- [ ] Screenshots 6.5" iOS (5 imagens mínimo, formato 1284×2778)
-- [ ] Screenshots 5.5" iOS (legacy, 1242×2208)
-- [ ] Screenshots iPad Pro 12.9" (2048×2732)
-- [ ] Screenshots Android phone (7 imagens, 1080×1920 ou 1440×2560)
-- [ ] Screenshots Android tablet 10" (1920×1200)
-- [ ] Feature graphic Android (1024×500)
-- [ ] App icon iOS (1024×1024 sem transparência)
-- [ ] App icon Android (512×512)
-- [ ] Preview video iOS (15–30s, vertical 1080×1920)
-- [ ] Preview video Android (30s máximo)
-- [ ] Privacy manifest (iOS 17+): PrivacyInfo.xcprivacy configurado
-- [ ] Data Safety Form (Google Play) preenchido
-- [ ] App Privacy labels (App Store Connect) preenchidos
-- [ ] Revisar disclaimer do receituário agronômico visível em Description + in-app
+- Character limits pass.
+- No prohibited claims in metadata or screenshots.
+- Public URLs return 200.
+- Data Safety and Apple privacy labels match the signed artifacts.
+- Review account is supplied only through secure console fields.
+- Screenshots match the candidate build.
+- Second-person review completed in App Store Connect and Play Console.

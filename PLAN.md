@@ -1,5 +1,10 @@
 # Rumo Pragas — Native iOS App for Agricultural Pest Management (Core MVP)
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO EXECUTAR.**
+> Este plano descreve o protótipo nativo antigo. O produto atual está em `expo-app/`; use
+> `docs/audit/launch-coverage-2026-07-14.md` e `docs/launch-runbook.md`.
+
 
 ## Overview
 

@@ -1,57 +1,43 @@
-A sua lavoura esta sob ataque e voce tem 48 horas pra decidir. Ferrugem asiatica avanca 30% ao dia. Lagarta-do-cartucho consome 20% de produtividade em 3 dias. Errar o diagnostico significa perder a safra.
+Rumo Pragas é uma ferramenta gratuita de apoio à identificação visual de pragas e outros sinais na lavoura.
 
-Rumo Pragas coloca um agronomo de fitossanidade no seu bolso. Voce aponta a camera pra folha, pro inseto ou pro sintoma — em 5 segundos a inteligencia artificial diz EXATAMENTE qual e a praga, qual o nivel de severidade e qual o tratamento recomendado com principio ativo, dosagem/ha e intervalo de carencia.
+Fotografe ou selecione uma imagem, informe a cultura e receba uma hipótese de identificação gerada por inteligência artificial. O resultado apresenta nível de confiança e, quando disponíveis, hipóteses alternativas para ajudar você a decidir o próximo passo com mais contexto.
 
-POR QUE MILHARES DE PRODUTORES JA CONFIAM
+COMO FUNCIONA
 
-Nossa IA foi construida com um especialista senior em fitossanidade tropical e validada em testes reais contra imagens de ferrugem asiatica, lagarta-do-cartucho, percevejo-verde, bicho-mineiro e mancha-alvo — para entregar uma primeira leitura rapida e confiavel direto no campo.
+1. Escolha a cultura e registre uma imagem nítida da área afetada.
+2. A imagem é enviada com segurança para análise quando há conexão.
+3. Confira a hipótese, o nível de confiança e as alternativas apresentadas.
+4. Salve o resultado e compartilhe um relatório em PDF com o profissional que acompanha a lavoura.
 
-COMO FUNCIONA (em 3 passos)
+RECURSOS
 
-1. Abra o app e fotografe a folha, o inseto ou o sintoma
-2. A IA analisa em ate 5 segundos — mesmo offline, enviando quando a rede voltar
-3. Receba: nome popular, nome cientifico, severidade, tratamento quimico + biologico + cultural, nivel de acao e estrategia MIP completa
+• Captura pela câmera ou seleção pelo seletor de fotos do sistema.
+• Hipótese de identificação por imagem, com indicação de confiança.
+• Aviso destacado quando a imagem é inválida ou a confiança é baixa.
+• Biblioteca educativa para consulta por cultura.
+• Histórico dos resultados estruturados, com data e localização aproximada opcional.
+• Clima local quando a localização aproximada é autorizada.
+• Assistente de IA para dúvidas educativas sobre monitoramento e manejo integrado.
+• Relatório em PDF e compartilhamento pelo sistema.
+• Interface em português, inglês e espanhol.
 
-FUNCIONA OFFLINE NO CAMPO (sim, sem 4G)
+CONEXÃO NO CAMPO
 
-Fazenda sem sinal? As fotos ficam na fila local e processam automaticamente quando a conexao voltar. Nenhum diagnostico e perdido.
+A análise da imagem requer internet. Se a conexão falhar durante o envio, o app pode manter a solicitação em uma fila local e tentar novamente quando a rede voltar. A inteligência artificial não executa a identificação offline.
 
-TUDO O QUE O APP FAZ
+GRATUITO
 
-- Diagnostico por IA: pragas, doencas fungicas, bacterianas, virais e deficiencias nutricionais. Treinada com milhares de imagens de lavouras brasileiras.
-- Tratamento recomendado: principio ativo + grupo quimico + dosagem/ha + carencia + classe toxicologica. Alternativas biologicas (Beauveria, Trichogramma, Metarhizium) e manejo cultural.
-- MIP (Manejo Integrado de Pragas): nivel de acao, monitoramento e estrategia completa por cultura.
-- Biblioteca de pragas: catalogo por cultura com fotos, ciclo de vida e sintomas.
-- Chat com Agronoma IA: tire duvidas sobre dosagem, epoca de aplicacao, resistencia e rotacao.
-- Historico geolocalizado: diagnosticos salvos com data, GPS e foto. Acompanhe a fazenda o ano todo.
-- Alertas regionais: notificacoes de pragas detectadas na sua regiao baseadas em clima e relatos.
-- Clima integrado: temperatura, umidade e previsao — as condicoes que favorecem cada praga.
-- Exportacao PDF: relatorios profissionais pro seu agronomo ou caderno de campo.
-- 3 idiomas: Portugues, Ingles e Espanhol.
+O aplicativo não oferece assinatura, compra interna, plano Pro ou período de teste pago.
 
-CULTURAS SUPORTADAS
+PRIVACIDADE
 
-Soja, milho, cafe, algodao, feijao, trigo, arroz, cana-de-acucar, tomate, batata, citros, uva, banana, sorgo, amendoim, girassol, cebola, mandioca e muitas outras.
+Conta, resultados e preferências são protegidos por controles de acesso. A foto é encaminhada pelo backend ao provedor configurado para a análise visual. O histórico recebe o resultado estruturado; o fluxo atual não grava uma URL da foto no registro do resultado. A localização é opcional e o candidato minimiza novos registros para duas casas decimais. Você pode excluir os dados do Rumo Pragas pelo próprio aplicativo; a identidade AgroRumo compartilhada é tratada separadamente, conforme a Política de Privacidade.
 
-PARA QUEM E
+LIMITES IMPORTANTES
 
-- Produtores rurais (pequeno, medio e grande porte)
-- Agronomos e consultores de campo
-- Tecnicos agricolas e cooperativas
-- Estudantes de agronomia e cursos tecnicos
+Inteligência artificial é probabilística e pode errar, especialmente com imagens desfocadas, sintomas semelhantes ou estágio inicial. O Rumo Pragas não substitui vistoria, diagnóstico técnico, receituário agronômico nem orientação de profissional legalmente habilitado.
 
-GRATIS PARA USAR
+Antes de adquirir ou aplicar produtos, consulte um engenheiro agrônomo ou engenheiro florestal legalmente habilitado e confirme os produtos registrados no AGROFIT. O receituário agronômico deve observar a Lei nº 14.785/2023 e a Resolução Confea nº 1.149/2025.
 
-O Rumo Pragas esta 100% gratuito: diagnosticos por IA, chat com a agronoma virtual, biblioteca de pragas, historico geolocalizado e exportacao em PDF — sem cobranca e sem assinatura.
-
-SEGURANCA E PRIVACIDADE
-
-Criptografia em transito e em repouso. Imagens processadas de forma segura, nunca vendidas a terceiros. Voce tem controle total — pode apagar seu historico a qualquer momento. Privacy Manifest conforme iOS 17+.
-
-AVISO AGRONOMICO
-
-As recomendacoes sao sugestoes tecnicas baseadas em boas praticas. A aplicacao de defensivos requer receituario agronomico conforme Lei 7.802/89. Rumo Pragas nao substitui a assistencia de um engenheiro agronomo.
-
-Baixe agora, proteja sua safra e pare de perder produtividade por nao identificar praga a tempo.
-
-Rumo Pragas. Inteligencia artificial a servico do campo.
+Suporte, política de privacidade e termos:
+https://pragas.agrorumo.com

@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from '../services/sentry-shim';
 import {
   configureNotificationHandler,
   persistPushTokenToServer,
   registerForPushNotificationsAsync,
+  isPushNotificationsEnabled,
+  subscribePushPreference,
 } from '../services/notifications';
-import { supabase } from '../services/supabase';
 
 // iOS 26 TurboModule crash fix: do NOT call configureNotificationHandler() at
 // module-load time. It is now lazy+idempotent (see services/notifications.ts)
@@ -70,7 +71,10 @@ export function resolveNotificationRoute(data: unknown): string | null {
     case 'diagnosis': {
       const id = payload.diagnosisId;
       if (!isStrictUuid(id)) return null;
-      return `/diagnosis/${id}`;
+      // The result route requires a complete serialized result payload; a
+      // diagnosis UUID alone cannot hydrate it. History is the existing safe
+      // destination from which the authenticated row can be opened.
+      return '/(tabs)/history';
     }
     case 'settings':
       return '/(tabs)/settings';
@@ -86,7 +90,7 @@ export function resolveNotificationRoute(data: unknown): string | null {
 
 function captureRouteRejection(reason: string, data: unknown): void {
   try {
-    Sentry.captureMessage('push deep-link rejected', {
+    captureMessage('push deep-link rejected', {
       level: 'warning',
       tags: { feature: 'push', step: 'deep_link', reason },
       // Don't log full payload (may contain PII); log only the shape.
@@ -109,46 +113,41 @@ function captureRouteRejection(reason: string, data: unknown): void {
 export function useNotifications(shouldRegister: boolean = false): UseNotificationsReturn {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [preferenceReady, setPreferenceReady] = useState(false);
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
+  useEffect(() => {
+    let mounted = true;
+    isPushNotificationsEnabled().then((enabled) => {
+      if (!mounted) return;
+      setPushEnabled(enabled);
+      setPreferenceReady(true);
+    });
+    const unsubscribe = subscribePushPreference((enabled) => {
+      setPushEnabled(enabled);
+      setPreferenceReady(true);
+      if (!enabled) setExpoPushToken(null);
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
   const syncTokenToSupabase = useCallback(async (token: string) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      // 1. Legacy single-column write (still consumed by old send-push paths
-      //    until they migrate). Cheap, idempotent. Keyed by `user_id` (the
-      //    pragas_profiles PK is `id`, unique on `user_id` = the auth uid).
-      //    This is a best-effort side write: its failure (RLS / missing row /
-      //    missing column mid-migration) must NEVER abort step 2, which is the
-      //    canonical path. Supabase `.update()` resolves with `{ error }` rather
-      //    than throwing, so we log it to Sentry and keep going instead of
-      //    letting it short-circuit the RPC persist below.
-      const { error: updateError } = await supabase
-        .from('pragas_profiles')
-        .update({ push_token: token })
-        .eq('user_id', user.id);
-      if (updateError) {
-        if (__DEV__) console.warn('Legacy push_token write failed (non-fatal):', updateError);
-        try {
-          Sentry.captureException(updateError, {
-            tags: { feature: 'push', step: 'legacyTokenWrite' },
-          });
-        } catch {
-          /* swallow */
-        }
-      }
-      // 2. New audit table — multi-device, soft-revocable, last_seen tracked.
-      //    This is the canonical persistence path (RPC touch_push_token).
-      //    force=true so login always refreshes server state, regardless of
-      //    the 30-day cool-down.
+      // Canonical multi-device path. No legacy profile side write is allowed:
+      // app-specific linkage/RLS is established before this hook can run.
       await persistPushTokenToServer(token, { force: true });
-    } catch (error) {
-      if (__DEV__) console.warn('Failed to sync push token to Supabase:', error);
+    } catch {
+      if (__DEV__) console.warn('[notifications] token sync failed');
       try {
-        Sentry.captureException(error, { tags: { feature: 'push', step: 'sync' } });
+        captureMessage('push token sync failed', {
+          level: 'warning',
+          tags: { feature: 'push', step: 'sync' },
+        });
       } catch {
         /* swallow */
       }
@@ -170,6 +169,7 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
     if (Platform.OS === 'web') {
       return;
     }
+    if (!preferenceReady || !pushEnabled) return;
 
     // Lazy, idempotent handler init. Wrapped in try/catch by the service.
     configureNotificationHandler();
@@ -187,8 +187,8 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
           setNotification(receivedNotification);
         },
       );
-    } catch (error) {
-      if (__DEV__) console.warn('[notifications] addNotificationReceivedListener failed:', error);
+    } catch {
+      if (__DEV__) console.warn('[notifications] received listener unavailable');
     }
 
     try {
@@ -208,9 +208,8 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
           }
         },
       );
-    } catch (error) {
-      if (__DEV__)
-        console.warn('[notifications] addNotificationResponseReceivedListener failed:', error);
+    } catch {
+      if (__DEV__) console.warn('[notifications] response listener unavailable');
     }
 
     return () => {
@@ -225,7 +224,7 @@ export function useNotifications(shouldRegister: boolean = false): UseNotificati
         // ignore removal errors — app is unmounting anyway
       }
     };
-  }, [shouldRegister, registerForNotifications]);
+  }, [shouldRegister, registerForNotifications, preferenceReady, pushEnabled]);
 
   return {
     expoPushToken,

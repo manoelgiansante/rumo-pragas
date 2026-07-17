@@ -11,11 +11,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from '../services/sentry-shim';
 import { showAlert } from '../services/dialog';
 import { updatePassword } from '../services/auth';
 import {
@@ -65,13 +65,13 @@ export default function UpdatePasswordScreen() {
       showAlert('', t('updatePassword.success'));
       // The recovery session is now a full session — send them into the app.
       router.replace('/(tabs)');
-    } catch (err) {
+    } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Sentry.captureException(err, {
+      captureMessage('password update failed', {
+        level: 'warning',
         tags: { feature: 'auth', action: 'update_password' },
       });
-      const message = err instanceof Error ? err.message : t('updatePassword.error');
-      showAlert(t('common.error'), message);
+      showAlert(t('common.error'), t('updatePassword.error'));
     } finally {
       setSubmitting(false);
       setTimeout(() => {
