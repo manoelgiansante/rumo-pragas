@@ -270,7 +270,8 @@
           "url": "https://sentry.io/"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "./plugins/withKotlinInProcess"
     ],
     "extra": {
       "eas": {
