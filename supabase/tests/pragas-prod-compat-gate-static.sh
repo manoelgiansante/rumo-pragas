@@ -389,7 +389,7 @@ clone_rehearsal_line="$(rg -n -m 1 \
   'PRAGAS_PRODUCTION_CLONE_MIGRATION_REHEARSAL_BEGIN' \
   "$deploy_gate" | cut -d: -f1)"
 production_push_line="$(rg -n -m 1 \
-  'supabase db push --linked --workdir "\$tmp" --yes' \
+  'supabase db push --linked --include-all --workdir "\$tmp" --yes' \
   "$deploy_gate" | cut -d: -f1)"
 if [[ -z "$clone_rehearsal_line" || -z "$production_push_line" \
       || "$clone_rehearsal_line" -ge "$production_push_line" ]]; then
