@@ -162,6 +162,83 @@ const runFixtureGit = (repositoryRoot, arguments_) => {
   assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
 };
 
+const sha256OfFile = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
+
+// The pinned production Node binary is machine-specific; on a non-darwin CI host the real
+// interpreter running this suite IS the pinned toolchain (Node 22.22.3). Resolve it once and
+// cache its digest so the fixture never re-hashes the ~120 MB binary per test invocation.
+let cachedPinnedNode;
+const resolvePinnedNodeForHost = () => {
+  if (!cachedPinnedNode) {
+    const path = realpathSync(process.execPath);
+    cachedPinnedNode = { path, sha256: sha256OfFile(path) };
+  }
+  return cachedPinnedNode;
+};
+
+// The production wrapper pins Manoel's macOS toolchain by absolute path + sha256 and relies on
+// BSD-only utilities (`stat -f`, `bsdtar`). On a non-darwin CI host those inputs are absent, so
+// the wrapper aborts in its integrity preamble ("toolchain fixada ausente.") long before it can
+// exercise the quarantine, signal-forwarding and lock behaviour that these tests actually assert.
+// This adapts ONLY the machine/OS-specific inputs to the host — exactly like EXPECTED_APP_ROOT and
+// GLOBAL_LOCK_PARENT are already rewritten above — while keeping every verification MECHANISM
+// executing: `verify_sha256` still runs (against the host toolchain digests) and every version pin
+// (fnm 1.39.0 / Node v22.22.3 / npm 10.9.8) is still enforced. darwin is never adapted, so its
+// coverage stays byte-for-byte identical. The production wrapper on disk is not modified.
+const adaptNativeWrapperForHost = (wrapperText, { toolchainDirectory }) => {
+  if (process.platform === 'darwin') return wrapperText;
+
+  mkdirSync(toolchainDirectory, { recursive: true });
+  const fnmStub = join(toolchainDirectory, 'fnm');
+  const npmStub = join(toolchainDirectory, 'npm-cli.js');
+  // Deterministic version stubs: exercised only by the wrapper's `--version` pins, never as the
+  // build interpreter (that is always the real pinned Node below).
+  writeFileSync(fnmStub, '#!/bin/sh\necho 1.39.0\n', { mode: 0o755 });
+  chmodSync(fnmStub, 0o755);
+  writeFileSync(npmStub, "console.log('10.9.8');\n");
+  const pinnedNode = resolvePinnedNodeForHost();
+
+  const rewrite = (text, from, to) => {
+    assert.equal(text.includes(from), true, `native wrapper adaptation target missing: ${from}`);
+    return text.split(from).join(to);
+  };
+
+  let adapted = wrapperText;
+  // Retarget the pinned toolchain paths to host-present binaries.
+  adapted = rewrite(adapted, '"/opt/homebrew/Cellar/fnm/1.39.0/bin/fnm"', JSON.stringify(fnmStub));
+  adapted = rewrite(
+    adapted,
+    '"/Users/manoelnascimento/.local/share/fnm/node-versions/v22.22.3/installation/bin/node"',
+    JSON.stringify(pinnedNode.path),
+  );
+  adapted = rewrite(
+    adapted,
+    '"/Users/manoelnascimento/.local/share/fnm/node-versions/v22.22.3/installation/lib/node_modules/npm/bin/npm-cli.js"',
+    JSON.stringify(npmStub),
+  );
+  // Keep verify_sha256 executing — just against the host toolchain digests.
+  adapted = rewrite(
+    adapted,
+    'dee5acc82725a109d74989219b9adf2ec22f7bd58e8cf043b043a127ffe2c9b3',
+    sha256OfFile(fnmStub),
+  );
+  adapted = rewrite(
+    adapted,
+    '5d9d3872911e2340a43b707962e68143de8a4e8d54628845c0c4f2de1fb7cd5c',
+    pinnedNode.sha256,
+  );
+  adapted = rewrite(
+    adapted,
+    '8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7',
+    sha256OfFile(npmStub),
+  );
+  // BSD stat/tar -> GNU equivalents: device:inode, perm-bits:hard-link-count, stdin extraction.
+  adapted = rewrite(adapted, "/usr/bin/stat -f '%d:%i'", "/usr/bin/stat -c '%d:%i'");
+  adapted = rewrite(adapted, "/usr/bin/stat -f '%Lp:%l'", "/usr/bin/stat -c '%a:%h'");
+  adapted = rewrite(adapted, '/usr/bin/bsdtar -xf -', '/usr/bin/tar -xf -');
+  return adapted;
+};
+
 const withBuildWrapperFixture = (nativeRunnerSource, run) =>
   withFixture((directory) => {
     const repositoryRoot = realpathSync(directory);
@@ -186,7 +263,13 @@ const withBuildWrapperFixture = (nativeRunnerSource, run) =>
     assert.notEqual(fixtureWrapper, productionWrapper);
     assert.equal(fixtureWrapper.includes(`EXPECTED_APP_ROOT=${JSON.stringify(appRoot)}`), true);
     assert.equal(fixtureWrapper.includes(`GLOBAL_LOCK_PARENT=${JSON.stringify(lockParent)}`), true);
-    writeFileSync(wrapper, fixtureWrapper, { mode: 0o755 });
+    // Host adaptation (non-darwin only) is committed with the fixture below so the wrapper's own
+    // clean-tree gate stays satisfied; the toolchain stubs live outside expo-app and are inert to
+    // the git-archive bootstrap.
+    const hostWrapper = adaptNativeWrapperForHost(fixtureWrapper, {
+      toolchainDirectory: join(repositoryRoot, 'native-toolchain'),
+    });
+    writeFileSync(wrapper, hostWrapper, { mode: 0o755 });
     chmodSync(wrapper, 0o755);
     writeFileSync(join(scripts, 'eas-pinned.sh'), '#!/usr/bin/env bash\nexit 99\n', {
       mode: 0o755,
