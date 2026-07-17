@@ -1110,7 +1110,7 @@ fi
 
 dry_run_output="$(
   PGSSLMODE=verify-full PGSSLROOTCERT="$db_sslrootcert" \
-    supabase db push --linked --dry-run --workdir "$tmp" --yes 2>&1
+    supabase db push --linked --dry-run --include-all --workdir "$tmp" --yes 2>&1
 )" || {
   echo "production migration dry-run failed under verified TLS" >&2
   exit 1
@@ -1131,7 +1131,7 @@ if [[ "$mode" == "--dry-run" ]]; then
   echo "prod-compat DB + 13 Edge gate: DRY RUN PASS"
   echo "target=$TARGET_REF profiles=$profile_count generated_ids=$generated_profile_count"
   echo "allowlist=${TARGET_VERSIONS[*]}"
-  echo "edge_new_absent=11 edge_restore_baseline=pragas-send-push@19"
+  echo "edge_new_absent=11 edge_restore_baseline=pragas-send-push@$EXISTING_EDGE_VERSION"
   echo "apply remains blocked until authenticated backups and restore tests succeed"
   exit 0
 fi
@@ -2536,7 +2536,7 @@ fi
 
 if ! db_push_output="$(
   PGSSLMODE=verify-full PGSSLROOTCERT="$db_sslrootcert" \
-    supabase db push --linked --workdir "$tmp" --yes 2>&1
+    supabase db push --linked --include-all --workdir "$tmp" --yes 2>&1
 )"; then
   echo "production migration push failed under verified TLS" >&2
   exit 1
