@@ -36,6 +36,12 @@ const GRADLE_PROPERTIES = [
   ['kotlin.compiler.execution.strategy', 'in-process'],
   ['org.gradle.daemon', 'false'],
   ['org.gradle.parallel', 'false'],
+  // O compilador Kotlin in-process vive na MESMA JVM do Gradle: o default do
+  // template (-Xmx2048m -XX:MaxMetaspaceSize=512m) estoura em build frio
+  // completo — java.lang.OutOfMemoryError: Metaspace reproduzido em 17/07 com
+  // home Gradle isolada + 4 ABIs (era a falha real por trás do "código 1"
+  // suprimido do wrapper). Teto elevado cobre AGP + KGP + compilador embutido.
+  ['org.gradle.jvmargs', '-Xmx3g -XX:MaxMetaspaceSize=1280m'],
 ];
 
 /**
