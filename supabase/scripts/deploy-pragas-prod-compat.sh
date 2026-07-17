@@ -1038,7 +1038,7 @@ run_shared_bootstrap_on_linked_project() {
 
 candidate_file_count="$(find "$tmp/supabase/migrations" -type f \
   ! -name '*_remote_history.sql' | wc -l | tr -d '[:space:]')"
-if [[ "$candidate_file_count" != "3" ]]; then
+if [[ "$candidate_file_count" != "${#TARGET_VERSIONS[@]}" ]]; then
   echo "isolated bundle contains a non-allowlisted candidate" >&2
   exit 1
 fi
