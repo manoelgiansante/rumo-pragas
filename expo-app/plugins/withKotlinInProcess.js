@@ -7,6 +7,7 @@
  *
  *   kotlin.compiler.execution.strategy=in-process
  *   org.gradle.daemon=false
+ *   org.gradle.parallel=false
  *
  * Motivo (causa raiz confirmada por thread-dump): o Gradle 9.0 (RN 0.83.6) deixa
  * daemons Kotlin persistentes (`kotlin-compiler-embeddable`, keepalive ~2h) após o
@@ -15,6 +16,11 @@
  * sem gerar o AAB. Compilar o Kotlin in-process (mesma JVM do Gradle) elimina o
  * daemon Kotlin, e `org.gradle.daemon=false` garante que o próprio Gradle não deixe
  * daemon vivo.
+ *
+ * `org.gradle.parallel=false` serializa a execução do Gradle: o build paralelo causa
+ * uma race no C++ do novo arch (`libworklets.so missing, no known rule to make it`) —
+ * `expo-modules-core` linka antes de `react-native-worklets` terminar. Serializar
+ * força a ordem correta de build.
  *
  * O plugin é idempotente: se a propriedade já existir, apenas garante o valor correto;
  * caso contrário, adiciona.
@@ -29,6 +35,7 @@ const { withGradleProperties } = require('@expo/config-plugins');
 const GRADLE_PROPERTIES = [
   ['kotlin.compiler.execution.strategy', 'in-process'],
   ['org.gradle.daemon', 'false'],
+  ['org.gradle.parallel', 'false'],
 ];
 
 /**
