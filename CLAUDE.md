@@ -91,3 +91,23 @@ do `eas update` autorizado, use o script explícito de upload de mapas.
 
 Relatórios em `AUDIT/` e arquivos antigos de pesquisa são apenas histórico. A cobertura vigente é
 `docs/audit/launch-coverage-2026-07-14.md`.
+
+## Estado operacional 17/07/2026 (mega-trabalho rodada 1 — verificado ao vivo)
+
+- **Sentry do combo isolado (PR-08 FECHADO):** erros do `agrorumo-combo` agora roteiam para o
+  projeto Sentry dedicado `agrorumo-combo` (ID 4511728996712448). O secret `SENTRY_DSN_COMBO`
+  está setado no jxcn e as fns deployadas do combo (v12, 06/jul) já preferem esse DSN — secrets
+  resolvem em runtime, então **redeploy é desnecessário** (roteamento provado pelos eventos
+  AGRORUMO-COMBO-1). A poluição combo/news no projeto `rumo-pragas` está encerrada.
+- **SVP do chat IA Gemini SELADO (PR-10, smoke E2E 17/jul com usuário real):** `ai-chat` (slug
+  compartilhado que o binário público 1.0.9 chama) → HTTP 200 com geração Gemini real
+  (`gemini-3.1-flash-lite`, v54). O slug dedicado `ai-chat-pragas` (v1) também responde 200, mas
+  SÓ pelo fluxo completo do client novo: RPC `pragas_link_account` → RPC `grant_pragas_ai_consent`
+  (versão `2026-07-14.1`) → headers `X-Rumo-App: rumo-pragas` + `X-Pragas-AI-Consent-Version/-Purpose`
+  + `Idempotency-Key` UUID. Chamada crua = **409 `unlinked` / 403 `app_not_allowed` /
+  428 `ai_consent_required`** — fail-closed por design, não é bug.
+- **Telemetria do chat é cega por design (ZERO-V):** `pragas_chat_messages` fica em 0 — nenhum
+  código (client ou fns) escreve nela; em FREE_MODE o `increment_chat_usage` é pulado. Uso real
+  só aparece em logs de invocação/Sentry. "0 linhas" NÃO significa chat quebrado.
+- **Follow-up aberto:** persistir smoke re-executável (`scripts/smoke-ai-chat.sh` com credencial
+  via env, nunca hardcoded) reproduzindo o fluxo acima.
