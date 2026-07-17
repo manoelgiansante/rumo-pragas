@@ -1099,6 +1099,11 @@ assert_database_candidate_snapshot() {
     fi
   done
   while IFS= read -r version; do
+    # Applied candidates are represented by their hash-pinned real file
+    # (verified above), never by a placeholder.
+    if [[ " ${TARGET_VERSIONS[*]} " == *" $version "* ]]; then
+      continue
+    fi
     if [[ ! -f "$tmp/supabase/migrations/${version}_remote_history.sql" \
           || -L "$tmp/supabase/migrations/${version}_remote_history.sql" \
           || -s "$tmp/supabase/migrations/${version}_remote_history.sql" ]]; then
