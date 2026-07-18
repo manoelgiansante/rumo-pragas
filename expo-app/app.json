@@ -155,7 +155,8 @@
             ]
           }
         ]
-      }
+      },
+      "buildNumber": "64"
     },
     "android": {
       "adaptiveIcon": {
@@ -179,7 +180,8 @@
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO"
-      ]
+      ],
+      "versionCode": 50
     },
     "web": {
       "favicon": "./assets/favicon.png",
