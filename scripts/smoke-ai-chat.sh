@@ -40,10 +40,15 @@ AI_CONSENT_VERSION='2026-07-14.1'
 # ── Utilitário ───────────────────────────────────────────────────────
 # uuid4 sem depender de uuidgen (nem sempre está instalado); usa /dev/urandom.
 uuid4() {
-  python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null \
-    || command -v uuidgen >/dev/null 2>&1 && uuidgen \
-    || printf '%08x-%04x-4%03x-%04x-%012x\n' \
-         "$RANDOM$RANDOM" "$RANDOM" "$RANDOM" "$((RANDOM + 32768))" "$RANDOM$RANDOM$RANDOM"
+  if python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null; then
+    return 0
+  fi
+  if command -v uuidgen >/dev/null 2>&1; then
+    uuidgen
+    return 0
+  fi
+  printf '%08x-%04x-4%03x-%04x-%012x\n' \
+    "$RANDOM$RANDOM" "$RANDOM" "$RANDOM" "$((RANDOM + 32768))" "$RANDOM$RANDOM$RANDOM"
 }
 
 # Faz POST e imprime `PASS/FAIL + HTTP + latência` na saída padrão.
