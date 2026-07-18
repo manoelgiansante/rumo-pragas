@@ -164,6 +164,7 @@
         "backgroundColor": "#022822",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.agrorumo.rumopragas",
       "permissions": [
         "android.permission.CAMERA",
