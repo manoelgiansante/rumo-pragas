@@ -29,6 +29,12 @@ type CaptureContext = {
   tags?: Record<string, string>;
 };
 
+type CaptureMessageContext = CaptureContext & {
+  level?: Breadcrumb['level'];
+};
+
+type CaptureMessageArgument = Breadcrumb['level'] | CaptureMessageContext;
+
 type Scope = {
   setTag: (key: string, value: string) => void;
   setLevel: (level: Breadcrumb['level']) => void;
@@ -38,7 +44,7 @@ type Scope = {
 type SentryModule = {
   addBreadcrumb: (b: Breadcrumb) => void;
   captureException: (err: unknown, ctx?: CaptureContext) => void;
-  captureMessage: (msg: string, level?: Breadcrumb['level']) => void;
+  captureMessage: (msg: string, context?: CaptureMessageArgument) => void;
   withScope: (cb: (scope: Scope) => void) => void;
 };
 
@@ -66,9 +72,9 @@ function loadSentry(): SentryModule | null {
           /* swallow */
         }
       },
-      captureMessage: (msg, level) => {
+      captureMessage: (msg, context) => {
         try {
-          mod.captureMessage(msg, level);
+          mod.captureMessage(msg, context);
         } catch {
           /* swallow */
         }
@@ -96,8 +102,8 @@ export function captureException(err: unknown, ctx?: CaptureContext): void {
   loadSentry()?.captureException(err, ctx);
 }
 
-export function captureMessage(msg: string, level?: Breadcrumb['level']): void {
-  loadSentry()?.captureMessage(msg, level);
+export function captureMessage(msg: string, context?: CaptureMessageArgument): void {
+  loadSentry()?.captureMessage(msg, context);
 }
 
 export function withScope(cb: (scope: Scope) => void): void {

@@ -17,7 +17,7 @@
  * (reported to Sentry) — the hosted fallback page still completes the reset.
  */
 import { router } from 'expo-router';
-import * as Sentry from '@sentry/react-native';
+import { captureMessage } from './sentry-shim';
 import { supabase } from './supabase';
 
 function parseAuthParams(url: string): Record<string, string> {
@@ -85,9 +85,12 @@ export async function handleRecoveryDeepLink(url: string | null): Promise<boolea
     }
 
     return false;
-  } catch (err) {
+  } catch {
     try {
-      Sentry.captureException(err, {
+      // Never capture provider errors or the callback URL: either may contain
+      // access_token, refresh_token, PKCE code or user-identifying details.
+      captureMessage('password recovery deep-link exchange failed', {
+        level: 'error',
         tags: { feature: 'auth', step: 'recovery_deeplink' },
       });
     } catch {

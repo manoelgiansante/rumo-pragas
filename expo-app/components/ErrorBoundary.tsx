@@ -1,6 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { withScope, captureException } from '../services/sentry-shim';
 import {
@@ -20,22 +20,20 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (__DEV__) console.error('[ErrorBoundary] Erro capturado:', error.message);
-    if (__DEV__) console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
+    if (__DEV__) console.warn('[ErrorBoundary] Unhandled render failure');
     // Report to Sentry for production crash tracking. Tag as react-error-boundary
     // for filtering / Apple reviewer triage. Wrapped in try/catch so a Sentry
     // failure never re-throws inside componentDidCatch (which would be fatal).
@@ -46,15 +44,15 @@ export class ErrorBoundary extends Component<Props, State> {
         scope.setContext('react', {
           componentStack: errorInfo.componentStack ?? undefined,
         });
-        captureException(error);
+        captureException(new Error('Unhandled React render error'));
       });
-    } catch (sentryErr) {
-      if (__DEV__) console.warn('[ErrorBoundary] Sentry capture failed:', sentryErr);
+    } catch {
+      if (__DEV__) console.warn('[ErrorBoundary] Sentry capture failed');
     }
   }
 
   resetError = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false });
   };
 
   render() {
@@ -72,12 +70,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <Text style={styles.title}>{i18n.t('errorBoundary.title')}</Text>
             <Text style={styles.description}>{i18n.t('errorBoundary.description')}</Text>
-
-            {__DEV__ && this.state.error && (
-              <ScrollView style={styles.errorBox} nestedScrollEnabled>
-                <Text style={styles.errorText}>{this.state.error.message}</Text>
-              </ScrollView>
-            )}
 
             <TouchableOpacity
               testID="error-boundary-retry"
@@ -136,20 +128,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: Spacing.xxl,
-  },
-  errorBox: {
-    backgroundColor: Colors.systemGray6,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.md,
-    marginBottom: Spacing.xxl,
-    maxHeight: 120,
-    width: '100%',
-  },
-  errorText: {
-    fontSize: FontSize.caption,
-    fontWeight: FontWeight.regular,
-    color: Colors.coral,
-    fontFamily: 'monospace',
   },
   retryButton: {
     flexDirection: 'row',

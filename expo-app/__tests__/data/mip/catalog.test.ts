@@ -7,7 +7,7 @@
  *  3. Cada entry respeita o schema obrigatório
  *  4. Culturas prioritárias têm ≥ 8 entries
  *  5. Cada entry tem ao menos uma referência
- *  6. Estratégia química sempre tem `observacoes` (lista pode estar vazia, mas presente)
+ *  6. O bundle não contém estruturas prescritivas de controle químico
  *  7. Slugs seguem padrão snake_case
  */
 
@@ -48,7 +48,7 @@ describe('MIP catalog — load + schema integrity', () => {
   it('cada entry tem os campos obrigatórios do schema', () => {
     for (const entry of MIP_CATALOG) {
       expect(entry.id).toBeTruthy();
-      expect(entry.type).toMatch(/^(praga|doenca|erva-daninha)$/);
+      expect(entry.type).toMatch(/^(praga|doenca)$/);
       expect(entry.category).toBeTruthy();
       expect(entry.nomeComum).toBeTruthy();
       expect(Array.isArray(entry.nomesAlternativos)).toBe(true);
@@ -68,19 +68,17 @@ describe('MIP catalog — load + schema integrity', () => {
       expect(entry.niveisDano.baixo).toBeDefined();
       expect(entry.niveisDano.medio).toBeDefined();
       expect(entry.niveisDano.alto).toBeDefined();
-      expect(entry.niveisDano.baixo.acao).toBeTruthy();
-      expect(entry.niveisDano.medio.acao).toBeTruthy();
-      expect(entry.niveisDano.alto.acao).toBeTruthy();
+      expect(entry.niveisDano.baixo.criterio).toBeTruthy();
+      expect(entry.niveisDano.medio.criterio).toBeTruthy();
+      expect(entry.niveisDano.alto.criterio).toBeTruthy();
 
       // mip
       expect(entry.mip).toBeDefined();
       expect(Array.isArray(entry.mip.cultural)).toBe(true);
       expect(Array.isArray(entry.mip.biologico)).toBe(true);
-      expect(Array.isArray(entry.mip.mecanico)).toBe(true);
-      expect(entry.mip.quimico).toBeDefined();
-      expect(Array.isArray(entry.mip.quimico.classes)).toBe(true);
-      expect(Array.isArray(entry.mip.quimico.ingredientesAtivos)).toBe(true);
-      expect(Array.isArray(entry.mip.quimico.observacoes)).toBe(true);
+      expect(entry.mip).not.toHaveProperty('quimico');
+      expect(entry.mip).not.toHaveProperty('mecanico');
+      expect(entry).not.toHaveProperty('rotacaoResistencia');
 
       // monitoramento
       expect(entry.monitoramento).toBeDefined();
@@ -94,14 +92,12 @@ describe('MIP catalog — load + schema integrity', () => {
     }
   });
 
-  it('quando ingredientesAtivos é não-vazio, cada IA tem nome + grupo IRAC/FRAC', () => {
+  it('não embute produto, ingrediente ativo, dose ou intervalo prescritivo', () => {
     for (const entry of MIP_CATALOG) {
-      for (const ia of entry.mip.quimico.ingredientesAtivos) {
-        expect(ia.nome).toBeTruthy();
-        expect(ia.graudeIRACouFRAC).toBeTruthy();
-        // Grupo segue padrão "IRAC <X>" ou "FRAC <X>" ou "HRAC <X>"
-        expect(ia.graudeIRACouFRAC).toMatch(/^(IRAC|FRAC|HRAC)\s+/);
-      }
+      const serialized = JSON.stringify(entry);
+      expect(serialized).not.toMatch(
+        /ingredientesAtivos|produtosComerciais|dosagem|intervaloAplicacoes|carencia/i,
+      );
     }
   });
 
@@ -153,7 +149,7 @@ describe('MIP catalog — coverage por cultura prioritária', () => {
     expect(stats.total).toBe(MIP_CATALOG.length);
 
     // Soma de byType deve bater com total
-    const sumType = stats.byType.praga + stats.byType.doenca + stats.byType['erva-daninha'];
+    const sumType = stats.byType.praga + stats.byType.doenca;
     expect(sumType).toBe(stats.total);
   });
 });

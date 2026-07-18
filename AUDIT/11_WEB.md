@@ -1,5 +1,9 @@
 # 11_WEB — Auditoria da Plataforma WEB · Rumo Pragas IA
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESTADO WEB ATUAL.**
+> Use `docs/audit/launch-coverage-2026-07-14.md`; a landing pública vive em repositório separado.
+
 **Data:** 2026-07-02 · **Branch:** `perfect/pragas-launch-2026-07-02` (read-only) · **Fase:** 11 (WEB)
 **Escopo:** `expo export --platform web` + `vercel.json` + `api/**/*.ts` serverless + deploy Vercel + SPA/deep-links + offline no web.
 

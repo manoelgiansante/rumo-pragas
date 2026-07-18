@@ -1,0 +1,19 @@
+appId: com.agrorumo.rumopragas
+tags:
+  - offline
+  - recovery
+---
+- runFlow: auth-flow.yaml
+- assertVisible:
+    id: "home-cta-diagnose"
+- runFlow:
+    when:
+      visible:
+        id: "failed-diagnosis-.*"
+    commands:
+      - assertVisible:
+          id: "failed-diagnosis-retry-.*"
+      - assertVisible:
+          id: "failed-diagnosis-discard-.*"
+      - tapOn:
+          id: "failed-diagnosis-retry-.*"

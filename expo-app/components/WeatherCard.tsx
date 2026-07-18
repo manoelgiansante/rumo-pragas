@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { PremiumCard } from './PremiumCard';
 import {

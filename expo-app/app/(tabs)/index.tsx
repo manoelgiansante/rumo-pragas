@@ -9,7 +9,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import {
   Colors,
@@ -24,7 +24,7 @@ import { PremiumCard } from '../../components/PremiumCard';
 import { WeatherCard } from '../../components/WeatherCard';
 import { AlertCard } from '../../components/AlertCard';
 import { HomeScreenSkeleton } from '../../components/HomeScreenSkeleton';
-import { supabase } from '../../services/supabase';
+import { fetchDiagnosisCount } from '../../services/diagnosis';
 import { fetchWeather } from '../../services/weather';
 import type { WeatherData } from '../../services/weather';
 import { generateAlerts } from '../../services/alerts';
@@ -32,10 +32,18 @@ import type { PestAlert } from '../../services/alerts';
 import type { WeatherCardData } from '../../components/WeatherCard';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
-import { getQueueCount } from '../../services/diagnosisQueue';
-import { schedulePestAlertNotifications } from '../../services/notifications';
+import {
+  discardFailedDiagnosis,
+  FailedDiagnosis,
+  getFailedQueue,
+  getQueueCount,
+  retryFailedDiagnosis,
+  subscribeDiagnosisQueue,
+} from '../../services/diagnosisQueue';
+import { scheduleClimateRiskNotifications } from '../../services/notifications';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
+import { showAlert } from '../../services/dialog';
 
 const TIP_KEYS = [
   { icon: 'leaf', titleKey: 'home.tips.monitorTitle', descKey: 'home.tips.monitorDesc' },
@@ -68,6 +76,8 @@ export default function HomeScreen() {
   const [weatherError, setWeatherError] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState(false);
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
+  const [failedDiagnoses, setFailedDiagnoses] = useState<FailedDiagnosis[]>([]);
+  const [recoveringId, setRecoveringId] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const hasScheduledNotifications = useRef(false);
 
@@ -82,8 +92,8 @@ export default function HomeScreen() {
     const highAlerts = alerts.filter((a) => a.severity === 'high');
     if (highAlerts.length > 0) {
       hasScheduledNotifications.current = true;
-      schedulePestAlertNotifications(alerts).catch((err) => {
-        if (__DEV__) console.warn('[Home] Falha ao agendar notificacoes de alerta:', err);
+      scheduleClimateRiskNotifications(alerts).catch(() => {
+        if (__DEV__) console.warn('[Home] Falha ao agendar alerta climático local');
       });
     }
   }, [alerts]);
@@ -95,17 +105,23 @@ export default function HomeScreen() {
     return t('home.goodEvening');
   }, [t]);
 
+  const loadQueueState = useCallback(async () => {
+    const [pending, failed] = user?.id
+      ? await Promise.all([getQueueCount(user.id), getFailedQueue(user.id)])
+      : [0, []];
+    setPendingQueueCount(pending);
+    setFailedDiagnoses(failed);
+  }, [user?.id]);
+
   const loadData = useCallback(async () => {
     // Run all data fetches in parallel for faster loading
     const promises: Promise<void>[] = [];
 
     // Check for pending offline diagnoses
     promises.push(
-      getQueueCount()
-        .then((qCount) => setPendingQueueCount(qCount))
-        .catch((err) => {
-          if (__DEV__) console.warn('[Home] Queue count fetch failed:', err);
-        }),
+      loadQueueState().catch((err) => {
+        if (__DEV__) console.warn('[Home] Queue state fetch failed:', err);
+      }),
     );
 
     if (location) {
@@ -127,8 +143,8 @@ export default function HomeScreen() {
                 forecast: w.forecast,
               });
             }
-          } catch (err) {
-            if (__DEV__) console.error('[Home] Erro ao buscar clima:', err);
+          } catch {
+            if (__DEV__) console.warn('[Home] Falha ao buscar clima');
             setWeatherError(true);
           }
         })(),
@@ -140,14 +156,9 @@ export default function HomeScreen() {
         (async () => {
           try {
             setDiagnosisError(false);
-            const { count, error } = await supabase
-              .from('pragas_diagnoses')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', user.id);
-            if (error) throw error;
-            setDiagnosisCount(count ?? 0);
-          } catch (err) {
-            if (__DEV__) console.error('[Home] Erro ao buscar diagnosticos:', err);
+            setDiagnosisCount(await fetchDiagnosisCount(session.access_token, user.id));
+          } catch {
+            if (__DEV__) console.warn('[Home] Falha ao buscar diagnósticos');
             setDiagnosisError(true);
           }
         })(),
@@ -155,13 +166,13 @@ export default function HomeScreen() {
     }
 
     await Promise.all(promises);
-  }, [location, cityName, session, user]);
+  }, [location, cityName, session, user, loadQueueState]);
 
   // QW-1 (W16-1, 2026-05-22): Location prompt moved to consent-location.tsx#handleAccept.
   // Do NOT fire getCurrentLocation() here — it would re-prompt users who already
   // declined LGPD consent (effectively bypassing their choice) and re-show the OS
-  // dialog every time Home remounts. The diagnosis flow (app/diagnosis/loading.tsx)
-  // still calls getCurrentLocation() at point-of-use which is the correct moment.
+  // dialog every time Home remounts. Diagnosis uses the consent-aware location
+  // method, which verifies app consent before touching native location APIs.
   useEffect(() => {
     let mounted = true;
     loadData().finally(() => {
@@ -171,6 +182,44 @@ export default function HomeScreen() {
       mounted = false;
     };
   }, [loadData]);
+
+  useEffect(() => subscribeDiagnosisQueue(loadQueueState), [loadQueueState]);
+
+  const retryFailed = useCallback(
+    async (id: string) => {
+      setRecoveringId(id);
+      try {
+        if (!user?.id) return;
+        await retryFailedDiagnosis(id, user.id);
+        await loadQueueState();
+      } catch {
+        showAlert(t('common.error'), t('home.failedRetryError'));
+      } finally {
+        setRecoveringId(null);
+      }
+    },
+    [loadQueueState, t, user?.id],
+  );
+
+  const confirmDiscardFailed = useCallback(
+    (id: string) => {
+      showAlert(t('home.failedDiscardTitle'), t('home.failedDiscardMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('home.failedDiscardAction'),
+          style: 'destructive',
+          onPress: () => {
+            setRecoveringId(id);
+            (user?.id ? discardFailedDiagnosis(id, user.id) : Promise.resolve())
+              .then(loadQueueState)
+              .catch(() => showAlert(t('common.error'), t('home.failedDiscardError')))
+              .finally(() => setRecoveringId(null));
+          },
+        },
+      ]);
+    },
+    [loadQueueState, t, user?.id],
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -362,6 +411,57 @@ export default function HomeScreen() {
             <Text style={styles.pendingText}>
               {pendingQueueCount} {t('home.pendingDiagnoses')} — {t('home.waitingConnection')}
             </Text>
+          </View>
+        )}
+
+        {failedDiagnoses.length > 0 && (
+          <View style={styles.failedQueueCard} accessibilityRole="alert">
+            <View style={styles.failedQueueHeader}>
+              <Ionicons name="warning-outline" size={20} color={Colors.coral} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.failedQueueTitle}>{t('home.failedDiagnosesTitle')}</Text>
+                <Text style={styles.failedQueueDescription}>
+                  {t('home.failedDiagnosesDescription')}
+                </Text>
+              </View>
+            </View>
+            {failedDiagnoses.map((item) => (
+              <View
+                key={item.id}
+                style={styles.failedQueueItem}
+                testID={`failed-diagnosis-${item.id}`}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.failedQueueCrop}>{item.cropType}</Text>
+                  <Text style={styles.failedQueueDate}>
+                    {new Date(item.createdAt).toLocaleString()}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  testID={`failed-diagnosis-retry-${item.id}`}
+                  style={styles.failedRetryButton}
+                  onPress={() => retryFailed(item.id)}
+                  disabled={recoveringId !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('home.failedRetryA11y', { crop: item.cropType })}
+                  accessibilityState={{ disabled: recoveringId !== null }}
+                >
+                  <Ionicons name="refresh" size={16} color={Colors.white} />
+                  <Text style={styles.failedRetryText}>{t('common.retry')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID={`failed-diagnosis-discard-${item.id}`}
+                  style={styles.failedDiscardButton}
+                  onPress={() => confirmDiscardFailed(item.id)}
+                  disabled={recoveringId !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('home.failedDiscardA11y', { crop: item.cropType })}
+                  accessibilityState={{ disabled: recoveringId !== null }}
+                >
+                  <Ionicons name="trash-outline" size={18} color={Colors.coral} />
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
         )}
 
@@ -663,5 +763,68 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semibold,
     fontWeight: '600',
     color: Colors.earthText,
+  },
+  failedQueueCard: {
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: `${Colors.coral}45`,
+    borderRadius: BorderRadius.md,
+    backgroundColor: `${Colors.coral}0D`,
+  },
+  failedQueueHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  failedQueueTitle: {
+    color: Colors.coral,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.subheadline,
+  },
+  failedQueueDescription: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  failedQueueItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.separator,
+  },
+  failedQueueCrop: {
+    color: Colors.text,
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.caption,
+  },
+  failedQueueDate: {
+    color: Colors.textTertiary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption2,
+    marginTop: 2,
+  },
+  failedRetryButton: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.accent,
+  },
+  failedRetryText: {
+    color: Colors.white,
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.caption,
+  },
+  failedDiscardButton: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.md,
+    backgroundColor: `${Colors.coral}14`,
   },
 });

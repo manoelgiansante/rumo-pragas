@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 2,
+  "app": "rumo-pragas",
+  "exportedAt": "2026-07-14T12:00:00.000Z",
+  "manifest": {
+    "complete": true,
+    "truncated": false,
+    "totalRows": 0,
+    "totalBytes": 0,
+    "consistency": {
+      "snapshotAt": "2026-07-14T12:00:00.000Z",
+      "pagination": "immutable-keyset+notification-locked-snapshot",
+      "membershipCutoff": "created/accepted/started timestamp <= snapshotAt; chatUsage year_month <= UTC snapshot month",
+      "accountStateRevalidated": true
+    },
+    "includedColumns": {
+      "preferences": [
+        "user_id",
+        "share_location",
+        "share_location_purpose",
+        "consented_at",
+        "location_consent_revision",
+        "updated_at"
+      ],
+      "locationConsentDecisions": [
+        "user_id",
+        "decision_id",
+        "observed_revision",
+        "applied_revision",
+        "share_location",
+        "purpose",
+        "consented_at",
+        "outcome",
+        "resulting_share_location",
+        "created_at"
+      ]
+    },
+    "excludedBinaryFields": [
+      "pragas_diagnoses.image_url"
+    ],
+    "retentionWindows": {
+      "locationConsentDecisions": {
+        "maximumRowsPerUser": 256,
+        "ordering": "created_at DESC, decision_id DESC",
+        "currentStateDataset": "preferences"
+      }
+    }
+  },
+  "data": {
+    "preferences": [],
+    "locationConsentDecisions": []
+  },
+  "scope": {
+    "excludesLegacyRowsWithoutAppDiscriminator": [
+      "analytics_events",
+      "audit_log"
+    ],
+    "excludesSharedGenericDatasets": [
+      "user_preferences"
+    ]
+  }
+}

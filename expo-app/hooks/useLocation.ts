@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import * as Location from 'expo-location';
 import i18n from '../i18n';
+import { minimizeCoordinates } from '../services/locationPrivacy';
+import { hasLocationConsent } from '../services/userPreferences';
 
 interface LocationState {
   location: { latitude: number; longitude: number } | null;
@@ -8,6 +10,8 @@ interface LocationState {
   isLoading: boolean;
   error: string | null;
 }
+
+const APP_CONSENT_LOOKUP_TIMEOUT_MS = 2_000;
 
 export function useLocation() {
   const [state, setState] = useState<LocationState>({
@@ -43,10 +47,8 @@ export function useLocation() {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      const coords = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
+      const coords = minimizeCoordinates(position.coords.latitude, position.coords.longitude);
+      if (!coords) throw new Error(i18n.t('errors.locationError'));
 
       // Reverse geocode to get city name
       let cityName: string | null = null;
@@ -78,9 +80,35 @@ export function useLocation() {
     }
   }, [requestPermission]);
 
+  const getCurrentLocationWithConsent = useCallback(
+    async (userId: string) => {
+      if (!userId.trim()) return null;
+      let consentTimer: ReturnType<typeof setTimeout> | null = null;
+      try {
+        // This check occurs before requestPermission(), so a declined or
+        // unavailable app-level consent can never trigger an OS prompt or a
+        // native coordinate/geocode call.
+        const consented = await Promise.race([
+          hasLocationConsent(userId),
+          new Promise<false>((resolve) => {
+            consentTimer = setTimeout(() => resolve(false), APP_CONSENT_LOOKUP_TIMEOUT_MS);
+          }),
+        ]);
+        if (!consented) return null;
+      } catch {
+        return null;
+      } finally {
+        if (consentTimer) clearTimeout(consentTimer);
+      }
+      return getCurrentLocation();
+    },
+    [getCurrentLocation],
+  );
+
   return {
     ...state,
     requestPermission,
     getCurrentLocation,
+    getCurrentLocationWithConsent,
   };
 }

@@ -1,167 +1,86 @@
-# Meta Ads Copy — Rumo Pragas Launch (5 variações cada)
+# Variações de anúncios Meta — Rumo Pragas
 
-**Objetivo da campanha:** App Install (iOS + Android)
-**Orçamento inicial sugerido:** R$100/dia por 7 dias (R$700 test budget)
-**Targeting:** Brasil, 25-55 anos, interesses: agricultura, soja, pecuária, agronegócio, fazenda, máquinas agrícolas; comportamentos: pequenos produtores rurais, owners de pequenos negócios agro
-**Placements:** Feed Instagram + Facebook + Reels (iniciar, depois expandir com winner)
-**CBO:** Advantage+ Campaign Budget, deixar algoritmo distribuir entre criativos
+**Status:** copy candidata. A criação de campanha, orçamento e publicação exigem autorização
+operacional separada. Nenhuma variante usa medo, resultado econômico, acurácia, velocidade ou
+prescrição.
 
----
+## Variante A — Triagem visual
 
-## PRIMARY TEXT (125 chars) — 5 VARIAÇÕES
+**Texto principal:**
+Encontrou um sinal diferente na planta? Envie uma foto pelo Rumo Pragas e receba uma hipótese
+probabilística, confiança e possíveis alternativas para apoiar a triagem. Gratuito no iOS e Android.
+A IA pode errar e não substitui avaliação profissional.
 
-### V1 — Dor/número
-```
-Ferrugem asiática leva 48h pra identificar. 30% da safra pode ir embora. Agora são 5 segundos. Baixa grátis.
-```
-**Char count:** 119
+**Headline:** Uma foto para começar a triagem
 
-### V2 — Pergunta direta
-```
-Já perdeu lavoura porque demorou pra identificar a praga? Esse app resolve em 5 segundos com foto. 82,5% de acurácia.
-```
-**Char count:** 125
+**Descrição:** Hipótese visual e alternativas. Não é receituário.
 
-### V3 — Prova social hard
-```
-82,5% de acurácia validada em campo. Tira foto da folha, IA identifica a praga na hora. Soja, milho, café, algodão.
-```
-**Char count:** 123
+**CTA:** Baixar
 
-### V4 — Story do fundador
-```
-"Meu amigo perdeu 30% da soja em 48h pra ferrugem." Por isso construí o Rumo Pragas. IA identifica praga em 5s.
-```
-**Char count:** 122
+## Variante B — Transparência
 
-### V5 — Benefício concreto
-```
-Identifique praga agrícola em 5 segundos com a câmera do celular. Grátis pra começar. iOS + Android. 🌾
-```
-**Char count:** 113
+**Texto principal:**
+IA útil começa com limites claros. O Rumo Pragas analisa a imagem e organiza uma hipótese visual
+para você comparar em campo. Sem promessa de certeza, produto ou dose. Aplicativo gratuito.
 
----
+**Headline:** Contexto para observar melhor
 
-## HEADLINES (27 chars) — 5 VARIAÇÕES
+**Descrição:** Confirme situações relevantes com profissional habilitado.
 
-### V1 — Dor
-```
-Praga identificada em 5s
-```
-**Char count:** 24
+**CTA:** Saiba mais
 
-### V2 — Dado
-```
-82,5% acurácia em campo
-```
-**Char count:** 23
+## Variante C — Conexão instável
 
-### V3 — Ação
-```
-Foto → Diagnóstico → Ação
-```
-**Char count:** 25
+**Texto principal:**
+A conexão caiu durante o envio? O Rumo Pragas pode manter a solicitação na fila do aparelho e
+reenviar quando a rede voltar. A análise acontece online e o resultado permanece probabilístico.
 
-### V4 — Simples
-```
-Rumo Pragas. Grátis. 🌾
-```
-**Char count:** 22
+**Headline:** Fila segura para reconexão
 
-### V5 — Resultado
-```
-Salve sua safra. Baixe já.
-```
-**Char count:** 26
+**Descrição:** A inferência não acontece offline.
 
----
+**CTA:** Baixar
 
-## CTA BUTTONS — 5 VARIAÇÕES (testar qual converte melhor)
+## Variante D — Biblioteca e histórico
 
-1. **Baixar** — Direto, mais universal
-2. **Instalar Agora** — Urgência suave
-3. **Saiba Mais** — Soft-sell, gera mais tráfego pra landing pra qualificar
-4. **Experimente Grátis** — Reforça "free to start"
-5. **Baixar App** — Explicit app install
+**Texto principal:**
+Organize hipóteses visuais no histórico e consulte conteúdo educativo de monitoramento e MIP. O Rumo
+Pragas é gratuito e não tem assinatura, compra interna ou anúncio.
 
-**Recomendação:** Começar com "Baixar" em 3 ad sets + "Experimente Grátis" em 2 ad sets. Depois de 72h, escalar o winner.
+**Headline:** Triagem, histórico e biblioteca
 
----
+**Descrição:** Conteúdo educativo para apoiar a inspeção.
 
-## MATRIZ DE TESTE (5x5 = 25 combinações no Advantage+)
+**CTA:** Baixar
 
-Advantage+ Creative permite combinar 5 primary text + 5 headlines + 5 CTAs automaticamente. O algoritmo Meta testa todas as combinações e destaca winners.
+## Variante E — Assistente educativo
 
-| Dimensão | Total |
-|----------|-------|
-| Primary text | 5 |
-| Headlines | 5 |
-| CTAs | 5 |
-| **Total combinações** | **125** (Meta escolhe automaticamente) |
+**Texto principal:**
+Use o assistente do Rumo Pragas para organizar dúvidas gerais sobre sinais, monitoramento e manejo
+integrado. A resposta da IA pode conter erros e não substitui engenheiro agrônomo.
 
----
+**Headline:** Perguntas gerais sobre MIP
 
-## ASSETS DE IMAGEM/VÍDEO (recomendação)
+**Descrição:** Sem laudo, prescrição, produto ou dose.
 
-### Criativo 1 — Vídeo demo 15s (reuso TikTok)
-Screen record do app + voz off + texto on-screen
+**CTA:** Saiba mais
 
-### Criativo 2 — Carrossel 5 cards
-- Card 1: Problema (folha com ferrugem)
-- Card 2: Frustração (celular no campo)
-- Card 3: Solução (app abrindo)
-- Card 4: Resultado (diagnóstico)
-- Card 5: CTA (download)
+## Disclaimer obrigatório em todas as peças
 
-### Criativo 3 — Image estática 1:1
-Split-screen: folha com praga (esquerda) + tela do app com diagnóstico (direita) + overlay "82,5% ACURÁCIA"
+> Hipótese probabilística e educativa. Confirme em campo com engenheiro agrônomo habilitado. Não é
+> laudo ou receituário. Consulte produtos e condições de uso no AGROFIT.
 
-### Criativo 4 — Vídeo testimonial 20s
-Produtor real (Rafael ou similar) falando pra câmera + b-roll lavoura
+## Ativos permitidos
 
-### Criativo 5 — Static com números gigantes
-Fundo verde + "82,5%" gigante + subtexto "acurácia validada em campo"
+- captura real do candidato final, sem alterar o conteúdo da tela;
+- folha ou lavoura com licença de uso comprovada;
+- demonstração da fila identificada claramente como reconexão, nunca como inferência offline;
+- marca e ícones oficiais.
 
----
+## Ativos proibidos
 
-## SAFETY RULES APLICADAS (anti-ban)
-
-Conforme `critical_meta_ads_anti_ban.md`:
-
-✅ Sem income claims ("ganhe R$X", "economize garantido")
-✅ Sem before/after sem disclaimer
-✅ Sem health claims ("cura", "garantido")
-✅ Sem escassez falsa ("últimos dias", "só hoje")
-✅ Criar ads manualmente, não via loop automatizado
-✅ Não criar >5 ads de uma vez (mass create)
-✅ Respeitar WRITE_INTERVAL_MS >= 1500 se criar via API
-✅ Audit log em `ads_actions_log` antes/depois de cada write
-✅ NÃO subir campanha entre 23h-6h BRT
-
-**Compliance agro adicional:**
-- Evitar recomendações específicas de produto químico nos ads (nome de fungicida/inseticida) — Lei 7.802/89 impõe restrições
-- Sempre mencionar "IA" ou "app" como ferramenta de apoio, nunca substituto de agrônomo
-- Não prometer "100% de identificação" — sempre usar "82,5% de acurácia validada"
-
----
-
-## MÉTRICAS DE SUCESSO (benchmark launch week)
-
-| Métrica | Benchmark agro BR | Meta Rumo Pragas |
-|---------|-------------------|------------------|
-| CTR | 1,2-1,8% | 1,5%+ |
-| CPM | R$15-25 | < R$30 |
-| CPI (cost per install) | R$8-15 | < R$12 |
-| Install → Open rate | 70%+ | 80%+ |
-| Cost per signup | R$15-25 | < R$20 |
-
----
-
-## KILL CRITERIA (quando pausar)
-
-- CTR < 0,5% em 48h com >R$100 gastos → pausar ad set
-- CPI > R$25 em 48h com >R$150 gastos → pausar ad set
-- Frequência > 5.0 → adicionar novos criativos ou ampliar audience
-- Zero conversões em 72h com R$200 gastos → reavaliar targeting completo
-
-**Regra de escala (Safety Rules):** Aguardar 72h entre scale-ups. Máximo +20% por scale. Nunca escalar em fim de semana.
+- depoimento sem pessoa real, consentimento e evidência;
+- número de acurácia, tempo, usuários, culturas, pragas, hectares ou economia sem estudo aprovado;
+- produto, ingrediente ativo, dose, intervalo, carência, janela ou ordem de aplicação;
+- promessa de salvar safra, evitar perda ou substituir profissional;
+- selo de “validado em campo” sem protocolo e relatório verificáveis.

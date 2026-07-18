@@ -3,85 +3,187 @@ name: CI
 on:
   push:
     branches: [main, develop]
-  pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Type Check
+  app-quality:
+    name: App quality gate
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: expo-app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: expo-app/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      # Use the typecheck script (node --stack-size=16000) — plain `tsc` crashes
-      # on this codebase with RangeError: Maximum call stack size exceeded.
-      # Code is 0-error; the crash is a V8 default-stack limit, not a type error.
-      - run: npm run typecheck
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: expo-app
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: expo-app/package-lock.json
-      - run: npm ci
-      - run: npm test -- --coverage --ci
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: expo-app/coverage/
-
-  eas-build:
-    name: EAS Build Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint-and-typecheck, test]
-    # Never block CI on this convenience check. Without an EXPO_TOKEN secret the
-    # build cannot run, and auto-triggering a paid cloud build on every main
-    # merge is disallowed by policy (builds must be run with `eas build --local`).
-    # The steps below short-circuit when the token is absent.
-    continue-on-error: true
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: expo-app
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      CI: true
+      EXPO_NO_TELEMETRY: 1
     steps:
-      - name: Skip note when EXPO_TOKEN is not configured
-        if: env.EXPO_TOKEN == ''
-        working-directory: ${{ github.workspace }}
-        run: echo "EXPO_TOKEN secret not set — skipping EAS Build Check (non-blocking)."
-      - uses: actions/checkout@v4
-        if: env.EXPO_TOKEN != ''
-      - uses: actions/setup-node@v4
-        if: env.EXPO_TOKEN != ''
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          node-version: 20
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Node 22.22.3
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22.22.3
           cache: npm
           cache-dependency-path: expo-app/package-lock.json
-      - uses: expo/expo-github-action@v8
-        if: env.EXPO_TOKEN != ''
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Dependency security audit
+        run: npm audit --audit-level=low
+
+      - name: Release version, metadata and claims
+        working-directory: .
+        run: node expo-app/scripts/validate-release-surfaces.mjs
+
+      - name: Native release configuration
+        run: npm run validate:native-config
+
+      - name: EAS local build log redaction
+        run: npm run test:eas-redactor
+
+      - name: Store release gates
+        run: npm run test:store-release-gates
+
+      - name: Data Safety contract tests
+        run: npm run test:data-safety
+
+      - name: Store screenshot QA harness
+        run: npm run test:store-screenshot-qa-server
+
+      - name: Release bundle environment gate
+        run: npm run test:release-bundle-env
+
+      - name: Web security and routing configuration
+        run: npm run validate:web-config
+
+      - name: Diagnosis API contract
+        run: npm run validate:diagnosis-contract
+
+      - name: MCP 2025-11-25 SDK interoperability
+        run: npm run validate:mcp-sdk
+
+      - name: Expo configuration health
+        run: npx --yes expo-doctor@1.20.0
+
+      - name: Expo public config sanity
+        run: npx expo config --type public --json > /dev/null
+
+      - name: Expo prebuild config sanity
+        run: npx expo config --type prebuild --json > /dev/null
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and integration tests
+        run: npm test -- --coverage --ci
+
+      - name: Export web production bundle
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Upload coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          eas-version: latest
-          token: ${{ env.EXPO_TOKEN }}
-      - run: npm ci
-        if: env.EXPO_TOKEN != ''
-      - run: eas build --platform all --profile production --non-interactive --no-wait
-        if: env.EXPO_TOKEN != ''
+          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: expo-app/coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload web export
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: web-export-${{ github.run_id }}-${{ github.run_attempt }}
+          path: expo-app/dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Store submission assets (fail closed)
+        id: store_assets
+        run: npm run validate:store-assets
+
+      - name: Data Safety app and canonical web declaration
+        if: ${{ success() || steps.store_assets.outcome == 'failure' }}
+        run: node scripts/validate-data-safety.mjs --landing-policy-url https://pragas.agrorumo.com/privacidade
+
+  supabase-quality:
+    name: Supabase Edge quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install ripgrep for fail-closed source gates
+        working-directory: .
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends ripgrep
+          fi
+          rg --version
+
+      - name: Node 22.22.3
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22.22.3
+
+      - name: Supabase CLI 2.98.2
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.98.2
+
+      - name: Verify Supabase CLI pin
+        run: |
+          if [[ "$(supabase --version)" != "2.98.2" ]]; then
+            echo "Supabase CLI 2.98.2 is required." >&2
+            exit 1
+          fi
+
+      - name: Deno 2.7.12
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.7.12
+
+      - name: Reject merge-conflict markers
+        working-directory: .
+        run: |
+          if rg --line-number '^(<<<<<<<|=======|>>>>>>>)' supabase; then
+            echo 'Merge conflict markers found in Supabase sources.' >&2
+            exit 1
+          else
+            rg_status=$?
+            if [[ "$rg_status" -ne 1 ]]; then
+              echo "Supabase conflict-marker scan failed with status $rg_status." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Format, lint, typecheck and test Edge Functions
+        run: deno task gate
+
+      - name: Production compatibility static and unit gate
+        working-directory: .
+        run: bash supabase/tests/pragas-prod-compat-gate-static.sh
+
+      - name: PostgreSQL 17 migration, replay and rollback integration
+        working-directory: .
+        run: bash supabase/tests/pragas-backend-security-integration.sh

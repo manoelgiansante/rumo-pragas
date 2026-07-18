@@ -1,0 +1,20 @@
+# Allowlist cirúrgica: digests SHA-256 de pinning do gate de deploy.
+# Um digest da chave (hash não-invertível) NÃO é a credencial — o gate
+# versiona o fingerprint exatamente para nunca precisar da chave em claro.
+# Qualquer outro padrão de segredo continua bloqueado pelas regras default.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "SHA-256 pin digests versionados do deploy gate (não são credenciais)"
+regexTarget = "line"
+regexes = [
+  '''REVIEWED_APPLE_SIGN_IN_PRIVATE_KEY_SHA256="[0-9a-f]{64}"''',
+  '''keystoreSha256: '[0-9a-f]{64}'''',
+  '''keytoolSha256: '[0-9a-f]{64}'''',
+  '''PERSISTED_RECEIPT_KEY_PREFIX = 'rumopragas\.global-deletion-receipt\.v1\.'''',
+]
+paths = [
+  '''expo-app/scripts/native-pins/Podfile\.lock''',
+]

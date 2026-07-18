@@ -91,15 +91,12 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Intensidade de Infestação (II) < 3 %',
-        acao: 'Liberação Cotesia flavipes (parasitoide) — eficaz e econômico',
       },
       medio: {
         criterio: 'II 3-8 %',
-        acao: 'Cotesia + parcelamento Trichogramma + monitoramento intenso',
       },
       alto: {
         criterio: 'II > 8 %',
-        acao: 'Aplicação química seletiva + biológicos próximo corte',
       },
     },
     mip: {
@@ -115,48 +112,7 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
         'Beauveria bassiana',
         'Metarhizium anisopliae',
       ],
-      mecanico: ['Análise destrutiva pré-corte para medir II'],
-      quimico: {
-        classes: ['diamidas', 'reguladores de crescimento'],
-        ingredientesAtivos: [
-          {
-            nome: 'Clorantraniliprole',
-            graudeIRACouFRAC: 'IRAC 28',
-            produtosComerciais: [
-              {
-                nome: 'Diamida ribodina',
-                formulacao: 'SC',
-                dosagem: '200-300 mL p.c./ha',
-                intervaloAplicacoes: 'Aplicação única estratégica',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-          {
-            nome: 'Flubendiamida',
-            graudeIRACouFRAC: 'IRAC 28',
-            produtosComerciais: [
-              {
-                nome: 'Diamida ftalica',
-                formulacao: 'SC',
-                dosagem: '100-200 mL p.c./ha',
-                intervaloAplicacoes: 'Única',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'Cotesia flavipes é caso de sucesso brasileiro — > 4 milhões ha controle anual',
-          'Diamidas devem ser usadas com responsabilidade (rotação)',
-        ],
-      },
     },
-    rotacaoResistencia:
-      'Liberação massal de Cotesia preserva químicos. Quando químico necessário, usar ' +
-      'apenas IRAC 28 ou 5.',
     monitoramento: {
       metodo:
         'Análise destrutiva: cortar 25 colmos/talhão, contar internódios com galerias / ' +
@@ -164,9 +120,6 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
       frequencia: 'Mensal',
       nivelControle: 'II = 3 % é nível de ação',
     },
-    observacoesAgronomicas:
-      'Praga histórica #1 da cana brasileira. Programa de Cotesia flavipes é referência ' +
-      'mundial. Cada 1 % de II reduz ~0,2-0,3 tcc/ha + perda ATR.',
     referencias: [REF_RIDESA, REF_IAC, REF_IRAC, REF_MAPA],
   },
 
@@ -204,68 +157,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 adultos/m²',
-        acao: 'Metarhizium anisopliae — eficaz e barato',
       },
       medio: {
         criterio: '5-10 adultos/m²',
-        acao: 'Metarhizium + aplicação química se ascendendo',
       },
       alto: {
         criterio: '> 10 adultos/m²',
-        acao: 'Aplicação química foliar/solo',
       },
     },
     mip: {
       cultural: ['Cultivares menos suscetíveis', 'Drenagem de áreas baixas'],
       biologico: ['Metarhizium anisopliae — controle massal brasileiro', 'Beauveria bassiana'],
-      mecanico: ['Inspeção da base'],
-      quimico: {
-        classes: ['neonicotinoides', 'piretroides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam (sulco/foliar)',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Tiametoxam 250 WG',
-                formulacao: 'WG',
-                dosagem: '200-300 g p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-          {
-            nome: 'Fipronil (sulco plantio)',
-            graudeIRACouFRAC: 'IRAC 2B',
-            produtosComerciais: [
-              {
-                nome: 'Fipronil 800 WG',
-                formulacao: 'WG',
-                dosagem: 'Conforme bula plantio',
-                intervaloAplicacoes: 'Única',
-                intervaloSegurancaDias: 14,
-                carencia: 365,
-              },
-            ],
-          },
-        ],
-        observacoes: [
-          'Metarhizium = controle massal #1 na cana brasileira',
-          'Aplicar em condições de alta umidade do solo',
-        ],
-      },
     },
-    rotacaoResistencia: 'Priorizar Metarhizium. Químicos apenas em pressão alta.',
     monitoramento: {
       metodo: 'Quadrado de 1 m² + contagem adultos/ninfas',
       frequencia: 'Quinzenal out-abr',
       nivelControle: '5 adultos/m² ou 4-5 espumas/m²',
     },
-    observacoesAgronomicas:
-      'Pragas crescente desde adoção da colheita mecânica + palhada. Metarhizium é ' +
-      'a solução brasileira mais usada.',
     referencias: [REF_RIDESA, REF_IAC, REF_IRAC, REF_MAPA],
   },
 
@@ -302,51 +210,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Focos pequenos',
-        acao: 'Monitoramento + Metarhizium',
       },
       medio: {
         criterio: 'Manchões emergindo',
-        acao: 'Aplicação química sulco + Metarhizium',
       },
       alto: {
         criterio: 'Talhões com falhas grandes',
-        acao: 'Reforma + nematicida/inseticida sistêmico',
       },
     },
     mip: {
       cultural: ['Reforma + descompactação', 'Cultivares vigorosas'],
       biologico: ['Metarhizium anisopliae', 'Beauveria bassiana'],
-      mecanico: ['Amostragem de solo'],
-      quimico: {
-        classes: ['fenil pirazóis', 'organofosforados solo'],
-        ingredientesAtivos: [
-          {
-            nome: 'Fipronil',
-            graudeIRACouFRAC: 'IRAC 2B',
-            produtosComerciais: [
-              {
-                nome: 'Fipronil sulco',
-                formulacao: 'WG',
-                dosagem: 'Conforme bula plantio/reforma',
-                intervaloAplicacoes: 'Única',
-                intervaloSegurancaDias: 14,
-                carencia: 365,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Tratar no plantio/reforma é crítico — pós-emergência é caro'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 2B → 4A. Biológicos preservam moléculas.',
     monitoramento: {
       metodo: 'Amostragem solo (trincheira ou trado)',
       frequencia: 'Pré-reforma e pós-plantio',
       nivelControle: '1 larva/m² em amostragem',
     },
-    observacoesAgronomicas:
-      'Praga subterrânea de difícil monitoramento. Manejo preventivo na reforma é ' +
-      'a melhor estratégia.',
     referencias: [REF_RIDESA, REF_IAC, REF_IRAC, REF_MAPA],
   },
 
@@ -381,49 +261,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 0,5 adulto/m linear',
-        acao: 'Beauveria + monitoramento',
       },
       medio: {
         criterio: '0,5-1 adulto/m',
-        acao: 'Aplicação sulco + Beauveria',
       },
       alto: {
         criterio: '> 1 adulto/m',
-        acao: 'Reforma antecipada + controle químico',
       },
     },
     mip: {
       cultural: ['Reforma planejada', 'Cultivares vigorosas'],
       biologico: ['Beauveria bassiana', 'Metarhizium'],
-      mecanico: ['Armadilhas de cana cortada'],
-      quimico: {
-        classes: ['neonicotinoides', 'fenil pirazóis'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam (sulco)',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Tiametoxam sulco',
-                formulacao: 'WG',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: 'Plantio/reforma',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Armadilhas com toletes ajudam monitoramento'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 4A → 2B com biológicos.',
     monitoramento: {
       metodo: 'Armadilhas de toletes (1/ha)',
       frequencia: 'Mensal',
       nivelControle: '0,5 adulto/m linear',
     },
-    observacoesAgronomicas: 'Praga difícil — monitoramento por armadilhas é essencial.',
     referencias: [REF_RIDESA, REF_IRAC, REF_MAPA],
   },
 
@@ -457,49 +311,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Falhas isoladas',
-        acao: 'Aplicação preventiva sulco',
       },
       medio: {
         criterio: 'Falhas em manchões',
-        acao: 'Tratamento toletes + sulco',
       },
       alto: {
         criterio: 'Stand muito comprometido',
-        acao: 'Replantio',
       },
     },
     mip: {
       cultural: ['Cultivares vigorosas', 'Limpeza terreno pré-plantio'],
       biologico: ['Metarhizium'],
-      mecanico: ['Inspeção solo'],
-      quimico: {
-        classes: ['fenil pirazóis', 'neonicotinoides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Fipronil (sulco/toletes)',
-            graudeIRACouFRAC: 'IRAC 2B',
-            produtosComerciais: [
-              {
-                nome: 'Fipronil',
-                formulacao: 'WG',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: 'Plantio',
-                intervaloSegurancaDias: 14,
-                carencia: 365,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Tratamento toletes resolve maioria dos casos'],
-      },
     },
-    rotacaoResistencia: 'Tratamento preventivo no plantio é mais eficaz.',
     monitoramento: {
       metodo: 'Inspeção solo + falhas brotação',
       frequencia: 'Plantio + brotação',
       nivelControle: 'Histórico de área',
     },
-    observacoesAgronomicas: 'Manejo é preventivo — não há controle econômico pós-ataque.',
     referencias: [REF_IAC, REF_IRAC, REF_MAPA],
   },
 
@@ -531,49 +359,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Pústulas isoladas',
-        acao: 'Cultivar resistente cobre',
       },
       medio: {
         criterio: 'Severidade 10-20 %',
-        acao: 'Aplicação fungicida',
       },
       alto: {
         criterio: '> 20 %',
-        acao: 'Aplicação + revisão cultivar próximo plantio',
       },
     },
     mip: {
       cultural: ['Cultivares resistentes (RB, IAC, SP)', 'Plantio diversificado'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Azoxistrobina + Ciproconazol',
-            graudeIRACouFRAC: 'FRAC 11 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '0,3-0,4 L p.c./ha',
-                intervaloAplicacoes: '30-45 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 40,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Cultivar resistente é defesa #1'],
-      },
     },
-    rotacaoResistencia: 'Diversificar cultivares.',
     monitoramento: {
       metodo: 'Inspeção visual',
       frequencia: 'Mensal',
       nivelControle: 'Pústulas + clima',
     },
-    observacoesAgronomicas: 'Resistência genética é a defesa primária.',
     referencias: [REF_RIDESA, REF_IAC, REF_FRAC, REF_MAPA],
   },
 
@@ -602,50 +404,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Pústulas isoladas',
-        acao: 'Monitoramento',
       },
       medio: {
         criterio: 'Severidade 10-20 %',
-        acao: 'Aplicação tripla mistura',
       },
       alto: {
         criterio: '> 20 %',
-        acao: 'Aplicação + cultivar resistente',
       },
     },
     mip: {
       cultural: ['Cultivares resistentes', 'Diversificação'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas', 'carboxamidas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tripla mistura',
-            graudeIRACouFRAC: 'FRAC 11 + 7 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Tripla comercial',
-                formulacao: 'SC',
-                dosagem: '0,4-0,6 L p.c./ha',
-                intervaloAplicacoes: '30-45 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 40,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Multissítio em mistura para retardar resistência'],
-      },
     },
-    rotacaoResistencia: 'Rotação FRAC + multissítio + diversificar cultivares.',
     monitoramento: {
       metodo: 'Inspeção visual',
       frequencia: 'Mensal',
       nivelControle: 'Pústulas + clima',
     },
-    observacoesAgronomicas:
-      'Doença muito agressiva em algumas cultivares — monitorar boletins varietais.',
     referencias: [REF_RIDESA, REF_IAC, REF_FRAC, REF_MAPA],
   },
 
@@ -679,15 +454,12 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Plantas isoladas com chicote',
-        acao: 'Eliminação manual + cultivar resistente',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Tratamento de toletes + cultivar resistente',
       },
       alto: {
         criterio: 'Alta incidência',
-        acao: 'Reforma com cultivar resistente',
       },
     },
     mip: {
@@ -697,35 +469,12 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
         'Eliminação de plantas doentes',
       ],
       biologico: [],
-      mecanico: ['Tratamento térmico'],
-      quimico: {
-        classes: ['triazois TS toletes'],
-        ingredientesAtivos: [
-          {
-            nome: 'Triadimenol (TS)',
-            graudeIRACouFRAC: 'FRAC 3',
-            produtosComerciais: [
-              {
-                nome: 'TS triazol',
-                formulacao: 'FS',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: 'Único',
-                intervaloSegurancaDias: 0,
-                carencia: 0,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Tratamento térmico é mais comum'],
-      },
     },
-    rotacaoResistencia: 'Cultivares resistentes + diversificação.',
     monitoramento: {
       metodo: 'Inspeção visual de chicotes',
       frequencia: 'Mensal',
       nivelControle: 'Qualquer planta com chicote',
     },
-    observacoesAgronomicas: 'Doença histórica. Tratamento térmico + cultivar resistente resolvem.',
     referencias: [REF_RIDESA, REF_IAC, REF_FRAC, REF_MAPA],
   },
 
@@ -759,15 +508,12 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Plantas isoladas',
-        acao: 'Eliminação + cultivar resistente',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Reforma parcial',
       },
       alto: {
         criterio: 'Talhão comprometido',
-        acao: 'Reforma + sanitização',
       },
     },
     mip: {
@@ -777,21 +523,12 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
         'Limpeza de ferramentas/máquinas',
       ],
       biologico: [],
-      mecanico: ['Tratamento térmico', 'Desinfecção colheitadeiras'],
-      quimico: {
-        classes: ['cúpricos (paliativo)'],
-        ingredientesAtivos: [],
-        observacoes: ['Sem controle químico curativo efetivo'],
-      },
     },
-    rotacaoResistencia: 'Cultivar resistente é única defesa duradoura.',
     monitoramento: {
       metodo: 'Inspeção visual de estrias',
       frequencia: 'Mensal',
       nivelControle: 'Qualquer sintoma exige investigação',
     },
-    observacoesAgronomicas:
-      'Disseminação via ferramentas/maquinário contaminados — higiene é crítica.',
     referencias: [REF_RIDESA, REF_IAC, REF_MAPA],
   },
 
@@ -825,34 +562,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Plantas isoladas',
-        acao: 'Cultivar resistente',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Eliminação + replantio com cultivar resistente',
       },
       alto: {
         criterio: 'Talhão comprometido',
-        acao: 'Reforma',
       },
     },
     mip: {
       cultural: ['Cultivares resistentes', 'Material plantio sadio'],
       biologico: ['Controle indireto via inimigos de pulgões'],
-      mecanico: ['Roguing (eliminação plantas)'],
-      quimico: {
-        classes: ['controle do vetor (pulgões)'],
-        ingredientesAtivos: [],
-        observacoes: ['Sem controle químico do vírus'],
-      },
     },
-    rotacaoResistencia: 'Material certificado + cultivar resistente.',
     monitoramento: {
       metodo: 'Inspeção visual de folhas novas',
       frequencia: 'Mensal',
       nivelControle: 'Qualquer planta com mosaico',
     },
-    observacoesAgronomicas: 'Material de plantio limpo é a defesa primária.',
     referencias: [REF_RIDESA, REF_IAC, REF_MAPA],
   },
 
@@ -887,34 +613,23 @@ export const CANA_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Sintomas isolados',
-        acao: 'Controle broca rigoroso',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Controle broca + cultivar resistente',
       },
       alto: {
         criterio: 'Alta incidência',
-        acao: 'Antecipar corte + revisar manejo broca',
       },
     },
     mip: {
       cultural: ['Controle integrado da broca-da-cana (DIATRAEA)', 'Cultivares resistentes'],
       biologico: ['Indireto via Cotesia flavipes (controla broca)'],
-      mecanico: ['Antecipar corte de talhões afetados'],
-      quimico: {
-        classes: [],
-        ingredientesAtivos: [],
-        observacoes: ['Manejo é via controle da broca, não da doença'],
-      },
     },
-    rotacaoResistencia: 'Foco no manejo da broca.',
     monitoramento: {
       metodo: 'Análise destrutiva conjunta com broca',
       frequencia: 'Pré-corte',
       nivelControle: 'Associado a II da broca',
     },
-    observacoesAgronomicas: 'Complexo "broca-podridão" — manejo da broca é manejo da podridão.',
     referencias: [REF_RIDESA, REF_IAC, REF_FRAC, REF_MAPA],
   },
 ];

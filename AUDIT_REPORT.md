@@ -1,4 +1,9 @@
 # RELATORIO DE AUDITORIA COMPLETA - Rumo Pragas IA
+
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESTADO DO APLICATIVO ATUAL.**
+> Este relatório auditou o protótipo SwiftUI antigo. Use o app em `expo-app/` e
+> `docs/audit/launch-coverage-2026-07-14.md`.
 **Data:** 2026-03-17 | **App:** iOS SwiftUI | **48 arquivos Swift auditados**
 **Agentes:** 6 agentes especializados em paralelo (iOS, Security, UI/UX, Code Review, Accessibility, App Store)
 

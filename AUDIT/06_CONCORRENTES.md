@@ -1,5 +1,10 @@
 # 06 — CONCORRENTES (Mega-Audit Lançamento Rumo Pragas IA)
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — DADOS DE MERCADO E CLAIMS NÃO ESTÃO APROVADOS PARA PUBLICAÇÃO.**
+> Use a matriz atual, com fontes verificáveis, em
+> `docs/audit/competitive-matrix-2026-07-14.md`.
+
 **Data:** 2026-07-02 · **Fase:** read-only · **Branch:** `perfect/pragas-launch-2026-07-02`
 **Fontes-base:** `COMPETITOR_ANALYSIS.md` + `PESQUISA_CONCORRENTES_BRASIL.md` (revalidados 01/jul) — este relatório é a ATUALIZAÇÃO 02/jul, não substitui os docs-raiz.
 **Método:** firecrawl-search (Google Play, App Store, sites oficiais, Capterra, imprensa agro) + verificação no código atual (`expo-app/`) do que JÁ existe pós ~100 fixes mergeados na main.

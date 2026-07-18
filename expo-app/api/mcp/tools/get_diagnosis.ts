@@ -14,17 +14,17 @@ export const getDiagnosis: ToolHandler = {
   },
   async handler(input, ctx) {
     const parsed = InputSchema.safeParse(input);
-    if (!parsed.success) return err(`Invalid input: ${parsed.error.message}`);
+    if (!parsed.success) return err('Invalid input');
 
     // RLS will filter rows the caller cannot see; we additionally constrain
     // by `user_id` so a missing/looser policy still cannot leak data.
     const { data, error } = await ctx.supabase
       .from('pragas_diagnoses')
-      .select('*')
+      .select('id,crop,pest_id,pest_name,confidence,notes,created_at')
       .eq('id', parsed.data.diagnosisId)
       .eq('user_id', ctx.userId)
       .maybeSingle();
-    if (error) return err(`DB error: ${error.message}`);
+    if (error) return err('Diagnosis temporarily unavailable');
     // Return 404-style "not found" — never reveal existence-of-other-users' rows.
     if (!data) return err('Diagnóstico não encontrado');
     return ok(data);

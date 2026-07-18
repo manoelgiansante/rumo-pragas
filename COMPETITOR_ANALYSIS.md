@@ -1,4 +1,8 @@
 # Analise Competitiva Internacional - Rumo Pragas IA
+
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÚMEROS, PREÇOS E CLAIMS NÃO ESTÃO APROVADOS PARA PUBLICAÇÃO.**
+> Use `docs/audit/competitive-matrix-2026-07-14.md`, que registra fontes e data de verificação.
 ## Pesquisa de Concorrentes para Posicionamento como #1 no Brasil
 
 **Data:** 2026-03-25

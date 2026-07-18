@@ -54,6 +54,12 @@ bun.lock
 # Agent / git worktrees — local-only, never tracked (avoids untracked drift noise)
 .worktrees/
 .claude/worktrees/
+.gstack/
+.playwright-mcp/
+test-results/
+playwright-report/
+__pycache__/
+*.py[cod]
 
 supabase/.temp/
 

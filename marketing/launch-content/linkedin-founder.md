@@ -1,71 +1,35 @@
-# LinkedIn Launch Post — Founder Voice (Manoel Nascimento)
+# Post de lançamento — LinkedIn
 
-**Formato:** Post único, voz do fundador, story-driven
-**Objetivo:** Awareness + cliques na landing
-**Character count:** ~1,650 (dentro do sweet spot 1300-2000)
-**Data sugerida de publicação:** Terça-feira, 09h00 BRT
+**Status:** texto factual, sem números de desempenho, depoimentos ou resultados econômicos não
+comprovados.
 
----
+## Post
 
-## POST
+Hoje apresentamos o **Rumo Pragas**, um aplicativo gratuito de apoio à triagem visual no campo.
 
-Há 6 meses, meu amigo Rafael me ligou às 22h: "Manoel, perdi 30% da soja."
+O fluxo é simples:
 
-Ferrugem asiática. Demorou 48h pra ele identificar — tempo suficiente pra tomar conta de 40 hectares.
+1. fotografar ou selecionar uma imagem da planta;
+2. receber uma hipótese probabilística, o nível de confiança e possíveis alternativas;
+3. comparar o resultado com os sinais observados e buscar avaliação profissional quando necessário.
 
-Ele não é iniciante. Planta soja há 12 anos em Goiás. O problema não foi ele.
+Também reunimos histórico estruturado, biblioteca educativa, contexto meteorológico opcional e um
+assistente de IA para dúvidas gerais sobre pragas e manejo integrado.
 
-O problema é este:
+Construímos a experiência com limites explícitos. A IA pode errar. O Rumo Pragas não substitui
+inspeção de campo, engenheiro agrônomo ou receituário; não prescreve produto, dose ou aplicação.
 
-→ Identificar praga no olho demanda anos de experiência
-→ WhatsApp com agrônomo ocupado leva horas pra responder
-→ Livro de pragas na estante não te acode às 18h na lavoura
-→ E cada hora que passa, a praga avança
+A análise por foto exige internet. Em conexão instável, a solicitação pode ser preservada no aparelho
+e reenviada depois — o modelo não roda offline.
 
-Quando a gente identifica tarde, não perde só rendimento. Perde margem inteira da safra.
+O aplicativo está disponível para iOS e Android, sem assinatura, compra interna ou anúncio:
+https://pragas.agrorumo.com
 
-Foi aí que nasceu o Rumo Pragas.
+Informação melhor começa com transparência sobre o que a tecnologia faz — e sobre o que ela não faz.
 
-Um app que faz o que o Rafael precisava naquela noite:
+#AgTech #AgriculturaDigital #InteligênciaArtificial #MIP
 
-• Foto da folha → diagnóstico em 5 segundos
-• IA treinada em mais de 100 pragas do Brasil (soja, milho, café, algodão)
-• Chat com agrônoma IA pra tirar dúvida na hora
-• Histórico completo + PDF pra comprovar pro comprador ou seguradora
+## Visual
 
-Acurácia validada em campo: 82,5%.
-
-Não é mágica. É Claude Vision treinado com banco de imagens real da lavoura brasileira, não biblioteca americana que não reconhece nossas pragas.
-
-Hoje estamos lançando pra todos os produtores do Brasil.
-
-Se você já perdeu lavoura por identificação tardia — ou conhece alguém que perdeu — a ferramenta tá na sua mão agora.
-
-Baixa, testa, me conta o que funcionou e o que ainda precisa melhorar.
-
-Feedback do produtor é o que vai fazer esse app virar o padrão do setor.
-
-🌱 pragas.agrorumo.com
-
-#Agrotech #Agronegocio #IA #Agricultura
-
----
-
-## NOTAS DE PRODUÇÃO
-
-**Primeira linha (hook):** Nome real + horário + dado específico (30%) = pattern interrupt no feed.
-
-**Estrutura emocional:**
-- Linha 1-3: História real, números concretos (perda)
-- Linha 4-9: Validação do problema (3 dores)
-- Linha 10-12: Reframe (não é culpa do produtor, é falta de ferramenta)
-- Linha 13-20: Solução com bullets
-- Linha 21-24: Prova social (82,5% validado, não inventado)
-- Linha 25-28: Call pra ação + humildade (feedback wanted)
-
-**Image sugerida:** Foto real de folha de soja com ferrugem ao lado de screenshot do app dando diagnóstico. Split-screen. Dimensão 1200x627.
-
-**Comentário fixado pelo próprio Manoel (30min após o post):**
-> "Quem já perdeu lavoura por identificação tardia, conta nos comentários qual praga pegou vocês de surpresa. Vou responder um por um."
-
-**Engagement hack:** Responder TODOS os comentários nas primeiras 2h. LinkedIn algo boosta posts com alta taxa de resposta do autor.
+Usar captura real do candidato final com a legenda: **“Hipótese visual, confiança e alternativas.”**
+Não usar dado fictício de usuário, acurácia, economia, área preservada ou comparação com profissional.

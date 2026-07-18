@@ -1,0 +1,28 @@
+{
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1.0.14",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.104.0",
+    "jose": "npm:jose@6.2.3",
+    "zod": "npm:zod@3.25.76"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "tasks": {
+    "fmt:check": "deno fmt --check --ignore='**/_shared/sentry.ts' deno.json _shared _tests diagnose-pragas/index.ts diagnose-pragas/agrio.ts ai-chat-pragas/index.ts pragas-analytics/index.ts pragas-delete-user-account/index.ts pragas-global-account-deletion/index.ts pragas-process-ai-idempotency/index.ts pragas-process-deletions/index.ts pragas-reactivate-account/index.ts pragas-send-push/index.ts pragas-send-push/eligibility.ts report-ai-content/index.ts report-diagnosis-feedback/index.ts admin-ai-content-reports/index.ts pragas-export-user-data/index.ts create-checkout-session-pragas/index.ts stripe-customer-portal-pragas/index.ts asaas-checkout-pragas/index.ts disease-risk/index.ts stripe-webhook-pragas/index.ts asaas-webhook-pragas/index.ts",
+    "lint": "deno lint _shared _tests diagnose-pragas/index.ts diagnose-pragas/agrio.ts ai-chat-pragas/index.ts pragas-analytics/index.ts pragas-delete-user-account/index.ts pragas-global-account-deletion/index.ts pragas-process-ai-idempotency/index.ts pragas-process-deletions/index.ts pragas-reactivate-account/index.ts pragas-send-push/index.ts pragas-send-push/eligibility.ts report-ai-content/index.ts report-diagnosis-feedback/index.ts admin-ai-content-reports/index.ts pragas-export-user-data/index.ts create-checkout-session-pragas/index.ts stripe-customer-portal-pragas/index.ts asaas-checkout-pragas/index.ts disease-risk/index.ts stripe-webhook-pragas/index.ts asaas-webhook-pragas/index.ts",
+    "check": "deno check diagnose-pragas/index.ts ai-chat-pragas/index.ts pragas-analytics/index.ts pragas-delete-user-account/index.ts pragas-global-account-deletion/index.ts pragas-process-ai-idempotency/index.ts pragas-process-deletions/index.ts pragas-reactivate-account/index.ts pragas-send-push/index.ts report-ai-content/index.ts report-diagnosis-feedback/index.ts admin-ai-content-reports/index.ts pragas-export-user-data/index.ts create-checkout-session-pragas/index.ts stripe-customer-portal-pragas/index.ts asaas-checkout-pragas/index.ts disease-risk/index.ts stripe-webhook-pragas/index.ts asaas-webhook-pragas/index.ts",
+    "test": "deno test --allow-read --allow-env _tests",
+    "gate": "deno task fmt:check && deno task lint && deno task check && deno task test"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

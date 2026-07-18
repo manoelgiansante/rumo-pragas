@@ -5,7 +5,7 @@
   "type": "service_account",
   "project_id": "api-XXXXXXXXXXXXXXXXXXX-XXXXXX",
   "private_key_id": "PREENCHER_PRIVATE_KEY_ID_DO_JSON_BAIXADO",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nPREENCHER_CHAVE_PRIVADA\n-----END PRIVATE KEY-----\n",
+  "private_key": "REPLACE_WITH_PRIVATE_KEY_FROM_DOWNLOADED_JSON",
   "client_email": "nome-da-sa@api-XXXXXXXXXXXXXXXXXXX-XXXXXX.iam.gserviceaccount.com",
   "client_id": "PREENCHER_CLIENT_ID",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",

@@ -4,18 +4,15 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet, Platform, Dimensions } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_400Regular_Italic,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-} from '@expo-google-fonts/poppins';
+import { useFonts } from 'expo-font';
+import { Poppins_400Regular } from '@expo-google-fonts/poppins/400Regular';
+import { Poppins_400Regular_Italic } from '@expo-google-fonts/poppins/400Regular_Italic';
+import { Poppins_500Medium } from '@expo-google-fonts/poppins/500Medium';
+import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
+import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
-import { getSentryRelease } from '../services/sentry-release';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { DiagnosisProvider } from '../contexts/DiagnosisContext';
 import { NavigationGateProvider, useNavigationGate } from '../contexts/NavigationGateContext';
@@ -28,10 +25,14 @@ import {
 import { useNotifications } from '../hooks/useNotifications';
 import { useDiagnosisSync } from '../hooks/useDiagnosisSync';
 import { useOTAUpdate } from '../hooks/useOTAUpdate';
+import { useAppUpdateCheck } from '../hooks/useAppUpdateCheck';
 import { initAnalytics, resetAnalytics } from '../services/analytics';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { PragasAccountGate } from '../components/PragasAccountGate';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { ForceUpdateModal, UpdateBanner } from '../components/AppUpdate';
 import { Colors } from '../constants/theme';
+import { scrubSensitiveTelemetryText, stripUrlQueryAndFragment } from '../lib/telemetrySanitizer';
 
 // Sentry lazy init — NEVER call Sentry.init() at module scope.
 // On iOS 26 New Architecture (TurboModules), native module calls during JS
@@ -43,26 +44,12 @@ let sentryInitialized = false;
 function initSentryOnce() {
   if (sentryInitialized) return;
   try {
-    // W17-4 (2026-05-22): canonical `<slug>@<version>+<buildId>` release ID
-    // resolved by getSentryRelease(). Reads EXPO_PUBLIC_BUILD_ID env override
-    // first (set by EAS), then falls back to platform-specific buildNumber.
-    // Backward-compat: `extra.sentryRelease` in app.json still wins if set
-    // (legacy escape hatch — prefer not to set it).
-    const expoConfig = Constants.expoConfig;
-    const { release: defaultRelease, dist: defaultDist } = getSentryRelease();
-    const sentryRelease =
-      (expoConfig?.extra as { sentryRelease?: string } | undefined)?.sentryRelease ??
-      defaultRelease;
-    const sentryDist = defaultDist;
-
     Sentry.init({
       dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
       enabled: !__DEV__ && !!process.env.EXPO_PUBLIC_SENTRY_DSN,
       tracesSampleRate: 0.1,
       profilesSampleRate: 0.1,
       environment: __DEV__ ? 'development' : 'production',
-      release: sentryRelease,
-      dist: sentryDist,
       enableNative: true,
       enableAutoSessionTracking: true,
       attachStacktrace: true,
@@ -81,15 +68,32 @@ function initSentryOnce() {
           delete event.user.username;
           delete event.user.ip_address;
         }
+        if (event.request?.url) {
+          event.request.url = stripUrlQueryAndFragment(event.request.url);
+        }
+        if (event.message) {
+          event.message = scrubSensitiveTelemetryText(event.message);
+        }
+        for (const exception of event.exception?.values ?? []) {
+          if (exception.value) {
+            exception.value = scrubSensitiveTelemetryText(exception.value);
+          }
+          if (exception.type) {
+            exception.type = scrubSensitiveTelemetryText(exception.type);
+          }
+        }
         return event;
       },
       beforeBreadcrumb(breadcrumb) {
         // Drop breadcrumbs that may capture URLs with tokens/secrets
         if (breadcrumb.category === 'xhr' || breadcrumb.category === 'fetch') {
           if (breadcrumb.data?.url && typeof breadcrumb.data.url === 'string') {
-            // Strip query strings (may contain tokens)
-            breadcrumb.data.url = breadcrumb.data.url.split('?')[0];
+            // Strip both query and fragment; implicit auth tokens live after #.
+            breadcrumb.data.url = stripUrlQueryAndFragment(breadcrumb.data.url);
           }
+        }
+        if (breadcrumb.message) {
+          breadcrumb.message = scrubSensitiveTelemetryText(breadcrumb.message);
         }
         return breadcrumb;
       },
@@ -117,7 +121,7 @@ SplashScreen.preventAutoHideAsync();
 //     reports insets (it gates ALL children behind `insets != null`), so the
 //     entire React tree — including the effects that hide the splash — never
 //     mounts. The useAuth() 8s timeout cannot help because its effect never runs.
-//   - getSession()/RevenueCat/network hangs on the reviewer's slow/proxied wifi.
+//   - getSession()/network hangs on the reviewer's slow/proxied wifi.
 //   - A TurboModule init throws during bundle eval on iOS 26 New Architecture.
 //
 // This watchdog is armed at MODULE scope (independent of React render) and
@@ -153,7 +157,17 @@ let splashWatchdogTimer: ReturnType<typeof setTimeout> | null = setTimeout(() =>
 }, SPLASH_WATCHDOG_MS);
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading, user } = useAuthContext();
+  const {
+    isAuthenticated,
+    isLoading,
+    user,
+    session,
+    appAccountStatus,
+    appAccountError,
+    reactivatePragas,
+    retryPragasAccountLink,
+    signOut,
+  } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
 
@@ -193,6 +207,12 @@ function RootLayoutNav() {
   // Check for OTA updates on app launch (only in production builds)
   useOTAUpdate();
 
+  // In-app STORE update check (jxcn shared `version-check` Edge Function,
+  // app=pragas): silent / soft (dismissible banner) / force (blocking modal).
+  // Complements useOTAUpdate — OTA covers JS-only updates, this covers new
+  // store binaries. Fail-open by design: any error → silent, never crashes.
+  const { mode: updateMode, updateInfo, dismiss: dismissUpdate } = useAppUpdateCheck();
+
   // ATT (App Tracking Transparency) intentionally removed — Apple guideline 5.1.2:
   // the app does not integrate any ad SDK and does not perform cross-app tracking,
   // so prompting for ATT without a legitimate tracking purpose is grounds for rejection.
@@ -200,7 +220,7 @@ function RootLayoutNav() {
   // screen explaining the purpose + gate call behind a post-login guard + AsyncStorage flag.
 
   // The app ships 100% FREE (Apple Guideline 3.1.1) — there is no In-App
-  // Purchase, no RevenueCat init and no subscription sync. Entitlement plumbing
+  // Purchase and no subscription sync. Entitlement plumbing
   // was removed in fix/pragas-3-1-1-free-sweep-2026-07-03.
 
   // Initialize analytics + Sentry user context when the user is authenticated.
@@ -208,16 +228,16 @@ function RootLayoutNav() {
     if (user?.id) {
       const uid = user.id;
       initAnalytics(uid);
-      // Set Sentry user context for crash reports — ID ONLY, no PII (no email).
-      // beforeSend strips email defensively, but we also avoid passing it here.
-      Sentry.setUser({ id: uid });
+      // Keep crash telemetry anonymous. The raw auth UUID is linkable personal
+      // data and is not needed to diagnose application faults.
+      Sentry.setUser(null);
       Sentry.setTag('app.platform', Platform.OS);
       Sentry.setTag('app.version', Constants.expoConfig?.version ?? 'unknown');
     } else {
       resetAnalytics();
       Sentry.setUser(null);
     }
-  }, [user?.id, user?.email]);
+  }, [user?.id]);
 
   // Hide splash screen once auth state, onboarding and consent checks are
   // resolved. safeHideSplash() is idempotent and also disarms the absolute
@@ -259,6 +279,8 @@ function RootLayoutNav() {
   const lastIssuedTargetRef = useRef<string | null>(null);
   const arrivedTargetRef = useRef<string | null>(null);
   const currentSegment = segments[0];
+  const hasBlockedPragasAccount =
+    !!session && appAccountStatus !== 'linked' && appAccountStatus !== 'idle';
 
   // ---------------------------------------------------------------------------
   // RUMO-PRAGAS-M (Android, OTA): "Maximum update depth exceeded" (FATAL)
@@ -283,6 +305,10 @@ function RootLayoutNav() {
   // therefore inert (it is store churn, not a real route) and can never re-arm
   // a redirect. At most ONE replace per genuine target transition is issued.
   useEffect(() => {
+    // A valid shared AgroRumo session is never enough to mount Pragas routes.
+    // Keep the navigation tree frozen until the app-specific link contract is
+    // explicitly resolved (including deletion/reactivation states).
+    if (hasBlockedPragasAccount) return;
     const target = resolveGateTarget({
       isLoading,
       isAuthenticated,
@@ -344,6 +370,7 @@ function RootLayoutNav() {
     hasSeenOnboarding,
     hasSeenLocationConsent,
     router,
+    hasBlockedPragasAccount,
   ]);
 
   if (isLoading || hasSeenOnboarding === null || hasSeenLocationConsent === null) {
@@ -354,10 +381,28 @@ function RootLayoutNav() {
     );
   }
 
+  if (hasBlockedPragasAccount) {
+    return (
+      <PragasAccountGate
+        status={appAccountStatus as Exclude<typeof appAccountStatus, 'idle' | 'linked'>}
+        error={appAccountError}
+        onReactivate={() => {
+          void reactivatePragas();
+        }}
+        onRetry={() => {
+          void retryPragasAccountLink();
+        }}
+        onSignOut={() => {
+          void signOut();
+        }}
+      />
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <OfflineBanner />
-      <StatusBar style="auto" />
+      <StatusBar style="dark" backgroundColor={Colors.background} />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -367,6 +412,7 @@ function RootLayoutNav() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="update-password" />
+        <Stack.Screen name="account-deletion" options={{ gestureEnabled: false }} />
         <Stack.Screen name="consent-location" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -377,13 +423,22 @@ function RootLayoutNav() {
           name="edit-profile"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
-        <Stack.Screen
-          name="paywall"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
+        <Stack.Screen name="admin/ai-reports" />
       </Stack>
+      {/* In-app update (2026-07): force always wins (blocking Modal); the
+          soft banner is absolute-positioned at the top and dismissible.
+          Rendered AFTER the Stack so the banner stacks above screen content. */}
+      {updateMode === 'force' && updateInfo && <ForceUpdateModal updateInfo={updateInfo} />}
+      {updateMode === 'soft' && updateInfo && (
+        <UpdateBanner
+          updateInfo={updateInfo}
+          onDismiss={() => {
+            void dismissUpdate();
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -416,14 +471,21 @@ function RootLayout() {
     <SafeAreaProvider initialMetrics={SAFE_AREA_INITIAL_METRICS}>
       <ErrorBoundary>
         <AuthProvider>
-          <NavigationGateProvider>
-            <DiagnosisProvider>
-              <RootLayoutNav />
-            </DiagnosisProvider>
-          </NavigationGateProvider>
+          <AuthenticatedProviders />
         </AuthProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
+  );
+}
+
+function AuthenticatedProviders() {
+  const { user } = useAuthContext();
+  return (
+    <NavigationGateProvider userId={user?.id ?? null}>
+      <DiagnosisProvider ownerUserId={user?.id ?? null}>
+        <RootLayoutNav />
+      </DiagnosisProvider>
+    </NavigationGateProvider>
   );
 }
 

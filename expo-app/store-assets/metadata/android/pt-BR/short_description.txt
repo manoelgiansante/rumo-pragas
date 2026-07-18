@@ -1,1 +1,1 @@
-IA que identifica praga por foto em 5s. Tratamento pra soja, milho e cafe.
+Foto, hipótese de identificação e confiança para apoiar decisões no campo.

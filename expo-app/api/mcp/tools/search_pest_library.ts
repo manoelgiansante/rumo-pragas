@@ -1,12 +1,13 @@
 import { z } from 'zod';
-import { ToolHandler, ok, err } from '../_types';
+import { ok, err } from '../_types';
+import type { ToolHandler } from '../_types';
 import { searchByKeywords, MIP_CREA_DISCLAIMER } from '../../../data/mip';
 
 // Schema drift fix (2026-07-06): there is NO `pest_library` table in jxcn
 // (PostgREST hint: "Perhaps you meant public.ingredients_library" — that is the
-// agrochemical active-ingredient table, not a pest species catalog). The app's
+// unrelated ingredient table, not a pest species catalog). The app's
 // real "pest library" is the MIP catalog bundled with the app under `data/mip/`
-// (EMBRAPA/MAPA/IRAC/FRAC), searched locally via `searchByKeywords`. This tool
+// educational catalog, searched locally via `searchByKeywords`. This tool
 // now reads that same catalog — no network, no per-user data.
 
 const InputSchema = z.object({
@@ -20,7 +21,7 @@ const InputSchema = z.object({
 export const searchPestLibrary: ToolHandler = {
   name: 'search_pest_library',
   description:
-    'Busca no catálogo público de pragas/doenças (MIP — EMBRAPA/MAPA/IRAC/FRAC) por nome, nome científico ou sintoma. Pode filtrar por cultura.',
+    'Busca no catálogo educativo de pragas/doenças por nome, nome científico ou sintoma. Pode filtrar por cultura.',
   inputSchema: {
     type: 'object',
     required: ['query'],
@@ -35,7 +36,7 @@ export const searchPestLibrary: ToolHandler = {
   // still requires a valid JWT (enforced in server.ts before the handler runs).
   async handler(input) {
     const parsed = InputSchema.safeParse(input);
-    if (!parsed.success) return err(`Invalid input: ${parsed.error.message}`);
+    if (!parsed.success) return err('Invalid input');
     const { query, culture, limit } = parsed.data;
 
     const results = searchByKeywords([query], { cultureFilter: culture, limit });
@@ -54,8 +55,7 @@ export const searchPestLibrary: ToolHandler = {
       control_methods: {
         cultural: entry.mip.cultural,
         biological: entry.mip.biologico,
-        mechanical: entry.mip.mecanico,
-        chemical_classes: entry.mip.quimico.classes,
+        monitoring: entry.monitoramento,
       },
       sources: entry.referencias.map((r) => r.source),
       match_score: score,

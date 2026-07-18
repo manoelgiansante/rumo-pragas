@@ -1,5 +1,9 @@
 # QA ABA POR ABA — Rumo Pragas IA (FASE 2)
 
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESTADO ATUAL OU CHECKLIST DE LANÇAMENTO.**
+> Snapshot anterior à revisão de 14/07/2026; use `docs/audit/launch-coverage-2026-07-14.md`.
+
 > Auditoria estática (código vivo em `expo-app/`), branch `perfect/pragas-launch-2026-07-02`, read-only.
 > Estado: iOS 1.0.7 WAITING_FOR_REVIEW (intocável) · Android 1.0.7 vc44 production · **100% grátis** (paywall neutralizado, `useSubscription().isPro=true`, `useMonthlyUsage().plan='enterprise'`).
 > Cobertura: **23/23 rotas** · **0 rotas quebradas** · **0 CRITICAL** · **0 ALTO**.

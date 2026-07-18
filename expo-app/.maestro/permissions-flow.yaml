@@ -1,0 +1,24 @@
+appId: com.agrorumo.rumopragas
+tags:
+  - permissions
+---
+- runFlow: auth-flow.yaml
+- tapOn:
+    id: "home-cta-diagnose"
+- extendedWaitUntil:
+    visible:
+      id: "diagnosis-camera-capture"
+    timeout: 10000
+- assertVisible:
+    id: "diagnosis-camera-capture"
+- assertVisible:
+    id: "diagnosis-camera-gallery"
+- tapOn:
+    id: "diagnosis-camera-gallery"
+- runFlow:
+    when:
+      visible: "Permitir|Allow"
+    commands:
+      - tapOn: "Permitir|Allow"
+- assertNotVisible:
+    text: "Senha|Password"

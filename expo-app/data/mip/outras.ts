@@ -78,49 +78,23 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Risco climático baixo',
-        acao: 'Monitoramento',
       },
       medio: {
         criterio: 'Risco climático médio',
-        acao: 'Aplicação preventiva em 50 % antese',
       },
       alto: {
         criterio: 'Risco alto + sintomas iniciais',
-        acao: 'Aplicação imediata + reaplicação 7-10 dias',
       },
     },
     mip: {
       cultural: ['Cultivares moderadamente resistentes', 'Rotação', 'Manejo restos culturais'],
       biologico: ['Trichoderma'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'multissitios'],
-        ingredientesAtivos: [
-          {
-            nome: 'Protioconazol + Tebuconazol',
-            graudeIRACouFRAC: 'FRAC 3 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Mistura triazois',
-                formulacao: 'EC',
-                dosagem: '0,75-1,0 L p.c./ha',
-                intervaloAplicacoes: '10-14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Janela é curta — aplicação em 50 % antese é crítica'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar triazois + multissítio.',
     monitoramento: {
       metodo: 'Acompanhar previsão climática + fenologia',
       frequencia: 'Diária no espigamento',
       nivelControle: 'Risco climático + 50 % antese',
     },
-    observacoesAgronomicas: 'Doença #1 do trigo no Sul. Janela de controle é dias.',
     referencias: [REF_EMBRAPA, REF_FRAC, REF_MAPA],
   },
 
@@ -150,49 +124,23 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Sintomas isolados',
-        acao: 'Aplicação programada',
       },
       medio: {
         criterio: 'Sintomas em manchões',
-        acao: 'Aplicação tripla mistura',
       },
       alto: {
         criterio: 'Generalizada',
-        acao: 'Controle paliativo + cultivar próximo ciclo',
       },
     },
     mip: {
       cultural: ['Cultivares menos suscetíveis', 'Plantio na janela', 'Rotação'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Azoxistrobina + Tebuconazol',
-            graudeIRACouFRAC: 'FRAC 11 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Mistura comercial',
-                formulacao: 'SC',
-                dosagem: '0,4-0,6 L p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Resistência QoI documentada — sempre em mistura'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + multissítio.',
     monitoramento: {
       metodo: 'Inspeção espigas + clima',
       frequencia: 'Semanal espigamento',
       nivelControle: 'Risco climático + sintomas',
     },
-    observacoesAgronomicas: 'Brusone tem foco regional Centro-Oeste — pode dizimar lavouras.',
     referencias: [REF_EMBRAPA, REF_FRAC, REF_MAPA],
   },
 
@@ -221,49 +169,23 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 10 % severidade',
-        acao: 'Cultivar resistente cobre',
       },
       medio: {
         criterio: '10-25 %',
-        acao: 'Aplicação fungicida',
       },
       alto: {
         criterio: '> 25 %',
-        acao: 'Aplicação imediata',
       },
     },
     mip: {
       cultural: ['Cultivares resistentes', 'Rotação'],
       biologico: ['Bacillus subtilis'],
-      mecanico: ['Monitoramento'],
-      quimico: {
-        classes: ['triazois', 'estrobilurinas'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tripla mistura padrão',
-            graudeIRACouFRAC: 'FRAC 11 + 7 + 3',
-            produtosComerciais: [
-              {
-                nome: 'Tripla comercial',
-                formulacao: 'SC',
-                dosagem: '0,4-0,6 L p.c./ha',
-                intervaloAplicacoes: '14-21 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 35,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Cultivares resistentes mudam de eficácia rapidamente'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar FRAC + cultivar resistente.',
     monitoramento: {
       metodo: 'Inspeção folhas',
       frequencia: 'Semanal',
       nivelControle: '5 % severidade',
     },
-    observacoesAgronomicas: 'Doença de evolução rápida. Cultivar resistente é a chave.',
     referencias: [REF_EMBRAPA, REF_FRAC, REF_MAPA],
   },
 
@@ -300,15 +222,12 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 1 mosca/panícula',
-        acao: 'Monitoramento',
       },
       medio: {
         criterio: '1-3 moscas/panícula',
-        acao: 'Aplicação química',
       },
       alto: {
         criterio: '> 3 moscas/panícula',
-        acao: 'Aplicação imediata + reaplicação 3-5 dias',
       },
     },
     mip: {
@@ -317,35 +236,12 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
         'Cultivares com pelos na espigueta',
       ],
       biologico: [],
-      mecanico: ['Monitoramento visual'],
-      quimico: {
-        classes: ['piretroides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Lambda-cialotrina',
-            graudeIRACouFRAC: 'IRAC 3A',
-            produtosComerciais: [
-              {
-                nome: 'Lambda 50 EC',
-                formulacao: 'EC',
-                dosagem: '100-150 mL p.c./ha',
-                intervaloAplicacoes: '3-5 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Aplicar nas horas frescas — janela curta'],
-      },
     },
-    rotacaoResistencia: 'Rotacionar IRAC 3A → 1B.',
     monitoramento: {
       metodo: 'Inspeção panículas',
       frequencia: 'Diária no florescimento',
       nivelControle: '1 mosca/panícula',
     },
-    observacoesAgronomicas: 'Praga limita produtividade em sorgo granífero.',
     referencias: [REF_EMBRAPA, REF_IRAC, REF_MAPA],
   },
 
@@ -383,15 +279,12 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: '< 5 adultos/m²',
-        acao: 'Metarhizium',
       },
       medio: {
         criterio: '5-10 adultos/m²',
-        acao: 'Metarhizium intensivo',
       },
       alto: {
         criterio: '> 10 adultos/m²',
-        acao: 'Aplicação química + Metarhizium',
       },
     },
     mip: {
@@ -401,35 +294,12 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
         'Adubação equilibrada',
       ],
       biologico: ['Metarhizium anisopliae — controle massal brasileiro'],
-      mecanico: ['Inspeção visual'],
-      quimico: {
-        classes: ['piretroides', 'neonicotinoides'],
-        ingredientesAtivos: [
-          {
-            nome: 'Lambda-cialotrina',
-            graudeIRACouFRAC: 'IRAC 3A',
-            produtosComerciais: [
-              {
-                nome: 'Lambda 50 EC',
-                formulacao: 'EC',
-                dosagem: '150 mL p.c./ha',
-                intervaloAplicacoes: '14 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 14,
-              },
-            ],
-          },
-        ],
-        observacoes: ['Metarhizium é primeira escolha (sem carência)'],
-      },
     },
-    rotacaoResistencia: 'Metarhizium preserva químicos.',
     monitoramento: {
       metodo: 'Quadrado 1 m² + contagem',
       frequencia: 'Quinzenal',
       nivelControle: '5 adultos/m²',
     },
-    observacoesAgronomicas: 'Praga regional importante. Metarhizium é solução brasileira líder.',
     referencias: [REF_EMBRAPA, REF_IRAC, REF_MAPA],
   },
 
@@ -472,15 +342,12 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
     niveisDano: {
       baixo: {
         criterio: 'Plantas isoladas',
-        acao: 'ERRADICAÇÃO IMEDIATA + controle psilídeo',
       },
       medio: {
         criterio: 'Manchões',
-        acao: 'Erradicação + controle agressivo psilídeo',
       },
       alto: {
         criterio: 'Talhão comprometido',
-        acao: 'Erradicação total + replantio com mudas certificadas',
       },
     },
     mip: {
@@ -491,37 +358,12 @@ export const OUTRAS_MIP_ENTRIES: MipEntry[] = [
         'Quebra-ventos arborizados',
       ],
       biologico: ['Tamarixia radiata (parasitoide do psilídeo)'],
-      mecanico: ['Inspeção visual sistemática'],
-      quimico: {
-        classes: ['controle do psilídeo (vetor)'],
-        ingredientesAtivos: [
-          {
-            nome: 'Tiametoxam (sistêmico solo/foliar)',
-            graudeIRACouFRAC: 'IRAC 4A',
-            produtosComerciais: [
-              {
-                nome: 'Tiametoxam 250 WG',
-                formulacao: 'WG',
-                dosagem: 'Conforme bula',
-                intervaloAplicacoes: '30-45 dias',
-                intervaloSegurancaDias: 1,
-                carencia: 30,
-              },
-            ],
-          },
-        ],
-        observacoes: ['NÃO HÁ CURA — manejo é via vetor + erradicação'],
-      },
     },
-    rotacaoResistencia: 'Rotação IRAC psilídeo (4A → 3A → 28).',
     monitoramento: {
       metodo: 'Inspeção visual mensal + armadilhas amarelas psilídeo',
       frequencia: 'Mensal',
       nivelControle: 'Qualquer planta com sintoma = erradicar',
     },
-    observacoesAgronomicas:
-      'DOENÇA #1 da citricultura mundial. SP perdeu mais de 25 % de pés em 15 anos. ' +
-      'Manejo é REGIONAL — propriedades isoladas não conseguem. Fundecitrus coordena.',
     referencias: [REF_EMBRAPA, REF_MAPA],
   },
 ];

@@ -8,36 +8,34 @@
  * The app is 100% free, so every level is available to every user — tapping any
  * chip simply selects it. No locked chips and no CTA.
  *
- * Always-visible compliance:
- *  - CREA disclaimer (MIP_CREA_DISCLAIMER).
- *  - References (EMBRAPA / MAPA / IRAC / FRAC) — citable to everyone.
+ * Always-visible compliance: current Brazilian regulatory disclaimer and a
+ * direct AGROFIT consultation link. The card deliberately excludes commercial
+ * products, active ingredients, doses, intervals and endorsement badges.
  *
- * Three runtime states:
- *  - `loading`: skeleton matching the rest of the screen
- *  - `empty`:   informative placeholder ("Sem protocolo MIP cadastrado…")
- *  - default:   chips + recommendation panel
+ * Two runtime states: an informative empty state or the recommendation panel.
  *
  * Renders nothing when `enabled` is false (healthy plant / errors).
  */
 import React, { useCallback, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { Colors, FontSize, FontWeight, Spacing, FontFamily } from '../constants/theme';
 import { PremiumCard } from './PremiumCard';
-import { SkeletonLoader } from './SkeletonLoader';
-import type { InfestationLevel, MipReference } from '../data/mip';
-import type {
-  MipLevelData,
-  SubscriptionTier,
-  UseMipKnowledgeResult,
-} from '../hooks/useMipKnowledge';
+import type { InfestationLevel } from '../data/mip';
+import type { MipLevelData, UseMipKnowledgeResult } from '../hooks/useMipKnowledge';
 
 interface MipCardProps {
   /** Hook output — pass straight through. */
   knowledge: UseMipKnowledgeResult;
-  /** Plan tier — retained only as an analytics dimension. */
-  tier: SubscriptionTier;
   /** Hide the whole card (healthy plant, error states). */
   enabled?: boolean;
   /**
@@ -55,7 +53,7 @@ const LEVEL_COLORS: Record<InfestationLevel, string> = {
 
 const LEVEL_ORDER: InfestationLevel[] = ['baixo', 'medio', 'alto'];
 
-export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: MipCardProps) {
+export function MipCard({ knowledge, enabled = true, onAnalyticsEvent }: MipCardProps) {
   const { t } = useTranslation();
   const isDark = useColorScheme() === 'dark';
 
@@ -80,41 +78,19 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
       onAnalyticsEvent?.('mip_level_selected', {
         level,
         entry_id: knowledge.entry?.id,
-        tier,
       });
     },
-    [knowledge.entry?.id, knowledge.levels, onAnalyticsEvent, tier],
+    [knowledge.entry?.id, knowledge.levels, onAnalyticsEvent],
   );
 
-  const handleOpenReference = useCallback(
-    async (ref: MipReference) => {
-      if (!ref.url) return;
-      onAnalyticsEvent?.('mip_reference_opened', { source: ref.source, url: ref.url });
-      const can = await Linking.canOpenURL(ref.url);
-      if (can) await Linking.openURL(ref.url);
-    },
-    [onAnalyticsEvent],
-  );
+  const handleOpenAgrofit = useCallback(async () => {
+    const url = 'https://agrofit.agricultura.gov.br/agrofit_cons/principal_agrofit_cons';
+    onAnalyticsEvent?.('mip_agrofit_opened', { entry_id: knowledge.entry?.id });
+    const can = await Linking.canOpenURL(url);
+    if (can) await Linking.openURL(url);
+  }, [knowledge.entry?.id, onAnalyticsEvent]);
 
   if (!enabled) return null;
-
-  if (knowledge.loading) {
-    return (
-      <View testID="mip-card-skeleton">
-        <PremiumCard style={styles.cardWrap}>
-          <SkeletonLoader width="40%" height={18} style={{ marginBottom: Spacing.md }} />
-          <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md }}>
-            <SkeletonLoader width={80} height={32} borderRadius={999} />
-            <SkeletonLoader width={80} height={32} borderRadius={999} />
-            <SkeletonLoader width={80} height={32} borderRadius={999} />
-          </View>
-          <SkeletonLoader width="100%" height={14} style={{ marginBottom: 6 }} />
-          <SkeletonLoader width="92%" height={14} style={{ marginBottom: 6 }} />
-          <SkeletonLoader width="80%" height={14} />
-        </PremiumCard>
-      </View>
-    );
-  }
 
   if (knowledge.empty) {
     return (
@@ -144,10 +120,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
         <View style={styles.titleRow}>
           <Ionicons name="leaf" size={18} color={Colors.accent} />
           <Text style={[styles.title, isDark && styles.textDark]}>{t('mip.title')}</Text>
-          <View style={styles.tierBadge}>
-            <Ionicons name="shield-checkmark" size={10} color={Colors.accent} />
-            <Text style={styles.tierBadgeText}>EMBRAPA / MAPA</Text>
-          </View>
         </View>
 
         <Text style={styles.entryName}>{knowledge.entry.nomeComum}</Text>
@@ -165,7 +137,7 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
                 key={level}
                 onPress={() => handleSelectLevel(level)}
                 accessibilityRole="button"
-                accessibilityLabel={t('mip.chipA11yUnlocked', { level: t(`mip.level.${level}`) })}
+                accessibilityLabel={t('mip.chipA11y', { level: t(`mip.level.${level}`) })}
                 accessibilityState={{ selected: isActive }}
                 testID={`mip-chip-${level}`}
                 style={({ pressed }) => [
@@ -185,17 +157,12 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
           })}
         </View>
 
-        {/* Recommendation panel for the selected unlocked level */}
+        {/* Educational non-chemical guidance for the selected level. */}
         <View style={[styles.panel, { borderLeftColor: selectedColor }]}>
           <Text style={styles.panelHeader}>{t('mip.criterionLabel')}</Text>
           <Text style={[styles.panelBody, isDark && styles.textDark]}>
             {knowledge.entry.niveisDano[selectedLevel].criterio}
           </Text>
-
-          <Text style={[styles.panelHeader, styles.panelHeaderSpaced]}>
-            {t('mip.recommendedActionLabel')}
-          </Text>
-          <Text style={[styles.panelBody, isDark && styles.textDark]}>{rec.acaoPrincipal}</Text>
 
           {rec.acoesCulturais.length > 0 && (
             <RecBullets
@@ -215,26 +182,6 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
               isDark={isDark}
             />
           )}
-          {rec.acoesMecanicas.length > 0 && (
-            <RecBullets
-              title={t('mip.mechanicalActions')}
-              items={rec.acoesMecanicas}
-              icon="construct"
-              iconColor={Colors.techBlue}
-              isDark={isDark}
-            />
-          )}
-          {rec.acoesQuimicas && (
-            <ChemicalBlock
-              classes={rec.acoesQuimicas.classes}
-              ingredientes={rec.acoesQuimicas.ingredientesAtivosSugeridos}
-              observacoes={rec.acoesQuimicas.observacoes}
-              entry={knowledge.entry}
-              level={selectedLevel}
-              isDark={isDark}
-            />
-          )}
-
           {rec.monitoramento && (
             <View style={styles.subsection}>
               <Text style={styles.subsectionTitle}>{t('mip.monitoringLabel')}</Text>
@@ -252,57 +199,33 @@ export function MipCard({ knowledge, tier, enabled = true, onAnalyticsEvent }: M
               </Text>
             </View>
           )}
-
-          {rec.rotacaoResistencia && (
-            <View style={styles.subsection}>
-              <Text style={styles.subsectionTitle}>{t('mip.resistanceRotation')}</Text>
-              <Text style={[styles.panelBody, isDark && styles.textDark]}>
-                {rec.rotacaoResistencia}
-              </Text>
-            </View>
-          )}
         </View>
 
-        {/* References — visible to everyone (compliance + scientific credibility) */}
-        {rec.referencias.length > 0 && (
-          <View style={styles.referencesBlock}>
-            <Text style={styles.subsectionTitle}>{t('mip.referencesLabel')}</Text>
-            <View style={styles.refRow}>
-              {rec.referencias.map((ref, i) => (
-                <Pressable
-                  key={`${ref.source}-${i}`}
-                  onPress={() => handleOpenReference(ref)}
-                  disabled={!ref.url}
-                  accessibilityRole={ref.url ? 'link' : 'text'}
-                  accessibilityLabel={t('mip.referenceA11y', {
-                    source: ref.source,
-                    year: ref.ano,
-                  })}
-                  style={({ pressed }) => [
-                    styles.refChip,
-                    { opacity: ref.url ? (pressed ? 0.7 : 1) : 0.8 },
-                  ]}
-                >
-                  <Text style={styles.refSource}>{ref.source}</Text>
-                  <Text style={styles.refYear}>{ref.ano}</Text>
-                  {ref.url && <Ionicons name="open-outline" size={11} color={Colors.techBlue} />}
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
+        <View style={styles.officialGuidance}>
+          <Text style={styles.officialGuidanceText}>{t('mip.officialGuidance')}</Text>
+          <TouchableOpacity
+            testID="mip-open-agrofit"
+            style={styles.agrofitButton}
+            onPress={handleOpenAgrofit}
+            accessibilityRole="link"
+            accessibilityLabel={t('mip.openAgrofit')}
+          >
+            <Ionicons name="open-outline" size={15} color={Colors.white} />
+            <Text style={styles.agrofitButtonText}>{t('mip.openAgrofit')}</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* CREA disclaimer — ALWAYS visible regardless of tier */}
+        {/* Regulatory disclaimer — always visible. */}
         <View style={styles.disclaimerBlock} accessible accessibilityRole="text">
           <Ionicons name="shield-checkmark" size={14} color={Colors.warmAmber} />
-          <Text style={styles.disclaimerText}>{rec.disclaimerCREA}</Text>
+          <Text style={styles.disclaimerText}>{t('mip.regulatoryDisclaimer')}</Text>
         </View>
       </PremiumCard>
     </View>
   );
 }
 
-/** Bullet list block reused for cultural / biological / mechanical sections. */
+/** Bullet list block reused for cultural and biological sections. */
 function RecBullets({
   title,
   items,
@@ -332,95 +255,6 @@ function RecBullets({
   );
 }
 
-/**
- * Chemical strategy block — same visual rhythm as bullets but with
- * a prominent warning banner reinforcing the agronomic prescription
- * requirement (Lei 7.802/89).
- */
-function ChemicalBlock({
-  classes,
-  ingredientes,
-  observacoes,
-  entry,
-  level,
-  isDark,
-}: {
-  classes: string[];
-  ingredientes: string[];
-  observacoes: string[];
-  entry: {
-    mip: {
-      quimico: {
-        ingredientesAtivos: ReadonlyArray<{
-          produtosComerciais: ReadonlyArray<{ nome: string; formulacao: string; dosagem: string }>;
-        }>;
-      };
-    };
-  };
-  level: InfestationLevel;
-  isDark: boolean;
-}) {
-  const { t } = useTranslation();
-  // Flatten first product of each ingredient — gives the user the canonical
-  // formulation reference without overloading the card.
-  const products = entry.mip.quimico.ingredientesAtivos
-    .flatMap((ia) => ia.produtosComerciais.slice(0, 1))
-    .slice(0, 3);
-
-  return (
-    <View style={styles.subsection}>
-      <View style={styles.subsectionTitleRow}>
-        <Ionicons name="flask" size={14} color={Colors.techBlue} />
-        <Text style={styles.subsectionTitle}>{t('mip.chemicalActions')}</Text>
-      </View>
-      <View style={styles.chemWarning}>
-        <Ionicons name="warning" size={12} color={Colors.warmAmber} />
-        <Text style={styles.chemWarningText}>{t('mip.chemicalWarning')}</Text>
-      </View>
-
-      {classes.length > 0 && (
-        <Text style={[styles.panelBody, isDark && styles.textDark]}>
-          <Text style={styles.metaLabel}>{t('mip.chemicalClasses')}: </Text>
-          {classes.join(', ')}
-        </Text>
-      )}
-
-      {ingredientes.map((ia, i) => (
-        <View key={i} style={styles.bulletRow}>
-          <View style={[styles.bullet, { backgroundColor: Colors.techBlue }]} />
-          <Text style={[styles.panelBody, isDark && styles.textDark]}>{ia}</Text>
-        </View>
-      ))}
-
-      {products.length > 0 && (
-        <View style={[styles.subsection, { marginTop: Spacing.sm }]}>
-          <Text style={styles.subsectionTitle}>
-            {t('mip.commercialProductsLabel', { level: t(`mip.level.${level}`) })}
-          </Text>
-          {products.map((p, i) => (
-            <View key={i} style={styles.productRow}>
-              <Text style={[styles.productName, isDark && styles.textDark]}>{p.nome}</Text>
-              <Text style={styles.productMeta}>
-                {p.formulacao} · {p.dosagem}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {observacoes.length > 0 && (
-        <View style={styles.subsection}>
-          {observacoes.map((obs, i) => (
-            <Text key={i} style={styles.obsText}>
-              · {obs}
-            </Text>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   cardWrap: {
     marginHorizontal: Spacing.lg,
@@ -439,22 +273,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.accent,
-  },
-  tierBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.accent + '14',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  tierBadgeText: {
-    fontSize: 9,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    color: Colors.accent,
-    letterSpacing: 0.4,
   },
   entryName: {
     fontSize: FontSize.title3,
@@ -512,9 +330,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  panelHeaderSpaced: {
-    marginTop: Spacing.md,
-  },
   panelBody: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
@@ -548,76 +363,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bullet: { width: 5, height: 5, borderRadius: 3, marginTop: 8 },
-  chemWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    padding: 8,
-    backgroundColor: Colors.warmAmber + '14',
-    borderRadius: 6,
-    marginBottom: Spacing.sm,
-  },
-  chemWarningText: {
-    flex: 1,
-    fontSize: 11,
-    color: Colors.earthText,
-    fontFamily: FontFamily.semibold,
-    fontWeight: FontWeight.semibold,
-  },
-  productRow: {
-    paddingVertical: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.separator,
-  },
-  productName: {
-    fontSize: FontSize.footnote,
-    fontFamily: FontFamily.semibold,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
-  },
-  productMeta: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 1,
-  },
-  obsText: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    lineHeight: 16,
-    marginBottom: 2,
-  },
-  referencesBlock: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  refRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-  },
-  refChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.techBlue + '14',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  refSource: {
-    fontSize: 11,
-    fontFamily: FontFamily.bold,
-    fontWeight: FontWeight.bold,
-    color: Colors.techBlue,
-  },
-  refYear: {
-    fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: Colors.textSecondary,
-  },
   emptyRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -645,5 +390,32 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     lineHeight: 16,
+  },
+  officialGuidance: {
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderRadius: 8,
+    backgroundColor: `${Colors.techBlue}0D`,
+  },
+  officialGuidanceText: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    lineHeight: 18,
+  },
+  agrofitButton: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: 8,
+    backgroundColor: Colors.accent,
+  },
+  agrofitButtonText: {
+    color: Colors.white,
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.caption,
   },
 });

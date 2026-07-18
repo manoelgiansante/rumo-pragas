@@ -1,4 +1,9 @@
 # Relatório de Pesquisa UX/UI — Rumo Pragas
+
+> [!CAUTION]
+> **ARQUIVO HISTÓRICO — NÃO USAR COMO ESCOPO, PREÇO OU EVIDÊNCIA DE USUÁRIO ATUAL.**
+> Use `docs/audit/competitive-matrix-2026-07-14.md` e
+> `docs/audit/launch-coverage-2026-07-14.md`.
 ## Diretor de Pesquisa UX para Apps Agrícolas
 
 **Data:** 25 de Março de 2026

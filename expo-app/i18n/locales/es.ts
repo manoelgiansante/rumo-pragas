@@ -20,10 +20,21 @@ export default {
     diagnoses: 'Diagnosticos',
     strategy: 'Estrategia',
     monitoring: 'Monitoreo',
-    regionalAlerts: 'Alertas Regionales',
+    regionalAlerts: 'Condiciones Climáticas Locales',
     bestPractices: 'Buenas Practicas',
     pendingDiagnoses: 'diagnostico(s) pendiente(s)',
     waitingConnection: 'esperando conexion',
+    failedDiagnosesTitle: 'Diagnósticos que necesitan atención',
+    failedDiagnosesDescription:
+      'La foto está preservada en este dispositivo. Intente enviarla de nuevo o descártela definitivamente.',
+    failedRetryA11y: 'Intentar enviar nuevamente el diagnóstico de {{crop}}',
+    failedRetryError:
+      'No fue posible volver a poner el diagnóstico en la cola. La foto está preservada.',
+    failedDiscardTitle: '¿Descartar foto y diagnóstico?',
+    failedDiscardMessage: 'Esta eliminación es definitiva y no se puede deshacer.',
+    failedDiscardAction: 'Descartar',
+    failedDiscardA11y: 'Descartar definitivamente el diagnóstico de {{crop}}',
+    failedDiscardError: 'No fue posible descartar el diagnóstico. Inténtelo de nuevo.',
     defaultUser: 'Productor',
     riskHigh: 'Alto',
     riskMedium: 'Medio',
@@ -37,10 +48,10 @@ export default {
     diagnosePestA11y: 'Diagnosticar plaga. Tome una foto o elija de la galería',
     diagnosePestHint: 'Toque dos veces para abrir la cámara',
     diagnoseNow: 'Diagnosticar ahora',
-    scanCtaHint: 'Resultado en segundos',
+    scanCtaHint: 'Envíe la foto para análisis',
     describeSymptoms: '¿Sin foto? Describa los síntomas',
-    describeSymptomsSub: 'La IA Agrónomo identifica por su descripción',
-    describeSymptomsA11y: 'Describir síntomas a la IA Agrónomo',
+    describeSymptomsSub: 'La IA ofrece orientación educativa a partir de su descripción',
+    describeSymptomsA11y: 'Describir síntomas al asistente de IA',
     describeSymptomsHint: 'Abre el chat de IA para describir los síntomas del cultivo',
     tips: {
       monitorTitle: 'Monitoree regularmente',
@@ -97,6 +108,60 @@ export default {
     termsA11y: 'Aceptar términos de uso y política de privacidad',
     appleA11y: 'Iniciar sesión con Apple',
   },
+  accountGate: {
+    linkingTitle: 'Preparando Rumo Pragas',
+    linkingDescription:
+      'Estamos confirmando de forma segura el acceso específico a esta aplicación.',
+    loadingA11y: 'Confirmando acceso a Rumo Pragas',
+    reactivateTitle: 'Cuenta de Rumo Pragas eliminada',
+    reactivateDescription:
+      'Esta cuenta fue eliminada anteriormente. La reactivación recrea únicamente el acceso a Rumo Pragas; los datos eliminados no se restaurarán.',
+    reactivate: 'Reactivar Rumo Pragas',
+    reactivateHint: 'Confirma la creación de un nuevo acceso sin restaurar datos eliminados',
+    globalDeletionTitle: 'Eliminación de la cuenta AgroRumo en curso',
+    globalDeletionDescription:
+      'La solicitud global es permanente. Rumo Pragas seguirá bloqueado y no podrá reactivarse mientras se procesa la cuenta.',
+    pendingTitle: 'Eliminación en curso',
+    pendingDescription:
+      'La eliminación de datos de Rumo Pragas todavía está en proceso. Por seguridad, el acceso seguirá bloqueado hasta que termine.',
+    errorTitle: 'No se pudo confirmar el acceso',
+    errorDescription:
+      'La aplicación no abrirá tus datos hasta confirmar el vínculo con Rumo Pragas. Revisa la conexión e inténtalo de nuevo.',
+    errorCode: 'Referencia técnica: {{code}}',
+  },
+  aiConsent: {
+    title: 'Consentimiento para usar IA',
+    diagnosisDisclosure:
+      'Para identificar la plaga, esta foto, el cultivo seleccionado y, solo si lo autorizó por separado, la ubicación aproximada se enviarán de forma segura al backend de AgroRumo y serán procesados por proveedores especializados de IA de diagnóstico, como Agrio/Saillog o el proveedor configurado.',
+    chatDisclosure:
+      'Para responder, su mensaje y el contexto reciente de la conversación se envían al backend de AgroRumo y son procesados por Google Gemini o, según la configuración del servicio, Anthropic Claude.',
+    safety:
+      'Nada se envía antes de su aceptación. No incluya datos personales ni confidenciales. La respuesta es educativa y no sustituye a un ingeniero agrónomo habilitado.',
+    accept: 'He leído y acepto',
+    cancel: 'Ahora no',
+    version: 'Aviso de IA {{version}}',
+    requiredError: 'Autorice el envío al proveedor de IA antes de continuar.',
+    saveError: 'No fue posible guardar su consentimiento. Inténtelo de nuevo.',
+  },
+  aiReport: {
+    action: 'Denunciar',
+    actionHint: 'Abre el formulario para denunciar esta respuesta de IA',
+    title: 'Denunciar respuesta de IA',
+    subtitle: 'Informe el problema. Su denuncia ayuda a hacer las respuestas más seguras.',
+    reasons: {
+      unsafe_recommendation: 'Recomendación insegura',
+      incorrect_information: 'Información incorrecta',
+      harmful_content: 'Contenido perjudicial',
+      privacy: 'Problema de privacidad',
+      other: 'Otro motivo',
+    },
+    detailsPlaceholder: 'Detalles adicionales (opcional)',
+    detailsA11y: 'Detalles adicionales de la denuncia',
+    submit: 'Enviar denuncia',
+    successTitle: 'Denuncia recibida',
+    success: 'Gracias. La respuesta fue enviada a revisión.',
+    error: 'No fue posible enviar la denuncia. Inténtelo de nuevo.',
+  },
   updatePassword: {
     title: 'Crear nueva contraseña',
     subtitle: 'Define una nueva contraseña para tu cuenta.',
@@ -118,7 +183,7 @@ export default {
     error: 'Error de Diagnostico',
     close: 'Cerrar',
     healthy: 'Planta Saludable',
-    pestDetected: 'Plaga Detectada',
+    pestDetected: 'Posible plaga',
     confidence: 'Confianza',
     queued: 'Diagnostico en cola',
     queuedMessage: 'Su diagnostico se enviara automaticamente cuando se restablezca la conexion.',
@@ -142,14 +207,16 @@ export default {
     frameLeafHint: 'Busque un área bien iluminada',
     startFirstDiagnosis: 'Hacer primer diagnóstico',
     emptyHistoryTitle: 'Aún no hay diagnósticos',
-    emptyHistoryDesc: 'Tome una foto de una hoja para comenzar — toma 5 segundos',
+    emptyHistoryDesc: 'Fotografíe una planta para iniciar un análisis visual educativo',
     aiHint: 'IA especializada en fitosanidad',
     analyzingA11y: 'Analizando imagen',
     offlineQueueError: 'Error al guardar diagnóstico sin conexión. Intente de nuevo.',
+    offlineQueueFull:
+      'Se alcanzó el límite de {{limit}} diagnósticos pendientes. Revise la cola e inténtelo de nuevo o descarte explícitamente los elementos que no desea enviar.',
     genericError: 'Error en el diagnóstico',
-    aiTitle: 'Identificación por IA',
+    aiTitle: 'Análisis visual por IA',
     aiSubtitle:
-      'Tome una foto o elija de la galería para identificar plagas y enfermedades en su cultivo',
+      'Tome una foto o elija de la galería para recibir hipótesis educativas sobre señales visibles',
     takePhotoSub: 'Use la cámara para capturar la plaga',
     chooseGallerySub: 'Seleccione una foto existente',
     tipsTitle: 'Consejos para mejores resultados',
@@ -178,8 +245,6 @@ export default {
     symptoms: 'Síntomas',
     causes: 'Causas',
     culturalControl: 'Control Cultural / MIP',
-    chemicalControl: 'Control Químico',
-    chemicalWarning: 'Consulte a un agrónomo para receta agronómica',
     biologicalControl: 'Control Biológico',
     prevention: 'Prevención',
     monitoring: 'Monitoreo',
@@ -199,27 +264,27 @@ export default {
     location: 'Ubicación',
     notInformed: 'No informado',
     noSymptomsRecorded: 'Ningún síntoma registrado',
-    noTreatmentRecorded: 'Ningún tratamiento registrado',
+    noTreatmentRecorded: 'Ninguna orientación de manejo registrada',
     noPreventionRecorded: 'Ninguna prevención registrada',
     noInfoAvailable: 'Ninguna información disponible.',
-    shareTitle: 'Diagnóstico Rumo Pragas IA',
-    sharePest: 'Plaga',
+    shareTitle: 'Análisis visual Rumo Pragas IA',
+    sharePest: 'Hipótesis principal',
     shareConfidence: 'Confianza',
     shareSeverity: 'Severidad',
     shareCrop: 'Cultivo',
     shareSymptoms: 'Síntomas',
-    shareTreatment: 'Tratamiento Recomendado',
+    shareGuidance: 'Orientaciones educativas de manejo',
     sharePrevention: 'Prevención',
-    shareFooter: 'Diagnosticado por Rumo Pragas IA',
-    shareCulturalControl: 'Control Cultural',
-    shareChemicalControl: 'Control Químico',
-    shareBiologicalControl: 'Control Biológico',
-    pdfTitle: 'Rumo Pragas IA - Informe de Diagnóstico',
-    pdfPestIdentified: 'Plaga Identificada',
+    shareDisclaimer:
+      'Resultado probabilístico y educativo; confirme en el campo con un profesional habilitado',
+    shareCulturalControl: 'Manejo cultural',
+    shareBiologicalControl: 'Manejo biológico',
+    pdfTitle: 'Rumo Pragas IA - Informe de Análisis Visual',
+    pdfPestIdentified: 'Hipótesis principal',
     pdfSeverity: 'Severidad',
     pdfCrop: 'Cultivo',
-    pdfFooter: 'Diagnóstico generado por la app Rumo Pragas IA - protección de cultivos',
-    pdfChemicalWarning: '* Consulte a un agrónomo para receta agronómica',
+    pdfFooter:
+      'Análisis probabilístico y educativo generado por Rumo Pragas IA; no sustituye una evaluación profesional.',
     backToHomeA11y: 'Volver a la pantalla principal',
     errorIconA11y: 'Icono de error',
     closeDiagnosisA11y: 'Cerrar diagnóstico',
@@ -234,17 +299,15 @@ export default {
     lowConfidenceBanner:
       '⚠️ Confianza baja — consulte a un agrónomo antes de aplicar cualquier tratamiento.',
     legalDisclaimer:
-      'Este diagnóstico es auxiliar y no reemplaza el recetario agronómico obligatorio por la Ley brasileña 7.802/89. Consulte a un agrónomo con CREA activo antes de aplicar plaguicidas.',
+      'Esta identificación es educativa y no sustituye la evaluación de campo ni el recetario agronómico. El uso de productos de control debe cumplir la Ley brasileña 14.785/2023 y la responsabilidad técnica prevista en la Resolución Confea 1.149/2025. Consulte a un ingeniero agrónomo habilitado y verifique el registro en AGROFIT.',
     // Redesign 2026-05-21 — Result + Pest Detail
     alternativeDiagnoses: 'Otras posibilidades',
-    alternativeDiagnosesHint: 'Vea candidatos alternativos detectados por la IA',
-    treatmentSummary: 'Resumen del tratamiento (MIP)',
+    alternativeDiagnosesHint: 'Vea otras hipótesis consideradas por la IA',
+    treatmentSummary: 'Orientaciones educativas de MIP',
     treatmentLevelCultural: 'Cultural',
     treatmentLevelBiological: 'Biológico',
-    treatmentLevelChemical: 'Químico',
     treatmentLevelCulturalHint: 'Manejo, rotación, siembra',
     treatmentLevelBiologicalHint: 'Enemigos naturales, bioinsumos',
-    treatmentLevelChemicalHint: 'Plaguicidas con receta',
     viewDetails: 'Ver detalles completos',
     viewDetailsHint: 'Abre la ficha técnica completa de la plaga',
     saveToHistory: 'Guardar en el historial',
@@ -254,11 +317,6 @@ export default {
     pestDetailLifecycle: 'Ciclo de vida',
     pestDetailSynonyms: 'Otros nombres',
     pestDetailSymptomsDetailed: 'Síntomas detallados',
-    pestDetailCommercialProducts: 'Productos comerciales',
-    pestDetailDosage: 'Dosis',
-    pestDetailInterval: 'Intervalo',
-    pestDetailSafetyPeriod: 'Período de carencia',
-    pestDetailToxicClass: 'Clase toxicológica',
     pestDetailMonitoringMethod: 'Método de monitoreo',
     pestDetailMonitoringFrequency: 'Frecuencia sugerida',
     pestDetailActionThreshold: 'Nivel de acción',
@@ -266,6 +324,9 @@ export default {
     pestDetailReferenceEmbrapa: 'EMBRAPA — Agencia de información tecnológica',
     pestDetailReferenceMapa: 'MAPA — Ministerio de Agricultura de Brasil',
     pestDetailReferenceAgrofit: 'AGROFIT — Sistema de Pesticidas Fitosanitarios',
+    officialConsultationTitle: 'Registro oficial y orientación profesional',
+    officialConsultationText:
+      'Consulte en AGROFIT los productos registrados para el cultivo y el objetivo y busque un ingeniero agrónomo habilitado para evaluación de campo y recetario.',
     pestDetailNotFoundTitle: 'Plaga no encontrada',
     pestDetailNotFoundMsg:
       'No hay detalles para esta plaga en la caché local. Realice un nuevo diagnóstico para abrir la ficha completa.',
@@ -277,7 +338,6 @@ export default {
     pestDetailHeroAlt: 'Foto de la plaga o enfermedad identificada',
     pestDetailLifecycleEmpty: 'Información del ciclo de vida no disponible para esta plaga.',
     pestDetailFavorableEmpty: 'Condiciones favorables no registradas.',
-    pestDetailProductsEmpty: 'Sin productos comerciales registrados. Consulte a un agrónomo.',
     pestDetailMonitoringEmpty: 'Sin método de monitoreo registrado.',
     // Labels for the MIP-catalog fallback (pest fact sheet — Agrio path)
     mipLabelTemperature: 'Temperatura',
@@ -285,10 +345,6 @@ export default {
     mipLabelSeason: 'Época favorable',
     mipDaysUnit: 'días',
     // Reference-protocol banner shown when chemical products come from the MIP
-    // catalog fallback (not the diagnosis enrichment) — the match is by pest
-    // name, so the identification must be confirmed before applying plaguicidas.
-    pestDetailReferenceProtocol:
-      'Protocolo de referencia para {{praga}} — confirme la identificación antes de aplicar.',
     stepCounter: 'Paso {{current}} de {{total}}',
     topAlternatives: 'Otras posibilidades',
     topAlternativesHint:
@@ -297,10 +353,51 @@ export default {
       'Compare los síntomas y, en caso de duda, consulte a un agrónomo antes de tratar.',
     alternativeA11y: 'Alternativa número {{rank}}: {{name}}, {{pct}} por ciento de confianza.',
   },
+  diagnosisFeedback: {
+    title: '¿La identificación fue útil?',
+    description: 'Su respuesta ayuda a medir y mejorar la calidad de las identificaciones.',
+    verdicts: { correct: 'Correcta', incorrect: 'Incorrecta', unsure: 'No sé' },
+    alternativePlaceholder: '¿Qué identificación parece correcta? (opcional)',
+    alternativeA11y: 'Identificación alternativa opcional',
+    notesPlaceholder: 'Observación breve (opcional)',
+    notesA11y: 'Observación breve sobre la identificación',
+    privacy:
+      'Este feedback envía el identificador del diagnóstico, su valoración y el texto opcional. Este formulario no reenvía ni retiene la foto.',
+    submit: 'Enviar feedback',
+    successTitle: 'Feedback enviado',
+    success: 'Gracias por ayudar a mejorar las identificaciones.',
+    error: 'No fue posible enviar el feedback. Inténtelo de nuevo.',
+  },
+  adminAIReports: {
+    title: 'Denuncias de contenido de IA',
+    forbiddenTitle: 'Acceso restringido',
+    forbidden: 'Esta área está disponible solo para administradores autorizados.',
+    error: 'No fue posible cargar las denuncias. Inténtelo de nuevo.',
+    empty: 'No se encontraron denuncias con este estado.',
+    status: {
+      all: 'Todas',
+      received: 'Recibidas',
+      reviewing: 'En revisión',
+      resolved: 'Resueltas',
+      dismissed: 'Descartadas',
+    },
+    reason: {
+      unsafe_recommendation: 'Recomendación insegura',
+      incorrect_information: 'Información incorrecta',
+      harmful_content: 'Contenido perjudicial',
+      privacy: 'Privacidad',
+      other: 'Otro motivo',
+    },
+    notePlaceholder: 'Nota interna de la revisión (opcional)',
+    noteA11y: 'Nota interna de la revisión de la denuncia',
+    review: 'Revisar',
+    resolve: 'Resolver',
+    dismiss: 'Descartar',
+  },
   mip: {
-    title: 'Protocolo MIP',
+    title: 'Orientaciones MIP',
     emptyState:
-      'No hay protocolo MIP registrado para esta plaga o enfermedad. Consulte a un agrónomo licenciado (CREA) para orientación específica.',
+      'No hay orientación MIP registrada para esta hipótesis. Consulte a un ingeniero agrónomo habilitado para una evaluación específica.',
     levelPickerLabel: 'Nivel de infestación observado',
     level: {
       baixo: 'Bajo',
@@ -311,20 +408,16 @@ export default {
     recommendedActionLabel: 'Acción recomendada',
     culturalActions: 'Control cultural',
     biologicalActions: 'Control biológico',
-    mechanicalActions: 'Control mecánico',
-    chemicalActions: 'Control químico',
-    chemicalWarning:
-      'La aplicación química requiere recetario agronómico emitido por un ingeniero agrónomo con CREA activo.',
-    chemicalClasses: 'Clases',
-    commercialProductsLabel: 'Productos de referencia ({{level}})',
     monitoringLabel: 'Monitoreo',
     monitoringMethod: 'Método',
     monitoringFrequency: 'Frecuencia',
     monitoringControlLevel: 'Nivel de control',
-    resistanceRotation: 'Manejo antirresistencia',
-    referencesLabel: 'Fuentes',
-    referenceA11y: 'Fuente {{source}}, {{year}}',
-    chipA11yUnlocked: 'Nivel {{level}}, desbloqueado',
+    chipA11y: 'Nivel {{level}}',
+    officialGuidance:
+      'Para productos, dosis, intervalos y períodos de carencia, consulte el registro oficial AGROFIT y un ingeniero agrónomo habilitado.',
+    openAgrofit: 'Consultar AGROFIT',
+    regulatoryDisclaimer:
+      'Contenido educativo. La indicación y el uso de productos deben cumplir la Ley brasileña 14.785/2023 y la Resolución Confea 1.149/2025, con responsabilidad técnica y recetario cuando corresponda.',
   },
   settings: {
     profile: 'Perfil',
@@ -339,18 +432,18 @@ export default {
     shareApp: 'Recomendar la app',
     videoTutorials: 'Tutoriales en video',
     shareMessage:
-      'Uso Rumo Pragas IA para diagnosticar plagas y enfermedades del cultivo con una foto, gratis. Descárgala:',
+      'Uso Rumo Pragas IA para obtener hipótesis educativas sobre señales visibles en plantas mediante una foto. Conózcala:',
     supportSubject: 'Soporte Rumo Pragas IA',
     checking: 'Verificando...',
     signOut: 'Cerrar Sesion',
-    deleteAccount: 'Eliminar Cuenta',
-    deleteConfirmTitle: 'Eliminar Cuenta',
+    deleteAccount: 'Eliminar cuenta AgroRumo',
+    deleteConfirmTitle: 'Eliminar cuenta AgroRumo',
     deleteConfirmMessage:
-      'Atencion: su inicio de sesion de AgroRumo es COMPARTIDO. Eliminar esta cuenta quita el mismo inicio de sesion y el acceso a TODAS las demas apps AgroRumo que usa con este correo (como Rumo Vet, Finance, Operacional y CampoVivo), ademas de todos sus datos de Rumo Pragas IA.',
+      'Esta solicitud afecta toda la cuenta AgroRumo y las demás aplicaciones vinculadas. El acceso a Rumo Pragas se suspenderá inmediatamente.',
     deleteContinue: 'Continuar',
     deleteFinalTitle: 'Confirmar eliminacion definitiva',
     deleteFinalMessage:
-      'Esta accion es permanente e inmediata: no hay periodo de recuperacion. Su cuenta AgroRumo y sus datos se borraran ahora y no podran restaurarse. Eliminar definitivamente?',
+      'La eliminación global es permanente y se procesará de forma coordinada en un máximo de 15 días tras una nueva autenticación. ¿Continuar?',
     deleteFinalConfirm: 'Eliminar definitivamente',
     cancel: 'Cancelar',
     delete: 'Eliminar',
@@ -365,30 +458,62 @@ export default {
     profileSaved: '¡Perfil actualizado con éxito!',
     profileSaveError: 'No se pudo guardar el perfil. Inténtelo de nuevo.',
     languageTitle: 'Idioma / Language',
-    deletionReceived: 'Cuenta Eliminada',
+    deletionReceived: 'Solicitud de eliminación registrada',
     deletionReceivedMessage:
-      'Su cuenta y todos sus datos han sido eliminados permanentemente. Se cerrará su sesión ahora.',
-    deletionError: 'No se pudo procesar la solicitud. Inténtelo de nuevo.',
-    pushNotifA11y: 'Notificaciones push',
-    pushNotifications: 'Notificaciones push',
+      'El acceso a Rumo Pragas está suspendido. Guarde el recibo para consultar el procesamiento coordinado de la cuenta AgroRumo.',
+    deletionPendingTitle: 'Eliminación en curso',
+    deletionPendingMessage:
+      'La solicitud global aún está en proceso. Consulte el estado con el recibo opaco.',
+    deletionIncompleteTitle: 'Eliminación incompleta',
+    deletionError:
+      'No fue posible registrar la solicitud global. Inténtelo de nuevo o contacte suporte@agrorumo.com.',
+    deletionLocalPurgeError:
+      'Los datos del servidor fueron procesados, pero la limpieza segura de este dispositivo no terminó. Inténtalo de nuevo antes de cerrar sesión.',
+    pushNotifA11y: 'Activar o desactivar notificaciones',
+    pushNotifications: 'Notificaciones',
+    pushPreferenceError: 'No fue posible cambiar la preferencia de notificaciones.',
+    notificationsPermissionDenied:
+      'No se concedió el permiso. Puedes activarlo en los ajustes del dispositivo.',
+    androidLocalNotificationsOnly:
+      'En Android, esta versión ofrece solo alertas locales educativas. El push remoto no está activo.',
+    locationSharing: 'Ubicación aproximada',
+    locationSharingA11y: 'Compartir ubicación aproximada',
+    locationSharingHint:
+      'Usa coordenadas reducidas a dos decimales para clima local y contexto opcional del análisis.',
+    locationPreferenceError: 'No se pudo guardar la preferencia de ubicación.',
+    locationDisclosureTitle: '¿Usar ubicación aproximada?',
+    locationDisclosureMessage:
+      'Si lo permites, las coordenadas reducidas a dos decimales se envían a Open-Meteo para el clima y, durante el análisis de una foto, al proveedor de diagnóstico como contexto regional opcional.',
+    locationAllow: 'Permitir ubicación aproximada',
+    locationPermissionDeniedTitle: 'Ubicación no autorizada',
+    locationPermissionDeniedMessage:
+      'Rumo Pragas seguirá funcionando sin ubicación. Puedes autorizarla luego en los ajustes del dispositivo.',
+    exportData: 'Exportar mis datos de Rumo Pragas',
+    exportDataHint: 'Crea un archivo JSON con los datos específicos de esta aplicación',
+    exportShareTitle: 'Exportación de datos de Rumo Pragas',
+    exportSuccessTitle: 'Exportación lista',
+    exportSuccessMessage: 'El archivo de tus datos de Rumo Pragas está preparado.',
+    exportIncompleteError:
+      'El servidor no demostró que la exportación esté completa. No se entregó ningún archivo parcial.',
+    exportUnavailableError:
+      'La exportación de datos no está disponible ahora. Inténtalo más tarde.',
+    aiConsentTitle: 'Consentimientos de IA',
+    aiConsentDiagnosis: 'IA para análisis de fotos',
+    aiConsentDiagnosisA11y: 'Consentimiento de IA para análisis de fotos',
+    aiConsentChat: 'IA para el chat',
+    aiConsentChatA11y: 'Consentimiento de IA para mensajes del chat',
+    aiConsentReacceptAtUse:
+      'Para autorizar de nuevo, inicia un análisis o envía un mensaje; se mostrará la información completa antes del envío.',
+    aiConsentRevokedTitle: 'Consentimiento retirado',
+    aiConsentRevoked: 'Los nuevos envíos quedan bloqueados hasta una nueva autorización explícita.',
+    aiConsentRevokeError:
+      'No se pudo confirmar la retirada en el servidor. El estado no cambió; inténtalo de nuevo.',
     signOutA11y: 'Cerrar sesión',
     signOutConfirmTitle: '¿Cerrar sesión?',
     signOutConfirmMessage: 'Puedes volver en cualquier momento iniciando sesión otra vez.',
-    deleteAccountA11y: 'Eliminar cuenta permanentemente',
+    deleteAccountA11y: 'Solicitar la eliminación permanente de toda la cuenta AgroRumo',
     deleteAccountHint:
-      'Solicita la eliminación de todos sus datos conforme a las regulaciones de privacidad',
-    notifPrefs: {
-      sectionTitle: 'Notificaciones',
-      outbreaks: 'Brotes regionales',
-      outbreaksA11y: 'Alertas sobre brotes de plagas en su región',
-      dailyReminder: 'Recordatorio diario',
-      dailyReminderA11y: 'Recordatorio diario para inspeccionar su cultivo',
-      news: 'Novedades de la app',
-      newsA11y: 'Avisos de nuevas funciones y mejoras',
-      marketing: 'Promociones y ofertas',
-      marketingA11y: 'Ofertas promocionales y descuentos',
-      saveError: 'No se pudo guardar la preferencia. Inténtelo de nuevo.',
-    },
+      'Abre la confirmación y reautenticación para la cuenta compartida y los datos asociados',
     // Polished UI — 2026-05-21
     headerTitle: 'Ajustes',
     sectionAccount: 'Cuenta',
@@ -397,6 +522,49 @@ export default {
     sectionPrivacy: 'Privacidad',
     sectionAbout: 'Acerca de',
     privacyFooter: 'Conforme a la LGPD / GDPR. Puedes revocar permisos en cualquier momento.',
+  },
+  accountDeletion: {
+    back: 'Volver',
+    title: 'Eliminar cuenta AgroRumo',
+    wholeAccountTitle: 'Esta solicitud afecta toda su cuenta AgroRumo',
+    wholeAccountMessage:
+      'El mismo acceso puede utilizarse en otros productos AgroRumo. Por seguridad, la eliminación integral se procesa de forma coordinada tras su confirmación individual.',
+    impactPragas:
+      'El acceso a Rumo Pragas y el envío de notificaciones se suspenderán inmediatamente.',
+    impactOtherApps:
+      'Después del procesamiento, perderá el acceso a las demás aplicaciones que usan esta misma cuenta AgroRumo.',
+    impactRetention:
+      'Los datos personales se eliminarán o anonimizarán; los registros exigidos por ley podrán conservarse solo durante el plazo aplicable.',
+    impactTimeline:
+      'El equipo completará el procesamiento coordinado en un máximo de 15 días y registrará el estado en el recibo.',
+    acknowledgement:
+      'Entiendo que solicito eliminar toda mi cuenta AgroRumo, no solo los datos de Rumo Pragas.',
+    acknowledgementA11y: 'Confirmar el impacto en toda la cuenta AgroRumo',
+    reauthenticateTitle: 'Confirme de nuevo su identidad',
+    reauthenticateMessage:
+      'Para evitar solicitudes no autorizadas, inicie sesión de nuevo con el mismo método de esta cuenta.',
+    passwordPlaceholder: 'Contraseña actual',
+    confirmWithPassword: 'Reautenticar y solicitar eliminación',
+    confirmWithApple: 'Confirmar con Apple',
+    confirmWithGoogle: 'Confirmar con Google',
+    providerUnavailable:
+      'No se encontró un método compatible. Si esta cuenta usa Apple, finalice en un iPhone o iPad con Confirmar con Apple. Si necesita ayuda, contacte suporte@agrorumo.com.',
+    reauthenticationError:
+      'No se confirmó su identidad o no se pudo registrar la solicitud. Inténtelo de nuevo.',
+    receivedTitle: 'Solicitud registrada',
+    receivedMessage:
+      'El acceso a Rumo Pragas está suspendido. La eliminación coordinada se procesará antes del {{dueDate}}. Guarde el recibo para consultar el estado.',
+    receiptLabel: 'Recibo sin datos personales',
+    receiptShare: 'Solicitud de eliminación AgroRumo\nRecibo: {{receipt}}\nPlazo: {{dueDate}}',
+    appleRevocationPending:
+      'Tu solicitud fue recibida. La revocación del acceso de Apple está pendiente y seguirá en la cola auditada sin cancelar la eliminación.',
+    retryAppleRevocation: 'Reintentar la revocación de Apple',
+    appleRevocationRetryError:
+      'La solicitud sigue siendo válida, pero la revocación de Apple aún está pendiente. Inténtalo de nuevo.',
+    shareReceipt: 'Compartir recibo',
+    localPurgeWarning:
+      'El servidor registró la solicitud, pero la limpieza local de este dispositivo no terminó. Elimine la app del dispositivo después de guardar el recibo.',
+    finish: 'Finalizar y cerrar sesión',
   },
   common: {
     offlineBanner: 'Estás sin conexión a internet',
@@ -451,7 +619,7 @@ export default {
       'Demasiados mensajes seguidos. Espere unos instantes e inténtelo de nuevo.',
     suggestion1: '¿Cómo identificar la roya asiática en la soja?',
     suggestion2: '¿Cuál es el mejor manejo para el gusano cogollero?',
-    suggestion3: '¿Cuándo aplicar fungicida preventivo en el café?',
+    suggestion3: '¿Cómo monitorear el riesgo de roya en el café?',
     suggestion4: '¿Cómo funciona el control biológico de plagas?',
     symptomsPrefill: 'Mi cultivo presenta estos síntomas: ',
     inputA11y: 'Mensaje para el consultor de plagas',
@@ -505,8 +673,8 @@ export default {
     back: 'Volver',
     title: 'Seleccionar Cultivo',
     imageSelected: 'Imagen seleccionada',
-    imageSelectedHint: 'Elija el cultivo para mayor precisión',
-    imageA11y: 'Imagen seleccionada. Elija el cultivo para mayor precisión',
+    imageSelectedHint: 'Elija el cultivo para proporcionar más contexto',
+    imageA11y: 'Imagen seleccionada. Elija el cultivo para proporcionar más contexto',
     photoA11y: 'Foto seleccionada para diagnóstico',
     searchPlaceholder: 'Buscar cultivo...',
     question: '¿Qué cultivo está afectado?',
@@ -516,6 +684,8 @@ export default {
     startDiagnosis: 'Iniciar Diagnóstico',
     startA11y: 'Iniciar diagnóstico para {{crop}}',
     startHint: 'Envía la imagen para análisis por inteligencia artificial',
+    photoGuidance:
+      'Hoy cada diagnóstico usa una foto: use luz natural, mantenga el enfoque, muestre la hoja completa y el síntoma visible, sin zoom excesivo.',
   },
   weather: {
     clear: 'Cielo despejado',
@@ -561,15 +731,15 @@ export default {
     yesRate: '¡Sí, evaluar!',
   },
   notifications: {
-    pestAlertsChannel: 'Alertas de Plagas',
-    pestAlertsDesc: 'Notificaciones sobre riesgos de plagas en su región',
+    climateRiskChannel: 'Riesgos climáticos locales',
+    climateRiskDesc: 'Avisos educativos derivados de las condiciones meteorológicas locales',
     generalChannel: 'General',
     generalDesc: 'Notificaciones generales de la aplicación',
   },
   alerts: {
     ferrugem_title: 'Alto riesgo de roya',
     ferrugem_desc:
-      'Humedad superior al 80% y temperaturas superiores a 25°C crean condiciones ideales para la roya asiática. Monitoree las hojas inferiores y aplique fungicida preventivo.',
+      'La humedad superior al 80% y las temperaturas superiores a 25°C favorecen la roya asiática. Intensifique el monitoreo de las hojas inferiores y consulte a un ingeniero agrónomo y AGROFIT antes de cualquier tratamiento.',
     ferrugem_crop: 'Soja, Café, Trigo',
     fungicas_title: 'Condiciones favorables para enfermedades fúngicas',
     fungicas_desc:
@@ -609,7 +779,7 @@ export default {
     estavel_crop: 'Todos los cultivos',
     forecast_fungicas_title: 'Riesgo prolongado de enfermedades fúngicas en los próximos días',
     forecast_fungicas_desc:
-      'El pronóstico indica 3 o más días consecutivos con lluvias superiores a 5mm y temperaturas superiores a 22°C. Estas condiciones favorecen fuertemente el desarrollo de enfermedades fúngicas como roya, cercospora y antracnosis. Anticipe aplicaciones preventivas de fungicida.',
+      'El pronóstico indica 3 o más días consecutivos con lluvias superiores a 5mm y temperaturas superiores a 22°C. Estas condiciones favorecen enfermedades fúngicas como roya, cercospora y antracnosis. Intensifique el monitoreo y consulte a un ingeniero agrónomo y AGROFIT.',
     forecast_fungicas_crop: 'Soja, Maíz, Frijol, Café',
     forecast_geada_title: 'Alerta de heladas en los próximos días',
     forecast_geada_desc:
@@ -680,18 +850,18 @@ export default {
     banana: 'Banana',
   },
   onboarding: {
-    page1Title: 'Diagnóstico con IA',
+    page1Title: 'Análisis visual con IA',
     page1Subtitle:
-      'Tome una foto de la planta afectada y nuestra IA identifica la plaga o enfermedad en segundos.',
+      'Fotografíe señales visibles y reciba hipótesis educativas y probabilísticas para apoyar la inspección en campo.',
     page2Title: 'Historial Completo',
     page2Subtitle:
-      'Acompañe todos los diagnósticos realizados, visualice tendencias y tome decisiones basadas en datos.',
+      'Consulte los registros de análisis anteriores y vuelva a la información cuando la necesite.',
     page3Title: 'Biblioteca de Plagas',
     page3Subtitle:
       'Acceda a información detallada sobre las principales plagas y enfermedades de los cultivos.',
     page4Title: 'Proteja su Cultivo',
     page4Subtitle:
-      'Reciba recomendaciones de manejo integrado de plagas y proteja su producción con tecnología de punta.',
+      'Consulte orientaciones educativas de manejo integrado y confirme decisiones con fuentes oficiales y un profesional habilitado.',
     skip: 'Omitir',
     skipA11y: 'Omitir introducción',
     next: 'Siguiente',
@@ -810,16 +980,32 @@ export default {
     location: {
       title: '¿Compartir tu ubicación?',
       subtitle:
-        'Podemos usar tu ubicación para mejorar el diagnóstico y enviar alertas regionales de plagas. Tú eliges — la app funciona sin esto.',
-      benefit1: 'Diagnóstico más preciso, ajustado a tu región',
-      benefit2: 'Alertas climáticas y de plagas para tu área',
-      benefit3: 'Recomendaciones de MIP regionales',
+        'Si lo autorizas, usamos ubicación aproximada reducida a dos decimales. La app funciona normalmente sin ella.',
+      benefit1: 'Consultar temperatura, humedad y precipitación local en Open-Meteo',
+      benefit2: 'Añadir contexto regional opcional al analizar una foto',
+      benefit3: 'Sin rastreo en segundo plano ni ubicación precisa',
       lgpdNotice:
-        'Conforme a la LGPD brasileña (Ley 13.709/2018): tu ubicación solo se envía al agrónomo IA con tu consentimiento explícito. Puedes revocarlo en cualquier momento en Ajustes.',
-      accept: 'Continuar',
-      acceptA11y: 'Continuar',
+        'Las coordenadas aproximadas pueden enviarse a Open-Meteo para el clima y al proveedor de diagnóstico durante el análisis de una foto. Tu decisión se registra y puede retirarse en Ajustes.',
+      accept: 'Permitir ubicación aproximada',
+      acceptA11y: 'Abrir el permiso del dispositivo para ubicación aproximada',
+      decline: 'Continuar sin ubicación',
+      declineA11y: 'Continuar sin compartir ubicación',
       footnote: 'Puedes cambiar esta elección en Ajustes > Privacidad.',
       saveError: 'No se pudo guardar tu preferencia. Inténtalo de nuevo.',
     },
+  },
+  // In-app update check (aviso de nueva versión) — 2026-07
+  appUpdate: {
+    bannerTitle: 'Nueva versión disponible',
+    bannerSubtitle: 'La versión {{version}} ya está en la tienda',
+    actionUpdate: 'Actualizar',
+    actionLater: 'Después',
+    forceTitle: 'Actualización necesaria',
+    forceSubtitle:
+      'Esta versión de la app ya no es compatible. Actualiza para seguir usando Rumo Pragas.',
+    forceAction: 'Actualizar ahora',
+    releaseNotesTitle: 'Novedades',
+    currentVersionLabel: 'Versión instalada: {{version}}',
+    noConnectionError: 'No se pudo abrir la tienda. Verifica tu conexión e inténtalo de nuevo.',
   },
 };

@@ -1,21 +1,17 @@
-/**
- * Analytics Service
- *
- * Lightweight analytics foundation for tracking user events.
- * Currently logs to console + Supabase. Can be extended to
- * integrate with PostHog, Amplitude, or Mixpanel.
- */
-
-import { supabase } from './supabase';
+/** Privacy-minimized, authenticated product analytics for Rumo Pragas. */
+import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
+import { supabase } from './supabase';
 
-// In-memory queue for batching events
-const eventQueue: AnalyticsEvent[] = [];
-const FLUSH_INTERVAL_MS = 30_000; // flush every 30s
-const MAX_QUEUE_SIZE = 50;
-
-let flushTimer: ReturnType<typeof setInterval> | null = null;
-let currentUserId: string | null = null;
+const FLUSH_INTERVAL_MS = 30_000;
+const AUTO_FLUSH_SIZE = 50;
+const MAX_QUEUE_SIZE = 100;
+const MAX_BATCH_BYTES = 512 * 1024;
+const MAX_PROPERTIES = 20;
+const EVENT_NAME_RE = /^[a-z][a-z0-9_]{0,63}$/;
+const PROPERTY_KEY_RE = /^[a-z][a-zA-Z0-9_]{0,63}$/;
+const FORBIDDEN_PROPERTY_RE =
+  /(?:user|email|phone|token|secret|password|image|base64|latitude|longitude|location|address|message)/i;
 
 // ── WEB-SAFE ACCESS TOKEN (cicatriz ed9906a / ZERO-X class) ──
 // The flush runs from a background timer with no React context, so it cannot
@@ -27,140 +23,184 @@ let currentUserId: string | null = null;
 // resolves the token via `supabase.auth.getSession()`, which reads EXCLUSIVELY
 // from storage. On WEB the SecureStore adapter is a no-op (services/supabase.ts)
 // → session is null → invoke silently falls back to the ANON key. The
-// `analytics` edge fn then runs getUser() on the anon identity, finds no user
-// and returns 401, so every batch is re-queued forever and product telemetry
-// dies. Passing this in-memory token explicitly fixes web and stays correct on
-// native. Identity is STILL verified server-side by the edge fn via
+// `pragas-analytics` edge fn then runs getUser() on the anon identity, finds no
+// user and returns 401, so every batch is re-queued forever and product
+// telemetry dies. Passing this in-memory token explicitly fixes web and stays
+// correct on native. Identity is STILL verified server-side by the edge fn via
 // `supabase.auth.getUser(token)` (ZERO-X) — the client is never trusted.
-let currentAccessToken: string | null = null;
-supabase.auth.onAuthStateChange((_event, session) => {
-  currentAccessToken = session?.access_token ?? null;
-});
+//
+// The single `let currentAccessToken` declaration + subscription lives below
+// with the other module state; see `onAuthStateChange` handler for the wiring.
 
 export interface AnalyticsEvent {
+  eventId: string;
   event: string;
-  properties?: Record<string, unknown> | undefined;
+  properties?: Record<string, string | number | boolean> | undefined;
   timestamp: string;
-  userId?: string | undefined;
   platform: string;
 }
 
-/**
- * Internal: guard against uncaught interval callbacks that could kill the loop.
- * A single failed flush must never prevent future flushes.
- */
-function safeFlushTick(): void {
-  try {
-    void flushEvents().catch((err) => {
-      if (__DEV__) console.warn('[Analytics] Flush tick error (swallowed):', err);
-    });
-  } catch (err) {
-    if (__DEV__) console.warn('[Analytics] Flush tick sync error (swallowed):', err);
-  }
+interface PendingBatch {
+  idempotencyKey: string;
+  eventIds: string[];
 }
 
-/**
- * Initialize analytics with the authenticated user ID.
- * Safe to call multiple times (e.g. re-login) — prior timer is cleared first.
- */
-export function initAnalytics(userId: string): void {
-  currentUserId = userId;
+const eventQueue: AnalyticsEvent[] = [];
+let pendingBatch: PendingBatch | null = null;
+let flushTimer: ReturnType<typeof setInterval> | null = null;
+let currentUserId: string | null = null;
+let currentAuthUserId: string | null = null;
+let currentAccessToken: string | null = null;
+let isFlushing = false;
 
-  // Clear any existing timer before creating a new one (handles re-login / user switch)
-  if (flushTimer) {
-    clearInterval(flushTimer);
-    flushTimer = null;
+supabase.auth.onAuthStateChange((_event, session) => {
+  const nextAuthUserId = session?.user?.id ?? null;
+  if (!nextAuthUserId || (currentUserId !== null && currentUserId !== nextAuthUserId)) {
+    clearQueuedEvents();
   }
+  currentAuthUserId = nextAuthUserId;
+  currentAccessToken = session?.access_token ?? null;
+});
+
+function isAnalyticsEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_ENABLE_ANALYTICS !== 'false';
+}
+
+function sanitizeProperties(
+  properties?: Record<string, unknown>,
+): Record<string, string | number | boolean> | undefined {
+  if (!properties) return undefined;
+  const clean: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(properties).slice(0, MAX_PROPERTIES)) {
+    if (!PROPERTY_KEY_RE.test(key) || FORBIDDEN_PROPERTY_RE.test(key)) continue;
+    if (typeof value === 'boolean') clean[key] = value;
+    else if (typeof value === 'number' && Number.isFinite(value)) clean[key] = value;
+    else if (typeof value === 'string') clean[key] = value.slice(0, 120);
+  }
+  return Object.keys(clean).length > 0 ? clean : undefined;
+}
+
+function clearQueuedEvents(): void {
+  eventQueue.length = 0;
+  pendingBatch = null;
+}
+
+function safeFlushTick(): void {
+  void flushEvents().catch(() => {
+    if (__DEV__) console.warn('[Analytics] Flush unavailable');
+  });
+}
+
+/** Start authenticated analytics. Every account transition starts with an empty queue. */
+export function initAnalytics(userId: string): void {
+  if (!isAnalyticsEnabled() || !userId.trim()) {
+    resetAnalytics();
+    return;
+  }
+  if (currentUserId !== userId) clearQueuedEvents();
+  currentUserId = userId;
+  if (flushTimer) clearInterval(flushTimer);
   flushTimer = setInterval(safeFlushTick, FLUSH_INTERVAL_MS);
 }
 
-/**
- * Reset analytics on logout.
- * Guaranteed to clear the interval even if flush fails.
- */
+/** Logout is a strict privacy boundary; nothing from account A may reach B. */
 export function resetAnalytics(): void {
   currentUserId = null;
-  try {
-    flushEvents().catch((err) => {
-      if (__DEV__) console.warn('[Analytics] Reset flush error (swallowed):', err);
-    });
-  } catch (err) {
-    if (__DEV__) console.warn('[Analytics] Reset flush sync error (swallowed):', err);
-  }
-  // Always clear interval — even if flush threw, the timer must die
+  currentAuthUserId = null;
+  currentAccessToken = null;
+  clearQueuedEvents();
   if (flushTimer) {
     clearInterval(flushTimer);
     flushTimer = null;
   }
 }
 
-/**
- * Track an analytics event.
- */
 export function trackEvent(event: string, properties?: Record<string, unknown>): void {
+  if (
+    !isAnalyticsEnabled() ||
+    !currentUserId ||
+    !currentAccessToken ||
+    currentAuthUserId !== currentUserId
+  )
+    return;
+  if (!EVENT_NAME_RE.test(event)) return;
+  const safeProperties = sanitizeProperties(properties);
   const analyticsEvent: AnalyticsEvent = {
+    eventId: Crypto.randomUUID(),
     event,
-    properties,
+    ...(safeProperties ? { properties: safeProperties } : {}),
     timestamp: new Date().toISOString(),
-    userId: currentUserId ?? undefined,
     platform: Platform.OS,
   };
 
-  if (__DEV__) {
-    console.warn('[Analytics]', event, properties ?? '');
-  }
-
   eventQueue.push(analyticsEvent);
-
-  if (eventQueue.length >= MAX_QUEUE_SIZE) {
-    flushEvents();
+  if (eventQueue.length > MAX_QUEUE_SIZE) {
+    const removed = eventQueue.splice(0, eventQueue.length - MAX_QUEUE_SIZE);
+    if (pendingBatch && removed.some((item) => pendingBatch?.eventIds.includes(item.eventId))) {
+      pendingBatch = null;
+    }
   }
+  if (eventQueue.length >= AUTO_FLUSH_SIZE) void flushEvents();
 }
 
-/**
- * Flush queued events to backend.
- */
+function selectBatchEvents(): AnalyticsEvent[] {
+  if (pendingBatch) {
+    const ids = new Set(pendingBatch.eventIds);
+    const retryEvents = eventQueue.filter((item) => ids.has(item.eventId));
+    if (retryEvents.length === pendingBatch.eventIds.length) return retryEvents;
+    pendingBatch = null;
+  }
+
+  const selected: AnalyticsEvent[] = [];
+  for (const item of eventQueue.slice(0, MAX_QUEUE_SIZE)) {
+    const candidate = [...selected, item];
+    const bytes = new TextEncoder().encode(JSON.stringify({ events: candidate })).byteLength;
+    if (bytes > MAX_BATCH_BYTES) break;
+    selected.push(item);
+  }
+  if (selected.length > 0) {
+    pendingBatch = {
+      idempotencyKey: Crypto.randomUUID(),
+      eventIds: selected.map((item) => item.eventId),
+    };
+  }
+  return selected;
+}
+
 async function flushEvents(): Promise<void> {
-  if (eventQueue.length === 0) return;
-
-  // The `analytics` edge fn requires an authenticated user. Without a live
-  // access token (logged out, or the session has not resolved yet) the request
-  // would fall back to the anon key and 401; keep the events queued (bounded)
-  // until a token arrives instead of dropping them or spamming failed calls.
-  if (!currentAccessToken) {
-    if (eventQueue.length > MAX_QUEUE_SIZE) {
-      eventQueue.splice(0, eventQueue.length - MAX_QUEUE_SIZE);
-    }
+  if (
+    !isAnalyticsEnabled() ||
+    isFlushing ||
+    eventQueue.length === 0 ||
+    !currentAccessToken ||
+    !currentUserId ||
+    currentAuthUserId !== currentUserId
+  )
     return;
-  }
-
-  const batch = eventQueue.splice(0, eventQueue.length);
-
+  const batch = selectBatchEvents();
+  if (batch.length === 0 || !pendingBatch) return;
+  const batchContract = pendingBatch;
+  isFlushing = true;
   try {
-    // For now, log to Supabase edge function or table
-    // This can be replaced with PostHog/Amplitude SDK call
-    const { error } = await supabase.functions.invoke('analytics', {
+    const { error } = await supabase.functions.invoke('pragas-analytics', {
       body: { events: batch },
-      // Override the default anon-key Authorization with the user's JWT so the
-      // edge fn's getUser() resolves the real user (see currentAccessToken note).
-      headers: { Authorization: `Bearer ${currentAccessToken}` },
+      headers: {
+        Authorization: `Bearer ${currentAccessToken}`,
+        'Idempotency-Key': batchContract.idempotencyKey,
+      },
     });
-
-    if (error) {
-      // Re-queue failed events (up to max)
-      if (__DEV__) console.warn('[Analytics] Flush failed:', error);
-      eventQueue.unshift(...batch.slice(0, MAX_QUEUE_SIZE));
+    if (error) return;
+    const sent = new Set(batchContract.eventIds);
+    for (let index = eventQueue.length - 1; index >= 0; index -= 1) {
+      if (sent.has(eventQueue[index]!.eventId)) eventQueue.splice(index, 1);
     }
-  } catch (err) {
-    if (__DEV__) console.warn('[Analytics] Flush error:', err);
-    // Re-queue on network failure
-    eventQueue.unshift(...batch.slice(0, MAX_QUEUE_SIZE));
+    if (pendingBatch?.idempotencyKey === batchContract.idempotencyKey) pendingBatch = null;
+  } catch {
+    // Keep the exact events and batch key for an idempotent retry.
+  } finally {
+    isFlushing = false;
   }
 }
-
-// =====================================================
-// Pre-defined event helpers
-// =====================================================
 
 export function trackScreenView(screen: string): void {
   trackEvent('screen_view', { screen });
@@ -182,27 +222,11 @@ export function trackChatMessage(): void {
   trackEvent('chat_message_sent');
 }
 
-export function trackSubscriptionViewed(plan?: string): void {
-  trackEvent('subscription_viewed', { plan });
-}
-
-export function trackSubscriptionPurchased(plan: string, provider: string): void {
-  trackEvent('subscription_purchased', { plan, provider });
-}
-
 export function trackPestDetailViewed(
   pestId: string,
   source: 'result' | 'history' | 'deeplink' | 'library',
 ): void {
   trackEvent('pest_detail_viewed', { pestId, source });
-}
-
-export function trackProGateShown(feature: 'alternatives' | 'pdf' | 'history' | 'details'): void {
-  trackEvent('pro_gate_shown', { feature });
-}
-
-export function trackProGateTapped(feature: 'alternatives' | 'pdf' | 'history' | 'details'): void {
-  trackEvent('pro_gate_tapped', { feature });
 }
 
 export function trackShareDiagnosis(method: 'whatsapp' | 'pdf' | 'share_sheet'): void {
@@ -213,6 +237,7 @@ export function trackLanguageChanged(language: string): void {
   trackEvent('language_changed', { language });
 }
 
-export function trackError(errorType: string, message: string): void {
-  trackEvent('app_error', { errorType, message });
+/** Error messages may contain secrets or user content; only the bounded category is sent. */
+export function trackError(errorType: string, _message?: string): void {
+  trackEvent('app_error', { errorType });
 }

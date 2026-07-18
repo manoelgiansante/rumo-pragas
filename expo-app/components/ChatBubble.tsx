@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { Colors, Gradients, FontSize, FontFamily } from '../constants/theme';
 
@@ -14,6 +14,7 @@ export interface ChatMessageData {
 
 interface ChatBubbleProps {
   message: ChatMessageData;
+  onReport?: (message: ChatMessageData) => void;
 }
 
 function formatTime(date: Date): string {
@@ -22,7 +23,7 @@ function formatTime(date: Date): string {
   return `${h}:${m}`;
 }
 
-export const ChatBubble = React.memo(function ChatBubble({ message }: ChatBubbleProps) {
+export const ChatBubble = React.memo(function ChatBubble({ message, onReport }: ChatBubbleProps) {
   const isDark = useColorScheme() === 'dark';
   const { t } = useTranslation();
   const isUser = message.role === 'user';
@@ -30,7 +31,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message }: ChatBubble
   return (
     <View
       style={[styles.row, isUser && styles.rowUser]}
-      accessible
+      accessible={isUser}
       accessibilityLabel={`${isUser ? t('chat.youLabel') : t('chat.aiAssistantLabel')}: ${message.content}`}
       accessibilityRole="text"
     >
@@ -72,7 +73,22 @@ export const ChatBubble = React.memo(function ChatBubble({ message }: ChatBubble
           </View>
         )}
 
-        <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
+          {!isUser && onReport ? (
+            <TouchableOpacity
+              testID={`ai-message-report-${message.id}`}
+              style={styles.reportButton}
+              onPress={() => onReport(message)}
+              accessibilityRole="button"
+              accessibilityLabel={t('aiReport.action')}
+              accessibilityHint={t('aiReport.actionHint')}
+            >
+              <Ionicons name="flag-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.reportText}>{t('aiReport.action')}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -173,6 +189,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption2,
     color: Colors.textTertiary,
     paddingHorizontal: 4,
+  },
+  metaRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  reportButton: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  reportText: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption2,
   },
   typingBubble: {
     paddingVertical: 14,

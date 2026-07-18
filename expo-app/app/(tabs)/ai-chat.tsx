@@ -16,8 +16,8 @@ import { showAlert } from '../../services/dialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Crypto from 'expo-crypto';
 import {
   Colors,
   Spacing,
@@ -31,6 +31,12 @@ import { sendChatMessage } from '../../services/ai-chat';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { AIConsentModal } from '../../components/AIConsentModal';
+import { AIReportModal } from '../../components/AIReportModal';
+import { grantAIConsent, hasAIConsent } from '../../services/aiConsent';
+import { AIContentReportReason, reportAIContent } from '../../services/aiContentReports';
+import { clearChatHistory, loadChatHistory, saveChatHistory } from '../../services/chatHistory';
+import { buildChatRequestHistory } from '../../services/chatRequestHistory';
 
 interface Message {
   id: string;
@@ -39,51 +45,8 @@ interface Message {
   timestamp: Date;
 }
 
-const CHAT_HISTORY_KEY = '@rumo_pragas_chat_history';
-const MAX_STORED_MESSAGES = 50;
-
-/**
- * Monotonic, collision-free message id generator.
- * `Date.now()` (and `Date.now() + 1`) collide when two messages are created
- * within the same handler / millisecond (e.g. user + AI reply on the error
- * path, or rapid suggestion taps), producing duplicate React keys.
- */
-let messageIdCounter = 0;
 function nextMessageId(): string {
-  messageIdCounter += 1;
-  return `${Date.now()}-${messageIdCounter}`;
-}
-
-/** Serializable version of Message (timestamp as string) */
-interface StoredMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-async function loadChatHistory(): Promise<Message[]> {
-  try {
-    const raw = await AsyncStorage.getItem(CHAT_HISTORY_KEY);
-    if (!raw) return [];
-    const stored: StoredMessage[] = JSON.parse(raw);
-    return stored.map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
-  } catch {
-    return [];
-  }
-}
-
-async function saveChatHistory(messages: Message[]): Promise<void> {
-  try {
-    const toStore = messages.slice(-MAX_STORED_MESSAGES);
-    const serializable: StoredMessage[] = toStore.map((m) => ({
-      ...m,
-      timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : String(m.timestamp),
-    }));
-    await AsyncStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(serializable));
-  } catch {
-    // Best-effort persistence
-  }
+  return Crypto.randomUUID();
 }
 
 export default function AIChatScreen() {
@@ -107,11 +70,13 @@ export default function AIChatScreen() {
   // the auth context (populated by onAuthStateChange). Held in a ref so `send`'s
   // dependency array stays stable (avoids recreating the memoised suggestions on
   // every token refresh). Mirrors services/diagnosis.ts' loading.tsx caller.
-  const { session } = useAuthContext();
+  const { session, user } = useAuthContext();
   const sessionRef = useRef(session);
+  const userRef = useRef(user);
   useEffect(() => {
     sessionRef.current = session;
-  }, [session]);
+    userRef.current = user;
+  }, [session, user]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   // Prefill vindo da Home ("Sem foto? Descreva os sintomas") — o param `ts`
@@ -127,6 +92,12 @@ export default function AIChatScreen() {
   // `messages` as a dependency (which would recreate `send` — and the memoised
   // `handleSuggestionPress` — on every message, re-rendering all suggestions).
   const messagesRef = useRef<Message[]>([]);
+  const pendingConsentMessageRef = useRef<string | null>(null);
+  const failedMessageRef = useRef<Message | null>(null);
+  const loadedHistoryUserRef = useRef<string | null>(null);
+  const [consentVisible, setConsentVisible] = useState(false);
+  const [messageToReport, setMessageToReport] = useState<Message | null>(null);
+  const reportOperationRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   useEffect(() => {
     if (prefill === 'symptoms' && prefillTs && prefillTs !== lastPrefillTs.current) {
@@ -149,50 +120,87 @@ export default function AIChatScreen() {
     }
   }, [prefill, prefillTs, t]);
 
-  // Load chat history from AsyncStorage on mount
+  // Reload from isolated storage on every account change. Reset state first so
+  // a slow previous-user read cannot flash private messages to the new user.
   useEffect(() => {
     let mounted = true;
-    setIsLoadingHistory(true);
-    loadChatHistory().then((history) => {
+    const userId = user?.id;
+    hasLoadedHistory.current = false;
+    loadedHistoryUserRef.current = null;
+    messagesRef.current = [];
+    failedMessageRef.current = null;
+    setMessages([]);
+    setInput('');
+    setIsLoadingHistory(!!userId);
+    if (!userId) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    loadChatHistory(userId).then((history) => {
       if (!mounted) return;
-      if (history.length > 0) {
-        setMessages(history);
-      }
+      setMessages(
+        history.map((message) => ({ ...message, timestamp: new Date(message.timestamp) })),
+      );
+      loadedHistoryUserRef.current = userId;
       hasLoadedHistory.current = true;
       setIsLoadingHistory(false);
     });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [user?.id]);
 
   // Persist messages to AsyncStorage after each change + keep the ref in sync.
   useEffect(() => {
     messagesRef.current = messages;
-    if (!hasLoadedHistory.current) return;
-    saveChatHistory(messages);
-  }, [messages]);
+    const userId = user?.id;
+    if (!hasLoadedHistory.current || !userId || loadedHistoryUserRef.current !== userId) return;
+    void saveChatHistory(
+      userId,
+      messages.map((message) => ({
+        ...message,
+        timestamp: message.timestamp.toISOString(),
+      })),
+    );
+  }, [messages, user?.id]);
 
   const send = useCallback(
     async (text?: string) => {
       const msg = (text || input).trim();
       if (!msg || sending) return;
-      const userMsg: Message = {
+      const userId = userRef.current?.id;
+      if (!userId) {
+        showAlert(t('common.error'), t('aiChat.loginRequired'));
+        return;
+      }
+      if (!(await hasAIConsent(userId, 'chat'))) {
+        pendingConsentMessageRef.current = msg;
+        setConsentVisible(true);
+        return;
+      }
+      const retryMessage =
+        failedMessageRef.current?.content === msg ? failedMessageRef.current : null;
+      const userMsg: Message = retryMessage ?? {
         id: nextMessageId(),
         role: 'user',
         content: msg,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, userMsg]);
+      if (!retryMessage) setMessages((prev) => [...prev, userMsg]);
       setInput('');
       setSending(true);
 
       try {
-        const history = [...messagesRef.current, userMsg].map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-        const response = await sendChatMessage(history, sessionRef.current?.access_token);
+        const history = buildChatRequestHistory(messagesRef.current, userMsg);
+        const response = await sendChatMessage(
+          history,
+          sessionRef.current?.access_token,
+          userId,
+          userMsg.id,
+        );
+        failedMessageRef.current = null;
         const aiMsg: Message = {
           id: nextMessageId(),
           role: 'assistant',
@@ -203,7 +211,6 @@ export default function AIChatScreen() {
       } catch (err: unknown) {
         const errCode =
           err instanceof Object && 'code' in err ? (err as { code: string }).code : undefined;
-        const errSpecific = err instanceof Error && err.message ? err.message : undefined;
         // FREE BUILD (Apple Guideline 3.1.1): the app is 100% free. Should the
         // backend ever still signal a chat limit, we surface an informational
         // message ONLY — no plans, no buy button and no CTA anywhere in the app.
@@ -213,21 +220,68 @@ export default function AIChatScreen() {
           ]);
           return;
         }
-        // Surface the actionable message produced by the chat service
-        // (login/session expired/too many messages/service unavailable/no permission)
-        // instead of collapsing every failure into a generic string.
-        const errMsg: Message = {
-          id: nextMessageId(),
-          role: 'assistant',
-          content: errSpecific || t('chat.errorMessage'),
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errMsg]);
+        if (errCode === 'AI_CONSENT_REQUIRED') {
+          pendingConsentMessageRef.current = msg;
+          setConsentVisible(true);
+          return;
+        }
+        // Restore the draft and preserve the same UUID for explicit retry. If
+        // the first response was lost, the backend can replay its idempotency
+        // ledger without a second provider call.
+        failedMessageRef.current = userMsg;
+        setInput(msg);
+        showAlert(t('common.error'), t('chat.errorMessage'));
       } finally {
         setSending(false);
       }
     },
     [input, sending, t],
+  );
+
+  const acceptChatConsent = useCallback(async () => {
+    const userId = userRef.current?.id;
+    if (!userId) return;
+    try {
+      await grantAIConsent(userId, 'chat');
+      setConsentVisible(false);
+      const pending = pendingConsentMessageRef.current;
+      pendingConsentMessageRef.current = null;
+      if (pending) await send(pending);
+    } catch {
+      showAlert(t('common.error'), t('aiConsent.saveError'));
+    }
+  }, [send, t]);
+
+  const submitAIReport = useCallback(
+    async (reason: AIContentReportReason, details?: string) => {
+      if (!messageToReport || !sessionRef.current?.access_token) {
+        showAlert(t('common.error'), t('aiReport.error'));
+        return;
+      }
+      try {
+        const input: Parameters<typeof reportAIContent>[0] = {
+          messageId: messageToReport.id,
+          content: messageToReport.content,
+          reason,
+        };
+        if (details) input.details = details;
+        const fingerprint = JSON.stringify(input);
+        if (reportOperationRef.current?.fingerprint !== fingerprint) {
+          reportOperationRef.current = { fingerprint, key: Crypto.randomUUID() };
+        }
+        await reportAIContent(
+          input,
+          sessionRef.current.access_token,
+          reportOperationRef.current.key,
+        );
+        reportOperationRef.current = null;
+        setMessageToReport(null);
+        showAlert(t('aiReport.successTitle'), t('aiReport.success'));
+      } catch {
+        showAlert(t('common.error'), t('aiReport.error'));
+      }
+    },
+    [messageToReport, t],
   );
 
   const handleSuggestionPress = useCallback(
@@ -244,8 +298,11 @@ export default function AIChatScreen() {
         text: t('chat.clearChat'),
         style: 'destructive',
         onPress: () => {
+          const userId = userRef.current?.id;
           setMessages([]);
-          AsyncStorage.removeItem(CHAT_HISTORY_KEY).catch((err: unknown) => {
+          failedMessageRef.current = null;
+          if (!userId) return;
+          clearChatHistory(userId).catch((err: unknown) => {
             if (__DEV__) console.error('[Chat] Failed to clear history:', err);
           });
         },
@@ -333,7 +390,13 @@ export default function AIChatScreen() {
                 },
               ]}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-              renderItem={({ item }) => <ChatBubble message={item} />}
+              renderItem={({ item }) =>
+                item.role === 'assistant' ? (
+                  <ChatBubble message={item} onReport={setMessageToReport} />
+                ) : (
+                  <ChatBubble message={item} />
+                )
+              }
               ListFooterComponent={
                 sending ? (
                   <View style={styles.typingRow}>
@@ -388,6 +451,20 @@ export default function AIChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <AIConsentModal
+        visible={consentVisible}
+        purpose="chat"
+        onAccept={acceptChatConsent}
+        onCancel={() => {
+          pendingConsentMessageRef.current = null;
+          setConsentVisible(false);
+        }}
+      />
+      <AIReportModal
+        visible={messageToReport !== null}
+        onClose={() => setMessageToReport(null)}
+        onSubmit={submitAIReport}
+      />
     </SafeAreaView>
   );
 }

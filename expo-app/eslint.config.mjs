@@ -43,9 +43,6 @@ export default [
       '*.config.js',
       '*.config.mjs',
       'supabase/functions/**',
-      // Vendored snapshot of @agrorumo/ia-hub-client — canonical source
-      // lives in agrorumo-monorepo/packages/ia-hub-client. See VENDORED.md.
-      'vendor/**',
     ],
   },
 ];

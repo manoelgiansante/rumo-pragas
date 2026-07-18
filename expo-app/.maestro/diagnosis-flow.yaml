@@ -103,6 +103,19 @@ tags:
 - tapOn:
     id: "cropselect-start-diagnosis"
 
+# Versioned third-party AI disclosure must block transmission until accepted.
+- runFlow:
+    when:
+      visible:
+        id: "ai-consent-diagnosis"
+    commands:
+      - assertVisible:
+          id: "ai-consent-privacy"
+      - assertVisible:
+          id: "ai-consent-terms"
+      - tapOn:
+          id: "ai-consent-accept"
+
 # Loading screen — any of the steps are valid
 - extendedWaitUntil:
     visible:
