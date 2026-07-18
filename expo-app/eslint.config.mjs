@@ -40,6 +40,7 @@ export default [
       'build/',
       'coverage/',
       'logs/',
+      'plugins/**',
       'scripts/**',
       '*.config.js',
       '*.config.mjs',
