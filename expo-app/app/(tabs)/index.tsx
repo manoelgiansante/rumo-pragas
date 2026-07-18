@@ -22,10 +22,11 @@ import {
 } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { WeatherCard } from '../../components/WeatherCard';
+import { FieldConditionsCard } from '../../components/FieldConditionsCard';
 import { AlertCard } from '../../components/AlertCard';
 import { HomeScreenSkeleton } from '../../components/HomeScreenSkeleton';
 import { fetchDiagnosisCount } from '../../services/diagnosis';
-import { fetchWeather } from '../../services/weather';
+import { classifyFieldConditions24h, fetchWeather } from '../../services/weather';
 import type { WeatherData } from '../../services/weather';
 import { generateAlerts } from '../../services/alerts';
 import type { PestAlert } from '../../services/alerts';
@@ -85,6 +86,14 @@ export default function HomeScreen() {
     if (!weatherRaw) return [];
     return generateAlerts(weatherRaw).slice(0, 5);
   }, [weatherRaw]);
+
+  // Field-conditions summary is derived — no fetch, no side-effects. Returns
+  // null when the upstream did not supply hourly data (e.g. cached weather
+  // from before hourly was requested); in that case the card is hidden.
+  const fieldConditions = useMemo(
+    () => classifyFieldConditions24h(weatherRaw?.hourly24h),
+    [weatherRaw?.hourly24h],
+  );
 
   // Schedule notifications for high-severity alerts (once per session)
   useEffect(() => {
@@ -342,6 +351,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : null}
         {weather && <WeatherCard weather={weather} />}
+        {fieldConditions && <FieldConditionsCard summary={fieldConditions} />}
 
         <TouchableOpacity
           testID="home-cta-diagnose"

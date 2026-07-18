@@ -676,6 +676,18 @@ export default {
     photoGuidance:
       'Today each diagnosis uses one photo: use natural light, keep it in focus, show the whole leaf and the visible symptom, without excessive zoom.',
   },
+  fieldConditions: {
+    title: 'Weather conditions for field work',
+    statusFavorable: 'Favorable',
+    statusAttention: 'Attention',
+    statusUnfavorable: 'Unfavorable',
+    hintFavorable: 'Forecast wind and rain within the expected range for the next 24 h.',
+    hintAttention: 'Moderate wind or chance of rain forecast for the next 24 h.',
+    hintUnfavorable: 'Strong wind or a high chance of rain forecast for the next 24 h.',
+    disclaimer:
+      'General weather conditions. Not a recommendation to apply any product — consult your licensed agronomist.',
+    a11yLabel: 'Field conditions: {{status}}. {{hint}}',
+  },
   weather: {
     clear: 'Clear sky',
     mostlyClear: 'Mostly clear',

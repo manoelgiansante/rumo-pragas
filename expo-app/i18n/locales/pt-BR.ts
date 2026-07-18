@@ -697,6 +697,18 @@ export default {
     photoGuidance:
       'Hoje é uma foto por diagnóstico: use luz natural, mantenha o foco, mostre a folha inteira e o sintoma visível, sem zoom excessivo.',
   },
+  fieldConditions: {
+    title: 'Condições climáticas para manejo',
+    statusFavorable: 'Favorável',
+    statusAttention: 'Atenção',
+    statusUnfavorable: 'Desfavorável',
+    hintFavorable: 'Vento e chuva previstos dentro do esperado nas próximas 24 h.',
+    hintAttention: 'Previsão de vento moderado ou chance de chuva nas próximas 24 h.',
+    hintUnfavorable: 'Previsão de vento forte ou alta chance de chuva nas próximas 24 h.',
+    disclaimer:
+      'Condições gerais de tempo. Não é recomendação de aplicação — consulte o responsável técnico.',
+    a11yLabel: 'Condições de campo: {{status}}. {{hint}}',
+  },
   weather: {
     clear: 'Céu limpo',
     mostlyClear: 'Predominantemente limpo',
