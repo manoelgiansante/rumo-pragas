@@ -35,6 +35,7 @@ export default [
     ignores: [
       'node_modules/',
       '.expo/',
+      '.artifacts/',
       'dist/',
       'build/',
       'coverage/',
