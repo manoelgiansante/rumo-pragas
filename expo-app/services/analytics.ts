@@ -241,3 +241,14 @@ export function trackLanguageChanged(language: string): void {
 export function trackError(errorType: string, _message?: string): void {
   trackEvent('app_error', { errorType });
 }
+
+/**
+ * Fired when the user opts into a post-diagnosis local reinspection reminder.
+ * We keep only the bounded cadence (in days). We deliberately avoid pest_id
+ * or crop labels here so this event is safe for cohort dashboards.
+ */
+export function trackReinspectionReminderScheduled(days: number): void {
+  const bucket = Number.isFinite(days) && days > 0 ? Math.min(Math.floor(days), 30) : 0;
+  if (bucket === 0) return;
+  trackEvent('reinspection_reminder_scheduled', { days: bucket });
+}

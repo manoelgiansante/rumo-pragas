@@ -725,6 +725,28 @@ export default {
     generalChannel: 'General',
     generalDesc: 'General app notifications',
   },
+  reinspection: {
+    cardTitle: 'Remind me to re-inspect',
+    cardDescription:
+      'Schedule a local reminder to revisit this crop and reassess how the visible signs evolve.',
+    option3d: 'In 3 days',
+    option7d: 'In 7 days',
+    option3dA11y: 'Schedule a re-inspection reminder in 3 days',
+    option7dA11y: 'Schedule a re-inspection reminder in 7 days',
+    scheduledTitle: 'Reminder scheduled',
+    scheduledMessage:
+      'You will receive a local notification in {{days}} days to re-inspect {{crop}}.',
+    permissionTitle: 'Notifications disabled',
+    permissionMessage:
+      'Enable Rumo Pragas notifications in Settings to receive local re-inspection reminders.',
+    scheduleError: 'We could not schedule the reminder. Please try again.',
+    notificationTitle: 'Time to re-inspect your crop',
+    notificationBody:
+      'Return to the area you observed earlier and reassess visible signs in {{crop}}.',
+    notificationBodyNoCrop:
+      'Return to the area you observed earlier and reassess visible signs in your crop.',
+    disclaimer: 'Educational reminder; not a recommendation to apply any product.',
+  },
   alerts: {
     ferrugem_title: 'High risk of rust disease',
     ferrugem_desc:

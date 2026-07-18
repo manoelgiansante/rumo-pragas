@@ -736,6 +736,28 @@ export default {
     generalChannel: 'General',
     generalDesc: 'Notificaciones generales de la aplicación',
   },
+  reinspection: {
+    cardTitle: 'Recordarme reinspeccionar',
+    cardDescription:
+      'Programe un recordatorio local para volver a este cultivo y reevaluar cómo evolucionan los signos visibles.',
+    option3d: 'En 3 días',
+    option7d: 'En 7 días',
+    option3dA11y: 'Programar un recordatorio de reinspección en 3 días',
+    option7dA11y: 'Programar un recordatorio de reinspección en 7 días',
+    scheduledTitle: 'Recordatorio programado',
+    scheduledMessage:
+      'Recibirá una notificación local en {{days}} días para reinspeccionar {{crop}}.',
+    permissionTitle: 'Notificaciones desactivadas',
+    permissionMessage:
+      'Active las notificaciones de Rumo Pragas en Ajustes para recibir recordatorios locales de reinspección.',
+    scheduleError: 'No fue posible programar el recordatorio. Inténtelo de nuevo.',
+    notificationTitle: 'Hora de reinspeccionar su cultivo',
+    notificationBody:
+      'Vuelva al área observada anteriormente y reevalúe los signos visibles en {{crop}}.',
+    notificationBodyNoCrop:
+      'Vuelva al área observada anteriormente y reevalúe los signos visibles en su cultivo.',
+    disclaimer: 'Recordatorio educativo; no es una recomendación de aplicación.',
+  },
   alerts: {
     ferrugem_title: 'Alto riesgo de roya',
     ferrugem_desc:

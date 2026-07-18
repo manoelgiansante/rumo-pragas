@@ -13,7 +13,10 @@ jest.mock('expo-notifications', () => ({
   cancelAllScheduledNotificationsAsync: jest.fn().mockResolvedValue(undefined),
   unregisterForNotificationsAsync: jest.fn().mockResolvedValue(undefined),
   AndroidImportance: { HIGH: 4, DEFAULT: 3 },
-  SchedulableTriggerInputTypes: { TIME_INTERVAL: 1 },
+  // Mirrors the real enum in expo-notifications so callers that pass e.g.
+  // `SchedulableTriggerInputTypes.DATE` receive `'date'` — needed by
+  // scheduleReinspectionReminder (which uses a DATE trigger).
+  SchedulableTriggerInputTypes: { TIME_INTERVAL: 'timeInterval', DATE: 'date' },
 }));
 
 // Mock expo-device
@@ -83,6 +86,7 @@ import {
   getSavedPushToken,
   scheduleClimateRiskNotifications,
   scheduleLocalClimateRiskAlert,
+  scheduleReinspectionReminder,
   isPushNotificationsEnabled,
   setPushNotificationsEnabled,
   __resetForTests,
@@ -419,6 +423,138 @@ describe('scheduleLocalClimateRiskAlert', () => {
 
     const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
     expect(call.content.data).toEqual({});
+  });
+});
+
+// -----------------------------------------------------------------------------
+// scheduleReinspectionReminder
+// -----------------------------------------------------------------------------
+// The reinspection helper is a DEDICATED path (does not reuse the climate
+// helper's 24 h cap) and returns the Expo identifier on success. It must:
+//   - fail closed when push is disabled
+//   - reject invalid days (0, negative, non-finite)
+//   - clamp days to 30 max
+//   - use a DATE trigger with the correct absolute Date
+//   - use the "general" Android channel, not "climate-risk"
+//   - degrade to null (not throw) when the native call fails
+describe('scheduleReinspectionReminder', () => {
+  beforeEach(() => {
+    (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key: string) =>
+      key === '@rumo_pragas_push_enabled' ? 'true' : null,
+    );
+    (Notifications.scheduleNotificationAsync as jest.Mock).mockResolvedValue('reinspection-id-123');
+  });
+
+  it('returns null and never touches the native API when push is disabled', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue('false');
+    const id = await scheduleReinspectionReminder({
+      days: 3,
+      title: 'T',
+      body: 'B',
+    });
+    expect(id).toBeNull();
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('returns null on invalid days without calling the native API', async () => {
+    for (const days of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      (Notifications.scheduleNotificationAsync as jest.Mock).mockClear();
+      const id = await scheduleReinspectionReminder({
+        days,
+        title: 'T',
+        body: 'B',
+      });
+      expect(id).toBeNull();
+      expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+    }
+  });
+
+  it('returns null when title or body is empty', async () => {
+    expect(await scheduleReinspectionReminder({ days: 3, title: '   ', body: 'B' })).toBeNull();
+    expect(await scheduleReinspectionReminder({ days: 3, title: 'T', body: '' })).toBeNull();
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('schedules 3 days ahead with a DATE trigger (no 24h cap)', async () => {
+    const now = new Date('2026-07-18T12:00:00Z').getTime();
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+    const id = await scheduleReinspectionReminder({
+      days: 3,
+      title: 'Hora de reinspecionar',
+      body: 'Volte à área observada',
+    });
+    expect(id).toBe('reinspection-id-123');
+    const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+    // 3 days = 259_200 s — well above the climate-risk 24h cap; must NOT be capped.
+    const fireAtMs = (call.trigger.date as Date).getTime();
+    expect(fireAtMs - now).toBe(3 * 86_400_000);
+    expect(call.trigger.type).toBe('date');
+    expect(call.content.title).toBe('Hora de reinspecionar');
+    expect(call.content.body).toBe('Volte à área observada');
+  });
+
+  it('schedules 7 days ahead with a DATE trigger (no 24h cap)', async () => {
+    const now = new Date('2026-07-18T12:00:00Z').getTime();
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+    const id = await scheduleReinspectionReminder({
+      days: 7,
+      title: 'Titulo',
+      body: 'Corpo',
+    });
+    expect(id).toBe('reinspection-id-123');
+    const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+    const fireAtMs = (call.trigger.date as Date).getTime();
+    // 7 days = 604_800 s — proves the helper is not capped at 86_400 like climate-risk.
+    expect(fireAtMs - now).toBe(7 * 86_400_000);
+  });
+
+  it('clamps days above 30 down to 30', async () => {
+    const now = new Date('2026-07-18T12:00:00Z').getTime();
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+    await scheduleReinspectionReminder({ days: 999, title: 'T', body: 'B' });
+    const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+    const fireAtMs = (call.trigger.date as Date).getTime();
+    expect(fireAtMs - now).toBe(30 * 86_400_000);
+  });
+
+  it('uses the general Android channel, not climate-risk', async () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    try {
+      await scheduleReinspectionReminder({ days: 3, title: 'T', body: 'B' });
+      const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+      expect(call.content.channelId).toBe('general');
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: originalOs, configurable: true });
+    }
+  });
+
+  it('returns null (never throws) when the native scheduler rejects', async () => {
+    (Notifications.scheduleNotificationAsync as jest.Mock).mockRejectedValue(
+      new Error('native down'),
+    );
+    const id = await scheduleReinspectionReminder({ days: 3, title: 'T', body: 'B' });
+    expect(id).toBeNull();
+  });
+
+  it('truncates the title to 80 chars and the body to 240 chars', async () => {
+    const longTitle = 'a'.repeat(200);
+    const longBody = 'b'.repeat(500);
+    await scheduleReinspectionReminder({ days: 3, title: longTitle, body: longBody });
+    const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+    expect(call.content.title).toBe('a'.repeat(80));
+    expect(call.content.body).toBe('b'.repeat(240));
+  });
+
+  it('forwards non-sensitive data payload', async () => {
+    await scheduleReinspectionReminder({
+      days: 3,
+      title: 'T',
+      body: 'B',
+      data: { screen: 'diagnosis-reinspection', days: 3 },
+    });
+    const call = (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls[0][0];
+    expect(call.content.data).toEqual({ screen: 'diagnosis-reinspection', days: 3 });
   });
 });
 

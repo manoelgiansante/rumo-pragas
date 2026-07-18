@@ -746,6 +746,28 @@ export default {
     generalChannel: 'Geral',
     generalDesc: 'Notificações gerais do aplicativo',
   },
+  reinspection: {
+    cardTitle: 'Lembrar de reinspecionar',
+    cardDescription:
+      'Programe um lembrete local para revisitar esta cultura e reavaliar a evolução dos sinais.',
+    option3d: 'Em 3 dias',
+    option7d: 'Em 7 dias',
+    option3dA11y: 'Programar lembrete de reinspeção em 3 dias',
+    option7dA11y: 'Programar lembrete de reinspeção em 7 dias',
+    scheduledTitle: 'Lembrete programado',
+    scheduledMessage:
+      'Você receberá uma notificação local em {{days}} dias para reinspecionar {{crop}}.',
+    permissionTitle: 'Notificações desativadas',
+    permissionMessage:
+      'Ative as notificações do Rumo Pragas nos Ajustes para receber lembretes locais de reinspeção.',
+    scheduleError: 'Não foi possível programar o lembrete. Tente novamente.',
+    notificationTitle: 'Hora de reinspecionar sua lavoura',
+    notificationBody:
+      'Volte à área observada anteriormente e reavalie os sinais visíveis em {{crop}}.',
+    notificationBodyNoCrop:
+      'Volte à área observada anteriormente e reavalie os sinais visíveis na cultura.',
+    disclaimer: 'Lembrete educacional; não é recomendação de aplicação.',
+  },
   alerts: {
     ferrugem_title: 'Risco elevado de ferrugem',
     ferrugem_desc:

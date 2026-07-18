@@ -47,7 +47,16 @@ import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { MipCard } from '../../components/MipCard';
 import { TopAlternatives } from '../../components/TopAlternatives';
 import { trackSuccessfulDiagnosis } from '../../services/storeReview';
-import { trackShareDiagnosis, trackPestDetailViewed, trackEvent } from '../../services/analytics';
+import {
+  trackShareDiagnosis,
+  trackPestDetailViewed,
+  trackEvent,
+  trackReinspectionReminderScheduled,
+} from '../../services/analytics';
+import {
+  isPushNotificationsEnabled,
+  scheduleReinspectionReminder,
+} from '../../services/notifications';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { savePestToCache } from '../../services/pestRegistry';
 import { useMipKnowledge } from '../../hooks/useMipKnowledge';
@@ -167,6 +176,11 @@ export default function ResultScreen() {
   const [feedbackNotes, setFeedbackNotes] = useState('');
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  // Post-diagnosis reinspection reminder (Phase C — 2026-07-18).
+  // Local notification only, opt-in per diagnosis; never re-schedules on
+  // remount because the "scheduled" state is component-local.
+  const [reinspectionScheduling, setReinspectionScheduling] = useState<0 | 3 | 7>(0);
+  const [reinspectionScheduledDays, setReinspectionScheduledDays] = useState<number | null>(null);
 
   useEffect(() => {
     if (!error && !queued && result.pest_id) {
@@ -588,6 +602,54 @@ export default function ResultScreen() {
     t,
   ]);
 
+  const handleScheduleReinspection = useCallback(
+    async (days: 3 | 7) => {
+      if (reinspectionScheduling !== 0 || reinspectionScheduledDays !== null) return;
+      setReinspectionScheduling(days);
+      try {
+        // Fail closed if the user has notifications disabled. We never trigger
+        // the OS prompt from here — that opt-in lives in Settings so the user
+        // sees the ask in an intentional context.
+        const enabled = await isPushNotificationsEnabled();
+        if (!enabled) {
+          showAlert(t('reinspection.permissionTitle'), t('reinspection.permissionMessage'));
+          return;
+        }
+        const cropLabel: string =
+          typeof result.crop === 'string' && result.crop.trim().length > 0
+            ? result.crop.trim()
+            : '';
+        const body = cropLabel
+          ? t('reinspection.notificationBody', { crop: cropLabel })
+          : t('reinspection.notificationBodyNoCrop');
+        const identifier = await scheduleReinspectionReminder({
+          days,
+          title: t('reinspection.notificationTitle'),
+          body,
+          data: { screen: 'diagnosis-reinspection', days },
+        });
+        if (!identifier) {
+          showAlert(t('common.error'), t('reinspection.scheduleError'));
+          return;
+        }
+        setReinspectionScheduledDays(days);
+        trackReinspectionReminderScheduled(days);
+        showAlert(
+          t('reinspection.scheduledTitle'),
+          t('reinspection.scheduledMessage', {
+            days,
+            crop: cropLabel || t('diagnosis.notInformed'),
+          }),
+        );
+      } catch {
+        showAlert(t('common.error'), t('reinspection.scheduleError'));
+      } finally {
+        setReinspectionScheduling(0);
+      }
+    },
+    [reinspectionScheduling, reinspectionScheduledDays, result.crop, t],
+  );
+
   // Early returns AFTER all hooks have been called
   if (queued === 'true') {
     return (
@@ -958,6 +1020,65 @@ export default function ResultScreen() {
                 </TouchableOpacity>
               </>
             )}
+          </PremiumCard>
+        ) : null}
+
+        {/*
+          Post-diagnosis reinspection reminder — local notification only.
+          Non-prescriptive by design: title is a neutral "time to re-inspect",
+          body references the observed crop label without any product/dose
+          suggestion. Rendered only for a real pest hypothesis (never for
+          healthy plants or invalid images).
+        */}
+        {!isHealthy && !isInvalidImage ? (
+          <PremiumCard style={styles.reinspectionCard}>
+            <View style={styles.reinspectionHeader}>
+              <Ionicons name="notifications-outline" size={18} color={Colors.accent} />
+              <Text style={[styles.reinspectionTitle, isDark && styles.textDark]}>
+                {t('reinspection.cardTitle')}
+              </Text>
+            </View>
+            <Text style={styles.reinspectionDescription}>{t('reinspection.cardDescription')}</Text>
+            <View style={styles.reinspectionActions}>
+              {([3, 7] as const).map((days) => {
+                const selected = reinspectionScheduledDays === days;
+                const busy = reinspectionScheduling === days;
+                const disabled = reinspectionScheduledDays !== null || reinspectionScheduling !== 0;
+                return (
+                  <TouchableOpacity
+                    key={days}
+                    testID={`diagnosis-reinspection-${days}d`}
+                    style={[
+                      styles.reinspectionButton,
+                      selected && styles.reinspectionButtonSelected,
+                      disabled && !selected && styles.reinspectionButtonDisabled,
+                    ]}
+                    onPress={() => handleScheduleReinspection(days)}
+                    disabled={disabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(
+                      days === 3 ? 'reinspection.option3dA11y' : 'reinspection.option7dA11y',
+                    )}
+                    accessibilityState={{ disabled, selected, busy }}
+                    activeOpacity={0.85}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color={Colors.accent} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.reinspectionButtonText,
+                          selected && styles.reinspectionButtonTextSelected,
+                        ]}
+                      >
+                        {t(days === 3 ? 'reinspection.option3d' : 'reinspection.option7d')}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.reinspectionDisclaimer}>{t('reinspection.disclaimer')}</Text>
           </PremiumCard>
         ) : null}
 
@@ -1489,6 +1610,59 @@ const styles = StyleSheet.create({
     fontSize: FontSize.subheadline,
   },
   feedbackSuccess: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
+  // --- Reinspection reminder card ---
+  reinspectionCard: { marginHorizontal: Spacing.lg, marginTop: Spacing.lg },
+  reinspectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  reinspectionTitle: {
+    color: Colors.text,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.headline,
+  },
+  reinspectionDescription: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    lineHeight: 18,
+  },
+  reinspectionActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: Spacing.md,
+  },
+  reinspectionButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.systemGray4,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'transparent',
+  },
+  reinspectionButtonSelected: {
+    borderColor: Colors.accent,
+    backgroundColor: `${Colors.accent}12`,
+  },
+  reinspectionButtonDisabled: { opacity: 0.5 },
+  reinspectionButtonText: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.semibold,
+    fontSize: FontSize.subheadline,
+  },
+  reinspectionButtonTextSelected: { color: Colors.accent },
+  reinspectionDisclaimer: {
+    color: Colors.textTertiary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption2,
+    lineHeight: 16,
+    marginTop: Spacing.sm,
+  },
   // --- Treatment summary card ---
   treatmentCard: {
     marginHorizontal: Spacing.lg,
