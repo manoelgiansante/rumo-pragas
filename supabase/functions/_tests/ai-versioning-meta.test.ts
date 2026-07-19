@@ -63,16 +63,28 @@ for (const [slug, source] of slugs) {
   });
 }
 
-Deno.test("twin prompt versions are distinct while the SYSTEM_PROMPTs differ", () => {
-  // The legacy slug still ships the pre-triage prescriptive SYSTEM_PROMPT, so
-  // its stamp must NOT claim to be the dedicated prompt. If the prompts are
-  // ever re-unified, update both constants and drop this test.
+Deno.test("twin prompt versions track prompt equality (re-unified 2026-07-19.2)", () => {
+  // 2026-07-19.2 re-unified the legacy slug with the dedicated triage-only,
+  // NON-prescriptive prompt (CEO order 19/jul). The lock is bidirectional:
+  // while the twins run the SAME prompt (system + user) they MUST stamp the
+  // SAME version — diverging a prompt again without bumping its constant
+  // breaks this test — and different prompts MUST stamp different versions.
   const dedicated = dedicatedIndex.match(/export const DIAGNOSE_PROMPT_VERSION = "([^"]+)";/)?.[1];
   const legacy = legacyIndex.match(/export const DIAGNOSE_PROMPT_VERSION = "([^"]+)";/)?.[1];
   assert(dedicated && legacy);
-  const promptsDiffer = dedicatedIndex.match(/const SYSTEM_PROMPT =\s*`([\s\S]*?)`;/)?.[1] !==
-    legacyIndex.match(/const SYSTEM_PROMPT = `([\s\S]*?)`;/)?.[1];
-  if (promptsDiffer) {
+  const promptOf = (source: string): string => {
+    const system = source.match(/const SYSTEM_PROMPT =\s*`([\s\S]*?)`;/)?.[1];
+    const user = source.match(/const userPrompt =\s*`([\s\S]*?)`;/)?.[1];
+    assert(system && user, "SYSTEM_PROMPT/userPrompt template literal missing");
+    return `${system}\n---\n${user}`;
+  };
+  if (promptOf(dedicatedIndex) === promptOf(legacyIndex)) {
+    assertEquals(
+      dedicated,
+      legacy,
+      "twins run the SAME prompt but stamp different versions — unify the constants",
+    );
+  } else {
     assert(dedicated !== legacy, "twins run different prompts but stamp the same version");
   }
 });

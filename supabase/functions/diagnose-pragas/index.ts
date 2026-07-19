@@ -39,7 +39,10 @@ const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 // drift is detectable and any stored result is reproducible. BUMP on ANY edit
 // to SYSTEM_PROMPT. Server-side only: the HTTP response returned to the client
 // does NOT carry ai_meta (client contract unchanged).
-export const DIAGNOSE_PROMPT_VERSION = "2026-07-19.1";
+// 2026-07-19.2: no content change HERE — version unified with the legacy
+// `diagnose` slug, whose prompts were re-unified with this file's (CEO order
+// 19/jul). Equal prompts MUST stamp equal versions (_tests/ai-versioning-meta).
+export const DIAGNOSE_PROMPT_VERSION = "2026-07-19.2";
 // Which edge fn slug wrote the row (the legacy shared `diagnose` slug stamps
 // its own name) — lets drift queries separate traffic from the two twins.
 const DIAGNOSE_FN_SLUG = "diagnose-pragas";
