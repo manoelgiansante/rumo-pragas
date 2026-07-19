@@ -89,7 +89,8 @@
       "!**/*.d.ts"
     ],
     "testPathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/",
+      "/.artifacts/"
     ]
   },
   "dependencies": {
