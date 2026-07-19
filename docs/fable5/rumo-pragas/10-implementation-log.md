@@ -26,4 +26,10 @@ Branch: `fable5/rumo-pragas-global-benchmark-2026-07-19` (criada de `mega-trabal
 - F2 completo: docs 05 (UX, 22 achados) + 06 (IA, 10 riscos) + 07 (engenharia, 16 achados) gravados. F1 completo: 34 dossiês + 4 índices.
 - Em curso: IMPL-1 (P0 deep link lembrete + rótulo confiança + touch targets) e síntese docs 01-04.
 
+## 19/jul 15:56-16:05 — FECHAMENTO FASE E
+- **Build FINAL verde em 22min**: `RumoPragasIA-production-android-20260719T183416Z.aab` — 1.0.11, buildVersion **206649250**, commit atestado `3bc02c5` (HEAD com os 9 commits IMPL), sha256 `0012fb94a9ed7ee3a32e…`, 70,6MB.
+- **Play INTERNAL track: UPLOAD + COMMIT feitos** (edit `16111339095888882074`, release "1.0.11 (206649250) — global benchmark", notes pt-BR). Release PÚBLICO = gate CEO.
+- Edge fns já em prod desde 18:44 UTC (diagnose v72, diagnose-pragas v2). iOS 1.0.11 b64 público (outra frente); 9 commits entram no 1.0.12+ (cert = gate).
+- Missão §12: docs 01-11 TODOS gravados. §13 definition-of-done: código+testes+builds+deploys OK; pendências restantes = gates CEO (ver 11-final-report.md §10).
+
 (este log é atualizado a cada fase)
