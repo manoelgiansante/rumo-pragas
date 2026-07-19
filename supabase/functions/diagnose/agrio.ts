@@ -139,7 +139,17 @@ type KbHint = {
   severity?: "critical" | "high" | "medium" | "low";
 };
 
-const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
+/**
+ * Version stamp of AGRIO_LABEL_MAP, persisted into every diagnosis row
+ * (`notes.ai_meta.label_map_version`) so mapping drift is traceable per row
+ * (doc 08 §3(b) — IMPL-3). BUMP this constant on ANY change to
+ * AGRIO_LABEL_MAP, and keep it in sync with the dedicated
+ * `diagnose-pragas/agrio.ts` twin (a deno test locks the two maps + versions
+ * together).
+ */
+export const AGRIO_LABEL_MAP_VERSION = "2026-07-19.1";
+
+export const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
   Coffee: {
     rust: {
       name_pt: "Ferrugem do cafeeiro",

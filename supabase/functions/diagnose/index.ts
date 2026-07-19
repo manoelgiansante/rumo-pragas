@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { captureException, captureGenAiRequest } from "../_shared/sentry.ts";
-import { callAgrioDiagnose, adaptAgrio } from "./agrio.ts";
+import { callAgrioDiagnose, adaptAgrio, AGRIO_LABEL_MAP_VERSION } from "./agrio.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const AGRIO_API_KEY = Deno.env.get("AGRIO_API_KEY") ?? "";
@@ -14,6 +14,20 @@ const SUPABASE_SERVICE_ROLE_KEY =
 const APP_KEY = Deno.env.get("APP_KEY") ?? "rumo-pragas";
 
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+
+// ── AI versioning (doc 08 §3(b) — IMPL-3) ──
+// Stamped into every PERSISTED diagnosis (`notes.ai_meta`) so provider/prompt
+// drift is detectable and any stored result is reproducible. BUMP on ANY edit
+// to SYSTEM_PROMPT. Server-side only: the HTTP response returned to the client
+// does NOT carry ai_meta (client contract unchanged).
+// NOTE the "-legacy" suffix: this slug's SYSTEM_PROMPT pre-dates the
+// triage-only rewrite shipped in `diagnose-pragas/index.ts` (it still asks for
+// prescriptive fields), so the two twins genuinely run DIFFERENT prompts and
+// must stamp DIFFERENT prompt versions until the prompts are re-unified.
+export const DIAGNOSE_PROMPT_VERSION = "2026-07-19.1-legacy";
+// Which edge fn slug wrote the row (the public 1.0.9 binary calls this shared
+// legacy slug) — lets drift queries separate traffic from the two twins.
+const DIAGNOSE_FN_SLUG = "diagnose";
 
 // ── Diagnosis provider (Option B, 2026-07-06) ──
 // "agrio"  → identification via Agrio (paid, funded) + PT-BR laudo resolved
@@ -629,6 +643,9 @@ Deno.serve(async (req: Request) => {
     // enrichment) so the downstream sanitize → invalid-image threshold →
     // disclaimer → persist → Sentry code below is reused verbatim.
     let diagnosisData: Record<string, unknown>;
+    // Model/version the provider exposes for THIS call (ai_meta.model). Agrio's
+    // /diagnose contract exposes no model/version field → stays null there.
+    let aiModel: string | null = null;
 
     if (DIAGNOSE_PROVIDER === "agrio") {
       // Agrio identification (paid, funded). The PT-BR laudo is resolved
@@ -736,6 +753,10 @@ Deno.serve(async (req: Request) => {
 
       const claudeData = await claudeResponse.json();
 
+      // Prefer the model the API echoes back (exact snapshot used) over the
+      // requested constant — they can differ on provider-side aliasing.
+      aiModel = typeof claudeData?.model === "string" ? claudeData.model : CLAUDE_MODEL;
+
       // ── AI telemetry (ZERO-O / observability) ──
       // Emit a gen_ai.request span with Anthropic token usage so cost/latency of
       // the app's core product is observable. No prompt/image content is captured
@@ -825,6 +846,19 @@ Deno.serve(async (req: Request) => {
       low_confidence_warning: rawConfidence < 0.7 && !isInvalidImage,
     };
 
+    // ── AI versioning stamp (doc 08 §3(b) — IMPL-3) ──
+    // Persisted alongside the notes JSON (queryable via notes->'ai_meta').
+    // Server-side only: the client response below keeps the ai_meta-free notes.
+    const ai_meta = {
+      provider: DIAGNOSE_PROVIDER === "agrio" ? "agrio" : "claude",
+      model: aiModel,
+      prompt_version: DIAGNOSE_PROMPT_VERSION,
+      label_map_version: AGRIO_LABEL_MAP_VERSION,
+      fn_version: Deno.env.get("PRAGAS_DIAGNOSE_FN_VERSION") ?? null,
+      fn_slug: DIAGNOSE_FN_SLUG,
+      timestamp: new Date().toISOString(),
+    };
+
     const cropMap: Record<string, string> = {
       Soybean: "soja", Corn: "milho", Coffee: "cafe", Cotton: "algodao",
       Sugarcane: "cana", Wheat: "trigo", Rice: "arroz", Bean: "feijao",
@@ -854,7 +888,7 @@ Deno.serve(async (req: Request) => {
         pest_id: safePestId || null,
         pest_name: safePestName || null,
         confidence: isInvalidImage ? 0 : rawConfidence,
-        notes: JSON.stringify(notes),
+        notes: JSON.stringify({ ...notes, ai_meta }),
         location_lat: safeCoords.lat,
         location_lng: safeCoords.lng,
       })
@@ -876,8 +910,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Client contract intact (IMPL-3): ai_meta is server-side persistence only,
+    // so the response re-serializes the ai_meta-free notes over `saved.notes`.
     return new Response(
-      JSON.stringify({ ...saved, parsedNotes: notes, requestId }),
+      JSON.stringify({ ...saved, notes: JSON.stringify(notes), parsedNotes: notes, requestId }),
       {
         status: 200,
         headers: { ...corsHeaders, ...rlHeaders, "Content-Type": "application/json" },
