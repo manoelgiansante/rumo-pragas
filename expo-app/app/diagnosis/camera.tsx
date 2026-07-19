@@ -17,7 +17,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
@@ -32,9 +31,7 @@ import {
 import { PremiumCard } from '../../components/PremiumCard';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
-
-const MAX_DIMENSION = 1024;
-const JPEG_QUALITY = 0.75;
+import { compressImageForDiagnosis } from '../../lib/imageResize';
 
 export default function CameraScreen() {
   const { t } = useTranslation();
@@ -43,12 +40,13 @@ export default function CameraScreen() {
   const [processing, setProcessing] = useState(false);
   const { setImage } = useDiagnosis();
 
-  const compressImage = async (uri: string): Promise<{ uri: string; base64: string }> => {
-    const result = await manipulateAsync(
-      uri,
-      [{ resize: { width: MAX_DIMENSION, height: MAX_DIMENSION } }],
-      { compress: JPEG_QUALITY, format: SaveFormat.JPEG, base64: true },
-    );
+  // Aspect-ratio-preserving resize (lib/imageResize.ts): the previous inline
+  // resize forced 1024×1024 and distorted every non-square photo before the
+  // AI ever saw it.
+  const compressImage = async (
+    asset: ImagePicker.ImagePickerAsset,
+  ): Promise<{ uri: string; base64: string }> => {
+    const result = await compressImageForDiagnosis(asset.uri, asset.width, asset.height);
     if (!result.base64) {
       throw new Error(t('diagnosis.base64Error'));
     }
@@ -120,7 +118,7 @@ export default function CameraScreen() {
 
       setProcessing(true);
       try {
-        const compressed = await compressImage(asset.uri);
+        const compressed = await compressImage(asset);
         addBreadcrumb({
           category: 'diagnosis.camera',
           message: 'image_compressed',
