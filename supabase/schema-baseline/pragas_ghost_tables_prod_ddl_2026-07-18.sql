@@ -357,6 +357,7 @@ CREATE TABLE IF NOT EXISTS public.pragas_notification_queue (
   CONSTRAINT pragas_notification_queue_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 ALTER TABLE public.pragas_notification_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pragas_notification_queue FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY "notif_queue_service" ON public.pragas_notification_queue
   FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -497,7 +498,7 @@ CREATE TRIGGER trigger_update_pragas_subscription BEFORE UPDATE ON public.pragas
 GRANT ALL ON TABLE public.pragas_subscriptions TO anon, authenticated, service_role;
 
 -- ============================================================================
--- FIM — 14 tabelas · 44 policies · 27 indexes (+1 UNIQUE em subscriptions
+-- FIM — 14 tabelas · 40 policies · 27 indexes (+1 UNIQUE em subscriptions
 -- listado acima) · 18 triggers · grants (13 tabelas full / notification_queue
--- só service_role). Baseline read-only; NÃO aplicar.
+-- só service_role, com FORCE ROW LEVEL SECURITY). Baseline read-only; NÃO aplicar.
 -- ============================================================================
