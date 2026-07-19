@@ -34,7 +34,7 @@
  * are logged (agrio_label_unmapped) so the map is completed from real traffic.
  */
 
-import { captureException } from "../_shared/sentry.ts";
+import { captureException, captureMessage } from "../_shared/sentry.ts";
 
 export const AGRIO_BASE =
   "https://agrio-api-gateway-6it0wqn1.uc.gateway.dev/v1";
@@ -121,6 +121,65 @@ export async function callAgrioDiagnose(opts: {
     throw new Error(`Agrio API ${res.status}: ${JSON.stringify(detail).slice(0, 300)}`);
   }
   return json;
+}
+
+/**
+ * Best-effort Agrio credit-balance telemetry (ported from the dedicated
+ * `diagnose-pragas/agrio.ts` twin — IMPL-3 T2; keep the two in sync).
+ * Emits a Sentry warning when the balance drops to/below the threshold so a
+ * repeat of the 2026-07-06 credit blackout is no longer silent. NEVER throws:
+ * telemetry must not break the diagnosis flow (ZERO-O).
+ */
+export async function maybeCaptureAgrioBalance(options: {
+  apiKey: string;
+  requestId: string;
+}): Promise<void> {
+  // Default-ON (IMPL-3 T2): the 2026-07-06 Agrio credit blackout would repeat
+  // silently with this telemetry default-OFF — the app is free and diagnosis
+  // just dies when credits hit zero. Only an EXPLICIT env "false" disables.
+  if ((Deno.env.get("AGRIO_CREDIT_TELEMETRY_ENABLED") ?? "true").toLowerCase() === "false") {
+    return;
+  }
+  const threshold = Math.max(
+    1,
+    Number.parseInt(Deno.env.get("AGRIO_LOW_CREDIT_THRESHOLD") ?? "100", 10) || 100,
+  );
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    let response: Response;
+    try {
+      response = await fetch(
+        `${AGRIO_BASE}/get-credit?key=${encodeURIComponent(options.apiKey)}`,
+        { method: "GET", signal: controller.signal },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!response.ok) throw new Error(`agrio_credit_api_${response.status}`);
+    const payload = JSON.parse(await response.text()) as Record<string, unknown>;
+    const credits = Number(payload?.numCredits);
+    if (!Number.isFinite(credits)) throw new Error("agrio_credit_invalid_payload");
+    if (credits <= threshold) {
+      await captureMessage("Agrio credit balance is below the configured threshold", {
+        level: "warning",
+        tags: {
+          fn: "diagnose",
+          step: "agrio_credit_balance",
+          balance_band: credits <= 0 ? "empty" : "low",
+        },
+        extra: { requestId: options.requestId },
+      });
+    }
+  } catch {
+    // Telemetry must NEVER break the diagnosis flow (ZERO-O): swallow every
+    // failure and best-effort instrument the failure itself.
+    await captureException(new Error("agrio_credit_telemetry_failed"), {
+      level: "warning",
+      tags: { fn: "diagnose", step: "agrio_credit_telemetry" },
+      extra: { requestId: options.requestId },
+    }).catch(() => undefined);
+  }
 }
 
 /**

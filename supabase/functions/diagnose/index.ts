@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { captureException, captureGenAiRequest } from "../_shared/sentry.ts";
-import { callAgrioDiagnose, adaptAgrio, AGRIO_LABEL_MAP_VERSION } from "./agrio.ts";
+import { callAgrioDiagnose, adaptAgrio, AGRIO_LABEL_MAP_VERSION, maybeCaptureAgrioBalance } from "./agrio.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const AGRIO_API_KEY = Deno.env.get("AGRIO_API_KEY") ?? "";
@@ -665,6 +665,9 @@ Deno.serve(async (req: Request) => {
           cropApiName: safeCropType || undefined,
           requestId,
         });
+        // Best-effort credit telemetry — must never fail the diagnosis flow.
+        await maybeCaptureAgrioBalance({ apiKey: AGRIO_API_KEY, requestId })
+          .catch(() => undefined);
         logJson("diagnose", requestId, "INFO", "Agrio diagnose ok", {
           crop: String(diagnosisData.crop ?? ""),
           pestId: String(diagnosisData.pest_id ?? ""),

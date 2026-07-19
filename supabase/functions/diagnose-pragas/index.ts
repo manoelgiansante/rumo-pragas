@@ -841,7 +841,9 @@ Deno.serve(async (req: Request) => {
           cropApiName: safeCropType || undefined,
           requestId,
         });
-        await maybeCaptureAgrioBalance({ apiKey: AGRIO_API_KEY, requestId });
+        // Best-effort credit telemetry — must never fail the diagnosis flow.
+        await maybeCaptureAgrioBalance({ apiKey: AGRIO_API_KEY, requestId })
+          .catch(() => undefined);
         logJson("diagnose", requestId, "INFO", "Agrio diagnose ok", {
           durationMs: Date.now() - agrioStart,
         });

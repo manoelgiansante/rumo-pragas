@@ -120,7 +120,12 @@ export async function maybeCaptureAgrioBalance(options: {
   apiKey: string;
   requestId: string;
 }): Promise<void> {
-  if ((Deno.env.get("AGRIO_CREDIT_TELEMETRY_ENABLED") ?? "false") !== "true") return;
+  // Default-ON (IMPL-3 T2): the 2026-07-06 Agrio credit blackout would repeat
+  // silently with this telemetry default-OFF — the app is free and diagnosis
+  // just dies when credits hit zero. Only an EXPLICIT env "false" disables.
+  if ((Deno.env.get("AGRIO_CREDIT_TELEMETRY_ENABLED") ?? "true").toLowerCase() === "false") {
+    return;
+  }
   const threshold = Math.max(
     1,
     Number.parseInt(Deno.env.get("AGRIO_LOW_CREDIT_THRESHOLD") ?? "100", 10) || 100,
@@ -147,11 +152,13 @@ export async function maybeCaptureAgrioBalance(options: {
       });
     }
   } catch {
+    // Telemetry must NEVER break the diagnosis flow (ZERO-O): swallow every
+    // failure and best-effort instrument the failure itself.
     await captureException(new Error("agrio_credit_telemetry_failed"), {
       level: "warning",
       tags: { fn: "diagnose", step: "agrio_credit_telemetry" },
       extra: { requestId: options.requestId },
-    });
+    }).catch(() => undefined);
   }
 }
 
