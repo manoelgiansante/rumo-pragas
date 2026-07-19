@@ -33,3 +33,9 @@ Branch: `fable5/rumo-pragas-global-benchmark-2026-07-19` (criada de `mega-trabal
 - Missão §12: docs 01-11 TODOS gravados. §13 definition-of-done: código+testes+builds+deploys OK; pendências restantes = gates CEO (ver 11-final-report.md §10).
 
 (este log é atualizado a cada fase)
+
+## 19/jul ~17h — RECOMENDAÇÕES EXECUTADAS (ordem CEO "faça as recomendações")
+- `9eec7fc` prompt legado `diagnose/` UNIFICADO não-prescritivo (splice byte-idêntico ao dedicado; versões `2026-07-19.2`; trava bidirecional no teste; contrato 1.0.9 preservado com evidência) → **deploy diagnose v73 + diagnose-pragas v3** (23:42 UTC).
+- **MAIN POUSADA**: merge integração limpo (zero conflitos) → push FF `c74e61e`→`d34fd48` (35 commits); branch também pushada; duplicata untracked da migration de quota removida (canônica em migrations-proposals/ via main).
+- **PLAY PRODUCTION: 1.0.11 vc 206649250 COMMITADO** (edit 03541073295706861064, notes pt-BR) — Android público fecha paridade com iOS 1.0.11.
+- `12-divulgacao-claims-pack.md`: 12 claims honestos + copy Meta/UGC/IG/Play + 10 anti-claims (propostas — publicação segue com CEO).
