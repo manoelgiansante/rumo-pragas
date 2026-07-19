@@ -91,6 +91,8 @@ export default function CropSelectScreen() {
           testID="cropselect-back"
           onPress={() => router.back()}
           style={styles.backBtn}
+          // 36pt visual → ≥44pt effective touch target (HIG), zero visual change
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={t('cropSelect.back')}
           accessibilityRole="button"
         >

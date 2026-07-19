@@ -161,6 +161,8 @@ export default function CameraScreen() {
           testID="diagnosis-camera-close"
           onPress={() => router.back()}
           style={styles.closeBtn}
+          // 36pt visual → ≥44pt effective touch target (HIG), zero visual change
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={t('diagnosis.closeA11y')}
           accessibilityRole="button"
           accessibilityHint={t('diagnosis.closeHint')}

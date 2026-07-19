@@ -803,6 +803,8 @@ export default function ResultScreen() {
               <TouchableOpacity
                 onPress={() => router.dismissAll()}
                 style={styles.iconBtn}
+                // 38pt visual → ≥44pt effective touch target (HIG), zero visual change
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel={t('diagnosis.closeResult')}
                 accessibilityRole="button"
                 testID="result-close-button"
@@ -812,6 +814,8 @@ export default function ResultScreen() {
               <TouchableOpacity
                 onPress={handleWhatsAppShare}
                 style={styles.iconBtn}
+                // 38pt visual → ≥44pt effective touch target (HIG), zero visual change
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel={t('diagnosis.shareDiagnosis')}
                 accessibilityRole="button"
                 accessibilityHint={t('diagnosis.shareHint')}
