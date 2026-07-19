@@ -229,6 +229,14 @@ export default {
     tipInclude: 'Incluya hojas, tallo o fruto visibles',
     tipSharp: 'Imagen nítida sin temblor',
     optimizing: 'Optimizando imagen...',
+    photoQualityTitle: 'La foto podría no funcionar bien',
+    photoQualityLowRes:
+      'La imagen tiene baja resolución: acerque la cámara a la planta o elija una foto más grande.',
+    photoQualityLowDetail:
+      'La imagen se ve oscura o borrosa: busque luz natural y sostenga firme al fotografiar.',
+    photoQualityAsk: 'Las fotos nítidas y bien iluminadas generan mejores hipótesis. ¿Probar otra?',
+    photoQualityRetake: 'Tomar otra',
+    photoQualityUseAnyway: 'Usar de todos modos',
     closeA11y: 'Cerrar',
     closeHint: 'Volver a la pantalla anterior',
     takePhotoA11y: 'Tomar foto. Use la cámara para capturar la plaga',

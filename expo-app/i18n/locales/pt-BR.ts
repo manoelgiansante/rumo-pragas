@@ -234,6 +234,14 @@ export default {
     tipInclude: 'Inclua folhas, caule ou fruto visíveis',
     tipSharp: 'Imagem nítida sem tremor',
     optimizing: 'Otimizando imagem...',
+    photoQualityTitle: 'A foto pode não ficar boa',
+    photoQualityLowRes:
+      'A imagem tem resolução baixa — aproxime a câmera da planta ou escolha uma foto maior.',
+    photoQualityLowDetail:
+      'A imagem parece escura ou sem nitidez — procure luz natural e segure firme ao fotografar.',
+    photoQualityAsk: 'Fotos nítidas e bem iluminadas geram hipóteses melhores. Quer tentar outra?',
+    photoQualityRetake: 'Tirar outra',
+    photoQualityUseAnyway: 'Usar assim mesmo',
     closeA11y: 'Fechar',
     closeHint: 'Voltar para a tela anterior',
     takePhotoA11y: 'Tirar foto. Use a câmera para capturar a praga',

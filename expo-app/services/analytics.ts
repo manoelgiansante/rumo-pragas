@@ -242,6 +242,30 @@ export function trackError(errorType: string, _message?: string): void {
   trackEvent('app_error', { errorType });
 }
 
+export type PhotoQualitySource = 'camera' | 'gallery';
+export type PhotoQualityChoice = 'retake' | 'use_anyway';
+
+/**
+ * Soft photo-quality gate (camera flow). Only bounded issue codes travel
+ * ('low_resolution' / 'low_detail') plus the capture source — never image
+ * bytes, file names or anything user-identifying.
+ */
+export function trackPhotoQualityWarningShown(
+  issues: readonly string[],
+  source: PhotoQualitySource,
+): void {
+  trackEvent('photo_quality_warning_shown', { issues: issues.join(','), source });
+}
+
+/** The user's decision on the soft photo-quality warning. */
+export function trackPhotoQualityChoice(
+  choice: PhotoQualityChoice,
+  issues: readonly string[],
+  source: PhotoQualitySource,
+): void {
+  trackEvent('photo_quality_choice', { choice, issues: issues.join(','), source });
+}
+
 /**
  * Fired when the user opts into a post-diagnosis local reinspection reminder.
  * We keep only the bounded cadence (in days). We deliberately avoid pest_id

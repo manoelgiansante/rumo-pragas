@@ -227,6 +227,14 @@ export default {
     tipInclude: 'Include visible leaves, stem or fruit',
     tipSharp: 'Sharp image without shaking',
     optimizing: 'Optimizing image...',
+    photoQualityTitle: 'This photo may not work well',
+    photoQualityLowRes:
+      'The image resolution is low — move the camera closer to the plant or pick a larger photo.',
+    photoQualityLowDetail:
+      'The image looks dark or blurry — find natural light and hold steady when shooting.',
+    photoQualityAsk: 'Sharp, well-lit photos produce better hypotheses. Try another one?',
+    photoQualityRetake: 'Retake photo',
+    photoQualityUseAnyway: 'Use it anyway',
     closeA11y: 'Close',
     closeHint: 'Go back to previous screen',
     takePhotoA11y: 'Take photo. Use the camera to capture the pest',
