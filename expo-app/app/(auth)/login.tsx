@@ -44,6 +44,10 @@ export default function LoginScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  // Visual-only focus ring. Drives the input border/background accent while a
+  // field is active (WCAG 2.4.7 Focus Visible). Does NOT touch auth handlers,
+  // submit flow or field values — purely presentational.
+  const [focusedField, setFocusedField] = useState<'fullName' | 'email' | 'password' | null>(null);
   const {
     ready: googleReady,
     loading: googleLoading,
@@ -309,11 +313,16 @@ export default function LoginScreen() {
                 {/* Label visível (metodologia de formulário): placeholder some ao
                     digitar — o rótulo mantém o contexto do campo. */}
                 <Text style={styles.inputLabel}>{t('auth.fullNameOptionalPlaceholder')}</Text>
-                <View style={styles.inputContainer}>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    focusedField === 'fullName' && styles.inputContainerFocused,
+                  ]}
+                >
                   <Ionicons
                     name="person-outline"
                     size={20}
-                    color={Colors.systemGray}
+                    color={focusedField === 'fullName' ? Colors.accent : Colors.systemGray}
                     style={styles.inputIcon}
                   />
                   <TextInput
@@ -325,6 +334,8 @@ export default function LoginScreen() {
                     onChangeText={setFullName}
                     autoCapitalize="words"
                     returnKeyType="next"
+                    onFocus={() => setFocusedField('fullName')}
+                    onBlur={() => setFocusedField((f) => (f === 'fullName' ? null : f))}
                     onSubmitEditing={() => emailRef.current?.focus()}
                     accessibilityLabel={t('auth.fullNameOptionalA11y')}
                     accessibilityRole="text"
@@ -336,11 +347,16 @@ export default function LoginScreen() {
             {/* Email field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('auth.emailPlaceholder')}</Text>
-              <View style={styles.inputContainer}>
+              <View
+                style={[
+                  styles.inputContainer,
+                  focusedField === 'email' && styles.inputContainerFocused,
+                ]}
+              >
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={Colors.systemGray}
+                  color={focusedField === 'email' ? Colors.accent : Colors.systemGray}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -355,6 +371,8 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   autoComplete="email"
                   returnKeyType="next"
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField((f) => (f === 'email' ? null : f))}
                   onSubmitEditing={() => passwordRef.current?.focus()}
                   accessibilityLabel={t('auth.emailA11y')}
                   accessibilityRole="text"
@@ -365,11 +383,16 @@ export default function LoginScreen() {
             {/* Password field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t('auth.passwordPlaceholder')}</Text>
-              <View style={styles.inputContainer}>
+              <View
+                style={[
+                  styles.inputContainer,
+                  focusedField === 'password' && styles.inputContainerFocused,
+                ]}
+              >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={Colors.systemGray}
+                  color={focusedField === 'password' ? Colors.accent : Colors.systemGray}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -383,6 +406,8 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   returnKeyType="done"
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField((f) => (f === 'password' ? null : f))}
                   onSubmitEditing={handleSubmit}
                   accessibilityLabel={t('auth.passwordA11y')}
                   accessibilityRole="text"
@@ -597,35 +622,45 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   hero: {
-    paddingTop: Platform.OS === 'ios' ? 80 : 60,
-    paddingBottom: 48,
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
+    paddingTop: Platform.OS === 'ios' ? 80 : 64,
+    // The white form sheet rises over the hero (negative margin below), so the
+    // header reads as a clean full-bleed brand band instead of a floating pill.
+    paddingBottom: Spacing.xxxl + Spacing.xxl,
   },
   heroContent: {
     alignItems: 'center',
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
+    // Soft halo lifts the mark off the gradient for a more premium lockup.
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 6,
   },
   heroTitle: {
     fontSize: FontSize.largeTitle,
     fontFamily: FontFamily.bold,
     fontWeight: FontWeight.bold,
     color: Colors.white,
-    marginBottom: Spacing.sm,
+    letterSpacing: 0.2,
+    marginBottom: Spacing.xs,
   },
   heroSubtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.82)',
     textAlign: 'center',
+    lineHeight: 21,
     paddingHorizontal: Spacing.xxxl,
   },
   // maxWidth: em telas largas (web desktop / iPad) o formulário fica numa
@@ -636,9 +671,20 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     alignSelf: 'center',
+    backgroundColor: Colors.card,
+    // Sheet rises over the hero band and provides the rounded top, creating a
+    // clear layered hierarchy (brand header → form surface).
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    marginTop: -Spacing.xxl,
     paddingHorizontal: Spacing.xxl,
     paddingTop: Spacing.xxxl,
     paddingBottom: Spacing.xxxl,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -702,8 +748,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.systemGray6,
     borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.separator,
     paddingHorizontal: Spacing.lg,
     height: 52,
+  },
+  // Focus ring: border keeps 1px (no reflow), only color + fill shift so the
+  // active field reads clearly. Icon also tints accent (see JSX).
+  inputContainerFocused: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.white,
   },
   inputIcon: {
     marginRight: Spacing.md,
@@ -735,11 +789,20 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     borderRadius: BorderRadius.md,
-    overflow: 'hidden',
     marginBottom: Spacing.xxl,
+    // Accent-tinted lift makes the primary action read as the clear next step.
+    // The gradient child rounds its own corners, so no overflow clip is needed
+    // (which also lets this shadow render on iOS).
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 4,
   },
   submitButtonDisabled: {
     opacity: 0.7,
+    shadowOpacity: 0.12,
+    elevation: 1,
   },
   submitGradient: {
     paddingVertical: Spacing.lg,
@@ -823,6 +886,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 2,
   },
   appleButtonText: {
     fontSize: FontSize.body,
@@ -844,6 +912,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     borderWidth: 1,
     borderColor: '#DADCE0',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   googleButtonText: {
     fontSize: FontSize.body,
