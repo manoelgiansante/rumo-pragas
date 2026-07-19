@@ -21,4 +21,9 @@ Branch: `fable5/rumo-pragas-global-benchmark-2026-07-19` (criada de `mega-trabal
 - **Build Android 1.0.11: as 2 rodadas (18/jul 21:52 e 19/jul 07:23) FALHARAM silenciosamente (BUILD_EXIT=1)** — o "exit 0" era do wrapper de background. Diag direto 12:43 expôs a causa: **"npm ci isolado pelo lockfile falhou ou deixou descendentes"** (cache npm nasce VAZIO a cada build; máquina hoje com ECONNRESET intermitente em runtimes Node — ver memória `reference_js_runtime_supabase_connreset_2026_07_19`). Replicação com output visível em andamento (`/private/tmp/pragas-npmci-test/npmci.log`).
 - Onda F1 global RELANÇADA com protocolo ARQUIVO-PRIMEIRO (dossiê gravado assim que pronto; retorno ≤10 linhas): R1 acadêmicos (4/6 já em disco), R2 scouting/previsão (6/8 em disco), R3 LATAM/BR, R4 adjacentes. Session-limit 13:20 atravessado com resume-por-mensagem dos 4 agentes.
 
+## 19/jul 14:50 — BUILD ANDROID 1.0.11 VERDE (diag direto, 78min)
+- `RumoPragasIA-production-android-20260719T163208Z.aab` (70,6MB, buildVersion 206641763, commit atestado `2d50f13`, sha256 `49b38e221d553567…`) + manifest. Confirma: as 2 falhas anteriores eram rede transitória no `npm ci` (replicação passou em 3min; build inteiro passou sem mudança de código). Mitigação futura (retry bounded + cache-seed sha512-verified) proposta no doc 07 §9.
+- F2 completo: docs 05 (UX, 22 achados) + 06 (IA, 10 riscos) + 07 (engenharia, 16 achados) gravados. F1 completo: 34 dossiês + 4 índices.
+- Em curso: IMPL-1 (P0 deep link lembrete + rótulo confiança + touch targets) e síntese docs 01-04.
+
 (este log é atualizado a cada fase)
