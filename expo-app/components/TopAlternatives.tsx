@@ -28,6 +28,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { Colors, FontSize, FontWeight, BorderRadius, FontFamily } from '../constants/theme';
 import { CollapsibleSection } from './CollapsibleSection';
+import { getConfidenceLevel, type ConfidenceLevel } from '../lib/confidence';
 import type { AgrioPrediction } from '../types/diagnosis';
 
 interface Props {
@@ -38,10 +39,17 @@ interface Props {
   max?: number;
 }
 
-function getConfidenceTone(value: number): { bg: string; fg: string; label: string } {
-  if (value >= 0.7) return { bg: Colors.accent + '1A', fg: Colors.accent, label: 'high' };
-  if (value >= 0.4) return { bg: Colors.warmAmber + '1A', fg: Colors.earthText, label: 'medium' };
-  return { bg: Colors.systemGray5, fg: Colors.systemGray, label: 'low' };
+// Visual tone per qualitative level. Thresholds live in lib/confidence.ts so
+// the hero label and these tones can never drift apart.
+const CONFIDENCE_TONES: Record<ConfidenceLevel, { bg: string; fg: string }> = {
+  high: { bg: Colors.accent + '1A', fg: Colors.accent },
+  medium: { bg: Colors.warmAmber + '1A', fg: Colors.earthText },
+  low: { bg: Colors.systemGray5, fg: Colors.systemGray },
+};
+
+function getConfidenceTone(value: number): { bg: string; fg: string; label: ConfidenceLevel } {
+  const label = getConfidenceLevel(value);
+  return { ...CONFIDENCE_TONES[label], label };
 }
 
 export function TopAlternatives({ predictions, primaryId, max = 3 }: Props) {

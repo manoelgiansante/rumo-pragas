@@ -29,10 +29,8 @@ import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedReaction,
   withTiming,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import {
   Colors,
@@ -61,6 +59,7 @@ import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { savePestToCache } from '../../services/pestRegistry';
 import { useMipKnowledge } from '../../hooks/useMipKnowledge';
 import { addBreadcrumb } from '../../services/sentry-shim';
+import { getConfidenceLevel } from '../../lib/confidence';
 import type { AgrioEnrichment, AgrioPrediction } from '../../types/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import {
@@ -110,6 +109,18 @@ export default function ResultScreen() {
   const isInvalidImage = result.pest_id === 'invalid_image';
   // P0-1: Low-confidence warning — even when image is valid, alert user if < 0.7
   const isLowConfidence = !isInvalidImage && !isHealthy && confidence > 0 && confidence < 0.7;
+
+  // Qualitative confidence for the hero — same thresholds as TopAlternatives
+  // (lib/confidence.ts). A raw percentage reads as misleading precision; the
+  // user-facing label is "high/medium/low" instead.
+  const confidenceLevel = getConfidenceLevel(confidence);
+  const confidenceLevelLabel = t(
+    confidenceLevel === 'high'
+      ? 'diagnosis.confidenceLevelHigh'
+      : confidenceLevel === 'medium'
+        ? 'diagnosis.confidenceLevelMedium'
+        : 'diagnosis.confidenceLevelLow',
+  );
 
   const enrichment = useMemo((): AgrioEnrichment => {
     try {
@@ -166,10 +177,9 @@ export default function ResultScreen() {
     return t('severity.undefined');
   }, [enrichment, isHealthy, t]);
 
-  // Animated confidence bar: count up from 0% → confidence% in ~1s on mount.
+  // Animated confidence bar: fills from 0 → confidence in ~1s on mount.
   // Uses Reanimated worklet so the animation runs entirely on the UI thread.
   const confidenceProgress = useSharedValue(0);
-  const [displayConfidence, setDisplayConfidence] = useState(0);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [feedbackVerdict, setFeedbackVerdict] = useState<DiagnosisFeedbackVerdict | null>(null);
   const [feedbackAlternative, setFeedbackAlternative] = useState('');
@@ -192,14 +202,6 @@ export default function ResultScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confidence, error, queued, result.pest_id]);
-
-  // Mirror shared value → React state so the numeric % ticks up in sync
-  useAnimatedReaction(
-    () => confidenceProgress.value,
-    (value) => {
-      runOnJS(setDisplayConfidence)(Math.round(value * 100));
-    },
-  );
 
   const confidenceBarStyle = useAnimatedStyle(() => ({
     width: `${confidenceProgress.value * 100}%`,
@@ -842,16 +844,21 @@ export default function ResultScreen() {
               </Text>
             ) : null}
 
-            {/* Animated confidence bar — UI-thread Reanimated worklet */}
+            {/* Animated confidence bar — UI-thread Reanimated worklet.
+                Qualitative label instead of a raw % — the model's score is not
+                lab-grade precision (thresholds shared via lib/confidence.ts). */}
             <View
               style={styles.confidenceWrap}
               accessible
               accessibilityRole="progressbar"
-              accessibilityLabel={t('diagnosis.confidenceBarA11y', { pct: displayConfidence })}
+              accessibilityLabel={t('diagnosis.confidenceLevelA11y', {
+                level: confidenceLevelLabel,
+              })}
+              testID={`result-confidence-${confidenceLevel}`}
             >
               <View style={styles.confidenceLabelRow}>
                 <Text style={styles.confidenceLabel}>{t('diagnosis.confidence')}</Text>
-                <Text style={styles.confidenceValue}>{displayConfidence}%</Text>
+                <Text style={styles.confidenceValue}>{confidenceLevelLabel}</Text>
               </View>
               <View style={styles.confidenceTrack}>
                 <Animated.View style={[styles.confidenceFill, confidenceBarStyle]} />

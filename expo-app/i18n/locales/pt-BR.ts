@@ -189,6 +189,10 @@ export default {
     healthy: 'Planta Saudável',
     pestDetected: 'Possível praga',
     confidence: 'Confiança',
+    confidenceLevelHigh: 'Alta',
+    confidenceLevelMedium: 'Média',
+    confidenceLevelLow: 'Baixa',
+    confidenceLevelA11y: 'Nível de confiança: {{level}}',
     queued: 'Diagnóstico na fila',
     queuedMessage:
       'Seu diagnóstico será enviado automaticamente quando a conexão for restabelecida.',
@@ -317,7 +321,6 @@ export default {
     viewDetailsHint: 'Abre a ficha técnica completa da praga',
     saveToHistory: 'Salvar no histórico',
     savedToHistory: 'Diagnóstico salvo no histórico',
-    confidenceBarA11y: 'Nível de confiança {{pct}} por cento',
     pestDetailTitle: 'Ficha técnica',
     pestDetailLifecycle: 'Ciclo de vida',
     pestDetailSynonyms: 'Outros nomes',
