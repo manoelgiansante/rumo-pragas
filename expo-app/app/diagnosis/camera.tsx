@@ -27,6 +27,7 @@ import {
   FontSize,
   Gradients,
   FontFamily,
+  Shadows,
 } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
@@ -243,22 +244,21 @@ export default function CameraScreen() {
       </View>
 
       <View style={styles.content}>
+        {/* Premium scan frame — a viewfinder-style square with gold corner
+            brackets that says "enquadre a folha aqui". */}
         <View style={styles.iconContainer}>
-          <View style={[styles.iconRing, { width: 150, height: 150 }]}>
-            <View
-              style={[
-                styles.iconRing,
-                { width: 120, height: 120, borderColor: Colors.accent + '33' },
-              ]}
-            >
-              <Ionicons name="camera" size={48} color={Colors.accent} />
-            </View>
-            {/* Corner brackets: subtle framing guide — "frame the leaf in the center" */}
+          <LinearGradient
+            colors={Gradients.hero}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.scanFrame}
+          >
+            <Ionicons name="camera" size={54} color="#FFF" accessibilityElementsHidden />
             <View style={[styles.frameCorner, styles.frameCornerTL]} pointerEvents="none" />
             <View style={[styles.frameCorner, styles.frameCornerTR]} pointerEvents="none" />
             <View style={[styles.frameCorner, styles.frameCornerBL]} pointerEvents="none" />
             <View style={[styles.frameCorner, styles.frameCornerBR]} pointerEvents="none" />
-          </View>
+          </LinearGradient>
         </View>
 
         <Text style={[styles.title, isDark && styles.textDark]}>{t('diagnosis.aiTitle')}</Text>
@@ -277,24 +277,35 @@ export default function CameraScreen() {
             testID="diagnosis-camera-capture"
             onPress={() => pickImage(true)}
             disabled={processing}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
             accessibilityLabel={t('diagnosis.takePhotoA11y')}
             accessibilityRole="button"
             accessibilityHint={t('diagnosis.takePhotoHint')}
             accessibilityState={{ disabled: processing, busy: processing }}
+            style={styles.captureShadow}
           >
-            <PremiumCard>
-              <View style={styles.btnRow}>
-                <LinearGradient colors={Gradients.hero} style={styles.btnIcon}>
-                  <Ionicons name="camera" size={24} color="#FFF" accessibilityElementsHidden />
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.btnTitle}>{t('diagnosis.takePhoto')}</Text>
-                  <Text style={styles.btnSub}>{t('diagnosis.takePhotoSub')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.systemGray3} />
+            <LinearGradient
+              colors={Gradients.heroDeep}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.captureBtn}
+            >
+              <View style={styles.captureIcon}>
+                <Ionicons name="camera" size={26} color="#FFF" accessibilityElementsHidden />
               </View>
-            </PremiumCard>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.captureTitle}>{t('diagnosis.takePhoto')}</Text>
+                <Text style={styles.captureSub}>{t('diagnosis.takePhotoSub')}</Text>
+              </View>
+              <View style={styles.captureArrow}>
+                <Ionicons
+                  name="arrow-forward"
+                  size={18}
+                  color={Colors.brandDark}
+                  accessibilityElementsHidden
+                />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -395,12 +406,13 @@ const styles = StyleSheet.create({
   headerText: { fontSize: FontSize.headline, fontFamily: FontFamily.bold, fontWeight: '700' },
   content: { flex: 1, paddingHorizontal: Spacing.lg, alignItems: 'center' },
   iconContainer: { marginTop: 20, marginBottom: 20 },
-  iconRing: {
-    borderWidth: 2,
-    borderColor: Colors.accent + '1A',
-    borderRadius: 999,
+  scanFrame: {
+    width: 148,
+    height: 148,
+    borderRadius: BorderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Shadows.hero,
   },
   title: {
     fontSize: FontSize.title,
@@ -418,31 +430,37 @@ const styles = StyleSheet.create({
   },
   frameCorner: {
     position: 'absolute',
-    width: 22,
-    height: 22,
-    borderColor: Colors.accent,
+    width: 26,
+    height: 26,
+    borderColor: Colors.goldSoft,
   },
-  frameCornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 8 },
+  frameCornerTL: {
+    top: 12,
+    left: 12,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: 10,
+  },
   frameCornerTR: {
-    top: 0,
-    right: 0,
+    top: 12,
+    right: 12,
     borderTopWidth: 3,
     borderRightWidth: 3,
-    borderTopRightRadius: 8,
+    borderTopRightRadius: 10,
   },
   frameCornerBL: {
-    bottom: 0,
-    left: 0,
+    bottom: 12,
+    left: 12,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
-    borderBottomLeftRadius: 8,
+    borderBottomLeftRadius: 10,
   },
   frameCornerBR: {
-    bottom: 0,
-    right: 0,
+    bottom: 12,
+    right: 12,
     borderBottomWidth: 3,
     borderRightWidth: 3,
-    borderBottomRightRadius: 8,
+    borderBottomRightRadius: 10,
   },
   frameGuide: {
     flexDirection: 'row',
@@ -474,6 +492,49 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   buttons: { width: '100%', gap: 12 },
+  captureShadow: {
+    ...Shadows.hero,
+    borderRadius: BorderRadius.lg,
+  },
+  captureBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(231,211,161,0.22)',
+  },
+  captureIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(231,211,161,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureTitle: {
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  captureSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.caption,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 2,
+  },
+  captureArrow: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.goldSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   btnRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   btnIcon: {
     width: 54,

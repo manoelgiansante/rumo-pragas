@@ -15,6 +15,7 @@ import {
 import { showAlert } from '../../services/dialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -30,6 +31,7 @@ import {
   FontSize,
   FontWeight,
   FontFamily,
+  Gradients,
 } from '../../constants/theme';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -523,31 +525,48 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* Profile card */}
-        <View style={[styles.profileCard, isDark && styles.profileCardDark]}>
-          <Avatar uri={avatarUrl} name={userName} size={64} />
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, isDark && styles.textDark]} numberOfLines={1}>
-              {userName}
-            </Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>
-              {userEmail}
-            </Text>
-            <View style={styles.roleBadge}>
-              <Ionicons name="shield-checkmark" size={11} color={Colors.accent} />
-              <Text style={styles.roleText}>{t('settings.farmerRole')}</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push('/edit-profile')}
-            style={styles.editProfileIcon}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.editProfile')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            testID="settings-edit-profile"
+        {/* Profile card — premium deep-forest hero banner. */}
+        <View style={styles.profileShadow}>
+          <LinearGradient
+            colors={Gradients.hero}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.profileCard}
           >
-            <Ionicons name="create-outline" size={20} color={Colors.accent} />
-          </TouchableOpacity>
+            <Ionicons
+              name="leaf"
+              size={120}
+              color="rgba(231,211,161,0.08)"
+              style={styles.profileWatermark}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <View style={styles.profileAvatarRing}>
+              <Avatar uri={avatarUrl} name={userName} size={60} />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {userName}
+              </Text>
+              <Text style={styles.profileEmail} numberOfLines={1}>
+                {userEmail}
+              </Text>
+              <View style={styles.roleBadge}>
+                <Ionicons name="shield-checkmark" size={11} color={Colors.brandDark} />
+                <Text style={styles.roleText}>{t('settings.farmerRole')}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push('/edit-profile')}
+              style={styles.editProfileIcon}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.editProfile')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              testID="settings-edit-profile"
+            >
+              <Ionicons name="create-outline" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
 
         {/* ACCOUNT */}
@@ -808,39 +827,59 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
 
-  // Profile card
+  // Profile card — premium hero banner
+  profileShadow: {
+    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    shadowColor: Colors.brandDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    elevation: 8,
+  },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    marginHorizontal: Spacing.lg,
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.separator,
+    borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(231,211,161,0.2)',
   },
-  profileCardDark: { backgroundColor: '#1C1C1E', borderColor: Colors.separatorDark },
+  profileWatermark: {
+    position: 'absolute',
+    top: -18,
+    right: -14,
+    transform: [{ rotate: '-14deg' }],
+  },
+  profileAvatarRing: {
+    padding: 3,
+    borderRadius: 40,
+    borderWidth: 1.5,
+    borderColor: 'rgba(231,211,161,0.55)',
+  },
   profileInfo: { flex: 1, minWidth: 0 },
   profileName: {
-    fontSize: FontSize.headline,
-    fontFamily: FontFamily.semibold,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: FontWeight.bold,
+    letterSpacing: -0.3,
+    color: '#FFF',
   },
   profileEmail: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.caption,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.75)',
     marginTop: 2,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 6,
+    marginTop: 8,
     alignSelf: 'flex-start',
-    backgroundColor: Colors.accent + '14',
+    backgroundColor: Colors.goldSoft,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
@@ -849,13 +888,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption2,
     fontFamily: FontFamily.semibold,
     fontWeight: FontWeight.semibold,
-    color: Colors.accent,
+    color: Colors.brandDark,
   },
   editProfileIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.accent + '14',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(231,211,161,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -873,7 +914,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionContent: {
-    backgroundColor: Colors.card,
+    backgroundColor: Colors.cardElevated,
     marginHorizontal: Spacing.lg,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -936,7 +977,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: Spacing.lg,
-    backgroundColor: Colors.card,
+    backgroundColor: Colors.cardElevated,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.separator,
