@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // stubs that throw at runtime, and does NOT export documentDirectory. The '/legacy' subpath keeps
 // the same working API (incl. a typed documentDirectory). See react-native-knowledge memory.
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
 import { captureException } from './sentry-shim';
@@ -19,6 +20,28 @@ export const DIAGNOSIS_QUEUE_CLEANUP_JOURNAL_KEY = '@rumo_pragas_diagnosis_clean
 export const MAX_DIAGNOSIS_QUEUE_ITEMS = 25;
 const QUEUE_DIR = `${documentDirectory}diagnosis-queue/`;
 const SAFE_QUEUE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+
+/**
+ * The offline diagnosis queue persists photos on the device filesystem, which
+ * only exists on native. On web, expo-file-system/legacy resolves to a shim
+ * whose `documentDirectory` is `null` and whose file methods are absent, so any
+ * call (getInfoAsync/readDirectoryAsync/deleteAsync/…) throws `UnavailabilityError`.
+ * A web session can therefore never hold an on-disk queue photo of ANY user.
+ *
+ * The account owner-claim / purge contract in `services/localDataPurge.ts` is
+ * fail-closed by design (an unremovable foreign photo must block admission), but
+ * on web there is no photo to remove: treating the missing filesystem as a purge
+ * failure previously blocked EVERY web login on the `local_data_purge_failed`
+ * gate. These operations are gated on this predicate so the file-backed queue is
+ * treated as empty (fail-open) on web, while native behaviour is unchanged.
+ */
+function fileQueueAvailable(): boolean {
+  return (
+    Platform.OS !== 'web' &&
+    documentDirectory != null &&
+    typeof FileSystem.getInfoAsync === 'function'
+  );
+}
 
 type QueueListener = () => void;
 const queueListeners = new Set<QueueListener>();
@@ -294,6 +317,13 @@ async function applyCleanupJournal(journal: QueueCleanupJournal): Promise<void> 
 async function resumePendingDiagnosisQueueCleanupUnsafe(): Promise<void> {
   const raw = await AsyncStorage.getItem(DIAGNOSIS_QUEUE_CLEANUP_JOURNAL_KEY);
   if (!raw) return;
+  if (!fileQueueAvailable()) {
+    // Web: there is no filesystem to apply the journal against and no on-disk
+    // photo to delete. Discard the stale marker instead of throwing so it can
+    // never block a later account owner-claim / purge.
+    await AsyncStorage.removeItem(DIAGNOSIS_QUEUE_CLEANUP_JOURNAL_KEY);
+    return;
+  }
   await applyCleanupJournal(parseCleanupJournal(raw));
 }
 
@@ -314,6 +344,12 @@ export async function resumePendingDiagnosisQueueCleanup(): Promise<void> {
 export async function purgeAllDiagnosisQueueData(): Promise<void> {
   return serializeMutation(
     async () => {
+      if (!fileQueueAvailable()) {
+        // Web keeps no on-disk diagnosis-queue photos, so corrupt-owner recovery
+        // has nothing to erase. Resolve without touching the missing filesystem.
+        notifyQueueChanged();
+        return;
+      }
       const journal: QueueCleanupJournal = {
         version: 1,
         mode: 'all',
@@ -653,6 +689,14 @@ export async function prepareDiagnosisQueueForOwnerClaim(
 ): Promise<void> {
   if (!userId.trim()) throw new Error('Diagnosis queue owner claim requires a user');
   return serializeMutation(async () => {
+    if (!fileQueueAvailable()) {
+      // Web has no on-disk queue photo to migrate or discard for the incoming
+      // owner. Returning here keeps the account owner-claim contract fail-open
+      // instead of throwing on the absent filesystem (the root cause of the
+      // "local_data_purge_failed" block screen that trapped every web login).
+      notifyQueueChanged();
+      return;
+    }
     const ownerDecision = {
       userId,
       claimOwnerlessLegacy: options.claimOwnerlessLegacy,
@@ -958,6 +1002,12 @@ export async function clearQueue(userId?: string): Promise<void> {
 export async function purgeDiagnosisQueuesForUser(userId: string): Promise<void> {
   if (!userId.trim()) throw new Error('Diagnosis queue purge requires an owner');
   return serializeMutation(async () => {
+    if (!fileQueueAvailable()) {
+      // No on-disk photos exist on web, so this owner has no queued diagnosis
+      // image to erase. Sign-out/account-deletion local purge stays fail-open.
+      notifyQueueChanged();
+      return;
+    }
     await resumePendingDiagnosisQueueCleanupUnsafe();
     const [active, failed] = await Promise.all([readActiveQueueStrict(), readFailedQueueStrict()]);
     const owned = [
