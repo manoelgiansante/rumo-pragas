@@ -10,9 +10,25 @@ jest.mock('../../constants/theme', () => ({
     bold: 'Poppins_700Bold',
     italic: 'Poppins_400Regular_Italic',
   },
-  Colors: { card: '#fff', cardDark: '#333', text: '#000' },
+  Colors: {
+    card: '#fff',
+    cardElevated: '#ffffff',
+    cardDark: '#333',
+    text: '#000',
+    separator: '#E5DECD',
+    separatorDark: '#1F2F29',
+  },
   Spacing: { lg: 16 },
   BorderRadius: { lg: 16 },
+  Shadows: {
+    card: {
+      shadowColor: '#0B3D2E',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+  },
 }));
 
 import { PremiumCard } from '../../components/PremiumCard';

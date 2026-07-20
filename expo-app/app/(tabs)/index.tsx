@@ -19,8 +19,10 @@ import {
   Gradients,
   FontFamily,
   FontWeight,
+  Shadows,
 } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
+import { SectionHeader } from '../../components/SectionHeader';
 import { WeatherCard } from '../../components/WeatherCard';
 import { FieldConditionsCard } from '../../components/FieldConditionsCard';
 import { AlertCard } from '../../components/AlertCard';
@@ -292,11 +294,20 @@ export default function HomeScreen() {
       >
         {/* Subtle bottom fade to blend hero into content */}
         <LinearGradient
-          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)']}
+          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.20)']}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
+        />
+        {/* Decorative oversized leaf watermark for texture — never announced. */}
+        <Ionicons
+          name="leaf"
+          size={200}
+          color="rgba(231,211,161,0.06)"
+          style={styles.heroWatermark}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
         />
         <View
           style={[
@@ -310,6 +321,8 @@ export default function HomeScreen() {
           <Text style={styles.userName}>
             {user?.user_metadata?.full_name || t('home.defaultUser')}
           </Text>
+          {/* Signature gold rule under the name — the "old money" tick. */}
+          <View style={styles.heroGoldRule} />
         </View>
       </LinearGradient>
 
@@ -324,33 +337,47 @@ export default function HomeScreen() {
         ]}
       >
         {/* Hierarquia da home (doc-05, IMPL-3 T3): diagnosticar é a tarefa nº1
-            da categoria — o CTA primário abre o scroll, ACIMA dos cards de
-            clima. Só a ORDEM mudou; copy/cores/tamanhos intactos. */}
+            da categoria — o CTA primário é o PROTAGONISTA ABSOLUTO, ACIMA dos
+            cards de clima. Copy/rota/handlers intactos; só a forma cresceu. */}
         <TouchableOpacity
           testID="home-cta-diagnose"
           onPress={() => router.push('/diagnosis/camera')}
-          activeOpacity={0.88}
+          activeOpacity={0.9}
           accessibilityLabel={t('home.diagnosePestA11y')}
           accessibilityRole="button"
           accessibilityHint={t('home.diagnosePestHint')}
           style={styles.ctaShadow}
         >
           <LinearGradient
-            colors={Gradients.hero}
+            colors={Gradients.heroDeep}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.ctaContainer}
           >
-            <View style={styles.ctaIconCircle}>
-              <Ionicons name="camera" size={30} color="#FFF" accessibilityElementsHidden />
+            {/* Decorative scan watermark behind the content. */}
+            <Ionicons
+              name="scan"
+              size={150}
+              color="rgba(231,211,161,0.07)"
+              style={styles.ctaWatermark}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <View style={styles.ctaTopRow}>
+              <View style={styles.ctaIconCircle}>
+                <Ionicons name="camera" size={34} color="#FFF" accessibilityElementsHidden />
+              </View>
+              <View style={styles.ctaArrow}>
+                <Ionicons
+                  name="arrow-forward"
+                  size={22}
+                  color={Colors.brandDark}
+                  accessibilityElementsHidden
+                />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.ctaTitle}>{t('home.diagnoseNow')}</Text>
-              <Text style={styles.ctaSub}>{t('home.scanCtaHint')}</Text>
-            </View>
-            <View style={styles.ctaArrow}>
-              <Ionicons name="arrow-forward" size={20} color="#FFF" accessibilityElementsHidden />
-            </View>
+            <Text style={styles.ctaTitle}>{t('home.diagnoseNow')}</Text>
+            <Text style={styles.ctaSub}>{t('home.scanCtaHint')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -487,18 +514,20 @@ export default function HomeScreen() {
                 accessibilityLabel={`${stat.label}: ${stat.value}`}
                 accessibilityRole="summary"
               >
-                <Ionicons
-                  name={stat.icon as keyof typeof Ionicons.glyphMap}
-                  size={22}
-                  color={stat.color}
-                  accessibilityElementsHidden
-                />
+                <View style={[styles.statIconChip, { backgroundColor: stat.color + '1A' }]}>
+                  <Ionicons
+                    name={stat.icon as keyof typeof Ionicons.glyphMap}
+                    size={19}
+                    color={stat.color}
+                    accessibilityElementsHidden
+                  />
+                </View>
                 <Text style={[styles.statValue, isDark && styles.textDark]}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
               </View>
             );
             return (
-              <PremiumCard key={i} style={{ flex: 1 }}>
+              <PremiumCard key={i} padding={Spacing.md} style={{ flex: 1 }} elevated>
                 {stat.onPress ? (
                   <TouchableOpacity
                     testID={`home-stat-${i}`}
@@ -519,32 +548,23 @@ export default function HomeScreen() {
 
         {alerts.length > 0 && (
           <>
-            <View style={styles.alertsHeader}>
-              <View style={styles.alertsTitleRow}>
-                <Ionicons name="notifications" size={20} color={Colors.coral} />
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isDark && styles.textDark,
-                    { marginTop: 0, marginBottom: 0 },
-                  ]}
-                >
-                  {t('home.regionalAlerts')}
-                </Text>
-              </View>
-              <View style={styles.alertsBadge}>
-                <Text style={styles.alertsBadgeText}>{alerts.length}</Text>
-              </View>
-            </View>
+            <SectionHeader
+              title={t('home.regionalAlerts')}
+              icon="notifications"
+              iconColor={Colors.coral}
+              trailing={
+                <View style={styles.alertsBadge}>
+                  <Text style={styles.alertsBadgeText}>{alerts.length}</Text>
+                </View>
+              }
+            />
             {alerts.map((alert) => (
               <AlertCard key={alert.id} alert={alert} />
             ))}
           </>
         )}
 
-        <Text style={[styles.sectionTitle, isDark && styles.textDark]}>
-          {t('home.bestPractices')}
-        </Text>
+        <SectionHeader title={t('home.bestPractices')} icon="ribbon" iconColor={Colors.gold} />
         {TIP_KEYS.map((tip, i) => (
           <PremiumCard key={i} style={{ marginBottom: Spacing.sm }}>
             <View
@@ -576,22 +596,37 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   containerDark: { backgroundColor: Colors.backgroundDark },
-  hero: { height: 190, justifyContent: 'flex-end' },
-  heroContent: { padding: 20, paddingBottom: 24 },
+  hero: { height: 224, justifyContent: 'flex-end', overflow: 'hidden' },
+  heroWatermark: {
+    position: 'absolute',
+    top: -34,
+    right: -26,
+    transform: [{ rotate: '-16deg' }],
+  },
+  heroContent: { padding: 20, paddingBottom: 30 },
   greeting: {
-    fontFamily: FontFamily.regular,
+    fontFamily: FontFamily.medium,
+    fontWeight: '500',
     fontSize: FontSize.subheadline,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(231,211,161,0.92)',
+    letterSpacing: 0.2,
   },
   userName: {
-    fontSize: FontSize.title,
+    fontSize: FontSize.largeTitle,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
     color: '#FFF',
     marginTop: 2,
   },
-  content: { padding: Spacing.lg, marginTop: -16 },
+  heroGoldRule: {
+    width: 46,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.gold,
+    marginTop: 12,
+  },
+  content: { padding: Spacing.lg, marginTop: -20 },
   scanRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   scanIcon: {
     width: 60,
@@ -608,45 +643,60 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   ctaShadow: {
-    shadowColor: Colors.accentDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 8,
-    borderRadius: BorderRadius.lg,
+    ...Shadows.hero,
+    borderRadius: BorderRadius.xl,
+    marginTop: Spacing.xs,
   },
   ctaContainer: {
+    borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(231,211,161,0.22)',
+  },
+  ctaWatermark: {
+    position: 'absolute',
+    bottom: -36,
+    right: -18,
+    transform: [{ rotate: '-8deg' }],
+  },
+  ctaTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
   ctaIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(231,211,161,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   ctaTitle: {
-    fontSize: FontSize.title3,
+    fontSize: 26,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
+    letterSpacing: -0.4,
     color: '#FFF',
   },
   ctaSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 4,
+    maxWidth: '86%',
   },
   ctaArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.goldSoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -683,28 +733,29 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   statsRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
-  statCard: { alignItems: 'center', gap: 6 },
+  statCard: { alignItems: 'center', gap: 5 },
+  statIconChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
   // Metric reads as a real number/label, not caption-sized filler.
   statValue: {
-    fontSize: FontSize.title3,
-    fontFamily: FontFamily.bold,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  statLabel: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.caption2,
-    color: Colors.textSecondary,
-  },
-  sectionTitle: {
-    fontSize: FontSize.title3,
+    fontSize: FontSize.title2,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
     letterSpacing: -0.3,
-    // Asymmetric section rhythm (24 above / 12 below) groups each block with
-    // its content and opens air before a new section.
-    marginTop: Spacing.xxl,
-    marginBottom: Spacing.md,
+    color: Colors.text,
+  },
+  statLabel: {
+    fontFamily: FontFamily.medium,
+    fontWeight: '500',
+    fontSize: FontSize.caption2,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   tipIcon: {
@@ -722,22 +773,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   textDark: { color: Colors.textDark },
-  alertsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.xxl,
-    marginBottom: Spacing.md,
-  },
-  alertsTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   alertsBadge: {
     backgroundColor: Colors.coral,
-    width: 22,
+    minWidth: 22,
     height: 22,
+    paddingHorizontal: 7,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
