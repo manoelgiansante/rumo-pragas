@@ -182,7 +182,7 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO"
       ],
-      "versionCode": 51
+      "versionCode": 206649251
     },
     "web": {
       "favicon": "./assets/favicon.png",
