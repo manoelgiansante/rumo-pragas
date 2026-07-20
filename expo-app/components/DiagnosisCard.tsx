@@ -2,7 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
-import { BorderRadius, Colors, FontSize, FontWeight, FontFamily } from '../constants/theme';
+import {
+  BorderRadius,
+  Colors,
+  FontSize,
+  FontWeight,
+  FontFamily,
+  Spacing,
+} from '../constants/theme';
 import type { DiagnosisResult } from '../types/diagnosis';
 
 export interface DiagnosisItem {
@@ -157,6 +164,7 @@ export const DiagnosisCard = React.memo(function DiagnosisCard({
         styles.container,
         {
           backgroundColor: isDark ? Colors.cardDark : Colors.card,
+          borderColor: isDark ? Colors.separatorDark : Colors.separator,
           shadowColor: isDark ? 'transparent' : '#000',
         },
       ]}
@@ -207,10 +215,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderRadius: BorderRadius.lg,
+    borderWidth: 1,
     gap: 14,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    // Vertical rhythm: history rows used to touch (no separator/margin),
+    // making the list read as one dense block. A 12pt gap lets each
+    // diagnosis breathe as its own card.
+    marginBottom: Spacing.md,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   iconBox: {
