@@ -189,6 +189,10 @@ export default {
     healthy: 'Planta Saudável',
     pestDetected: 'Possível praga',
     confidence: 'Confiança',
+    confidenceLevelHigh: 'Alta',
+    confidenceLevelMedium: 'Média',
+    confidenceLevelLow: 'Baixa',
+    confidenceLevelA11y: 'Nível de confiança: {{level}}',
     queued: 'Diagnóstico na fila',
     queuedMessage:
       'Seu diagnóstico será enviado automaticamente quando a conexão for restabelecida.',
@@ -230,6 +234,14 @@ export default {
     tipInclude: 'Inclua folhas, caule ou fruto visíveis',
     tipSharp: 'Imagem nítida sem tremor',
     optimizing: 'Otimizando imagem...',
+    photoQualityTitle: 'A foto pode não ficar boa',
+    photoQualityLowRes:
+      'A imagem tem resolução baixa — aproxime a câmera da planta ou escolha uma foto maior.',
+    photoQualityLowDetail:
+      'A imagem parece escura ou sem nitidez — procure luz natural e segure firme ao fotografar.',
+    photoQualityAsk: 'Fotos nítidas e bem iluminadas geram hipóteses melhores. Quer tentar outra?',
+    photoQualityRetake: 'Tirar outra',
+    photoQualityUseAnyway: 'Usar assim mesmo',
     closeA11y: 'Fechar',
     closeHint: 'Voltar para a tela anterior',
     takePhotoA11y: 'Tirar foto. Use a câmera para capturar a praga',
@@ -317,7 +329,6 @@ export default {
     viewDetailsHint: 'Abre a ficha técnica completa da praga',
     saveToHistory: 'Salvar no histórico',
     savedToHistory: 'Diagnóstico salvo no histórico',
-    confidenceBarA11y: 'Nível de confiança {{pct}} por cento',
     pestDetailTitle: 'Ficha técnica',
     pestDetailLifecycle: 'Ciclo de vida',
     pestDetailSynonyms: 'Outros nomes',
@@ -697,6 +708,18 @@ export default {
     photoGuidance:
       'Hoje é uma foto por diagnóstico: use luz natural, mantenha o foco, mostre a folha inteira e o sintoma visível, sem zoom excessivo.',
   },
+  fieldConditions: {
+    title: 'Condições climáticas para manejo',
+    statusFavorable: 'Favorável',
+    statusAttention: 'Atenção',
+    statusUnfavorable: 'Desfavorável',
+    hintFavorable: 'Vento e chuva previstos dentro do esperado nas próximas 24 h.',
+    hintAttention: 'Previsão de vento moderado ou chance de chuva nas próximas 24 h.',
+    hintUnfavorable: 'Previsão de vento forte ou alta chance de chuva nas próximas 24 h.',
+    disclaimer:
+      'Condições gerais de tempo. Não é recomendação de aplicação — consulte o responsável técnico.',
+    a11yLabel: 'Condições de campo: {{status}}. {{hint}}',
+  },
   weather: {
     clear: 'Céu limpo',
     mostlyClear: 'Predominantemente limpo',
@@ -745,6 +768,28 @@ export default {
     climateRiskDesc: 'Avisos educativos derivados das condições meteorológicas locais',
     generalChannel: 'Geral',
     generalDesc: 'Notificações gerais do aplicativo',
+  },
+  reinspection: {
+    cardTitle: 'Lembrar de reinspecionar',
+    cardDescription:
+      'Programe um lembrete local para revisitar esta cultura e reavaliar a evolução dos sinais.',
+    option3d: 'Em 3 dias',
+    option7d: 'Em 7 dias',
+    option3dA11y: 'Programar lembrete de reinspeção em 3 dias',
+    option7dA11y: 'Programar lembrete de reinspeção em 7 dias',
+    scheduledTitle: 'Lembrete programado',
+    scheduledMessage:
+      'Você receberá uma notificação local em {{days}} dias para reinspecionar {{crop}}.',
+    permissionTitle: 'Notificações desativadas',
+    permissionMessage:
+      'Ative as notificações do Rumo Pragas nos Ajustes para receber lembretes locais de reinspeção.',
+    scheduleError: 'Não foi possível programar o lembrete. Tente novamente.',
+    notificationTitle: 'Hora de reinspecionar sua lavoura',
+    notificationBody:
+      'Volte à área observada anteriormente e reavalie os sinais visíveis em {{crop}}.',
+    notificationBodyNoCrop:
+      'Volte à área observada anteriormente e reavalie os sinais visíveis na cultura.',
+    disclaimer: 'Lembrete educacional; não é recomendação de aplicação.',
   },
   alerts: {
     ferrugem_title: 'Risco elevado de ferrugem',

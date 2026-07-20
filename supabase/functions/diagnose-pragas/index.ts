@@ -20,7 +20,12 @@ import {
 import { fetchWithTimeout } from "../_shared/fetch-timeout.ts";
 import { getPragasAppAccessState } from "../_shared/pragas-edge.ts";
 import { captureException, captureGenAiRequest } from "../_shared/pragas-sentry.ts";
-import { adaptAgrio, callAgrioDiagnose, maybeCaptureAgrioBalance } from "./agrio.ts";
+import {
+  adaptAgrio,
+  AGRIO_LABEL_MAP_VERSION,
+  callAgrioDiagnose,
+  maybeCaptureAgrioBalance,
+} from "./agrio.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
 const AGRIO_API_KEY = Deno.env.get("AGRIO_API_KEY") ?? "";
@@ -29,7 +34,21 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 
+// ── AI versioning (doc 08 §3(b) — IMPL-3) ──
+// Stamped into every PERSISTED diagnosis (`notes.ai_meta`) so provider/prompt
+// drift is detectable and any stored result is reproducible. BUMP on ANY edit
+// to SYSTEM_PROMPT. Server-side only: the HTTP response returned to the client
+// does NOT carry ai_meta (client contract unchanged).
+// 2026-07-19.2: no content change HERE — version unified with the legacy
+// `diagnose` slug, whose prompts were re-unified with this file's (CEO order
+// 19/jul). Equal prompts MUST stamp equal versions (_tests/ai-versioning-meta).
+export const DIAGNOSE_PROMPT_VERSION = "2026-07-19.2";
+// Which edge fn slug wrote the row (the legacy shared `diagnose` slug stamps
+// its own name) — lets drift queries separate traffic from the two twins.
+const DIAGNOSE_FN_SLUG = "diagnose-pragas";
+
 interface ClaudeDiagnosisPayload {
+  model?: unknown;
   content?: Array<{ text?: unknown }>;
   usage?: { input_tokens?: number; output_tokens?: number };
 }
@@ -776,6 +795,9 @@ Deno.serve(async (req: Request) => {
     // enrichment) so the downstream sanitize → invalid-image threshold →
     // disclaimer → persist → Sentry code below is reused verbatim.
     let diagnosisData: Record<string, unknown>;
+    // Model/version the provider exposes for THIS call (ai_meta.model). Agrio's
+    // /diagnose contract exposes no model/version field → stays null there.
+    let aiModel: string | null = null;
 
     const startProviderCall = async (): Promise<boolean> => {
       const started = await markPragasAIProviderStarted(supabase, leasedIdempotencyOptions);
@@ -822,7 +844,9 @@ Deno.serve(async (req: Request) => {
           cropApiName: safeCropType || undefined,
           requestId,
         });
-        await maybeCaptureAgrioBalance({ apiKey: AGRIO_API_KEY, requestId });
+        // Best-effort credit telemetry — must never fail the diagnosis flow.
+        await maybeCaptureAgrioBalance({ apiKey: AGRIO_API_KEY, requestId })
+          .catch(() => undefined);
         logJson("diagnose", requestId, "INFO", "Agrio diagnose ok", {
           durationMs: Date.now() - agrioStart,
         });
@@ -919,6 +943,10 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Prefer the model the API echoes back (exact snapshot used) over the
+      // requested constant — they can differ on provider-side aliasing.
+      aiModel = typeof claudeData.model === "string" ? claudeData.model : CLAUDE_MODEL;
+
       // ── AI telemetry (ZERO-O / observability) ──
       // Emit a gen_ai.request span with Anthropic token usage so cost/latency of
       // the app's core product is observable. No prompt/image content is captured
@@ -996,6 +1024,19 @@ Deno.serve(async (req: Request) => {
       low_confidence_warning: rawConfidence < 0.7 && !isInvalidImage,
     };
 
+    // ── AI versioning stamp (doc 08 §3(b) — IMPL-3) ──
+    // Persisted alongside the notes JSON (queryable via notes->'ai_meta').
+    // Server-side only: the client response below keeps the ai_meta-free notes.
+    const ai_meta = {
+      provider: DIAGNOSE_PROVIDER === "agrio" ? "agrio" : "claude",
+      model: aiModel,
+      prompt_version: DIAGNOSE_PROMPT_VERSION,
+      label_map_version: AGRIO_LABEL_MAP_VERSION,
+      fn_version: Deno.env.get("PRAGAS_DIAGNOSE_FN_VERSION") ?? null,
+      fn_slug: DIAGNOSE_FN_SLUG,
+      timestamp: new Date().toISOString(),
+    };
+
     const cropMap: Record<string, string> = {
       Soybean: "soja",
       Corn: "milho",
@@ -1037,7 +1078,7 @@ Deno.serve(async (req: Request) => {
         pest_id: safePestId || null,
         pest_name: safePestName || null,
         confidence: isInvalidImage ? 0 : rawConfidence,
-        notes: JSON.stringify(notes),
+        notes: JSON.stringify({ ...notes, ai_meta }),
         location_lat: safeCoords.lat,
         location_lng: safeCoords.lng,
       })
@@ -1053,7 +1094,13 @@ Deno.serve(async (req: Request) => {
       return await completeResponse(500, { error: "Erro ao salvar diagnostico" });
     }
 
-    return await completeResponse(200, { ...saved, parsedNotes: notes });
+    // Client contract intact (IMPL-3): ai_meta is server-side persistence only,
+    // so the response re-serializes the ai_meta-free notes over `saved.notes`.
+    return await completeResponse(200, {
+      ...saved,
+      notes: JSON.stringify(notes),
+      parsedNotes: notes,
+    });
   } catch {
     // Never leak stack traces to client
     logJson("diagnose", requestId, "ERROR", "unexpected_failure", { step: "unhandled" });

@@ -9,6 +9,22 @@ export interface DailyForecast {
   icon: string;
 }
 
+/**
+ * Hourly slice used by the field-conditions card (24 h forward-looking).
+ * Values come from Open-Meteo `hourly=`; if the API returns fewer / more
+ * hours we only ever consume the next 24 h from now.
+ */
+export interface HourlySlice {
+  /** ISO local timestamp — parsed with `T12:00:00` fallback like daily. */
+  time: string;
+  /** km/h. */
+  windSpeed: number;
+  /** Percent (0..100). */
+  precipitationProbability: number;
+  /** Percent (0..100). */
+  humidity: number;
+}
+
 export interface WeatherData {
   temperature: number;
   apparentTemperature: number;
@@ -21,6 +37,9 @@ export interface WeatherData {
   description: string;
   icon: string;
   forecast?: DailyForecast[];
+  /** Next up-to-24 h hourly slices, ordered ascending. May be omitted if
+   *  the upstream did not return the hourly section. */
+  hourly24h?: HourlySlice[];
 }
 
 import i18n from '../i18n';
@@ -99,6 +118,13 @@ interface OpenMeteoPayload {
     precipitation_sum: number[];
     weather_code: number[];
   };
+  /** Optional block — the classifier degrades gracefully if it is missing. */
+  hourly?: {
+    time: string[];
+    wind_speed_10m: number[];
+    precipitation_probability: number[];
+    relative_humidity_2m: number[];
+  };
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -139,6 +165,31 @@ function parseOpenMeteoPayload(value: unknown): OpenMeteoPayload | null {
   ];
   if (!arrays.every(isFiniteNumberArray)) return null;
   if (!arrays.every((array) => (array as number[]).length === dailyTime.length)) return null;
+  // Hourly block is OPTIONAL. If present, it must be well-formed; if
+  // malformed we drop it (return the payload without hourly) rather than
+  // failing the whole weather fetch — the manageability card degrades
+  // to "no card" but the current weather still renders.
+  if (root.hourly !== undefined) {
+    const hourly = root.hourly;
+    if (!hourly || typeof hourly !== 'object') {
+      delete root.hourly;
+    } else {
+      const h = hourly as Record<string, unknown>;
+      const hourlyTime = h.time;
+      const hourlyArrays = [h.wind_speed_10m, h.precipitation_probability, h.relative_humidity_2m];
+      const validTime =
+        Array.isArray(hourlyTime) &&
+        hourlyTime.length > 0 &&
+        hourlyTime.length <= 240 &&
+        hourlyTime.every((t) => typeof t === 'string');
+      const validArrays =
+        hourlyArrays.every(isFiniteNumberArray) &&
+        hourlyArrays.every((a) => (a as number[]).length === (hourlyTime as string[]).length);
+      if (!validTime || !validArrays) {
+        delete root.hourly;
+      }
+    }
+  }
   return value as OpenMeteoPayload;
 }
 
@@ -239,6 +290,8 @@ export async function fetchWeather(
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m` +
+      `&hourly=wind_speed_10m,precipitation_probability,relative_humidity_2m` +
+      `&forecast_hours=24` +
       `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code` +
       `&timezone=auto&forecast_days=7`;
 
@@ -291,6 +344,17 @@ export async function fetchWeather(
       };
     });
 
+    // Cap to the next 24 hours from now regardless of what Open-Meteo returns
+    // (`forecast_hours=24` already limits it, but defense in depth).
+    const hourly24h: HourlySlice[] | undefined = json.hourly
+      ? json.hourly.time.slice(0, 24).map((time, i) => ({
+          time,
+          windSpeed: json.hourly!.wind_speed_10m[i] ?? 0,
+          precipitationProbability: json.hourly!.precipitation_probability[i] ?? 0,
+          humidity: json.hourly!.relative_humidity_2m[i] ?? 0,
+        }))
+      : undefined;
+
     const weatherData: WeatherData = {
       temperature: current.temperature_2m,
       apparentTemperature: current.apparent_temperature,
@@ -303,6 +367,7 @@ export async function fetchWeather(
       description: mapped.description,
       icon: mapped.icon,
       forecast,
+      ...(hourly24h ? { hourly24h } : {}),
     };
 
     // Cache the successful response
@@ -334,4 +399,103 @@ export class WeatherError extends Error {
     this.name = 'WeatherError';
     this.cause = cause;
   }
+}
+
+// -----------------------------------------------------------------------------
+// Field conditions classifier (next 24 h)
+// -----------------------------------------------------------------------------
+// Produces a NEUTRAL classification of the next 24 h for GENERAL field
+// activities (walking, inspecting, planning). Deliberately NOT tied to any
+// pesticide window / dose / product recommendation — the UI card built on top
+// of this classifier must render the disclaimer copy from
+// `reinspection`/`fieldConditions` i18n blocks.
+
+export type FieldConditionsStatus = 'favorable' | 'attention' | 'unfavorable';
+
+/** Thresholds are conservative and generic (no crop / product hint). */
+export const FIELD_CONDITIONS_THRESHOLDS = Object.freeze({
+  /** km/h — sustained forecast wind considered strong for general field work. */
+  windStrongKmh: 25,
+  /** Percent — probability of precipitation considered "likely" enough to flag. */
+  precipProbHighPct: 60,
+  /** Percent — probability considered "possible" (borderline). */
+  precipProbBorderlinePct: 30,
+  /** km/h — wind considered borderline (attention). */
+  windBorderlineKmh: 15,
+});
+
+export interface FieldConditionsSummary {
+  status: FieldConditionsStatus;
+  /** Peak hourly wind in the window (km/h). */
+  maxWindSpeed: number;
+  /** Peak precipitation probability in the window (0..100). */
+  maxPrecipitationProbability: number;
+  /** Peak humidity in the window (0..100). */
+  maxHumidity: number;
+  /** Bounded reason codes; UI maps to i18n copy. Never surface raw thresholds. */
+  reasons: Array<'wind_strong' | 'precip_high' | 'wind_borderline' | 'precip_borderline'>;
+}
+
+/**
+ * Classifies the next 24 h into `favorable` / `attention` / `unfavorable`
+ * for general field activities. Returns `null` when hourly data is missing
+ * or empty — callers should HIDE the card in that case (no card is better
+ * than a stale / made-up one).
+ *
+ * Rules (explicit + auditable — see FIELD_CONDITIONS_THRESHOLDS):
+ *   - strong wind (>= windStrongKmh) OR high precip probability
+ *     (>= precipProbHighPct) → unfavorable.
+ *   - borderline wind (>= windBorderlineKmh) OR borderline precip
+ *     probability (>= precipProbBorderlinePct) → attention.
+ *   - otherwise → favorable.
+ */
+export function classifyFieldConditions24h(
+  hourly: HourlySlice[] | undefined | null,
+): FieldConditionsSummary | null {
+  if (!Array.isArray(hourly) || hourly.length === 0) return null;
+  const window = hourly.slice(0, 24);
+  if (window.length === 0) return null;
+
+  let maxWindSpeed = 0;
+  let maxPrecipitationProbability = 0;
+  let maxHumidity = 0;
+  for (const slice of window) {
+    if (Number.isFinite(slice.windSpeed) && slice.windSpeed > maxWindSpeed) {
+      maxWindSpeed = slice.windSpeed;
+    }
+    if (
+      Number.isFinite(slice.precipitationProbability) &&
+      slice.precipitationProbability > maxPrecipitationProbability
+    ) {
+      maxPrecipitationProbability = slice.precipitationProbability;
+    }
+    if (Number.isFinite(slice.humidity) && slice.humidity > maxHumidity) {
+      maxHumidity = slice.humidity;
+    }
+  }
+
+  const reasons: FieldConditionsSummary['reasons'] = [];
+  const windStrong = maxWindSpeed >= FIELD_CONDITIONS_THRESHOLDS.windStrongKmh;
+  const precipHigh = maxPrecipitationProbability >= FIELD_CONDITIONS_THRESHOLDS.precipProbHighPct;
+  const windBorderline =
+    !windStrong && maxWindSpeed >= FIELD_CONDITIONS_THRESHOLDS.windBorderlineKmh;
+  const precipBorderline =
+    !precipHigh &&
+    maxPrecipitationProbability >= FIELD_CONDITIONS_THRESHOLDS.precipProbBorderlinePct;
+
+  if (windStrong) reasons.push('wind_strong');
+  if (precipHigh) reasons.push('precip_high');
+  if (windBorderline) reasons.push('wind_borderline');
+  if (precipBorderline) reasons.push('precip_borderline');
+
+  const status: FieldConditionsStatus =
+    windStrong || precipHigh ? 'unfavorable' : reasons.length > 0 ? 'attention' : 'favorable';
+
+  return {
+    status,
+    maxWindSpeed,
+    maxPrecipitationProbability,
+    maxHumidity,
+    reasons,
+  };
 }

@@ -13,6 +13,25 @@ const PROPERTY_KEY_RE = /^[a-z][a-zA-Z0-9_]{0,63}$/;
 const FORBIDDEN_PROPERTY_RE =
   /(?:user|email|phone|token|secret|password|image|base64|latitude|longitude|location|address|message)/i;
 
+// ── WEB-SAFE ACCESS TOKEN (cicatriz ed9906a / ZERO-X class) ──
+// The flush runs from a background timer with no React context, so it cannot
+// read useAuthContext(). We hold the freshest access token IN MEMORY, sourced
+// from onAuthStateChange (which fires SIGNED_IN / TOKEN_REFRESHED with the live
+// session), and pass it explicitly on invoke.
+//
+// Why this is required: the DEFAULT `supabase.functions.invoke(...)` auth path
+// resolves the token via `supabase.auth.getSession()`, which reads EXCLUSIVELY
+// from storage. On WEB the SecureStore adapter is a no-op (services/supabase.ts)
+// → session is null → invoke silently falls back to the ANON key. The
+// `pragas-analytics` edge fn then runs getUser() on the anon identity, finds no
+// user and returns 401, so every batch is re-queued forever and product
+// telemetry dies. Passing this in-memory token explicitly fixes web and stays
+// correct on native. Identity is STILL verified server-side by the edge fn via
+// `supabase.auth.getUser(token)` (ZERO-X) — the client is never trusted.
+//
+// The single `let currentAccessToken` declaration + subscription lives below
+// with the other module state; see `onAuthStateChange` handler for the wiring.
+
 export interface AnalyticsEvent {
   eventId: string;
   event: string;
@@ -221,4 +240,39 @@ export function trackLanguageChanged(language: string): void {
 /** Error messages may contain secrets or user content; only the bounded category is sent. */
 export function trackError(errorType: string, _message?: string): void {
   trackEvent('app_error', { errorType });
+}
+
+export type PhotoQualitySource = 'camera' | 'gallery';
+export type PhotoQualityChoice = 'retake' | 'use_anyway';
+
+/**
+ * Soft photo-quality gate (camera flow). Only bounded issue codes travel
+ * ('low_resolution' / 'low_detail') plus the capture source — never image
+ * bytes, file names or anything user-identifying.
+ */
+export function trackPhotoQualityWarningShown(
+  issues: readonly string[],
+  source: PhotoQualitySource,
+): void {
+  trackEvent('photo_quality_warning_shown', { issues: issues.join(','), source });
+}
+
+/** The user's decision on the soft photo-quality warning. */
+export function trackPhotoQualityChoice(
+  choice: PhotoQualityChoice,
+  issues: readonly string[],
+  source: PhotoQualitySource,
+): void {
+  trackEvent('photo_quality_choice', { choice, issues: issues.join(','), source });
+}
+
+/**
+ * Fired when the user opts into a post-diagnosis local reinspection reminder.
+ * We keep only the bounded cadence (in days). We deliberately avoid pest_id
+ * or crop labels here so this event is safe for cohort dashboards.
+ */
+export function trackReinspectionReminderScheduled(days: number): void {
+  const bucket = Number.isFinite(days) && days > 0 ? Math.min(Math.floor(days), 30) : 0;
+  if (bucket === 0) return;
+  trackEvent('reinspection_reminder_scheduled', { days: bucket });
 }

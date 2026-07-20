@@ -183,6 +183,10 @@ export default {
     healthy: 'Healthy Plant',
     pestDetected: 'Possible pest',
     confidence: 'Confidence',
+    confidenceLevelHigh: 'High',
+    confidenceLevelMedium: 'Medium',
+    confidenceLevelLow: 'Low',
+    confidenceLevelA11y: 'Confidence level: {{level}}',
     queued: 'Diagnosis queued',
     queuedMessage: 'Your diagnosis will be sent automatically when connection is restored.',
     backToHome: 'Back to home',
@@ -223,6 +227,14 @@ export default {
     tipInclude: 'Include visible leaves, stem or fruit',
     tipSharp: 'Sharp image without shaking',
     optimizing: 'Optimizing image...',
+    photoQualityTitle: 'This photo may not work well',
+    photoQualityLowRes:
+      'The image resolution is low — move the camera closer to the plant or pick a larger photo.',
+    photoQualityLowDetail:
+      'The image looks dark or blurry — find natural light and hold steady when shooting.',
+    photoQualityAsk: 'Sharp, well-lit photos produce better hypotheses. Try another one?',
+    photoQualityRetake: 'Retake photo',
+    photoQualityUseAnyway: 'Use it anyway',
     closeA11y: 'Close',
     closeHint: 'Go back to previous screen',
     takePhotoA11y: 'Take photo. Use the camera to capture the pest',
@@ -308,7 +320,6 @@ export default {
     viewDetailsHint: 'Open the full pest fact sheet',
     saveToHistory: 'Save to history',
     savedToHistory: 'Diagnosis saved to history',
-    confidenceBarA11y: 'Confidence level {{pct}} percent',
     pestDetailTitle: 'Fact sheet',
     pestDetailLifecycle: 'Life cycle',
     pestDetailSynonyms: 'Other names',
@@ -676,6 +687,18 @@ export default {
     photoGuidance:
       'Today each diagnosis uses one photo: use natural light, keep it in focus, show the whole leaf and the visible symptom, without excessive zoom.',
   },
+  fieldConditions: {
+    title: 'Weather conditions for field work',
+    statusFavorable: 'Favorable',
+    statusAttention: 'Attention',
+    statusUnfavorable: 'Unfavorable',
+    hintFavorable: 'Forecast wind and rain within the expected range for the next 24 h.',
+    hintAttention: 'Moderate wind or chance of rain forecast for the next 24 h.',
+    hintUnfavorable: 'Strong wind or a high chance of rain forecast for the next 24 h.',
+    disclaimer:
+      'General weather conditions. Not a recommendation to apply any product — consult your licensed agronomist.',
+    a11yLabel: 'Field conditions: {{status}}. {{hint}}',
+  },
   weather: {
     clear: 'Clear sky',
     mostlyClear: 'Mostly clear',
@@ -724,6 +747,28 @@ export default {
     climateRiskDesc: 'Educational notices derived from local weather conditions',
     generalChannel: 'General',
     generalDesc: 'General app notifications',
+  },
+  reinspection: {
+    cardTitle: 'Remind me to re-inspect',
+    cardDescription:
+      'Schedule a local reminder to revisit this crop and reassess how the visible signs evolve.',
+    option3d: 'In 3 days',
+    option7d: 'In 7 days',
+    option3dA11y: 'Schedule a re-inspection reminder in 3 days',
+    option7dA11y: 'Schedule a re-inspection reminder in 7 days',
+    scheduledTitle: 'Reminder scheduled',
+    scheduledMessage:
+      'You will receive a local notification in {{days}} days to re-inspect {{crop}}.',
+    permissionTitle: 'Notifications disabled',
+    permissionMessage:
+      'Enable Rumo Pragas notifications in Settings to receive local re-inspection reminders.',
+    scheduleError: 'We could not schedule the reminder. Please try again.',
+    notificationTitle: 'Time to re-inspect your crop',
+    notificationBody:
+      'Return to the area you observed earlier and reassess visible signs in {{crop}}.',
+    notificationBodyNoCrop:
+      'Return to the area you observed earlier and reassess visible signs in your crop.',
+    disclaimer: 'Educational reminder; not a recommendation to apply any product.',
   },
   alerts: {
     ferrugem_title: 'High risk of rust disease',

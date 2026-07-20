@@ -41,9 +41,10 @@ interface UseNotificationsReturn {
 // leaks that occasionally ship in dev pushes.
 const UUID_STRICT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type AllowedScreen = 'diagnosis' | 'settings' | 'history' | 'home';
+type AllowedScreen = 'diagnosis' | 'diagnosis-reinspection' | 'settings' | 'history' | 'home';
 const ALLOWED_SCREENS: ReadonlySet<AllowedScreen> = new Set([
   'diagnosis',
+  'diagnosis-reinspection',
   'settings',
   'history',
   'home',
@@ -74,6 +75,14 @@ export function resolveNotificationRoute(data: unknown): string | null {
       // The result route requires a complete serialized result payload; a
       // diagnosis UUID alone cannot hydrate it. History is the existing safe
       // destination from which the authenticated row can be opened.
+      return '/(tabs)/history';
+    }
+    case 'diagnosis-reinspection': {
+      // Local re-inspection reminder scheduled by app/diagnosis/result.tsx.
+      // Its payload carries only `{ screen, days }` — no diagnosis id — and the
+      // result screen cannot be hydrated from an id alone anyway (see the
+      // 'diagnosis' case above). History holds the saved diagnosis the user is
+      // being reminded to re-check, so it is the useful, safe destination.
       return '/(tabs)/history';
     }
     case 'settings':

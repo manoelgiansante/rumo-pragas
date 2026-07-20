@@ -179,7 +179,55 @@ describe('resolveNotificationRoute', () => {
     expect(resolveNotificationRoute({ screen: 'home' })).toBe('/(tabs)');
   });
 
+  it('routes the local reinspection reminder to history', () => {
+    // Exact payload shape scheduled by app/diagnosis/result.tsx — no id, only days.
+    expect(resolveNotificationRoute({ screen: 'diagnosis-reinspection', days: 3 })).toBe(
+      '/(tabs)/history',
+    );
+    expect(resolveNotificationRoute({ screen: 'diagnosis-reinspection', days: 7 })).toBe(
+      '/(tabs)/history',
+    );
+    // `days` is informative only — a payload without it must still route safely.
+    expect(resolveNotificationRoute({ screen: 'diagnosis-reinspection' })).toBe('/(tabs)/history');
+  });
+
   it('rejects the removed paywall screen (app is 100% free)', () => {
     expect(resolveNotificationRoute({ screen: 'paywall' })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Notification tap → navigation (response listener wiring)
+// ---------------------------------------------------------------------------
+
+describe('notification tap navigation', () => {
+  function tapWithPayload(data: unknown) {
+    const handler = mockAddNotificationResponseReceivedListener.mock.calls[0][0] as (
+      response: unknown,
+    ) => void;
+    handler({ notification: { request: { content: { data } } } });
+  }
+
+  it('navigates to history when a reinspection reminder is tapped', async () => {
+    renderHook(() => useNotifications());
+    await waitFor(() => expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled());
+
+    tapWithPayload({ screen: 'diagnosis-reinspection', days: 3 });
+
+    const { router } = jest.requireMock('expo-router');
+    expect(router.push).toHaveBeenCalledWith('/(tabs)/history');
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate when the tapped payload is not whitelisted', async () => {
+    renderHook(() => useNotifications());
+    await waitFor(() => expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled());
+
+    tapWithPayload({ screen: 'diagnosis-reinspection-evil' });
+    tapWithPayload({ screen: 'admin' });
+
+    const { router } = jest.requireMock('expo-router');
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
   });
 });

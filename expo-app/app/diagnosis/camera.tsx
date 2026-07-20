@@ -17,7 +17,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { useTranslation } from 'react-i18next';
@@ -32,9 +31,13 @@ import {
 import { PremiumCard } from '../../components/PremiumCard';
 import { useDiagnosis } from '../../contexts/DiagnosisContext';
 import { addBreadcrumb, captureException } from '../../services/sentry-shim';
-
-const MAX_DIMENSION = 1024;
-const JPEG_QUALITY = 0.75;
+import { compressImageForDiagnosis } from '../../lib/imageResize';
+import { assessPhotoQuality, type PhotoQualityIssue } from '../../lib/photoQuality';
+import {
+  trackPhotoQualityChoice,
+  trackPhotoQualityWarningShown,
+  type PhotoQualitySource,
+} from '../../services/analytics';
 
 export default function CameraScreen() {
   const { t } = useTranslation();
@@ -43,17 +46,61 @@ export default function CameraScreen() {
   const [processing, setProcessing] = useState(false);
   const { setImage } = useDiagnosis();
 
-  const compressImage = async (uri: string): Promise<{ uri: string; base64: string }> => {
-    const result = await manipulateAsync(
-      uri,
-      [{ resize: { width: MAX_DIMENSION, height: MAX_DIMENSION } }],
-      { compress: JPEG_QUALITY, format: SaveFormat.JPEG, base64: true },
-    );
+  // Aspect-ratio-preserving resize (lib/imageResize.ts): the previous inline
+  // resize forced 1024×1024 and distorted every non-square photo before the
+  // AI ever saw it.
+  const compressImage = async (
+    asset: ImagePicker.ImagePickerAsset,
+  ): Promise<{ uri: string; base64: string; width: number; height: number }> => {
+    const result = await compressImageForDiagnosis(asset.uri, asset.width, asset.height);
     if (!result.base64) {
       throw new Error(t('diagnosis.base64Error'));
     }
-    return { uri: result.uri, base64: result.base64 };
+    return { uri: result.uri, base64: result.base64, width: result.width, height: result.height };
   };
+
+  // Soft quality gate (lib/photoQuality.ts): warn BEFORE upload when the photo
+  // looks too small or too dark/flat, with "Tirar outra" as the default and
+  // "Usar assim mesmo" always available — NEVER a hard block (a false positive
+  // must not stop the user). The system alert is natively accessible (screen
+  // readers announce title, message and both actions).
+  const confirmPhotoQuality = (issues: PhotoQualityIssue[], source: PhotoQualitySource) =>
+    new Promise<boolean>((resolve) => {
+      trackPhotoQualityWarningShown(issues, source);
+      addBreadcrumb({
+        category: 'diagnosis.camera',
+        message: 'photo_quality_warning_shown',
+        level: 'info',
+        data: { issues: issues.join(','), source },
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      const problems = issues.map((issue) =>
+        issue === 'low_resolution'
+          ? t('diagnosis.photoQualityLowRes')
+          : t('diagnosis.photoQualityLowDetail'),
+      );
+      showAlert(
+        t('diagnosis.photoQualityTitle'),
+        [...problems, t('diagnosis.photoQualityAsk')].join('\n\n'),
+        [
+          {
+            text: t('diagnosis.photoQualityRetake'),
+            style: 'cancel',
+            onPress: () => {
+              trackPhotoQualityChoice('retake', issues, source);
+              resolve(false);
+            },
+          },
+          {
+            text: t('diagnosis.photoQualityUseAnyway'),
+            onPress: () => {
+              trackPhotoQualityChoice('use_anyway', issues, source);
+              resolve(true);
+            },
+          },
+        ],
+      );
+    });
 
   const pickImage = async (useCamera: boolean) => {
     // Idempotency guard: never let processing overlap with re-entry.
@@ -120,7 +167,7 @@ export default function CameraScreen() {
 
       setProcessing(true);
       try {
-        const compressed = await compressImage(asset.uri);
+        const compressed = await compressImage(asset);
         addBreadcrumb({
           category: 'diagnosis.camera',
           message: 'image_compressed',
@@ -130,6 +177,23 @@ export default function CameraScreen() {
             estimatedBytes: Math.ceil((compressed.base64.length * 3) / 4),
           },
         });
+        const issues = assessPhotoQuality({
+          assetWidth: asset.width,
+          assetHeight: asset.height,
+          base64Length: compressed.base64.length,
+          outputWidth: compressed.width,
+          outputHeight: compressed.height,
+        });
+        if (issues.length > 0) {
+          // Hide the "optimizing" overlay while the system alert asks the
+          // question (the finally below keeps this idempotent).
+          setProcessing(false);
+          const proceedAnyway = await confirmPhotoQuality(issues, useCamera ? 'camera' : 'gallery');
+          if (!proceedAnyway) {
+            // User chose "Tirar outra": stay on this screen for a fresh capture.
+            return;
+          }
+        }
         // Success haptic so the user knows the heavy lift is done and we're
         // moving to the next step.
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -161,6 +225,8 @@ export default function CameraScreen() {
           testID="diagnosis-camera-close"
           onPress={() => router.back()}
           style={styles.closeBtn}
+          // 36pt visual → ≥44pt effective touch target (HIG), zero visual change
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={t('diagnosis.closeA11y')}
           accessibilityRole="button"
           accessibilityHint={t('diagnosis.closeHint')}

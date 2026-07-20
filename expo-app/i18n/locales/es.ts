@@ -185,6 +185,10 @@ export default {
     healthy: 'Planta Saludable',
     pestDetected: 'Posible plaga',
     confidence: 'Confianza',
+    confidenceLevelHigh: 'Alta',
+    confidenceLevelMedium: 'Media',
+    confidenceLevelLow: 'Baja',
+    confidenceLevelA11y: 'Nivel de confianza: {{level}}',
     queued: 'Diagnostico en cola',
     queuedMessage: 'Su diagnostico se enviara automaticamente cuando se restablezca la conexion.',
     backToHome: 'Volver al inicio',
@@ -225,6 +229,14 @@ export default {
     tipInclude: 'Incluya hojas, tallo o fruto visibles',
     tipSharp: 'Imagen nítida sin temblor',
     optimizing: 'Optimizando imagen...',
+    photoQualityTitle: 'La foto podría no funcionar bien',
+    photoQualityLowRes:
+      'La imagen tiene baja resolución: acerque la cámara a la planta o elija una foto más grande.',
+    photoQualityLowDetail:
+      'La imagen se ve oscura o borrosa: busque luz natural y sostenga firme al fotografiar.',
+    photoQualityAsk: 'Las fotos nítidas y bien iluminadas generan mejores hipótesis. ¿Probar otra?',
+    photoQualityRetake: 'Tomar otra',
+    photoQualityUseAnyway: 'Usar de todos modos',
     closeA11y: 'Cerrar',
     closeHint: 'Volver a la pantalla anterior',
     takePhotoA11y: 'Tomar foto. Use la cámara para capturar la plaga',
@@ -312,7 +324,6 @@ export default {
     viewDetailsHint: 'Abre la ficha técnica completa de la plaga',
     saveToHistory: 'Guardar en el historial',
     savedToHistory: 'Diagnóstico guardado en el historial',
-    confidenceBarA11y: 'Nivel de confianza {{pct}} por ciento',
     pestDetailTitle: 'Ficha técnica',
     pestDetailLifecycle: 'Ciclo de vida',
     pestDetailSynonyms: 'Otros nombres',
@@ -687,6 +698,18 @@ export default {
     photoGuidance:
       'Hoy cada diagnóstico usa una foto: use luz natural, mantenga el enfoque, muestre la hoja completa y el síntoma visible, sin zoom excesivo.',
   },
+  fieldConditions: {
+    title: 'Condiciones climáticas para el manejo',
+    statusFavorable: 'Favorable',
+    statusAttention: 'Atención',
+    statusUnfavorable: 'Desfavorable',
+    hintFavorable: 'Viento y lluvia previstos dentro de lo esperado en las próximas 24 h.',
+    hintAttention: 'Se prevé viento moderado o probabilidad de lluvia en las próximas 24 h.',
+    hintUnfavorable: 'Se prevé viento fuerte o alta probabilidad de lluvia en las próximas 24 h.',
+    disclaimer:
+      'Condiciones generales del tiempo. No es recomendación de aplicación — consulte al responsable técnico.',
+    a11yLabel: 'Condiciones de campo: {{status}}. {{hint}}',
+  },
   weather: {
     clear: 'Cielo despejado',
     mostlyClear: 'Mayormente despejado',
@@ -735,6 +758,28 @@ export default {
     climateRiskDesc: 'Avisos educativos derivados de las condiciones meteorológicas locales',
     generalChannel: 'General',
     generalDesc: 'Notificaciones generales de la aplicación',
+  },
+  reinspection: {
+    cardTitle: 'Recordarme reinspeccionar',
+    cardDescription:
+      'Programe un recordatorio local para volver a este cultivo y reevaluar cómo evolucionan los signos visibles.',
+    option3d: 'En 3 días',
+    option7d: 'En 7 días',
+    option3dA11y: 'Programar un recordatorio de reinspección en 3 días',
+    option7dA11y: 'Programar un recordatorio de reinspección en 7 días',
+    scheduledTitle: 'Recordatorio programado',
+    scheduledMessage:
+      'Recibirá una notificación local en {{days}} días para reinspeccionar {{crop}}.',
+    permissionTitle: 'Notificaciones desactivadas',
+    permissionMessage:
+      'Active las notificaciones de Rumo Pragas en Ajustes para recibir recordatorios locales de reinspección.',
+    scheduleError: 'No fue posible programar el recordatorio. Inténtelo de nuevo.',
+    notificationTitle: 'Hora de reinspeccionar su cultivo',
+    notificationBody:
+      'Vuelva al área observada anteriormente y reevalúe los signos visibles en {{crop}}.',
+    notificationBodyNoCrop:
+      'Vuelva al área observada anteriormente y reevalúe los signos visibles en su cultivo.',
+    disclaimer: 'Recordatorio educativo; no es una recomendación de aplicación.',
   },
   alerts: {
     ferrugem_title: 'Alto riesgo de roya',

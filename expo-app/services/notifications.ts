@@ -424,3 +424,78 @@ export async function scheduleLocalClimateRiskAlert(
     if (__DEV__) console.warn('[notifications] local climate alert scheduling failed');
   }
 }
+
+// -----------------------------------------------------------------------------
+// Post-diagnosis reinspection reminder
+// -----------------------------------------------------------------------------
+// Local notification the user opts into on the diagnosis result screen. Uses a
+// DATE trigger to fire multiple days in the future — the climate-risk helper
+// above caps delay at 86_400 s (24 h) intentionally, so we do NOT reuse it.
+// The scheduled content is neutral and educational: it prompts the user to
+// re-inspect the crop area, never recommends an application, dose or product.
+
+/** Minimum and maximum days the UI is allowed to request. */
+const REINSPECTION_MIN_DAYS = 1;
+const REINSPECTION_MAX_DAYS = 30;
+/** Reinspection reminders use the same importance/channel as general nudges. */
+const REINSPECTION_ANDROID_CHANNEL = 'general';
+
+export interface ReinspectionReminderInput {
+  /** Days from now to fire the reminder. Clamped to [1..30]. */
+  days: number;
+  /** Localized title, e.g. "Hora de reinspecionar sua lavoura". Truncated to 80 chars. */
+  title: string;
+  /** Localized body copy. Truncated to 240 chars. NEVER include coordinates or PII. */
+  body: string;
+  /** Optional non-sensitive metadata for deep-linking (screen, crop label, pest label). */
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Schedules a local reinspection reminder N days in the future.
+ * Returns the Expo notification identifier on success, `null` when the user
+ * has push disabled, the platform is web, the input is invalid or the native
+ * call fails.
+ *
+ * Deliberately does NOT hit the 24 h delay cap that
+ * `scheduleLocalClimateRiskAlert` enforces — reinspection cadence is measured
+ * in days.
+ */
+export async function scheduleReinspectionReminder(
+  input: ReinspectionReminderInput,
+): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  if (!(await isPushNotificationsEnabled())) return null;
+
+  const rawDays = Number(input?.days);
+  if (!Number.isFinite(rawDays) || rawDays < REINSPECTION_MIN_DAYS) return null;
+  const days = Math.min(Math.floor(rawDays), REINSPECTION_MAX_DAYS);
+
+  const title = (input?.title ?? '').trim();
+  const body = (input?.body ?? '').trim();
+  if (!title || !body) return null;
+
+  const fireAt = new Date(Date.now() + days * 86_400_000);
+
+  try {
+    configureNotificationHandler();
+    await ensureAndroidChannelsConfigured();
+    const identifier = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: title.slice(0, 80),
+        body: body.slice(0, 240),
+        data: input.data ?? {},
+        sound: 'default',
+        ...(Platform.OS === 'android' && { channelId: REINSPECTION_ANDROID_CHANNEL }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fireAt,
+      },
+    });
+    return typeof identifier === 'string' ? identifier : null;
+  } catch {
+    if (__DEV__) console.warn('[notifications] reinspection reminder scheduling failed');
+    return null;
+  }
+}

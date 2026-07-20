@@ -37,6 +37,7 @@ import { grantAIConsent, hasAIConsent } from '../../services/aiConsent';
 import { AIContentReportReason, reportAIContent } from '../../services/aiContentReports';
 import { clearChatHistory, loadChatHistory, saveChatHistory } from '../../services/chatHistory';
 import { buildChatRequestHistory } from '../../services/chatRequestHistory';
+import { trackChatMessage } from '../../services/analytics';
 
 interface Message {
   id: string;
@@ -208,6 +209,10 @@ export default function AIChatScreen() {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, aiMsg]);
+        // Product telemetry: adoption of the chat. Event name is fixed
+        // (`chat_message_sent`); no message content, user or PII travels — the
+        // analytics service enforces that (services/analytics.ts sanitizer).
+        trackChatMessage();
       } catch (err: unknown) {
         const errCode =
           err instanceof Object && 'code' in err ? (err as { code: string }).code : undefined;
