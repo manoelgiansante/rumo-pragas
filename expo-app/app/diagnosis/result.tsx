@@ -39,6 +39,8 @@ import {
   FontSize,
   Gradients,
   FontFamily,
+  Shadows,
+  severityStyle,
 } from '../../constants/theme';
 import { PremiumCard } from '../../components/PremiumCard';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
@@ -166,6 +168,13 @@ export default function ResultScreen() {
     return Colors.accent;
   };
   const severityColor = getSeverityColor();
+
+  // Semantic severity palette for the at-a-glance verdict banner. Falls back to
+  // a confidence-derived level when the AI did not label severity explicitly.
+  const severityKey = isHealthy
+    ? 'none'
+    : (enrichment?.severity ?? (confidence > 0.7 ? 'high' : confidence > 0.4 ? 'medium' : 'low'));
+  const sevPalette = severityStyle(severityKey);
 
   const severityLabel = useCallback(() => {
     const s = enrichment?.severity;
@@ -869,6 +878,43 @@ export default function ResultScreen() {
               </View>
             </View>
           </View>
+          {/* Signature gold hairline separating the photo hero from content. */}
+          <View style={styles.heroGoldEdge} pointerEvents="none" />
+        </View>
+
+        {/* SEVERITY BANNER — the verdict at a glance. Semantic color + icon +
+            label (never color alone, WCAG 1.4.1). This is the single strongest
+            read on the screen after the pest name. */}
+        <View
+          style={[
+            styles.severityBanner,
+            { backgroundColor: sevPalette.bg, borderColor: sevPalette.border },
+          ]}
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel={`${t('severity.label')}: ${severityLabel()}`}
+          testID="result-severity-banner"
+        >
+          <View style={[styles.severityBannerIcon, { backgroundColor: sevPalette.tint }]}>
+            <Ionicons
+              name={sevPalette.icon as keyof typeof Ionicons.glyphMap}
+              size={22}
+              color="#FFF"
+              accessibilityElementsHidden
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.severityBannerLabel}>{t('severity.label')}</Text>
+            <Text style={[styles.severityBannerValue, { color: sevPalette.text }]}>
+              {severityLabel()}
+            </Text>
+          </View>
+          <View style={[styles.severityBannerConf, { borderColor: sevPalette.border }]}>
+            <Text style={styles.severityBannerConfLabel}>{t('diagnosis.confidence')}</Text>
+            <Text style={[styles.severityBannerConfValue, { color: sevPalette.text }]}>
+              {confidenceLevelLabel}
+            </Text>
+          </View>
         </View>
 
         {/* P0-1: Low confidence warning banner — confidence < 70% */}
@@ -1366,13 +1412,13 @@ interface TreatmentLevelRowProps {
 function TreatmentLevelRow({ icon, color, title, hint, count }: TreatmentLevelRowProps) {
   return (
     <View
-      style={styles.treatmentLevelRow}
+      style={[styles.treatmentLevelRow, { borderColor: color + '2E' }]}
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${title}. ${hint}. ${count} itens.`}
     >
-      <View style={[styles.treatmentLevelIcon, { backgroundColor: color + '1F' }]}>
-        <Ionicons name={icon} size={16} color={color} />
+      <View style={[styles.treatmentLevelIcon, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon} size={20} color={color} />
       </View>
       <View style={styles.treatmentLevelText}>
         <Text style={styles.treatmentLevelTitle}>{title}</Text>
@@ -1380,7 +1426,9 @@ function TreatmentLevelRow({ icon, color, title, hint, count }: TreatmentLevelRo
           {hint}
         </Text>
       </View>
-      <Text style={[styles.treatmentLevelCount, { color }]}>{count}</Text>
+      <View style={[styles.treatmentLevelBadge, { backgroundColor: color + '14' }]}>
+        <Text style={[styles.treatmentLevelCount, { color }]}>{count}</Text>
+      </View>
     </View>
   );
 }
@@ -1461,6 +1509,66 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.italic,
     fontSize: 14,
     marginTop: 4,
+  },
+  heroGoldEdge: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 3,
+    backgroundColor: Colors.gold,
+    opacity: 0.92,
+  },
+  // --- Severity banner ---
+  severityBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+    padding: 14,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    ...Shadows.card,
+  },
+  severityBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  severityBannerLabel: {
+    fontFamily: FontFamily.semibold,
+    fontWeight: '600',
+    fontSize: FontSize.caption2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: Colors.textSecondary,
+  },
+  severityBannerValue: {
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    fontSize: FontSize.title3,
+    letterSpacing: -0.3,
+    marginTop: 1,
+  },
+  severityBannerConf: {
+    alignItems: 'flex-end',
+    paddingLeft: 12,
+    borderLeftWidth: 1,
+  },
+  severityBannerConfLabel: {
+    fontFamily: FontFamily.medium,
+    fontWeight: '500',
+    fontSize: FontSize.caption2,
+    color: Colors.textSecondary,
+  },
+  severityBannerConfValue: {
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    fontSize: FontSize.subheadline,
+    marginTop: 1,
   },
   // --- Confidence bar ---
   confidenceWrap: { marginTop: 18 },
@@ -1696,12 +1804,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 8,
+    padding: 12,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    backgroundColor: Colors.background,
   },
   treatmentLevelIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1718,12 +1829,19 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 1,
   },
+  treatmentLevelBadge: {
+    minWidth: 30,
+    height: 30,
+    paddingHorizontal: 8,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   treatmentLevelCount: {
     fontSize: FontSize.headline,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
-    minWidth: 24,
-    textAlign: 'right',
+    textAlign: 'center',
   },
   viewDetailsBtn: {
     flexDirection: 'row',
