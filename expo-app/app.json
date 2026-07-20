@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rumo Pragas IA",
     "slug": "rumo-pragas",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -156,7 +156,7 @@
           }
         ]
       },
-      "buildNumber": "65"
+      "buildNumber": "66"
     },
     "android": {
       "adaptiveIcon": {
@@ -182,7 +182,7 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO"
       ],
-      "versionCode": 206649251
+      "versionCode": 206649252
     },
     "web": {
       "favicon": "./assets/favicon.png",
