@@ -587,7 +587,9 @@ const styles = StyleSheet.create({
     fontSize: FontSize.title,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
+    letterSpacing: -0.4,
     color: '#FFF',
+    marginTop: 2,
   },
   content: { padding: Spacing.lg, marginTop: -16 },
   scanRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
@@ -682,7 +684,13 @@ const styles = StyleSheet.create({
   },
   statsRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   statCard: { alignItems: 'center', gap: 6 },
-  statValue: { fontSize: FontSize.subheadline, fontFamily: FontFamily.bold, fontWeight: '700' },
+  // Metric reads as a real number/label, not caption-sized filler.
+  statValue: {
+    fontSize: FontSize.title3,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
   statLabel: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.caption2,
@@ -692,7 +700,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.title3,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
-    marginTop: Spacing.xl,
+    letterSpacing: -0.3,
+    // Asymmetric section rhythm (24 above / 12 below) groups each block with
+    // its content and opens air before a new section.
+    marginTop: Spacing.xxl,
     marginBottom: Spacing.md,
   },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
@@ -715,7 +726,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: Spacing.xl,
+    marginTop: Spacing.xxl,
     marginBottom: Spacing.md,
   },
   alertsTitleRow: {
