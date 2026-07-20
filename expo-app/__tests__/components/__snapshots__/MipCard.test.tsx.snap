@@ -9,16 +9,18 @@ exports[`MipCard matches snapshot 1`] = `
       [
         {
           "borderRadius": 16,
+          "borderWidth": 1,
           "elevation": 3,
           "shadowOffset": {
-            "height": 3,
+            "height": 4,
             "width": 0,
           },
           "shadowOpacity": 0.06,
-          "shadowRadius": 10,
+          "shadowRadius": 12,
         },
         {
           "backgroundColor": "#FFFFFF",
+          "borderColor": "#E5DECD",
           "padding": 16,
           "shadowColor": "#000",
         },
