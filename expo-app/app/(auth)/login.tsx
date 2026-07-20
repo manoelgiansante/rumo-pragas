@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -263,7 +264,14 @@ export default function LoginScreen() {
           >
             <View style={styles.heroContent}>
               <View style={styles.iconCircle}>
-                <Ionicons name="leaf" size={40} color={Colors.white} />
+                <Image
+                  source={require('../../assets/icon.png')}
+                  style={styles.logoMark}
+                  resizeMode="cover"
+                  accessible
+                  accessibilityRole="image"
+                  accessibilityLabel={t('auth.appName')}
+                />
               </View>
               <Text style={styles.heroTitle}>{t('auth.appName')}</Text>
               <Text style={styles.heroSubtitle}>{t('auth.appTagline')}</Text>
@@ -633,10 +641,14 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 84,
     height: 84,
-    borderRadius: 42,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    // Rounded-square "app chip" so the real brand mark (leaf + pest in scan
+    // brackets) reads as the recognizable app icon instead of a generic glyph.
+    borderRadius: 22,
+    // Matches the brand mark's own deep-leaf background so the shadow renders
+    // solid and any sub-pixel gap around the image stays invisible on the hero.
+    backgroundColor: '#0D2B1E',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
+    borderColor: 'rgba(255,255,255,0.22)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xl,
@@ -646,6 +658,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 14,
     elevation: 6,
+  },
+  logoMark: {
+    width: '100%',
+    height: '100%',
+    // Clip the image to the chip's corners (border stays crisp — no overflow
+    // hidden, which would suppress the container's iOS shadow).
+    borderRadius: 22,
   },
   heroTitle: {
     fontSize: FontSize.largeTitle,
