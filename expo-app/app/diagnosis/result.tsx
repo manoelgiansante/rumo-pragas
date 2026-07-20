@@ -1431,17 +1431,22 @@ const styles = StyleSheet.create({
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
   heroBadgeText: {
     color: '#FFF',
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: FontFamily.semibold,
     fontWeight: '600',
+    letterSpacing: 0.2,
+    // Legibility over the photo hero without darkening the pill fill.
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   heroPestName: {
     color: '#FFF',
@@ -1736,7 +1741,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   // --- Sections ---
-  sections: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: Spacing.sm },
+  sections: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: Spacing.md },
   sectionText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
