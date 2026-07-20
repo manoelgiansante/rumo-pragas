@@ -2,7 +2,14 @@ import '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet, Platform, Dimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  View,
+  StyleSheet,
+  Platform,
+  Dimensions,
+  Appearance,
+} from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { Poppins_400Regular } from '@expo-google-fonts/poppins/400Regular';
@@ -33,6 +40,28 @@ import { OfflineBanner } from '../components/OfflineBanner';
 import { ForceUpdateModal, UpdateBanner } from '../components/AppUpdate';
 import { Colors } from '../constants/theme';
 import { scrubSensitiveTelemetryText, stripUrlQueryAndFragment } from '../lib/telemetrySanitizer';
+
+// -----------------------------------------------------------------------------
+// WEB: force LIGHT color scheme (Rumo Pragas is a light-only app)
+// -----------------------------------------------------------------------------
+// The "old money agro" DS (cream #F7F3EC) was designed for LIGHT only. On native
+// the light theme is already pinned via app.json `userInterfaceStyle: "light"`,
+// but that config does NOT govern the web build: react-native-web's
+// useColorScheme() reads `prefers-color-scheme` through window.matchMedia. When
+// the browser is in dark mode it leaked through every screen — a near-black page
+// background (containerDark) plus light titles rendered onto the always-light
+// cards (illegible pest names in the library). We pin LIGHT at the single source
+// every useColorScheme()/isDark reads from, so the whole app resolves
+// isDark=false on web. Guarded to web so native behavior is untouched. Runs at
+// module scope (before any screen renders), so the first paint is already light.
+if (Platform.OS === 'web') {
+  const appearance = Appearance as unknown as {
+    getColorScheme: () => 'light';
+    addChangeListener: () => { remove: () => void };
+  };
+  appearance.getColorScheme = () => 'light';
+  appearance.addChangeListener = () => ({ remove: () => undefined });
+}
 
 // Sentry lazy init — NEVER call Sentry.init() at module scope.
 // On iOS 26 New Architecture (TurboModules), native module calls during JS

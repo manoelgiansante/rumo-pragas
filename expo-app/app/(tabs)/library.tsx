@@ -161,10 +161,8 @@ const SEVERITY_LABELS: Record<string, string> = {
 
 const PestItem = React.memo(function PestItem({
   item,
-  isDark,
 }: {
   item: { name: string; scientific: string; severity: string; crop: string };
-  isDark: boolean;
 }) {
   const { t } = useTranslation();
   const cropInfo = CROPS.find((c) => c.id === item.crop);
@@ -211,7 +209,10 @@ const PestItem = React.memo(function PestItem({
         </View>
       </LinearGradient>
       <View style={styles.pestCardBody}>
-        <Text style={[styles.pestName, isDark && styles.textDark]} numberOfLines={2}>
+        {/* Card body is always light (cardElevated), so the pest name is always
+            textPrimary #0F1A14 — never flip to the light textDark tone (that was
+            the illegible-title bug: light text on the light card). */}
+        <Text style={styles.pestName} numberOfLines={2}>
           {item.name}
         </Text>
         <Text style={styles.pestScientific} numberOfLines={1}>
@@ -295,7 +296,12 @@ export default function LibraryScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: 8, paddingBottom: 8 }}
+          // On web, react-native-web's horizontal ScrollView defaults to
+          // flexGrow:1/flexShrink:1, so the `flex:1` FlatList below was squeezing
+          // this filter row vertically and clipping the chips ("metade escondida").
+          // Pin it to its content height so it can never be grown or shrunk.
+          style={styles.chipsRow}
+          contentContainerStyle={styles.chipsContent}
         >
           <TouchableOpacity
             testID="library-chip-all"
@@ -389,7 +395,7 @@ export default function LibraryScreen() {
               </TouchableOpacity>
             </View>
           }
-          renderItem={({ item }) => <PestItem item={item} isDark={isDark} />}
+          renderItem={({ item }) => <PestItem item={item} />}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -423,6 +429,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.md, marginBottom: Spacing.sm },
+  // Pin the horizontal filter row to its intrinsic content height so the
+  // flex:1 FlatList below cannot grow/shrink (and clip) it. Content-driven
+  // height (no hard-coded value) keeps it safe across font sizes.
+  chipsRow: { flexGrow: 0, flexShrink: 0 },
+  chipsContent: { paddingHorizontal: Spacing.lg, gap: 8, paddingBottom: 8 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
