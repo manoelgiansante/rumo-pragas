@@ -346,7 +346,9 @@ export default function LibraryScreen() {
           windowSize={5}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Ionicons name="search-outline" size={48} color={Colors.systemGray3} />
+              <View style={styles.emptyIcon}>
+                <Ionicons name="leaf-outline" size={44} color={Colors.brand} />
+              </View>
               <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
                 {t('library.noPests')}
               </Text>
@@ -399,6 +401,17 @@ const styles = StyleSheet.create({
   containerDark: { backgroundColor: Colors.backgroundDark },
   flex: { flex: 1 },
   center: { alignItems: 'center', paddingTop: 60 },
+  emptyIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.brand + '12',
+    borderWidth: 1,
+    borderColor: Colors.brand + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
+  },
   pageHeader: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,

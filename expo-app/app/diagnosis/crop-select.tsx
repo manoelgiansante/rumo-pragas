@@ -14,6 +14,7 @@ import {
   FontSize,
   Gradients,
   FontFamily,
+  Shadows,
 } from '../../constants/theme';
 import { CROPS, CropType } from '../../constants/crops';
 import { SearchInput } from '../../components/SearchInput';
@@ -188,9 +189,16 @@ export default function CropSelectScreen() {
           accessibilityRole="button"
           accessibilityHint={t('cropSelect.startHint')}
         >
-          <LinearGradient colors={Gradients.hero} style={styles.startBtn}>
+          <LinearGradient
+            colors={Gradients.heroDeep}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.startBtn}
+          >
             <Text style={styles.startBtnText}>{t('cropSelect.startDiagnosis')}</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFF" />
+            <View style={styles.startBtnArrow}>
+              <Ionicons name="arrow-forward" size={18} color={Colors.brandDark} />
+            </View>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -279,7 +287,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  cropItemSelected: { borderColor: Colors.accent, backgroundColor: Colors.accent + '15' },
+  cropItemSelected: { borderColor: Colors.brand, backgroundColor: Colors.brand + '12' },
   cropEmoji: { fontSize: 28 },
   cropName: {
     fontSize: FontSize.caption2,
@@ -288,7 +296,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: Colors.textSecondary,
   },
-  cropNameSelected: { color: Colors.accent },
+  cropNameSelected: { color: Colors.brand },
   emptyContainer: { alignItems: 'center', paddingTop: 40, gap: 8 },
   emptyTitle: {
     fontSize: FontSize.title3,
@@ -306,14 +314,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    height: 56,
+    gap: 10,
+    height: 58,
     borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(231,211,161,0.22)',
+    ...Shadows.hero,
   },
   startBtnText: {
     fontSize: FontSize.headline,
     fontFamily: FontFamily.bold,
     fontWeight: '700',
     color: '#FFF',
+  },
+  startBtnArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.goldSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { FontSize, Gradients, FontFamily, Spacing } from '../../constants/theme';
+import { Colors, FontSize, Gradients, FontFamily, Spacing } from '../../constants/theme';
 import { sendDiagnosis } from '../../services/diagnosis';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
@@ -355,10 +355,12 @@ const styles = StyleSheet.create({
   },
   center: { alignItems: 'center', paddingHorizontal: 40 },
   iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(231,211,161,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
@@ -378,7 +380,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#FFF' },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: Colors.goldSoft },
   stepCounter: {
     fontSize: FontSize.caption,
     color: 'rgba(255,255,255,0.85)',
