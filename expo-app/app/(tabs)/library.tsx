@@ -21,9 +21,10 @@ import {
   FontSize,
   Gradients,
   FontFamily,
+  Shadows,
+  severityStyle,
 } from '../../constants/theme';
 import { CROPS } from '../../constants/crops';
-import { PremiumCard } from '../../components/PremiumCard';
 import { SearchInput } from '../../components/SearchInput';
 import { useTranslation } from 'react-i18next';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -151,16 +152,6 @@ const PESTS_BY_CROP: Record<string, { name: string; scientific: string; severity
   ],
 };
 
-// Severidade nunca comunicada SÓ por cor (WCAG 1.4.1): o chip combina ponto
-// colorido + rótulo de texto. Texto sempre em tom AA sobre o cartão branco
-// (warmAmber falha como texto pequeno → earthText, ver constants/theme.ts).
-const severityChip: Record<string, { dot: string; bg: string; text: string }> = {
-  critical: { dot: Colors.coral, bg: Colors.coral + '14', text: Colors.coral },
-  high: { dot: Colors.warmAmber, bg: Colors.warmAmber + '1F', text: Colors.earthText },
-  medium: { dot: Colors.techBlue, bg: Colors.techBlue + '14', text: Colors.techBlue },
-  low: { dot: Colors.accent, bg: Colors.accent + '14', text: Colors.accent },
-};
-
 const SEVERITY_LABELS: Record<string, string> = {
   critical: 'severity.critical',
   high: 'severity.high',
@@ -178,7 +169,6 @@ const PestItem = React.memo(function PestItem({
   const { t } = useTranslation();
   const cropInfo = CROPS.find((c) => c.id === item.crop);
   const severityLabelKey = SEVERITY_LABELS[item.severity] || 'severity.medium';
-  const chip = severityChip[item.severity] ?? severityChip.medium!;
 
   // FIX-7: the library was a dead-end (static cards). Tapping now opens the pest
   // fact sheet. No cached diagnosis exists for a library pest, so we forward the
@@ -193,33 +183,48 @@ const PestItem = React.memo(function PestItem({
     });
   }, [item]);
 
+  const sev = severityStyle(item.severity);
+
   return (
-    <PremiumCard style={{ marginBottom: Spacing.sm }}>
-      <TouchableOpacity
-        style={styles.pestRow}
-        onPress={handlePress}
-        activeOpacity={0.7}
-        accessibilityLabel={`${item.name}, ${item.scientific}, ${t('severity.label')} ${t(severityLabelKey)}, ${cropInfo?.displayName || item.crop}`}
-        accessibilityRole="button"
-        accessibilityHint={t('library.pestDetailHint')}
-        testID={`library-pest-${item.crop}-${item.name}`}
+    <TouchableOpacity
+      style={styles.pestCard}
+      onPress={handlePress}
+      activeOpacity={0.85}
+      accessibilityLabel={`${item.name}, ${item.scientific}, ${t('severity.label')} ${t(severityLabelKey)}, ${cropInfo?.displayName || item.crop}`}
+      accessibilityRole="button"
+      accessibilityHint={t('library.pestDetailHint')}
+      testID={`library-pest-${item.crop}-${item.name}`}
+    >
+      {/* Visual "cover" — a soft severity-tinted tile with the crop mark. */}
+      <LinearGradient
+        colors={[sev.bg, Colors.cardElevated]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.pestCover}
       >
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.pestName, isDark && styles.textDark]}>{item.name}</Text>
-          <Text style={styles.pestScientific}>{item.scientific}</Text>
-          <View style={[styles.severityChip, { backgroundColor: chip.bg }]}>
-            <View style={[styles.severityDot, { backgroundColor: chip.dot }]} />
-            <Text style={[styles.severityChipText, { color: chip.text }]}>
-              {t(severityLabelKey)}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.cropBadge} accessibilityElementsHidden>
+        <Text style={styles.pestCoverEmoji} accessibilityElementsHidden>
           {cropInfo?.icon}
         </Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.systemGray3} />
-      </TouchableOpacity>
-    </PremiumCard>
+        <View style={[styles.severityChip, { backgroundColor: sev.tint }]}>
+          <View style={styles.severityDot} />
+          <Text style={styles.severityChipText}>{t(severityLabelKey)}</Text>
+        </View>
+      </LinearGradient>
+      <View style={styles.pestCardBody}>
+        <Text style={[styles.pestName, isDark && styles.textDark]} numberOfLines={2}>
+          {item.name}
+        </Text>
+        <Text style={styles.pestScientific} numberOfLines={1}>
+          {item.scientific}
+        </Text>
+        <View style={styles.pestCardFooter}>
+          <Text style={styles.cropBadge} accessibilityElementsHidden>
+            {cropInfo?.icon} {cropInfo?.displayName || item.crop}
+          </Text>
+          <Ionicons name="arrow-forward" size={14} color={sev.tint} />
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 });
 
@@ -227,6 +232,8 @@ export default function LibraryScreen() {
   const { t } = useTranslation();
   const isDark = useColorScheme() === 'dark';
   const { isTablet, contentMaxWidth } = useResponsive();
+  // Grid: 2 cards per row on phones, 3 on tablet/desktop.
+  const libColumns = isTablet ? 3 : 2;
   const [selectedCrop, setSelectedCrop] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
@@ -327,12 +334,14 @@ export default function LibraryScreen() {
           keyExtractor={keyExtractor}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          key={isTablet ? 'tablet' : 'phone'}
+          numColumns={libColumns}
+          key={`lib-${libColumns}`}
+          columnWrapperStyle={styles.gridRow}
           contentContainerStyle={[
             { padding: Spacing.lg, paddingBottom: 100 },
             isTablet && { maxWidth: contentMaxWidth, alignSelf: 'center' as const, width: '100%' },
           ]}
-          initialNumToRender={15}
+          initialNumToRender={12}
           maxToRenderPerBatch={10}
           windowSize={5}
           ListEmptyComponent={
@@ -410,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.systemGray6,
     gap: 4,
   },
-  chipActive: { backgroundColor: Colors.accent },
+  chipActive: { backgroundColor: Colors.brand },
   chipText: {
     fontSize: FontSize.caption,
     fontFamily: FontFamily.semibold,
@@ -419,30 +428,70 @@ const styles = StyleSheet.create({
   },
   chipTextActive: { color: '#FFF' },
   chipEmoji: { fontSize: 14 },
-  pestRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  gridRow: { gap: Spacing.md },
+  // --- Grid card ---
+  pestCard: {
+    flex: 1,
+    backgroundColor: Colors.cardElevated,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.separator,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+    ...Shadows.card,
+  },
+  pestCover: {
+    height: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.separator,
+  },
+  pestCoverEmoji: { fontSize: 42 },
   severityChip: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    marginTop: 6,
+    gap: 5,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
   },
-  severityDot: { width: 8, height: 8, borderRadius: 4 },
+  severityDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.9)' },
   severityChipText: {
     fontSize: FontSize.caption2,
     fontFamily: FontFamily.semibold,
     fontWeight: '600',
+    color: '#FFF',
   },
-  pestName: { fontSize: FontSize.subheadline, fontFamily: FontFamily.semibold, fontWeight: '600' },
+  pestCardBody: { padding: Spacing.md, gap: 2 },
+  pestName: {
+    fontSize: FontSize.subheadline,
+    fontFamily: FontFamily.bold,
+    fontWeight: '700',
+    color: Colors.text,
+    lineHeight: 19,
+  },
   pestScientific: {
     fontFamily: FontFamily.italic,
-    fontSize: FontSize.caption,
+    fontSize: FontSize.caption2,
     color: Colors.textSecondary,
   },
-  cropBadge: { fontSize: 20 },
+  pestCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  cropBadge: {
+    fontSize: FontSize.caption2,
+    fontFamily: FontFamily.medium,
+    fontWeight: '500',
+    color: Colors.textTertiary,
+    flex: 1,
+  },
   emptyTitle: {
     fontSize: FontSize.title3,
     fontFamily: FontFamily.bold,

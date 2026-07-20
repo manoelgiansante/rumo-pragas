@@ -300,27 +300,41 @@ export default function HistoryScreen() {
             )
           }
           ListHeaderComponent={
-            <Text style={[styles.count, isDark && styles.textDark]}>
-              {t('history.diagnosisCount', { count: filtered.length })}
-            </Text>
+            <View style={styles.countRow}>
+              <View style={styles.countTick} />
+              <Text style={[styles.count, isDark && styles.textDark]}>
+                {t('history.diagnosisCount', { count: filtered.length })}
+              </Text>
+            </View>
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              testID={`history-item-${item.id}`}
-              onPress={() => openDiagnosis(item)}
-              onLongPress={() => deleteDiagnosis(item.id)}
-              activeOpacity={0.8}
-              accessibilityLabel={t('history.itemA11y', {
-                pest: item.pest_name || t('history.noName'),
-                crop: item.crop || t('history.notInformed'),
-                confidence: Math.round((item.confidence ?? 0) * 100),
-              })}
-              accessibilityRole="button"
-              accessibilityHint={t('history.openHint')}
-            >
-              <DiagnosisCard diagnosis={item} />
-            </TouchableOpacity>
-          )}
+          renderItem={({ item, index }) => {
+            const isLast = index === filtered.length - 1;
+            return (
+              <View style={styles.timelineRow}>
+                {/* Timeline rail: connector line + node dot per diagnosis. */}
+                <View style={styles.timelineRail}>
+                  {!isLast && <View style={styles.timelineLine} />}
+                  <View style={styles.timelineDot} />
+                </View>
+                <TouchableOpacity
+                  testID={`history-item-${item.id}`}
+                  style={styles.timelineCard}
+                  onPress={() => openDiagnosis(item)}
+                  onLongPress={() => deleteDiagnosis(item.id)}
+                  activeOpacity={0.8}
+                  accessibilityLabel={t('history.itemA11y', {
+                    pest: item.pest_name || t('history.noName'),
+                    crop: item.crop || t('history.notInformed'),
+                    confidence: Math.round((item.confidence ?? 0) * 100),
+                  })}
+                  accessibilityRole="button"
+                  accessibilityHint={t('history.openHint')}
+                >
+                  <DiagnosisCard diagnosis={item} />
+                </TouchableOpacity>
+              </View>
+            );
+          }}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -343,12 +357,39 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   searchRow: { marginHorizontal: Spacing.lg, marginTop: Spacing.md },
+  countRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: Spacing.md,
+  },
+  countTick: { width: 4, height: 16, borderRadius: 2, backgroundColor: Colors.gold },
   count: {
     fontSize: FontSize.subheadline,
     fontFamily: FontFamily.semibold,
     fontWeight: '600',
-    marginBottom: Spacing.md,
+    color: Colors.text,
   },
+  // --- Timeline ---
+  timelineRow: { flexDirection: 'row' },
+  timelineRail: { width: 26, alignItems: 'center' },
+  timelineLine: {
+    position: 'absolute',
+    top: 22,
+    bottom: -Spacing.md,
+    width: 2,
+    backgroundColor: Colors.separator,
+  },
+  timelineDot: {
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    marginTop: 20,
+    backgroundColor: Colors.brand,
+    borderWidth: 3,
+    borderColor: Colors.background,
+  },
+  timelineCard: { flex: 1 },
   loadingText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.subheadline,
