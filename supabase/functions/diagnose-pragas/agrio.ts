@@ -173,7 +173,10 @@ export async function maybeCaptureAgrioBalance(options: {
  */
 type KbHint = {
   name_pt: string;
-  scientific_name: string;
+  // Optional: generic Agrio labels (e.g. "FungalDisease") have NO single
+  // scientific name — translating the label without inventing one is the
+  // correct behavior (label translation, never a fabricated diagnosis).
+  scientific_name?: string;
   category?: string;
   severity?: "critical" | "high" | "medium" | "low";
 };
@@ -185,7 +188,7 @@ type KbHint = {
  * AGRIO_LABEL_MAP, and keep it in sync with the legacy `diagnose/agrio.ts`
  * twin (a deno test locks the two maps + versions together).
  */
-export const AGRIO_LABEL_MAP_VERSION = "2026-07-19.1";
+export const AGRIO_LABEL_MAP_VERSION = "2026-07-21.1";
 
 export const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
   Coffee: {
@@ -228,6 +231,21 @@ export const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
       scientific_name: "Spodoptera frugiperda",
       category: "inseto",
       severity: "high",
+    },
+  },
+  Grape: {
+    // Observed live 2026-07-17 (Sentry RUMO-PRAGAS-10: "Agrio label unmapped:
+    // Grape/FungalDisease", scientificName null; RUMO-PRAGAS-18 is the same
+    // gap on this slug). Generic label → PT translation ONLY: a generic
+    // fungal call has no single scientific name, so none is invented — the
+    // client keeps degrading gracefully without a catalog match.
+    fungaldisease: {
+      name_pt: "Doença fúngica",
+      category: "fungo",
+    },
+    "fungal disease": {
+      name_pt: "Doença fúngica",
+      category: "fungo",
     },
   },
 };
