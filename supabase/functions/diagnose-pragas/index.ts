@@ -1060,21 +1060,30 @@ Deno.serve(async (req: Request) => {
     // Prefer the user's selected crop; fall back to the provider-detected crop
     // (Agrio returns the crop in English, e.g. "Coffee") so the client MIP
     // catalog filter still works when the user did not pick a crop.
+    // CONTRACT (2026-07-21): the deployed clients' parseDiagnosisRow (1.0.11
+    // iOS public + 1.0.12 in review) requires crop to be a NON-EMPTY string of
+    // at most 80 chars — a single row violating that breaks the ENTIRE
+    // Histórico list (fetchDiagnoses rejects the whole payload). cropId is
+    // always non-empty ("outro" fallback); the slice enforces the upper bound.
     const detectedCropEn = String(diagnosisData.crop ?? "");
-    const cropId = cropMap[safeCropType] ||
+    const cropId = (cropMap[safeCropType] ||
       cropMap[detectedCropEn] ||
       safeCropType?.toLowerCase() ||
       detectedCropEn.toLowerCase() ||
-      "outro";
+      "outro").slice(0, 80);
 
     // Save to database (parameterized via Supabase client — no SQL injection)
-    // P0-1: For invalid_image, persist with confidence=0 and no pest data
+    // P0-1: For invalid_image, persist with confidence=0 and no pest data —
+    // but NEVER an empty crop (client contract above). The invalid-image UI in
+    // every shipped binary keys off pest_id === "invalid_image", not crop, so
+    // persisting the requested/fallback cropId is safe and keeps the row
+    // parseable.
     // P0-3 (LGPD): lat/lng only persisted if user opted in via pragas_user_preferences
     const { data: saved, error: dbError } = await supabase
       .from("pragas_diagnoses")
       .insert({
         user_id: user.id,
-        crop: isInvalidImage ? "" : cropId,
+        crop: cropId,
         pest_id: safePestId || null,
         pest_name: safePestName || null,
         confidence: isInvalidImage ? 0 : rawConfidence,
