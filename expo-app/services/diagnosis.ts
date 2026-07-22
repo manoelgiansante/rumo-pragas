@@ -1,5 +1,5 @@
 // iOS 26 TurboModule crash defense — see services/sentry-shim.ts
-import { addBreadcrumb } from './sentry-shim';
+import { addBreadcrumb, captureException } from './sentry-shim';
 import { Config } from '../constants/config';
 import type { DiagnosisResult } from '../types/diagnosis';
 import { parseNotes } from '../types/diagnosis';
@@ -270,9 +270,29 @@ export async function fetchDiagnoses(
   if (!Array.isArray(raw) || raw.length > safeLimit) {
     throw new Error(i18n.t('errors.invalidServer'));
   }
-  const rows = raw.map(parseDiagnosisRow);
-  if (rows.some((row) => row === null)) throw new Error(i18n.t('errors.invalidServer'));
-  return rows as DiagnosisResult[];
+  // Hardening (2026-07-22): ONE corrupted/legacy row must never take down the
+  // ENTIRE Histórico list (before this, a single invalid row threw and the
+  // user saw an error instead of their history). Skip invalid rows, keep the
+  // valid ones, and report the anomaly ONCE per fetch — counts only, no row
+  // content, no PII.
+  const rows: DiagnosisResult[] = [];
+  let invalidRows = 0;
+  for (const value of raw) {
+    const row = parseDiagnosisRow(value);
+    if (row) {
+      rows.push(row);
+    } else {
+      invalidRows++;
+    }
+  }
+  if (invalidRows > 0) {
+    captureException(new Error('fetch_diagnoses_invalid_row_skipped'), {
+      fingerprint: ['pragas-fetch-diagnoses-invalid-row'],
+      tags: { feature: 'history' },
+      extra: { invalidRows, totalRows: raw.length },
+    });
+  }
+  return rows;
 }
 
 export async function deleteDiagnosis(token: string, id: string): Promise<void> {

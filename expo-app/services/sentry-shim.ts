@@ -27,6 +27,10 @@ type Breadcrumb = {
 type CaptureContext = {
   extra?: Record<string, unknown>;
   tags?: Record<string, string>;
+  /** Explicit Sentry grouping (e.g. ['pragas-fetch-diagnoses-invalid-row']) —
+   * use whenever the reported Error is synthesized, so grouping never depends
+   * on a mutable message string. Passed through to @sentry/react-native. */
+  fingerprint?: string[];
 };
 
 type CaptureMessageContext = CaptureContext & {

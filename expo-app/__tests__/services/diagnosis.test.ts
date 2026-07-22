@@ -42,6 +42,12 @@ jest.mock('../../services/userPreferences', () => ({
   hasLocationConsent: (...args: unknown[]) => mockHasLocationConsent(...args),
 }));
 
+const mockCaptureException = jest.fn();
+jest.mock('../../services/sentry-shim', () => ({
+  addBreadcrumb: jest.fn(),
+  captureException: (...args: unknown[]) => mockCaptureException(...args),
+}));
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -255,6 +261,40 @@ describe('fetchDiagnoses', () => {
   it('throws on non-OK response', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
     await expect(fetchDiagnoses('token', 'user-1')).rejects.toThrow(/buscar diagn/i);
+  });
+
+  it('skips an invalid row, keeps the valid ones, and reports the anomaly once', async () => {
+    // Hardening 2026-07-22: before this, ONE corrupted row nuked the whole
+    // Histórico list (fetchDiagnoses threw on any invalid row).
+    const rows = [makeDiagnosisRow(), { id: 'diag-corrupt', crop: '', created_at: 'not-a-date' }];
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify(rows),
+    });
+
+    const result = await fetchDiagnoses('token', 'user-1');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('id', 'diag-1');
+    expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    const [reportedError, reportedContext] = mockCaptureException.mock.calls[0];
+    expect((reportedError as Error).message).toBe('fetch_diagnoses_invalid_row_skipped');
+    expect(reportedContext).toMatchObject({
+      fingerprint: ['pragas-fetch-diagnoses-invalid-row'],
+      extra: { invalidRows: 1, totalRows: 2 },
+    });
+    // No PII / row content in the report — counts only.
+    expect(JSON.stringify(reportedContext)).not.toContain('diag-corrupt');
+  });
+
+  it('does not report anything when every row is valid', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify([makeDiagnosisRow()]),
+    });
+
+    const result = await fetchDiagnoses('token', 'user-1');
+    expect(result).toHaveLength(1);
+    expect(mockCaptureException).not.toHaveBeenCalled();
   });
 });
 
