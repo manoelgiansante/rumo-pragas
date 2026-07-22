@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { captureException, captureGenAiRequest } from "../_shared/sentry.ts";
+import { runPlantGate } from "../_shared/plant-gate.ts";
 import { callAgrioDiagnose, adaptAgrio, AGRIO_LABEL_MAP_VERSION, maybeCaptureAgrioBalance } from "./agrio.ts";
 
 const CLAUDE_API_KEY = Deno.env.get("CLAUDE_API_KEY") ?? "";
@@ -25,7 +26,10 @@ const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 // in `diagnose-pragas/index.ts` (diagnosis = hypothesis, never prescription).
 // While the twins run the SAME prompt they MUST stamp the SAME version —
 // locked by _tests/ai-versioning-meta.test.ts (diverge again = bump required).
-export const DIAGNOSE_PROMPT_VERSION = "2026-07-19.2";
+// 2026-07-22.1: ai_meta SCHEMA change (prompts untouched, still byte-identical
+// to the twin) — new `plant_gate` field records the pre-provider Gemini plant
+// check outcome (blocked|pass|unsure|error|off). Twins bump together.
+export const DIAGNOSE_PROMPT_VERSION = "2026-07-22.1";
 // Which edge fn slug wrote the row (the public 1.0.9 binary calls this shared
 // legacy slug) — lets drift queries separate traffic from the two twins.
 const DIAGNOSE_FN_SLUG = "diagnose";
@@ -624,6 +628,27 @@ Deno.serve(async (req: Request) => {
 
     const userPrompt = `Analise esta imagem como triagem visual probabilistica de sinais fitossanitarios, sem substituir avaliacao em campo.${cropContext}${locationContext}\n\nRetorne APENAS o JSON conforme o formato especificado, sem nenhum texto adicional.`;
 
+    // ── Plant-gate (2026-07-22.1) — cheap Gemini pre-check before the PAID provider ──
+    // PLANT_GATE_ENABLED === "true" → gemini-3.1-flash-lite answers whether the
+    // photo shows a plant at all. A hard "no" short-circuits into the EXISTING
+    // invalid_image contract below WITHOUT spending an Agrio/Claude call. Any
+    // other outcome (yes/unsure/error/timeout/flag off) proceeds to the
+    // provider — FAIL-OPEN by design. Flag/key read per-request: edge secrets
+    // are runtime, so flipping PLANT_GATE_ENABLED needs no redeploy.
+    const plantGate = await runPlantGate({
+      base64: cleanBase64,
+      mediaType,
+      enabled: (Deno.env.get("PLANT_GATE_ENABLED") ?? "").trim().toLowerCase() === "true",
+      apiKey: Deno.env.get("GEMINI_API_KEY") ?? "",
+      onError: (gateError) =>
+        captureException(gateError, {
+          level: "warning",
+          fingerprint: ["pragas-plant-gate-error"],
+          tags: { fn: "diagnose", step: "plant_gate" },
+          extra: { requestId },
+        }),
+    });
+
     // ── Provider branch (Option B, 2026-07-06) ──
     // Both branches assign `diagnosisData` with the SAME shape (pest_id /
     // pest_name / confidence / crop / crop_confidence / predictions /
@@ -634,7 +659,24 @@ Deno.serve(async (req: Request) => {
     // /diagnose contract exposes no model/version field → stays null there.
     let aiModel: string | null = null;
 
-    if (DIAGNOSE_PROVIDER === "agrio") {
+    if (plantGate === "blocked") {
+      // Non-plant photo — synthesize the exact invalid_image AI shape so ALL
+      // downstream code (sanitize → threshold → notes → persist → response)
+      // runs unchanged and the client contract stays byte-compatible. The
+      // provider (paid) is never called on this path.
+      logJson("diagnose", requestId, "INFO", "Plant gate blocked non-plant image — provider skipped");
+      diagnosisData = {
+        pest_id: "invalid_image",
+        pest_name: "Imagem invalida",
+        confidence: 0,
+        message:
+          "A imagem enviada nao parece ser de uma planta ou lavoura. Por favor, envie uma foto de perto da area afetada da planta.",
+        crop: "",
+        crop_confidence: 0,
+        predictions: [],
+        enrichment: { severity: "none" },
+      };
+    } else if (DIAGNOSE_PROVIDER === "agrio") {
       // Agrio identification (paid, funded). The PT-BR laudo is resolved
       // client-side from the bundled MIP catalog — ZERO Anthropic spend.
       const agrioStart = Date.now();
@@ -846,6 +888,7 @@ Deno.serve(async (req: Request) => {
       label_map_version: AGRIO_LABEL_MAP_VERSION,
       fn_version: Deno.env.get("PRAGAS_DIAGNOSE_FN_VERSION") ?? null,
       fn_slug: DIAGNOSE_FN_SLUG,
+      plant_gate: plantGate,
       timestamp: new Date().toISOString(),
     };
 

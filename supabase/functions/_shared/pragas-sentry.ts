@@ -177,6 +177,10 @@ export interface CaptureContext {
   extra?: Record<string, unknown>;
   level?: "fatal" | "error" | "warning" | "info" | "debug";
   user?: { id?: string };
+  /** Explicit Sentry grouping (e.g. ["pragas-plant-gate-error"]) — required
+   * whenever the reported message is synthesized/rewritten, so grouping never
+   * depends on a mutable message string. */
+  fingerprint?: string[];
 }
 
 export async function captureException(
@@ -194,6 +198,7 @@ export async function captureException(
     tags: context.tags,
     extra: context.extra,
     user: context.user,
+    fingerprint: context.fingerprint,
     exception: {
       values: [
         {
