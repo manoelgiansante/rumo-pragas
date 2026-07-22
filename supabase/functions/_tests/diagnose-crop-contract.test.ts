@@ -111,6 +111,36 @@ const AGRIO_FUNGAL_RAW = {
   ],
 };
 
+// ── Label map: Banana / MechanicalInjury (Sentry RUMO-PRAGAS-18) ──
+const AGRIO_MECHANICAL_RAW = {
+  message: "success!",
+  crop: "Banana",
+  cropConfidence: "0.21",
+  idArray: [
+    {
+      id: "MechanicalInjury",
+      confidence: 0.9999,
+      commonName: "Mechanical injury",
+      scientificName: null,
+    },
+  ],
+};
+
+// ── Label map: Plum / Lichens (Sentry RUMO-PRAGAS-18) ──
+const AGRIO_LICHENS_RAW = {
+  message: "success!",
+  crop: "Plum",
+  cropConfidence: "0.16",
+  idArray: [
+    {
+      id: "Lichens",
+      confidence: 0.6457,
+      commonName: "Lichens",
+      scientificName: null,
+    },
+  ],
+};
+
 for (
   const [name, adapt, map] of [
     ["diagnose-pragas", adaptAgrioDedicated, dedicatedMap],
@@ -132,5 +162,40 @@ for (
     assertEquals(enrichment.scientific_name, undefined);
     const predictions = adapted.predictions as Array<Record<string, unknown>>;
     assertEquals(predictions[0]?.common_name, "Doença fúngica");
+  });
+
+  Deno.test(`${name}: Banana/MechanicalInjury resolves to PT physical-damage label without invented science`, () => {
+    const banana = map.Banana;
+    assert(banana, "Banana crop entry missing from AGRIO_LABEL_MAP");
+    assertEquals(banana.mechanicalinjury?.name_pt, "Dano mecânico");
+    assertEquals(banana.mechanicalinjury?.category, "dano físico");
+    // Physical damage is not a pathogen — no scientific name is invented.
+    assertEquals(banana.mechanicalinjury?.scientific_name, undefined);
+
+    const adapted = adapt(AGRIO_MECHANICAL_RAW, { requestId: "test" });
+    assertEquals(adapted.pest_name, "Dano mecânico");
+    const enrichment = adapted.enrichment as Record<string, unknown>;
+    assertEquals(enrichment.name_pt, "Dano mecânico");
+    assertEquals(enrichment.scientific_name, undefined);
+    const predictions = adapted.predictions as Array<Record<string, unknown>>;
+    assertEquals(predictions[0]?.common_name, "Dano mecânico");
+    assertEquals(predictions[0]?.category, "dano físico");
+  });
+
+  Deno.test(`${name}: Plum/Lichens resolves to PT label with low severity, no invented science`, () => {
+    const plum = map.Plum;
+    assert(plum, "Plum crop entry missing from AGRIO_LABEL_MAP");
+    assertEquals(plum.lichens?.name_pt, "Liquens");
+    assertEquals(plum.lichens?.severity, "low");
+    assertEquals(plum.lichens?.scientific_name, undefined);
+
+    const adapted = adapt(AGRIO_LICHENS_RAW, { requestId: "test" });
+    assertEquals(adapted.pest_name, "Liquens");
+    const enrichment = adapted.enrichment as Record<string, unknown>;
+    assertEquals(enrichment.name_pt, "Liquens");
+    assertEquals(enrichment.severity, "low");
+    assertEquals(enrichment.scientific_name, undefined);
+    const predictions = adapted.predictions as Array<Record<string, unknown>>;
+    assertEquals(predictions[0]?.common_name, "Liquens");
   });
 }

@@ -209,7 +209,7 @@ type KbHint = {
  * `diagnose-pragas/agrio.ts` twin (a deno test locks the two maps + versions
  * together).
  */
-export const AGRIO_LABEL_MAP_VERSION = "2026-07-21.1";
+export const AGRIO_LABEL_MAP_VERSION = "2026-07-22.1";
 
 export const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
   Coffee: {
@@ -267,6 +267,30 @@ export const AGRIO_LABEL_MAP: Record<string, Record<string, KbHint>> = {
     "fungal disease": {
       name_pt: "Doença fúngica",
       category: "fungo",
+    },
+  },
+  Banana: {
+    // Observed live 2026-07-22 (RUMO-PRAGAS-18, top label with scientificName
+    // null on Banana; confirmed by correlating pragas_diagnoses). Mechanical
+    // injury is physical damage, NOT a pathogen — it has no single scientific
+    // name, so none is invented: PT label translation only, category "dano
+    // físico". The client degrades gracefully with no catalog match.
+    mechanicalinjury: {
+      name_pt: "Dano mecânico",
+      category: "dano físico",
+    },
+    "mechanical injury": {
+      name_pt: "Dano mecânico",
+      category: "dano físico",
+    },
+  },
+  Plum: {
+    // Observed live 2026-07-22 (RUMO-PRAGAS-18, top label with scientificName
+    // null on Plum). Lichens are a low-severity epiphytic growth, not a plant
+    // pathogen — PT label + low severity, no invented scientific name.
+    lichens: {
+      name_pt: "Liquens",
+      severity: "low",
     },
   },
 };
