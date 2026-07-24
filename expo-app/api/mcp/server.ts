@@ -272,31 +272,36 @@ function retryAfterSeconds(result: Record<string, unknown>): number {
   return Number.isNaN(resetAt) ? 60 : Math.max(1, Math.ceil((resetAt - Date.now()) / 1_000));
 }
 
-async function rateLimit(
-  req: VercelRequest,
-  message: JsonRpcMessage,
-  supabase: ReturnType<typeof getUserClient>,
-): Promise<
+type RateLimitOutcome =
   | { ok: true }
-  | { ok: false; status: number; body: ReturnType<typeof jsonRpcError>; retryAfter?: number }
-> {
-  const id = 'id' in message ? message.id : null;
-  const toolName =
-    message.method === 'tools/call' && typeof message.params?.name === 'string'
-      ? message.params.name
-      : null;
-  const hash = requestHash(message);
-  const idempotencyKey =
-    toolName && MUTATING_TOOLS.has(toolName)
-      ? requireIdempotencyKey(req)
-      : stableRequestIdentity(hash);
-  if (!idempotencyKey) {
-    return {
-      ok: false,
-      status: 400,
-      body: jsonRpcError(id, -32602, 'A valid Idempotency-Key UUID is required.'),
-    };
+  | { ok: false; status: number; body: ReturnType<typeof jsonRpcError>; retryAfter?: number };
+
+type ConsumeOutcome =
+  | { kind: 'result'; result: Record<string, unknown> }
+  | { kind: 'error'; error: unknown }
+  | { kind: 'infra' };
+
+/**
+ * Collapse a Supabase/PostgREST error object into a searchable string so the
+ * RAISE'd gate (PostgREST code P0001) can be classified. The raw text is NEVER
+ * returned to the caller — only matched against known sentinels here.
+ */
+function rpcErrorText(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    return [record.message, record.details, record.hint, record.code]
+      .filter((value): value is string => typeof value === 'string')
+      .join(' ');
   }
+  return '';
+}
+
+async function consumeRateLimit(
+  supabase: ReturnType<typeof getUserClient>,
+  idempotencyKey: string,
+  hash: string,
+): Promise<ConsumeOutcome> {
   let response: { data: unknown; error: unknown };
   try {
     response = await withTimeout<{ data: unknown; error: unknown }>(
@@ -306,22 +311,50 @@ async function rateLimit(
       }) as unknown as PromiseLike<{ data: unknown; error: unknown }>,
     );
   } catch {
-    return {
-      ok: false,
-      status: 503,
-      body: jsonRpcError(id, -32603, 'Rate limiter unavailable.'),
-    };
+    return { kind: 'infra' };
   }
   const { data, error } = response;
+  if (error) return { kind: 'error', error };
   const raw = Array.isArray(data) ? data[0] : data;
   const result = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : null;
-  if (error || !result || typeof result.allowed !== 'boolean') {
-    return {
-      ok: false,
-      status: 503,
-      body: jsonRpcError(id, -32603, 'Rate limiter unavailable.'),
-    };
+  if (!result || typeof result.allowed !== 'boolean') return { kind: 'infra' };
+  return { kind: 'result', result };
+}
+
+/**
+ * Consent-scoped self-heal for the `pragas_app_link_inactive` gate. The JWT is
+ * already verified server-side, so invoking the SAME idempotent
+ * `pragas_link_account` RPC the app runs on login re-links the caller's OWN
+ * Rumo Pragas account — the sanctioned entry point, not a privilege escalation.
+ * Rumo Pragas is free, so this is not a paywall bypass.
+ */
+async function attemptAutoLink(
+  supabase: ReturnType<typeof getUserClient>,
+): Promise<'linked' | 'denied' | 'no_profile' | 'infra'> {
+  let response: { data: unknown; error: unknown };
+  try {
+    response = await withTimeout<{ data: unknown; error: unknown }>(
+      supabase.rpc('pragas_link_account') as unknown as PromiseLike<{
+        data: unknown;
+        error: unknown;
+      }>,
+    );
+  } catch {
+    return 'infra';
   }
+  const { data, error } = response;
+  if (error) {
+    return rpcErrorText(error).includes('pragas_profile_link_failed') ? 'no_profile' : 'infra';
+  }
+  const raw = Array.isArray(data) ? data[0] : data;
+  const result = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : null;
+  return result?.linked === true ? 'linked' : 'denied';
+}
+
+function interpretRateResult(
+  id: RequestId | null,
+  result: Record<string, unknown>,
+): RateLimitOutcome {
   if (result.conflict === true) {
     return {
       ok: false,
@@ -341,6 +374,101 @@ async function rateLimit(
     };
   }
   return { ok: true };
+}
+
+function rateLimiterUnavailable(id: RequestId | null): RateLimitOutcome {
+  return { ok: false, status: 503, body: jsonRpcError(id, -32603, 'Rate limiter unavailable.') };
+}
+
+function unauthorized(id: RequestId | null): RateLimitOutcome {
+  return { ok: false, status: 401, body: jsonRpcError(id, -32000, 'Unauthorized.') };
+}
+
+function accountNotLinked(id: RequestId | null): RateLimitOutcome {
+  return {
+    ok: false,
+    status: 403,
+    body: jsonRpcError(
+      id,
+      -32003,
+      'Conta Rumo Pragas não vinculada ou em exclusão. Abra o app Rumo Pragas com este e-mail para reativar.',
+    ),
+  };
+}
+
+function noPragasAccount(id: RequestId | null): RateLimitOutcome {
+  return {
+    ok: false,
+    status: 404,
+    body: jsonRpcError(
+      id,
+      -32004,
+      'Nenhuma conta Rumo Pragas para este usuário. Crie uma conta no app Rumo Pragas com este e-mail.',
+    ),
+  };
+}
+
+async function rateLimit(
+  req: VercelRequest,
+  message: JsonRpcMessage,
+  supabase: ReturnType<typeof getUserClient>,
+  referenceId: string,
+): Promise<RateLimitOutcome> {
+  const id = 'id' in message ? message.id : null;
+  const toolName =
+    message.method === 'tools/call' && typeof message.params?.name === 'string'
+      ? message.params.name
+      : null;
+  const hash = requestHash(message);
+  const idempotencyKey =
+    toolName && MUTATING_TOOLS.has(toolName)
+      ? requireIdempotencyKey(req)
+      : stableRequestIdentity(hash);
+  if (!idempotencyKey) {
+    return {
+      ok: false,
+      status: 400,
+      body: jsonRpcError(id, -32602, 'A valid Idempotency-Key UUID is required.'),
+    };
+  }
+
+  const first = await consumeRateLimit(supabase, idempotencyKey, hash);
+  if (first.kind === 'result') return interpretRateResult(id, first.result);
+  if (first.kind === 'infra') return rateLimiterUnavailable(id);
+
+  // The RPC RAISE'd (P0001). Tell a genuine infra fault apart from the
+  // recoverable app-link gate or an authentication fault.
+  const gate = rpcErrorText(first.error);
+  if (gate.includes('unauthenticated')) return unauthorized(id);
+  if (!gate.includes('pragas_app_link_inactive')) return rateLimiterUnavailable(id);
+
+  const link = await attemptAutoLink(supabase);
+  if (link === 'no_profile') {
+    logEvent('no_profile', { referenceId });
+    return noPragasAccount(id);
+  }
+  if (link === 'denied') {
+    logEvent('auto_link_denied', { referenceId });
+    return accountNotLinked(id);
+  }
+  if (link === 'infra') return rateLimiterUnavailable(id);
+
+  // link === 'linked' — retry the consume RPC exactly once. The consume RPC
+  // stays mandatory: the retry is still rate limited.
+  const retry = await consumeRateLimit(supabase, idempotencyKey, hash);
+  if (retry.kind === 'result') {
+    logEvent('auto_link_ok', { referenceId });
+    return interpretRateResult(id, retry.result);
+  }
+  if (retry.kind === 'error') {
+    const retryGate = rpcErrorText(retry.error);
+    if (retryGate.includes('unauthenticated')) return unauthorized(id);
+    if (retryGate.includes('pragas_app_link_inactive')) {
+      logEvent('auto_link_denied', { referenceId });
+      return accountNotLinked(id);
+    }
+  }
+  return rateLimiterUnavailable(id);
 }
 
 export interface McpDependencies {
@@ -450,7 +578,7 @@ export async function handleMcpRequest(
       .status(503)
       .json(jsonRpcError('id' in message ? message.id : null, -32603, 'Rate limiter unavailable.'));
   }
-  const limited = await rateLimit(req, message, supabase);
+  const limited = await rateLimit(req, message, supabase, referenceId);
   if (!limited.ok) {
     if (limited.retryAfter) res.setHeader('Retry-After', String(limited.retryAfter));
     logEvent(limited.status === 429 ? 'rate_limited' : 'rate_limiter_rejected', {

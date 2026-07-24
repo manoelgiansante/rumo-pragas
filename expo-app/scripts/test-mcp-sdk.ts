@@ -15,6 +15,8 @@ interface ObservedRequest {
 const observed: ObservedRequest[] = [];
 const rateCalls: Array<Record<string, unknown>> = [];
 const queuedRateResponses: Array<{ data: unknown; error: unknown } | { throws: Error }> = [];
+const linkCalls: Array<Record<string, unknown> | undefined> = [];
+const queuedLinkResponses: Array<{ data: unknown; error: unknown } | { throws: Error }> = [];
 const diagnosisQuery = {
   selectedColumns: '',
   filters: [] as Array<[string, unknown]>,
@@ -62,9 +64,16 @@ const dependencies: McpDependencies = {
     jwt: 'integration-jwt',
   }),
   getUserClient: (() => ({
-    rpc: async (name: string, args: Record<string, unknown>) => {
+    rpc: async (name: string, args?: Record<string, unknown>) => {
+      if (name === 'pragas_link_account') {
+        linkCalls.push(args);
+        const queuedLink = queuedLinkResponses.shift();
+        if (queuedLink && 'throws' in queuedLink) throw queuedLink.throws;
+        if (queuedLink) return queuedLink;
+        return { data: { linked: true, app: 'rumo-pragas', code: 'linked' }, error: null };
+      }
       assert.equal(name, 'consume_pragas_mcp_rate_limit');
-      rateCalls.push(args);
+      rateCalls.push(args!);
       const queued = queuedRateResponses.shift();
       if (queued && 'throws' in queued) throw queued.throws;
       if (queued) return queued;
@@ -331,6 +340,107 @@ async function main(): Promise<void> {
       headers: { Accept: 'text/event-stream', Authorization: 'Bearer integration-jwt' },
     });
     assert.equal(getResponse.status, 405);
+
+    // --- Auto-link recovery for the pragas_app_link_inactive gate ---------
+    // The consume RPC RAISEs 'pragas_app_link_inactive' for an authenticated
+    // user whose Rumo Pragas account is not yet linked. The server must
+    // self-heal via pragas_link_account + retry, never surface a bogus 503.
+    type RpcErrorBody = { id?: unknown; error?: { code?: unknown; message?: unknown } };
+    const appLinkError = () => ({ data: null, error: { message: 'pragas_app_link_inactive' } });
+
+    // (1) gate -> autolink linked:true -> retry allowed -> 200
+    const autoLinkStart = linkCalls.length;
+    queuedRateResponses.push(appLinkError());
+    queuedLinkResponses.push({
+      data: { linked: true, app: 'rumo-pragas', code: 'linked' },
+      error: null,
+    });
+    queuedRateResponses.push({
+      data: { allowed: true, conflict: false, remaining: 20, retry_after_seconds: 0 },
+      error: null,
+    });
+    const autoLinked = await postRpc({
+      jsonrpc: '2.0',
+      id: 201,
+      method: 'ping',
+      params: { scenario: 'autolink-ok' },
+    });
+    assert.equal(autoLinked.status, 200);
+    assert.equal(linkCalls.length, autoLinkStart + 1);
+    assert.equal(linkCalls.at(-1), undefined); // pragas_link_account called with no args
+
+    // (2) gate -> autolink linked:false -> 403 / -32003 (clear PT-BR, no raw SQL)
+    queuedRateResponses.push(appLinkError());
+    queuedLinkResponses.push({
+      data: { linked: false, app: 'rumo-pragas', code: 'subscription_inactive' },
+      error: null,
+    });
+    const denied = await postRpc({
+      jsonrpc: '2.0',
+      id: 202,
+      method: 'ping',
+      params: { scenario: 'autolink-denied' },
+    });
+    assert.equal(denied.status, 403);
+    const deniedBody = (await denied.json()) as RpcErrorBody;
+    assert.equal(deniedBody.error?.code, -32003);
+    assert.match(String(deniedBody.error?.message), /não vinculada/);
+    assert.equal(String(deniedBody.error?.message).includes('pragas_app_link_inactive'), false);
+
+    // (3) gate -> autolink raises pragas_profile_link_failed -> 404 / -32004
+    queuedRateResponses.push(appLinkError());
+    queuedLinkResponses.push({ data: null, error: { message: 'pragas_profile_link_failed' } });
+    const noProfile = await postRpc({
+      jsonrpc: '2.0',
+      id: 203,
+      method: 'ping',
+      params: { scenario: 'no-profile' },
+    });
+    assert.equal(noProfile.status, 404);
+    const noProfileBody = (await noProfile.json()) as RpcErrorBody;
+    assert.equal(noProfileBody.error?.code, -32004);
+    assert.match(String(noProfileBody.error?.message), /Crie uma conta/);
+
+    // (4) RPC raises 'unauthenticated' -> 401 (not 503), autolink NOT attempted
+    const unauthLinkStart = linkCalls.length;
+    queuedRateResponses.push({ data: null, error: { message: 'unauthenticated' } });
+    const unauth = await postRpc({
+      jsonrpc: '2.0',
+      id: 204,
+      method: 'ping',
+      params: { scenario: 'unauth' },
+    });
+    assert.equal(unauth.status, 401);
+    const unauthBody = (await unauth.json()) as RpcErrorBody;
+    assert.equal(unauthBody.error?.code, -32000);
+    assert.equal(linkCalls.length, unauthLinkStart);
+
+    // (5) genuine infra error surfaced as a PostgREST error -> 503 as today
+    queuedRateResponses.push({ data: null, error: { message: 'deadlock detected' } });
+    const infra = await postRpc({
+      jsonrpc: '2.0',
+      id: 205,
+      method: 'ping',
+      params: { scenario: 'infra' },
+    });
+    assert.equal(infra.status, 503);
+
+    // (6) gate -> autolink linked:true -> retry STILL gated -> 403 (single retry)
+    queuedRateResponses.push(appLinkError());
+    queuedLinkResponses.push({ data: { linked: true }, error: null });
+    queuedRateResponses.push(appLinkError());
+    const stillGated = await postRpc({
+      jsonrpc: '2.0',
+      id: 206,
+      method: 'ping',
+      params: { scenario: 'still-gated' },
+    });
+    assert.equal(stillGated.status, 403);
+    const stillGatedBody = (await stillGated.json()) as RpcErrorBody;
+    assert.equal(stillGatedBody.error?.code, -32003);
+
+    assert.equal(queuedRateResponses.length, 0);
+    assert.equal(queuedLinkResponses.length, 0);
 
     await client.close();
   } finally {
